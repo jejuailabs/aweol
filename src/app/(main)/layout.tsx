@@ -1,15 +1,20 @@
 'use client';
 
-import { RouteGuard } from '@/lib/route-guard';
+import { usePathname } from 'next/navigation';
 import BottomNav from '@/components/navigation/BottomNav';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isExhibitRoom = pathname?.includes('/activity/');
+
+  if (isExhibitRoom) {
+    return <>{children}</>;
+  }
+
   return (
-    <RouteGuard>
-      <div className="relative mx-auto w-full max-w-[480px] min-h-screen pb-20">
-        {children}
-        <BottomNav />
-      </div>
-    </RouteGuard>
+    <div className="relative mx-auto w-full min-h-screen pb-20">
+      {children}
+      <BottomNav />
+    </div>
   );
 }

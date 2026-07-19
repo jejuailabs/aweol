@@ -32,3 +32,8 @@ body {
   color: var(--color-text-main);
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
+
+#exhibit-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

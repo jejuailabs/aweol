@@ -13,7 +13,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.dataset.theme='dark';}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-[var(--color-surface)] text-[var(--color-text-main)]">
         <AuthProvider>{children}</AuthProvider>
       </body>

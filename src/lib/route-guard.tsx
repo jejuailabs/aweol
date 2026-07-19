@@ -11,7 +11,7 @@ interface RouteGuardProps {
   requireAuth?: boolean;
 }
 
-export function RouteGuard({ children, allowedRoles, requireAuth = true }: RouteGuardProps) {
+export function RouteGuard({ children, allowedRoles, requireAuth = false }: RouteGuardProps) {
   const { user, role, loading } = useAuth();
   const router = useRouter();
 
@@ -23,7 +23,7 @@ export function RouteGuard({ children, allowedRoles, requireAuth = true }: Route
       return;
     }
 
-    if (user && !role) {
+    if (requireAuth && user && !role) {
       router.replace('/join-request');
       return;
     }
