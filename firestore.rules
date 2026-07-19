@@ -52,9 +52,19 @@ service cloud.firestore {
         allow write: if isStaff();
       }
 
+      // 명부 업로드 기록 (앱이 schools/{schoolId}/rosterUploads 아래에 쓴다)
+      match /rosterUploads/{uploadId} {
+        allow read, write: if isStaff();
+      }
+
       match /classes/{classId} {
         allow read: if true;
         allow write: if isStaff();
+
+        // 학생 명부 — 미성년자 개인정보이므로 교직원만 열람·수정
+        match /students/{studentId} {
+          allow read, write: if isStaff();
+        }
 
         match /activities/{activityId} {
           allow read: if true;
@@ -97,11 +107,6 @@ service cloud.firestore {
           }
         }
       }
-    }
-
-    // ---------- 명부 업로드 기록 ----------
-    match /rosterUploads/{uploadId} {
-      allow read, write: if isStaff();
     }
 
     // 그 외 전부 차단
