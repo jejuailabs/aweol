@@ -347,9 +347,11 @@ function Cloud({ position, speed = 0.2 }: { position: [number, number, number]; 
 export default function SchoolScene({
   classes = [],
   onClassSelect = () => {},
+  avatarId,
 }: {
   classes?: SchoolClassItem[];
   onClassSelect?: (id: string) => void;
+  avatarId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 11));
@@ -413,6 +415,7 @@ export default function SchoolScene({
           bounds={{ xMin: -14, xMax: 14, zMin: -1.5, zMax: 16 }}
           start={[0, 0, 11]}
           maxSpeed={5}
+          avatarId={avatarId}
         />
         <DustPuffs />
         <FollowCamera

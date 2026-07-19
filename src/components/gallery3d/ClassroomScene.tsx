@@ -25,6 +25,7 @@ interface ClassroomSceneProps {
   onActivitySelect: (id: string) => void;
   canManage?: boolean;
   onAddActivity?: () => void;
+  avatarId?: string | null;
 }
 
 // --------------- 교실 구조 ---------------
@@ -438,7 +439,7 @@ function ClassroomLighting() {
 }
 
 // --------------- 메인 ---------------
-export default function ClassroomScene({ classLabel, activities, onActivitySelect, canManage, onAddActivity }: ClassroomSceneProps) {
+export default function ClassroomScene({ classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
 
@@ -495,6 +496,7 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
           bounds={{ xMin: -6, xMax: 6, zMin: -4.6, zMax: 5 }}
           start={[0, 0, 3.5]}
           maxSpeed={3.8}
+          avatarId={avatarId}
         />
         <DustPuffs />
         <FollowCamera

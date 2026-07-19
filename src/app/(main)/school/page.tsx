@@ -46,7 +46,7 @@ export default function SchoolPage() {
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
-      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} />
+      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} />
 
       {/* 상단 로그인/프로필 버튼 */}
       <div className="absolute top-4 right-4 z-40">

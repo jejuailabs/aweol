@@ -19,6 +19,7 @@ interface ArtworkData {
 interface ExhibitRoomProps {
   artworks: ArtworkData[];
   onArtworkClick: (artwork: ArtworkData) => void;
+  avatarId?: string | null;
 }
 
 const PI = Math.PI;
@@ -486,7 +487,7 @@ function GalleryLighting() {
   );
 }
 
-export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomProps) {
+export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: ExhibitRoomProps) {
   // 실제 승인된 작품만 전시한다 (가짜 작품으로 벽을 채우지 않음)
   const displayArtworks = artworks;
   const avatarPos = useRef(new THREE.Vector3(0, 0, 5));
@@ -599,6 +600,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomPro
           avatarPos={avatarPos}
           bounds={{ xMin: -7, xMax: 7, zMin: -7, zMax: 7 }}
           start={[0, 0, 5]}
+          avatarId={avatarId}
         />
         <DustPuffs />
         <FollowCamera

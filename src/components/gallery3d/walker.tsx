@@ -156,6 +156,68 @@ export function DustPuffs() {
   );
 }
 
+// ================= 아바타 외형 프리셋 (avatar-select의 8종과 1:1 대응) =================
+
+type HairStyle = 'short' | 'long' | 'none';
+type HatKind = 'none' | 'beret' | 'cap' | 'ribbon' | 'antenna';
+type EarKind = 'none' | 'cat' | 'dog';
+type HandItem = 'none' | 'brush' | 'palette' | 'magnifier';
+
+interface AvatarLook {
+  skin: string;
+  hair: string;
+  hairStyle: HairStyle;
+  shirt: string;
+  pants: string;
+  shoe: string;
+  hat: HatKind;
+  hatColor: string;
+  ears: EarKind;
+  earColor: string;
+  item: HandItem;
+  cheek: boolean;
+  muzzle: boolean;
+}
+
+const BASE_LOOK: AvatarLook = {
+  skin: '#FFDDB8',
+  hair: '#6B4226',
+  hairStyle: 'short',
+  shirt: '#E8493C',
+  pants: '#3D6BB3',
+  shoe: '#7A4A2B',
+  hat: 'none',
+  hatColor: '#E8493C',
+  ears: 'none',
+  earColor: '#F0C48A',
+  item: 'none',
+  cheek: true,
+  muzzle: false,
+};
+
+export const AVATAR_LOOKS: Record<string, AvatarLook> = {
+  // 교복 소년 — 기본형
+  avatar_01: { ...BASE_LOOK },
+  // 교복 소녀 — 긴 머리 + 리본
+  avatar_02: { ...BASE_LOOK, hairStyle: 'long', hair: '#4A2C18', shirt: '#F06AA0', pants: '#7B4B94', hat: 'ribbon', hatColor: '#FF6B81' },
+  // 화가 소년 — 베레모 + 붓
+  avatar_03: { ...BASE_LOOK, shirt: '#4FA8E8', pants: '#2E5B8A', hat: 'beret', hatColor: '#E8493C', item: 'brush' },
+  // 화가 소녀 — 긴 머리 + 팔레트
+  avatar_04: { ...BASE_LOOK, hairStyle: 'long', hair: '#8A5A2B', shirt: '#FFD93D', pants: '#3BAF9F', item: 'palette', hat: 'ribbon', hatColor: '#8FD98A' },
+  // 탐험가 — 야구모자 + 돋보기
+  avatar_05: { ...BASE_LOOK, hair: '#3A2A1A', shirt: '#8FD98A', pants: '#6B5B43', hat: 'cap', hatColor: '#E8A33C', item: 'magnifier' },
+  // 로봇 친구 — 금속 피부 + 안테나, 머리카락 없음
+  avatar_06: { ...BASE_LOOK, skin: '#C7D2DC', hair: '#8FA0B0', hairStyle: 'none', shirt: '#7B8794', pants: '#5A6570', shoe: '#4A535C', hat: 'antenna', hatColor: '#FF6B81', cheek: false },
+  // 고양이 — 고양이 귀 + 주둥이
+  avatar_07: { ...BASE_LOOK, skin: '#F5C77E', hair: '#E0A94F', hairStyle: 'none', shirt: '#FFD93D', pants: '#E8A33C', ears: 'cat', earColor: '#F5C77E', muzzle: true },
+  // 강아지 — 처진 귀 + 주둥이
+  avatar_08: { ...BASE_LOOK, skin: '#F0DCC0', hair: '#C89A6B', hairStyle: 'none', shirt: '#4FA8E8', pants: '#8A6A4A', ears: 'dog', earColor: '#C89A6B', muzzle: true },
+};
+
+export function getAvatarLook(avatarId?: string | null): AvatarLook {
+  return (avatarId && AVATAR_LOOKS[avatarId]) || AVATAR_LOOKS.avatar_01;
+}
+
 // ================= 걸어다니는 아바타 (동숲 비율 + 모멘텀) =================
 
 export interface WalkerBounds {
@@ -171,13 +233,16 @@ export function WalkerAvatar({
   start,
   maxSpeed = 4.2,
   scale = 1,
+  avatarId,
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
   bounds: WalkerBounds;
   start: [number, number, number];
   maxSpeed?: number;
   scale?: number;
+  avatarId?: string | null;
 }) {
+  const look = getAvatarLook(avatarId);
   const groupRef = useRef<THREE.Group>(null);
   const armLRef = useRef<THREE.Group>(null);
   const armRRef = useRef<THREE.Group>(null);
@@ -273,26 +338,26 @@ export function WalkerAvatar({
       {/* 다리 */}
       <mesh ref={legLRef} position={[-0.09, 0.16, 0]} castShadow>
         <capsuleGeometry args={[0.055, 0.14, 6, 10]} />
-        <meshStandardMaterial color="#3D6BB3" />
+        <meshStandardMaterial color={look.pants} />
       </mesh>
       <mesh ref={legRRef} position={[0.09, 0.16, 0]} castShadow>
         <capsuleGeometry args={[0.055, 0.14, 6, 10]} />
-        <meshStandardMaterial color="#3D6BB3" />
+        <meshStandardMaterial color={look.pants} />
       </mesh>
       {/* 신발 */}
       <mesh position={[-0.09, 0.05, 0.03]}>
         <sphereGeometry args={[0.075, 10, 10]} />
-        <meshStandardMaterial color="#7A4A2B" roughness={0.6} />
+        <meshStandardMaterial color={look.shoe} roughness={0.6} />
       </mesh>
       <mesh position={[0.09, 0.05, 0.03]}>
         <sphereGeometry args={[0.075, 10, 10]} />
-        <meshStandardMaterial color="#7A4A2B" roughness={0.6} />
+        <meshStandardMaterial color={look.shoe} roughness={0.6} />
       </mesh>
 
-      {/* 몸통 — 마리오 레드 셔츠 */}
+      {/* 몸통 */}
       <mesh position={[0, 0.46, 0]} castShadow>
         <cylinderGeometry args={[0.13, 0.22, 0.42, 14]} />
-        <meshStandardMaterial color="#E8493C" roughness={0.65} />
+        <meshStandardMaterial color={look.shirt} roughness={0.65} />
       </mesh>
       <mesh position={[0, 0.5, 0.185]}>
         <sphereGeometry args={[0.032, 8, 8]} />
@@ -303,49 +368,209 @@ export function WalkerAvatar({
         <meshStandardMaterial color="#FFD93D" metalness={0.2} roughness={0.4} />
       </mesh>
 
-      {/* 팔 */}
+      {/* 팔 (왼쪽) */}
       <group ref={armLRef} position={[-0.24, 0.62, 0]}>
         <mesh position={[0, -0.11, 0]} castShadow>
           <capsuleGeometry args={[0.05, 0.16, 6, 10]} />
-          <meshStandardMaterial color="#E8493C" roughness={0.65} />
+          <meshStandardMaterial color={look.shirt} roughness={0.65} />
         </mesh>
         <mesh position={[0, -0.24, 0]}>
           <sphereGeometry args={[0.055, 10, 10]} />
-          <meshStandardMaterial color="#FFDDB8" />
+          <meshStandardMaterial color={look.skin} />
         </mesh>
+        {/* 왼손 소지품 — 팔레트 */}
+        {look.item === 'palette' && (
+          <group position={[-0.02, -0.3, 0.06]} rotation={[HALF_PI * 0.8, 0, 0.3]}>
+            <mesh>
+              <cylinderGeometry args={[0.13, 0.13, 0.018, 16]} />
+              <meshStandardMaterial color="#D9A066" />
+            </mesh>
+            {[['#E8493C', -0.05, 0.05], ['#4FA8E8', 0.05, 0.05], ['#FFD93D', -0.05, -0.04], ['#8FD98A', 0.05, -0.04]].map(
+              ([c, px, pz], i) => (
+                <mesh key={i} position={[px as number, 0.014, pz as number]}>
+                  <cylinderGeometry args={[0.028, 0.028, 0.008, 10]} />
+                  <meshStandardMaterial color={c as string} />
+                </mesh>
+              )
+            )}
+          </group>
+        )}
       </group>
+
+      {/* 팔 (오른쪽) */}
       <group ref={armRRef} position={[0.24, 0.62, 0]}>
         <mesh position={[0, -0.11, 0]} castShadow>
           <capsuleGeometry args={[0.05, 0.16, 6, 10]} />
-          <meshStandardMaterial color="#E8493C" roughness={0.65} />
+          <meshStandardMaterial color={look.shirt} roughness={0.65} />
         </mesh>
         <mesh position={[0, -0.24, 0]}>
           <sphereGeometry args={[0.055, 10, 10]} />
-          <meshStandardMaterial color="#FFDDB8" />
+          <meshStandardMaterial color={look.skin} />
         </mesh>
+        {/* 오른손 소지품 — 붓 */}
+        {look.item === 'brush' && (
+          <group position={[0.02, -0.32, 0.05]} rotation={[0, 0, -0.35]}>
+            <mesh position={[0, 0.08, 0]}>
+              <cylinderGeometry args={[0.015, 0.015, 0.26, 8]} />
+              <meshStandardMaterial color="#C9954F" />
+            </mesh>
+            <mesh position={[0, -0.07, 0]}>
+              <coneGeometry args={[0.032, 0.09, 8]} />
+              <meshStandardMaterial color="#E8493C" />
+            </mesh>
+          </group>
+        )}
+        {/* 오른손 소지품 — 돋보기 */}
+        {look.item === 'magnifier' && (
+          <group position={[0.02, -0.32, 0.06]} rotation={[0, 0, -0.3]}>
+            <mesh position={[0, 0.06, 0]}>
+              <cylinderGeometry args={[0.014, 0.014, 0.16, 8]} />
+              <meshStandardMaterial color="#7A4A2B" />
+            </mesh>
+            <mesh position={[0, -0.06, 0]} rotation={[HALF_PI, 0, 0]}>
+              <torusGeometry args={[0.075, 0.016, 8, 20]} />
+              <meshStandardMaterial color="#C0C6CC" metalness={0.7} roughness={0.3} />
+            </mesh>
+            <mesh position={[0, -0.06, 0]} rotation={[HALF_PI, 0, 0]}>
+              <circleGeometry args={[0.07, 20]} />
+              <meshStandardMaterial color="#BFE6F5" transparent opacity={0.55} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        )}
       </group>
 
       {/* 머리 */}
       <mesh position={[0, 1.02, 0]} castShadow>
         <sphereGeometry args={[0.3, 20, 20]} />
-        <meshStandardMaterial color="#FFDDB8" />
+        <meshStandardMaterial color={look.skin} />
       </mesh>
-      <mesh position={[0, 1.2, -0.02]}>
-        <sphereGeometry args={[0.29, 20, 20, 0, PI * 2, 0, HALF_PI * 1.1]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-      <mesh position={[-0.26, 1.05, 0]}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-      <mesh position={[0.26, 1.05, 0]}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 1.28, 0.2]} rotation={[0.5, 0, 0]}>
-        <coneGeometry args={[0.06, 0.12, 8]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
+
+      {/* 머리카락 */}
+      {look.hairStyle !== 'none' && (
+        <>
+          <mesh position={[0, 1.2, -0.02]}>
+            <sphereGeometry args={[0.29, 20, 20, 0, PI * 2, 0, HALF_PI * 1.1]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+          <mesh position={[-0.26, 1.05, 0]}>
+            <sphereGeometry args={[0.09, 10, 10]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+          <mesh position={[0.26, 1.05, 0]}>
+            <sphereGeometry args={[0.09, 10, 10]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, 1.28, 0.2]} rotation={[0.5, 0, 0]}>
+            <coneGeometry args={[0.06, 0.12, 8]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+        </>
+      )}
+      {/* 긴 머리 — 뒤로 늘어뜨린 볼륨 */}
+      {look.hairStyle === 'long' && (
+        <>
+          <mesh position={[0, 0.9, -0.2]} scale={[1, 1.35, 0.75]}>
+            <sphereGeometry args={[0.24, 14, 14]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+          <mesh position={[-0.24, 0.82, -0.1]} scale={[0.7, 1.5, 0.7]}>
+            <sphereGeometry args={[0.12, 10, 10]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+          <mesh position={[0.24, 0.82, -0.1]} scale={[0.7, 1.5, 0.7]}>
+            <sphereGeometry args={[0.12, 10, 10]} />
+            <meshStandardMaterial color={look.hair} roughness={0.85} />
+          </mesh>
+        </>
+      )}
+
+      {/* 모자 / 머리 장식 */}
+      {look.hat === 'beret' && (
+        <group position={[0, 1.3, -0.02]} rotation={[0, 0, 0.18]}>
+          <mesh scale={[1, 0.45, 1]}>
+            <sphereGeometry args={[0.27, 16, 16]} />
+            <meshStandardMaterial color={look.hatColor} roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.1, 0]}>
+            <sphereGeometry args={[0.035, 8, 8]} />
+            <meshStandardMaterial color={look.hatColor} roughness={0.8} />
+          </mesh>
+        </group>
+      )}
+      {look.hat === 'cap' && (
+        <group position={[0, 1.24, 0]}>
+          <mesh scale={[1, 0.62, 1]}>
+            <sphereGeometry args={[0.3, 16, 16, 0, PI * 2, 0, HALF_PI]} />
+            <meshStandardMaterial color={look.hatColor} roughness={0.75} />
+          </mesh>
+          {/* 챙 */}
+          <mesh position={[0, -0.01, 0.24]} rotation={[NEG_HALF_PI * 0.92, 0, 0]}>
+            <circleGeometry args={[0.19, 16, 0, PI]} />
+            <meshStandardMaterial color={look.hatColor} roughness={0.75} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      )}
+      {look.hat === 'ribbon' && (
+        <group position={[0.2, 1.26, 0.06]} rotation={[0, 0, -0.3]}>
+          <mesh position={[-0.05, 0, 0]} scale={[1, 0.7, 0.5]}>
+            <sphereGeometry args={[0.07, 10, 10]} />
+            <meshStandardMaterial color={look.hatColor} />
+          </mesh>
+          <mesh position={[0.05, 0, 0]} scale={[1, 0.7, 0.5]}>
+            <sphereGeometry args={[0.07, 10, 10]} />
+            <meshStandardMaterial color={look.hatColor} />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[0.032, 8, 8]} />
+            <meshStandardMaterial color="#FFFFFF" />
+          </mesh>
+        </group>
+      )}
+      {look.hat === 'antenna' && (
+        <group position={[0, 1.3, 0]}>
+          <mesh position={[0, 0.08, 0]}>
+            <cylinderGeometry args={[0.012, 0.012, 0.18, 6]} />
+            <meshStandardMaterial color="#8FA0B0" metalness={0.6} roughness={0.35} />
+          </mesh>
+          <mesh position={[0, 0.19, 0]}>
+            <sphereGeometry args={[0.045, 10, 10]} />
+            <meshStandardMaterial color={look.hatColor} emissive={look.hatColor} emissiveIntensity={0.6} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 동물 귀 */}
+      {look.ears === 'cat' && (
+        <>
+          {[-0.16, 0.16].map((x) => (
+            <group key={`ear-${x}`} position={[x, 1.26, 0]} rotation={[0, 0, x < 0 ? 0.25 : -0.25]}>
+              <mesh>
+                <coneGeometry args={[0.09, 0.18, 4]} />
+                <meshStandardMaterial color={look.earColor} roughness={0.85} />
+              </mesh>
+              <mesh position={[0, -0.01, 0.03]} scale={[0.6, 0.6, 0.6]}>
+                <coneGeometry args={[0.09, 0.18, 4]} />
+                <meshStandardMaterial color="#FF9EAF" roughness={0.85} />
+              </mesh>
+            </group>
+          ))}
+        </>
+      )}
+      {look.ears === 'dog' && (
+        <>
+          {[-0.26, 0.26].map((x) => (
+            <mesh
+              key={`dear-${x}`}
+              position={[x, 1.1, 0]}
+              rotation={[0, 0, x < 0 ? 0.35 : -0.35]}
+              scale={[0.65, 1.5, 0.6]}
+            >
+              <sphereGeometry args={[0.1, 10, 10]} />
+              <meshStandardMaterial color={look.earColor} roughness={0.9} />
+            </mesh>
+          ))}
+        </>
+      )}
 
       {/* 눈 + 하이라이트 */}
       <mesh position={[-0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
@@ -365,29 +590,51 @@ export function WalkerAvatar({
         <meshBasicMaterial color="#FFFFFF" />
       </mesh>
 
-      {/* 코/입/볼 */}
-      <mesh position={[0, 0.97, 0.29]}>
-        <sphereGeometry args={[0.035, 10, 10]} />
-        <meshStandardMaterial color="#FFC89E" />
+      {/* 동물 주둥이 */}
+      {look.muzzle && (
+        <mesh position={[0, 0.93, 0.26]} scale={[1.5, 1, 0.9]}>
+          <sphereGeometry args={[0.1, 12, 12]} />
+          <meshStandardMaterial color="#FFF3E0" />
+        </mesh>
+      )}
+
+      {/* 코 */}
+      <mesh position={[0, look.muzzle ? 0.96 : 0.97, look.muzzle ? 0.35 : 0.29]}>
+        <sphereGeometry args={[look.muzzle ? 0.04 : 0.035, 10, 10]} />
+        <meshStandardMaterial color={look.muzzle ? '#4A3A2A' : '#FFC89E'} />
       </mesh>
-      <mesh position={[0, 0.9, 0.27]} rotation={[0.35, 0, 0]} scale={[1.5, 0.7, 0.5]}>
+
+      {/* 입 */}
+      <mesh
+        position={[0, look.muzzle ? 0.89 : 0.9, look.muzzle ? 0.33 : 0.27]}
+        rotation={[0.35, 0, 0]}
+        scale={[1.5, 0.7, 0.5]}
+      >
         <sphereGeometry args={[0.035, 10, 10]} />
         <meshStandardMaterial color="#C0392B" />
       </mesh>
-      <mesh position={[-0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
-      </mesh>
-      <mesh position={[0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
-      </mesh>
 
-      {/* 별 장식 */}
-      <mesh position={[0.18, 1.32, 0.12]} rotation={[0.3, 0.4, 0.3]}>
-        <octahedronGeometry args={[0.05, 0]} />
-        <meshStandardMaterial color="#FFD93D" emissive="#FFD93D" emissiveIntensity={0.35} />
-      </mesh>
+      {/* 볼터치 */}
+      {look.cheek && (
+        <>
+          <mesh position={[-0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
+            <sphereGeometry args={[0.04, 8, 8]} />
+            <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
+          </mesh>
+          <mesh position={[0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
+            <sphereGeometry args={[0.04, 8, 8]} />
+            <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
+          </mesh>
+        </>
+      )}
+
+      {/* 별 장식 (모자·귀가 없을 때만) */}
+      {look.hat === 'none' && look.ears === 'none' && (
+        <mesh position={[0.18, 1.32, 0.12]} rotation={[0.3, 0.4, 0.3]}>
+          <octahedronGeometry args={[0.05, 0]} />
+          <meshStandardMaterial color="#FFD93D" emissive="#FFD93D" emissiveIntensity={0.35} />
+        </mesh>
+      )}
 
       {/* 바닥 그림자 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.012, 0]}>

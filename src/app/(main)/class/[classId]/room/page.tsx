@@ -22,7 +22,7 @@ export default function ClassRoomPage() {
   const router = useRouter();
   const params = useParams();
   const classId = params.classId as string;
-  const { role } = useAuth();
+  const { role, userDoc } = useAuth();
   const [activities, setActivities] = useState<ClassroomActivity[]>([]);
   const [fetched, setFetched] = useState(false);
   const [showList, setShowList] = useState(false);
@@ -99,6 +99,7 @@ export default function ClassRoomPage() {
         onActivitySelect={handleEnter}
         canManage={isTeacher}
         onAddActivity={() => setShowAdd(true)}
+        avatarId={userDoc?.avatarId}
       />
 
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}

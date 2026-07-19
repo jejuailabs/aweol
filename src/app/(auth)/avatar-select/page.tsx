@@ -81,7 +81,7 @@ export default function AvatarSelectPage() {
             {avatarPresets.find((a) => a.id === selected)?.desc}
           </div>
           <div className="mt-3 text-xs" style={{ color: 'var(--color-text-sub)' }}>
-            🔄 3D 모델 미리보기는 곧 추가됩니다
+            ✨ 전시실에서 이 모습으로 걸어다녀요
           </div>
         </div>
       )}

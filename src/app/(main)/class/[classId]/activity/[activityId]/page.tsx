@@ -30,7 +30,7 @@ export default function ActivityExhibitPage() {
   const params = useParams();
   const classId = params.classId as string;
   const activityId = params.activityId as string;
-  const { role } = useAuth();
+  const { role, userDoc } = useAuth();
 
   const [activity, setActivity] = useState<ActivityDoc | null>(null);
   const [artworks, setArtworks] = useState<ArtworkData[]>([]);
@@ -84,6 +84,7 @@ export default function ActivityExhibitPage() {
       <ExhibitRoom
         artworks={artworks}
         onArtworkClick={(artwork) => setSelectedArtwork(artwork as ArtworkData)}
+        avatarId={userDoc?.avatarId}
       />
 
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}
