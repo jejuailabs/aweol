@@ -34,6 +34,9 @@ const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
+/** 이 거리 안으로 들어오면 작품명·작가명 이름표가 뜬다 (바닥 기준 거리) */
+const LABEL_DISTANCE = 5;
+
 // --------------- 벽면 (개선된 질감) ---------------
 function Room() {
   const wallColor = '#FFF8F0';
@@ -291,8 +294,10 @@ function WallArtwork({
 
   useFrame(() => {
     if (!groupRef.current) return;
-    const dist = avatarPos.current.distanceTo(new THREE.Vector3(...position));
-    setNear(dist < 3.5);
+    // 작품이 벽 위쪽(y=2.5)에 걸려 있으므로 높이차는 빼고 바닥 기준 거리로 판단한다
+    const dx = avatarPos.current.x - position[0];
+    const dz = avatarPos.current.z - position[2];
+    setNear(Math.sqrt(dx * dx + dz * dz) < LABEL_DISTANCE);
   });
 
   return (
@@ -387,8 +392,9 @@ function SculptureArtwork({
     if (meshRef.current) {
       meshRef.current.rotation.y += delta * 0.3;
     }
-    const dist = avatarPos.current.distanceTo(new THREE.Vector3(...position));
-    setNear(dist < 3.5);
+    const dx = avatarPos.current.x - position[0];
+    const dz = avatarPos.current.z - position[2];
+    setNear(Math.sqrt(dx * dx + dz * dz) < LABEL_DISTANCE);
   });
 
   return (
@@ -486,11 +492,11 @@ function CanvasResizer({ containerRef }: { containerRef: React.RefObject<HTMLDiv
 function GalleryLighting() {
   return (
     <>
-      <ambientLight intensity={0.35} color="#FFF8E7" />
-      <directionalLight position={[5, 8, 5]} intensity={0.25} color="#FFFAF0" castShadow />
-      <pointLight position={[0, 4.5, 0]} intensity={0.4} color="#FFF5E6" distance={20} />
-      <pointLight position={[-6, 4, -6]} intensity={0.2} color="#FFF5E6" distance={12} />
-      <pointLight position={[6, 4, -6]} intensity={0.2} color="#FFF5E6" distance={12} />
+      <ambientLight intensity={0.85} color="#FFF8E7" />
+      <directionalLight position={[5, 8, 5]} intensity={0.5} color="#FFFAF0" castShadow />
+      <pointLight position={[0, 4.5, 0]} intensity={0.7} color="#FFF5E6" distance={24} />
+      <pointLight position={[-6, 4, -6]} intensity={0.35} color="#FFF5E6" distance={14} />
+      <pointLight position={[6, 4, -6]} intensity={0.35} color="#FFF5E6" distance={14} />
     </>
   );
 }
