@@ -76,15 +76,11 @@ export default function ClassRoomPage() {
       <div className="absolute top-4 left-4 z-30 flex items-center gap-3">
         <button
           onClick={() => router.push('/school')}
-          className="rounded-full px-4 py-2 text-xs font-bold shadow-lg backdrop-blur-md transition-transform hover:scale-105"
-          style={{ background: 'rgba(255,255,255,0.88)', color: '#2B2B2B' }}
+          className="ac-btn px-4 py-2 text-xs"
         >
           ← 학교로
         </button>
-        <div
-          className="rounded-full px-4 py-2 text-xs font-bold shadow-lg backdrop-blur-md"
-          style={{ background: 'rgba(255,255,255,0.88)', color: '#2B2B2B' }}
-        >
+        <div className="ac-bubble px-4 py-2 text-xs">
           📚 {classId} 교실
         </div>
       </div>
@@ -92,19 +88,15 @@ export default function ClassRoomPage() {
       {/* 목록 보기 토글 (모바일 배려) */}
       <button
         onClick={() => setShowList(true)}
-        className="absolute top-4 right-4 z-30 rounded-full px-4 py-2 text-xs font-bold shadow-lg backdrop-blur-md transition-transform hover:scale-105"
-        style={{ background: 'rgba(62,196,109,0.92)', color: 'white' }}
+        className="ac-btn ac-btn-green absolute top-4 right-4 z-30 px-4 py-2 text-xs"
       >
         📋 활동 목록
       </button>
 
       {/* 하단 안내 */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-        <div
-          className="rounded-2xl px-4 py-2.5 text-[11px] font-medium shadow-lg backdrop-blur-md"
-          style={{ background: 'rgba(255,255,255,0.85)', color: '#6B7280' }}
-        >
-          오른쪽 게시판의 활동 포스터를 눌러 전시실로 입장하세요 🖱️
+        <div className="ac-bubble px-4 py-2.5 text-[11px]">
+          🖱️ 드래그로 교실을 둘러보고, 게시판의 활동 포스터를 눌러 입장!
         </div>
       </div>
 

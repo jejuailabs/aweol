@@ -37,3 +37,122 @@ body {
   width: 100% !important;
   height: 100% !important;
 }
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-pop {
+  0% { opacity: 0; transform: translateY(36px) scale(0.92); }
+  60% { opacity: 1; transform: translateY(-8px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.modal-backdrop { animation: modal-fade 0.25s ease both; }
+.modal-card { animation: modal-pop 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both; }
+.float-slow { animation: float-y 3s ease-in-out infinite; }
+.float-slower { animation: float-y 4s ease-in-out 0.6s infinite; }
+
+/* ===== 동물의 숲 스타일 UI 킷 ===== */
+
+@keyframes ac-pop-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ac-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* 크림색 라운드 버튼 — 동숲 메뉴 버튼 느낌 */
+.ac-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFF8E7;
+  color: #7A6A52;
+  font-weight: 800;
+  border: 3px solid #EFE3CB;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 #E3D5B8, 0 8px 16px rgba(0,0,0,0.12);
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.14s ease;
+  cursor: pointer;
+  user-select: none;
+}
+.ac-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 0 #E3D5B8, 0 12px 20px rgba(0,0,0,0.16);
+}
+.ac-btn:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow: 0 1px 0 #E3D5B8, 0 4px 8px rgba(0,0,0,0.1);
+}
+.ac-btn-green {
+  background: #8FD98A;
+  color: #2E5B2A;
+  border-color: #7BC876;
+  box-shadow: 0 4px 0 #6AB565, 0 8px 16px rgba(0,0,0,0.12);
+}
+.ac-btn-green:hover { box-shadow: 0 6px 0 #6AB565, 0 12px 20px rgba(0,0,0,0.16); }
+.ac-btn-green:active { box-shadow: 0 1px 0 #6AB565, 0 4px 8px rgba(0,0,0,0.1); }
+
+/* 말풍선 안내 — 동숲 대화창 느낌 */
+.ac-bubble {
+  background: #FFF8E7;
+  color: #8A7A5F;
+  font-weight: 700;
+  border: 3px solid #EFE3CB;
+  border-radius: 20px;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.14);
+}
+
+/* 작품 이름표 — 동숲 아이템 이름표 */
+.ac-tag {
+  position: relative;
+  background: #FFFDF4;
+  border: 2.5px solid #E8DCC4;
+  border-radius: 14px;
+  padding: 7px 14px;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 5px 12px rgba(0,0,0,0.18);
+  animation: ac-pop-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  cursor: pointer;
+}
+.ac-tag::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  transform: translateX(-50%) rotate(180deg);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 9px solid #FFFDF4;
+}
+.ac-tag-title { font-size: 12px; font-weight: 800; color: #6B5B43; }
+.ac-tag-sub { font-size: 9px; font-weight: 600; color: #A89880; margin-top: 1px; }
+
+/* "!" 상호작용 큐 — 동숲 리액션 */
+.ac-alert {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #FFD93D;
+  border: 2.5px solid #F0B429;
+  color: #7A5800;
+  font-weight: 900;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(240,180,41,0.5);
+  animation: ac-pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both, ac-bounce 0.9s ease-in-out 0.25s infinite;
+}

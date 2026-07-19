@@ -22,12 +22,19 @@ const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
-// --------------- 키 입력 상태 ---------------
+// --------------- 키 입력 상태 (e.code 기반 — 한글 자판 상태에서도 WASD 동작) ---------------
 const keyState: Record<string, boolean> = {};
 if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => { keyState[e.key.toLowerCase()] = true; });
-  window.addEventListener('keyup', (e) => { keyState[e.key.toLowerCase()] = false; });
+  window.addEventListener('keydown', (e) => {
+    keyState[e.code] = true;
+    if (e.code.startsWith('Arrow')) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => { keyState[e.code] = false; });
+  window.addEventListener('blur', () => { Object.keys(keyState).forEach((k) => { keyState[k] = false; }); });
 }
+
+// --------------- 카메라 회전 상태 (마우스/터치 드래그) ---------------
+const camControl = { yaw: 0 };
 
 // --------------- 조이스틱 상태 (모바일) ---------------
 let joystickDir = { x: 0, z: 0 };
@@ -308,16 +315,17 @@ function WallArtwork({
         <ArtworkImage url={artwork.imageUrl} width={frameW - 0.1} height={frameH - 0.1} />
       </group>
 
-      {/* 근접 시 라벨 표시 */}
+      {/* 근접 시 "!" 큐 + 동숲식 이름표 */}
       {near && (
-        <Html position={[0, -(frameH * 0.5) - 0.35, 0.15]} center>
-          <div
-            className="rounded-lg px-3 py-1.5 text-center whitespace-nowrap cursor-pointer shadow-md"
-            style={{ background: 'rgba(255,255,255,0.95)', fontSize: '11px', minWidth: '90px' }}
-            onClick={onClick}
-          >
-            <div className="font-bold" style={{ color: '#2B2B2B' }}>{artwork.title}</div>
-            <div style={{ color: '#6B7280', fontSize: '9px' }}>{artwork.artistName}</div>
+        <Html position={[0, (frameH * 0.5) + 0.5, 0.15]} center zIndexRange={[30, 0]}>
+          <div className="ac-alert">!</div>
+        </Html>
+      )}
+      {near && (
+        <Html position={[0, -(frameH * 0.5) - 0.45, 0.15]} center zIndexRange={[30, 0]}>
+          <div className="ac-tag" onClick={onClick}>
+            <div className="ac-tag-title">🖼️ {artwork.title}</div>
+            <div className="ac-tag-sub">{artwork.artistName} · 눌러서 감상하기</div>
           </div>
         </Html>
       )}
@@ -385,14 +393,15 @@ function SculptureArtwork({
       </mesh>
 
       {near && (
-        <Html position={[0, -0.2, 0.7]} center>
-          <div
-            className="rounded-lg px-3 py-1.5 text-center whitespace-nowrap cursor-pointer shadow-md"
-            style={{ background: 'rgba(255,255,255,0.95)', fontSize: '11px', minWidth: '90px' }}
-            onClick={onClick}
-          >
-            <div className="font-bold" style={{ color: '#2B2B2B' }}>{artwork.title}</div>
-            <div style={{ color: '#6B7280', fontSize: '9px' }}>{artwork.artistName}</div>
+        <Html position={[0, 2.35, 0]} center zIndexRange={[30, 0]}>
+          <div className="ac-alert">!</div>
+        </Html>
+      )}
+      {near && (
+        <Html position={[0, -0.25, 0.7]} center zIndexRange={[30, 0]}>
+          <div className="ac-tag" onClick={onClick}>
+            <div className="ac-tag-title">🏺 {artwork.title}</div>
+            <div className="ac-tag-sub">{artwork.artistName} · 눌러서 감상하기</div>
           </div>
         </Html>
       )}
@@ -402,12 +411,59 @@ function SculptureArtwork({
   );
 }
 
-// --------------- 아바타 캐릭터 (걸어다님) ---------------
+// --------------- 발밑 먼지 파티클 (동숲식 걸음 연출) ---------------
+const dustPool: { pos: THREE.Vector3; life: number }[] = Array.from({ length: 10 }, () => ({
+  pos: new THREE.Vector3(0, -10, 0),
+  life: 0,
+}));
+let dustSpawnTimer = 0;
+let avatarIsMoving = false;
+
+function DustPuffs() {
+  const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
+
+  useFrame((_, delta) => {
+    dustPool.forEach((p, i) => {
+      const m = meshRefs.current[i];
+      if (!m) return;
+      if (p.life > 0) {
+        p.life = Math.max(0, p.life - delta * 2.2);
+        m.position.set(p.pos.x, p.pos.y + (1 - p.life) * 0.25, p.pos.z);
+        const s = 0.55 + (1 - p.life) * 0.7;
+        m.scale.set(s, s, s);
+        (m.material as THREE.MeshBasicMaterial).opacity = p.life * 0.4;
+        m.visible = true;
+      } else {
+        m.visible = false;
+      }
+    });
+  });
+
+  return (
+    <group>
+      {dustPool.map((_, i) => (
+        <mesh
+          key={`dust-${i}`}
+          ref={(el) => { meshRefs.current[i] = el; }}
+          visible={false}
+        >
+          <sphereGeometry args={[0.07, 6, 6]} />
+          <meshBasicMaterial color="#EADFC8" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// --------------- 아바타 캐릭터 (동숲식 모멘텀 걷기) ---------------
 function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.Vector3> }) {
   const groupRef = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Mesh>(null);
-  const [bobPhase, setBobPhase] = useState(0);
-  const speed = 4;
+  const bobPhase = useRef(0);
+  const vel = useRef({ x: 0, z: 0 });
+  const maxSpeed = 4.2;
+  const accel = 16;   // 출발 가속 (동숲처럼 살짝 미끄러지듯)
+  const decel = 11;   // 정지 감속
   const roomBound = 7;
 
   useFrame((state, delta) => {
@@ -415,40 +471,82 @@ function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.
 
     let dx = 0;
     let dz = 0;
-    if (keyState['w'] || keyState['arrowup']) dz = -1;
-    if (keyState['s'] || keyState['arrowdown']) dz = 1;
-    if (keyState['a'] || keyState['arrowleft']) dx = -1;
-    if (keyState['d'] || keyState['arrowright']) dx = 1;
+    if (keyState['KeyW'] || keyState['ArrowUp']) dz = -1;
+    if (keyState['KeyS'] || keyState['ArrowDown']) dz = 1;
+    if (keyState['KeyA'] || keyState['ArrowLeft']) dx = -1;
+    if (keyState['KeyD'] || keyState['ArrowRight']) dx = 1;
 
     dx += joystickDir.x;
     dz += joystickDir.z;
 
-    const len = Math.sqrt(dx * dx + dz * dz);
-    if (len > 0.1) {
-      dx = dx * Math.pow(len, -1);
-      dz = dz * Math.pow(len, -1);
+    const inputLen = Math.sqrt(dx * dx + dz * dz);
+    let tx = 0;
+    let tz = 0;
+    if (inputLen > 0.1) {
+      const inv = Math.pow(inputLen, -1);
+      // 카메라 방향 기준 이동 (드래그로 회전한 시점에 맞춰 W = 앞으로)
+      const yaw = camControl.yaw;
+      const cosY = Math.cos(yaw);
+      const sinY = Math.sin(yaw);
+      const ndx = dx * inv;
+      const ndz = dz * inv;
+      tx = (ndx * cosY + ndz * sinY) * maxSpeed;
+      tz = (-ndx * sinY + ndz * cosY) * maxSpeed;
+    }
 
-      const newX = groupRef.current.position.x + dx * speed * delta;
-      const newZ = groupRef.current.position.z + dz * speed * delta;
-      groupRef.current.position.x = Math.max(-roomBound, Math.min(roomBound, newX));
-      groupRef.current.position.z = Math.max(-roomBound, Math.min(roomBound, newZ));
+    // 모멘텀: 목표 속도로 부드럽게 가속/감속
+    const rate = inputLen > 0.1 ? accel : decel;
+    vel.current.x += (tx - vel.current.x) * Math.min(1, rate * delta);
+    vel.current.z += (tz - vel.current.z) * Math.min(1, rate * delta);
 
-      const targetAngle = Math.atan2(dx, dz);
+    const speedNow = Math.sqrt(vel.current.x * vel.current.x + vel.current.z * vel.current.z);
+    const moving = speedNow > 0.35;
+    avatarIsMoving = moving;
+
+    const newX = groupRef.current.position.x + vel.current.x * delta;
+    const newZ = groupRef.current.position.z + vel.current.z * delta;
+    groupRef.current.position.x = Math.max(-roomBound, Math.min(roomBound, newX));
+    groupRef.current.position.z = Math.max(-roomBound, Math.min(roomBound, newZ));
+
+    if (moving) {
+      const targetAngle = Math.atan2(vel.current.x, vel.current.z);
       const currentAngle = groupRef.current.rotation.y;
       let diff = targetAngle - currentAngle;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      groupRef.current.rotation.y += diff * 8 * delta;
+      groupRef.current.rotation.y += diff * 10 * delta;
 
-      setBobPhase((p) => p + delta * 12);
+      bobPhase.current += delta * (8 + speedNow * 2);
+
+      // 발밑 먼지 스폰
+      dustSpawnTimer -= delta;
+      if (dustSpawnTimer <= 0) {
+        dustSpawnTimer = 0.16;
+        const slot = dustPool.find((p) => p.life <= 0);
+        if (slot) {
+          slot.pos.set(
+            groupRef.current.position.x + (Math.sin(bobPhase.current) * 0.08),
+            0.06,
+            groupRef.current.position.z + 0.12
+          );
+          slot.life = 1;
+        }
+      }
     }
 
+    // 스쿼시 & 스트레치: 걸을 때 통통 튀는 느낌
+    const bob = moving ? Math.abs(Math.sin(bobPhase.current)) : 0;
+    const squash = 1 - bob * 0.07;
+    const stretch = 1 + bob * 0.05;
+    groupRef.current.scale.set(squash, stretch, squash);
+    groupRef.current.position.y = bob * 0.09;
+
     if (bodyRef.current) {
-      const isMoving = len > 0.1;
-      bodyRef.current.position.y = 0.55 + (isMoving ? Math.sin(bobPhase) * 0.04 : 0);
+      bodyRef.current.position.y = 0.55;
     }
 
     avatarPos.current.copy(groupRef.current.position);
+    avatarPos.current.y = 0;
   });
 
   return (
@@ -498,14 +596,17 @@ function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.
 // --------------- 카메라 팔로우 (입장 연출 포함) ---------------
 function CameraFollower({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.Vector3> }) {
   const { camera } = useThree();
-  const cameraOffset = useMemo(() => new THREE.Vector3(0, 3.5, 6), []);
   const lookOffset = useMemo(() => new THREE.Vector3(0, 1.2, 0), []);
   const introT = useRef(0);
   const introFrom = useMemo(() => new THREE.Vector3(0, 4.2, 14.5), []);
   const introLookFrom = useMemo(() => new THREE.Vector3(0, 2.2, -6), []);
 
   useFrame((_, delta) => {
-    const followPos = avatarPos.current.clone().add(cameraOffset);
+    const yaw = camControl.yaw;
+    const dist = 6;
+    const followPos = avatarPos.current.clone().add(
+      new THREE.Vector3(Math.sin(yaw) * dist, 3.5, Math.cos(yaw) * dist)
+    );
     const followLook = avatarPos.current.clone().add(lookOffset);
 
     if (introT.current < 1) {
@@ -632,6 +733,40 @@ export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomPro
     return () => { cancelAnimationFrame(raf); clearTimeout(timer); clearTimeout(timer2); };
   }, []);
 
+  // 마우스/터치 드래그로 카메라 좌우 회전
+  useEffect(() => {
+    camControl.yaw = 0;
+    const el = containerRef.current;
+    if (!el) return;
+    let dragging = false;
+    let lastX = 0;
+
+    const onDown = (e: PointerEvent) => {
+      // 조이스틱/버튼 위에서는 드래그 시작 안 함
+      if ((e.target as HTMLElement).closest('button')) return;
+      dragging = true;
+      lastX = e.clientX;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const delta = e.clientX - lastX;
+      lastX = e.clientX;
+      camControl.yaw -= delta * 0.0065;
+    };
+    const onUp = () => { dragging = false; };
+
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, []);
+
   const flatArtworks = displayArtworks.filter((a) => a.type === 'flat');
   const sculptureArtworks = displayArtworks.filter((a) => a.type === 'sculpture');
 
@@ -707,6 +842,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomPro
         })}
 
         <WalkingAvatar avatarPos={avatarPos} />
+        <DustPuffs />
         <CameraFollower avatarPos={avatarPos} />
       </Canvas>
     </div>

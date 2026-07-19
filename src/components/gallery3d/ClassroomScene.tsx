@@ -9,6 +9,9 @@ const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
+// 드래그 카메라 회전 상태
+const dragState = { yaw: 0 };
+
 export interface ClassroomActivity {
   id: string;
   title: string;
@@ -309,26 +312,31 @@ function Desks() {
   );
 }
 
-// --------------- 카메라 연출 ---------------
+// --------------- 카메라 연출 (드래그로 좌우 둘러보기) ---------------
 function ClassroomCamera() {
-  const { camera, pointer } = useThree();
+  const { camera } = useThree();
   const introT = useRef(0);
-  const base = useRef(new THREE.Vector3(-1.5, 2.5, 5.4));
+  const target = useRef(new THREE.Vector3(0, 1.8, -1));
   const introFrom = useRef(new THREE.Vector3(0, 3.4, 9.5));
 
   useFrame((state, delta) => {
+    // 드래그 yaw에 따라 교실 중심을 둘러보는 궤도 카메라
+    const yaw = dragState.yaw;
+    const radius = 6.4;
+    const orbitPos = new THREE.Vector3(
+      target.current.x + Math.sin(yaw) * radius,
+      2.6 + Math.cos(state.clock.elapsedTime * 0.2) * 0.08,
+      target.current.z + Math.cos(yaw) * radius
+    );
+
     if (introT.current < 1) {
       introT.current = Math.min(1, introT.current + delta * 0.5);
       const ease = 1 - Math.pow(1 - introT.current, 3);
-      camera.position.lerpVectors(introFrom.current, base.current, ease);
+      camera.position.lerpVectors(introFrom.current, orbitPos, ease);
     } else {
-      const t = state.clock.elapsedTime;
-      const targetX = base.current.x + Math.sin(t * 0.25) * 0.25 + pointer.x * 0.7;
-      const targetY = base.current.y + Math.cos(t * 0.2) * 0.1 + pointer.y * 0.3;
-      camera.position.x += (targetX - camera.position.x) * 2 * delta;
-      camera.position.y += (targetY - camera.position.y) * 2 * delta;
+      camera.position.lerp(orbitPos, 5 * delta);
     }
-    camera.lookAt(2.2, 1.7, -1.5);
+    camera.lookAt(target.current);
   });
 
   return null;
@@ -369,6 +377,39 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
     const t1 = setTimeout(fix, 120);
     const t2 = setTimeout(fix, 500);
     return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  // 마우스/터치 드래그로 교실 둘러보기
+  useEffect(() => {
+    dragState.yaw = -0.5; // 시작 시 게시판이 살짝 보이는 각도
+    const el = containerRef.current;
+    if (!el) return;
+    let dragging = false;
+    let lastX = 0;
+
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button')) return;
+      dragging = true;
+      lastX = e.clientX;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const delta = e.clientX - lastX;
+      lastX = e.clientX;
+      dragState.yaw = Math.max(-1.6, Math.min(1.6, dragState.yaw - delta * 0.005));
+    };
+    const onUp = () => { dragging = false; };
+
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
   }, []);
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,6 +8,9 @@ import * as THREE from 'three';
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
+
+// 드래그 카메라 회전 상태
+const dragState = { yaw: 0 };
 
 // --------------- 땅 + 길 ---------------
 function Ground() {
@@ -53,11 +56,60 @@ function Ground() {
   );
 }
 
+export interface SchoolClassItem {
+  id: string;
+  label: string;
+}
+
+// --------------- 창문 문패 (반 입구) ---------------
+function WindowPlate({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Html position={[0, -1.18, 0.1]} transform scale={0.32} zIndexRange={[20, 0]}>
+      <button
+        onClick={onClick}
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+          background: hovered ? '#FFE9B8' : '#FFF8E7',
+          border: '3px solid #B08860', borderRadius: '14px',
+          padding: '8px 20px', fontFamily: 'Pretendard, sans-serif',
+          fontWeight: 800, fontSize: '26px', color: '#5B4A3B', whiteSpace: 'nowrap',
+          boxShadow: hovered ? '0 8px 22px rgba(0,0,0,0.3)' : '0 4px 10px rgba(0,0,0,0.2)',
+          transform: hovered ? 'scale(1.12)' : 'scale(1)',
+          transition: 'all 0.16s ease', userSelect: 'none',
+        }}
+      >
+        🚪 {label}
+      </button>
+    </Html>
+  );
+}
+
 // --------------- 학교 건물 ---------------
-function SchoolBuilding() {
+function SchoolBuilding({
+  classes,
+  onClassSelect,
+}: {
+  classes: SchoolClassItem[];
+  onClassSelect: (id: string) => void;
+}) {
   const bodyW = 18;
   const bodyH = 6.5;
   const bodyD = 6;
+
+  // 창문 슬롯: 2층 왼→오, 그 다음 1층 왼→오
+  const windowSlots: [number, number][] = [
+    [-7.5, 4.4], [-5.4, 4.4], [-3.3, 4.4], [3.3, 4.4], [5.4, 4.4], [7.5, 4.4],
+    [-7.5, 1.9], [-5.4, 1.9], [-3.3, 1.9], [3.3, 1.9], [5.4, 1.9], [7.5, 1.9],
+  ];
 
   return (
     <group position={[0, 0, -6]}>
@@ -94,9 +146,10 @@ function SchoolBuilding() {
         <cylinderGeometry args={[0.65, 0.65, 0.1, 24]} />
         <meshStandardMaterial color="#FFFFFF" />
       </mesh>
-      {/* 창문 2층 x 8칸 (좌우) */}
-      {[1.9, 4.4].map((y) =>
-        [-7.5, -5.4, -3.3, 3.3, 5.4, 7.5].map((x) => (
+      {/* 창문 (반 배정된 창문에는 문패 부착) */}
+      {windowSlots.map(([x, y], i) => {
+        const cls = classes[i];
+        return (
           <group key={`w-${x}-${y}`} position={[x, y, bodyD * 0.5 + 0.02]}>
             <mesh>
               <boxGeometry args={[1.5, 1.6, 0.05]} />
@@ -104,11 +157,25 @@ function SchoolBuilding() {
             </mesh>
             <mesh position={[0, 0, 0.03]}>
               <planeGeometry args={[1.28, 1.38]} />
-              <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.25} />
+              <meshStandardMaterial
+                color={cls ? '#FFE9A8' : '#9FD4EE'}
+                emissive={cls ? '#FFD96B' : '#9FD4EE'}
+                emissiveIntensity={cls ? 0.5 : 0.25}
+              />
             </mesh>
+            {/* 창틀 십자 */}
+            <mesh position={[0, 0, 0.04]}>
+              <boxGeometry args={[0.05, 1.38, 0.02]} />
+              <meshStandardMaterial color="#FFFFFF" />
+            </mesh>
+            <mesh position={[0, 0, 0.04]}>
+              <boxGeometry args={[1.28, 0.05, 0.02]} />
+              <meshStandardMaterial color="#FFFFFF" />
+            </mesh>
+            {cls && <WindowPlate label={cls.label} onClick={() => onClassSelect(cls.id)} />}
           </group>
-        ))
-      )}
+        );
+      })}
       {/* 학교 간판 */}
       <Html position={[0, 6.9, bodyD * 0.5 + 1.4]} transform scale={0.5} pointerEvents="none">
         <div
@@ -199,33 +266,43 @@ function Cloud({ position, speed = 0.2 }: { position: [number, number, number]; 
   );
 }
 
-// --------------- 카메라 ---------------
+// --------------- 카메라 (드래그로 좌우 둘러보기) ---------------
 function SchoolCamera() {
-  const { camera, pointer } = useThree();
+  const { camera } = useThree();
   const introT = useRef(0);
-  const base = useRef(new THREE.Vector3(0, 4.2, 16));
+  const target = useRef(new THREE.Vector3(0, 3.2, -6));
   const introFrom = useRef(new THREE.Vector3(0, 9, 26));
 
   useFrame((state, delta) => {
+    const yaw = dragState.yaw;
+    const radius = 22;
+    const orbitPos = new THREE.Vector3(
+      target.current.x + Math.sin(yaw) * radius,
+      4.2 + Math.cos(state.clock.elapsedTime * 0.15) * 0.25,
+      target.current.z + Math.cos(yaw) * radius
+    );
+
     if (introT.current < 1) {
       introT.current = Math.min(1, introT.current + delta * 0.4);
       const ease = 1 - Math.pow(1 - introT.current, 3);
-      camera.position.lerpVectors(introFrom.current, base.current, ease);
+      camera.position.lerpVectors(introFrom.current, orbitPos, ease);
     } else {
-      const t = state.clock.elapsedTime;
-      const targetX = base.current.x + Math.sin(t * 0.18) * 0.6 + pointer.x * 1.2;
-      const targetY = base.current.y + Math.cos(t * 0.15) * 0.25 + pointer.y * 0.5;
-      camera.position.x += (targetX - camera.position.x) * 1.5 * delta;
-      camera.position.y += (targetY - camera.position.y) * 1.5 * delta;
+      camera.position.lerp(orbitPos, 4 * delta);
     }
-    camera.lookAt(0, 3.2, -4);
+    camera.lookAt(target.current);
   });
 
   return null;
 }
 
 // --------------- 메인 ---------------
-export default function SchoolScene() {
+export default function SchoolScene({
+  classes = [],
+  onClassSelect = () => {},
+}: {
+  classes?: SchoolClassItem[];
+  onClassSelect?: (id: string) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -249,6 +326,39 @@ export default function SchoolScene() {
     return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
+  // 마우스/터치 드래그로 학교 둘러보기
+  useEffect(() => {
+    dragState.yaw = 0;
+    const el = containerRef.current;
+    if (!el) return;
+    let dragging = false;
+    let lastX = 0;
+
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest('button')) return;
+      dragging = true;
+      lastX = e.clientX;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const delta = e.clientX - lastX;
+      lastX = e.clientX;
+      dragState.yaw = Math.max(-0.9, Math.min(0.9, dragState.yaw - delta * 0.004));
+    };
+    const onUp = () => { dragging = false; };
+
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, []);
+
   return (
     <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
@@ -264,7 +374,7 @@ export default function SchoolScene() {
         <ambientLight intensity={0.65} color="#FFF8E7" />
         <directionalLight position={[10, 14, 8]} intensity={1.1} color="#FFF4DC" castShadow />
         <Ground />
-        <SchoolBuilding />
+        <SchoolBuilding classes={classes} onClassSelect={onClassSelect} />
         <FlagPole />
         <Tree position={[-10.5, 0, -1]} scale={1.15} />
         <Tree position={[10.5, 0, -1.5]} scale={1.05} />

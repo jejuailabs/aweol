@@ -88,15 +88,11 @@ export default function ActivityExhibitPage() {
       <div className="absolute top-4 left-4 z-30 flex items-center gap-3">
         <button
           onClick={() => router.push(`/class/${classId}/room`)}
-          className="rounded-full px-4 py-2 text-xs font-bold shadow-lg backdrop-blur-md transition-transform hover:scale-105"
-          style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-main)' }}
+          className="ac-btn px-4 py-2 text-xs"
         >
           ← 교실로
         </button>
-        <div
-          className="rounded-full px-4 py-2 text-xs font-bold shadow-lg backdrop-blur-md"
-          style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-main)' }}
-        >
+        <div className="ac-bubble px-4 py-2 text-xs">
           🖼️ {activity?.title || activityId}
         </div>
       </div>
@@ -105,8 +101,7 @@ export default function ActivityExhibitPage() {
       {canUploadArtwork(role) && (
         <button
           onClick={() => setShowUpload(true)}
-          className="absolute top-4 right-4 z-30 rounded-full px-4 py-2 text-xs font-bold shadow-lg backdrop-blur-md transition-transform hover:scale-105"
-          style={{ background: 'rgba(62,196,109,0.9)', color: 'white' }}
+          className="ac-btn ac-btn-green absolute top-4 right-4 z-30 px-4 py-2 text-xs"
         >
           + 작품 올리기
         </button>
@@ -118,12 +113,9 @@ export default function ActivityExhibitPage() {
       {/* 조작 안내 */}
       {!selectedArtwork && !showUpload && (
         <div className="absolute bottom-6 right-4 z-30 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto">
-          <div
-            className="rounded-2xl px-4 py-2.5 text-[10px] font-medium shadow-lg backdrop-blur-md leading-relaxed"
-            style={{ background: 'rgba(255,255,255,0.8)', color: 'var(--color-text-sub)' }}
-          >
-            <span className="hidden sm:inline">WASD로 이동 · 작품에 가까이 가면 이름 표시 · 클릭해서 감상</span>
-            <span className="sm:hidden">조이스틱으로 이동 · 작품 터치해서 감상</span>
+          <div className="ac-bubble px-4 py-2.5 text-[10px] leading-relaxed">
+            <span className="hidden sm:inline">🚶 WASD 이동 · 🖱️ 드래그로 시점 회전 · ❗ 뜨면 작품 클릭!</span>
+            <span className="sm:hidden">🕹️ 조이스틱 이동 · 드래그 회전 · 작품 터치</span>
           </div>
         </div>
       )}
