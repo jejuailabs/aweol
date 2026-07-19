@@ -1,0 +1,32 @@
+{
+  "common": {
+    "loading": "로딩 중...",
+    "confirm": "확인",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "수정",
+    "close": "닫기"
+  },
+  "nav": {
+    "school": "학교",
+    "gallery": "갤러리",
+    "myStand": "내 스탠드",
+    "shop": "상점",
+    "settings": "설정"
+  },
+  "auth": {
+    "loginWithGoogle": "Google로 로그인",
+    "logout": "로그아웃",
+    "welcome": "환영합니다!"
+  },
+  "school": {
+    "selectClass": "원하는 반을 선택해 입장하세요!",
+    "classInfo": "학급 정보"
+  },
+  "mascot": {
+    "welcome": "안녕! 우리 반 전시실에 놀러 왔구나!",
+    "selectClass": "원하는 반을 선택해 입장하세요!",
+    "avatarSelect": "나를 대신할 캐릭터를 골라줘!"
+  }
+}

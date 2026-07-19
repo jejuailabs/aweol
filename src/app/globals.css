@@ -1,26 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-primary: #3EC46D;
+  --color-primary-dark: #2E9E56;
+  --color-accent-yellow: #FFC93C;
+  --color-sky: #8FD3F4;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F5F7FA;
+  --color-text-main: #2B2B2B;
+  --color-text-sub: #6B7280;
+  --color-navbar-bg: rgba(20, 20, 25, 0.85);
+  --color-speech-bubble: #2FBF71;
+}
+
+[data-theme="dark"] {
+  --color-surface: #1E1E22;
+  --color-surface-soft: #2A2A30;
+  --color-text-main: #F2F2F2;
+  --color-text-sub: #A0A0A8;
+  --color-primary: #4FD886;
+  --color-navbar-bg: rgba(10, 10, 12, 0.9);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--color-primary);
+  --color-surface: var(--color-surface);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }

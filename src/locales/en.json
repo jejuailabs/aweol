@@ -1,0 +1,32 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "confirm": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close"
+  },
+  "nav": {
+    "school": "School",
+    "gallery": "Gallery",
+    "myStand": "My Stand",
+    "shop": "Shop",
+    "settings": "Settings"
+  },
+  "auth": {
+    "loginWithGoogle": "Sign in with Google",
+    "logout": "Sign out",
+    "welcome": "Welcome!"
+  },
+  "school": {
+    "selectClass": "Select a class to enter!",
+    "classInfo": "Class Info"
+  },
+  "mascot": {
+    "welcome": "Hi! Welcome to our class gallery!",
+    "selectClass": "Select a class to enter!",
+    "avatarSelect": "Pick a character to represent you!"
+  }
+}
