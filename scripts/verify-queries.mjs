@@ -110,6 +110,11 @@ await check('활동(전시실) 생성', async () => {
   await setDoc(ref, { title: '검증용', order: 99 });
   await deleteDoc(ref);
 });
+await check('알림판 글 작성 (교직원)', async () => {
+  const ref = doc(cdb, 'schools/aewol-elementary/classes/3-1/notices/zz-verify-notice');
+  await setDoc(ref, { kind: 'meal', title: '검증용 급식', body: '밥, 국', forDate: null });
+  await deleteDoc(ref);
+});
 
 // ---------- 3) 학생 계정 — 관리 기능이 막히는지 ----------
 console.log('\n[학생 — 관리 기능 차단 확인]');
@@ -136,6 +141,15 @@ await check('학생 명부 수정 — 차단돼야 함', async () => {
   await setDoc(ref, { number: 99, name: '몰래추가' });
   await deleteDoc(ref);
 }, 'deny');
+await check('알림판 글 작성 — 차단돼야 함', async () => {
+  const ref = doc(cdb, 'schools/aewol-elementary/classes/3-1/notices/zz-student-notice');
+  await setDoc(ref, { kind: 'notice', title: '학생이쓴공지', body: '' });
+  await deleteDoc(ref);
+}, 'deny');
+await check('알림판 읽기 — 허용', async () => {
+  const s = await getDocs(collection(cdb, 'schools/aewol-elementary/classes/3-1/notices'));
+  return s.size;
+});
 await check('남의 작품 승인 — 차단돼야 함', async () => {
   const s = await getDocs(
     query(collection(cdb, 'schools/aewol-elementary/classes/3-1/activities/watercolor/artworks'), where('status', '==', 'approved'))

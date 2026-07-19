@@ -10,6 +10,8 @@ import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
 import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
 import type { BoardItem } from '@/components/gallery3d/Blackboard';
+import type { NoticeKind } from '@/lib/firestore-schema';
+import NoticeModal, { type NoticePost } from '@/components/notice/NoticeModal';
 
 const CHALK_COLORS = ['#FFFFFF', '#FFE86B', '#FF9EAF', '#8FE3FF', '#8FD98A'];
 
@@ -34,6 +36,39 @@ export default function ClassRoomPage() {
   const [newDesc, setNewDesc] = useState('');
   const [saving, setSaving] = useState(false);
   const [hasRealData, setHasRealData] = useState(false);
+
+  // ---- 알림판 ----
+  const [notices, setNotices] = useState<NoticePost[]>([]);
+  const [noticeKind, setNoticeKind] = useState<NoticeKind | null>(null);
+
+  useEffect(() => {
+    if (!db) return;
+    const q = query(
+      collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'notices'),
+      orderBy('createdAt', 'desc')
+    );
+    return onSnapshot(q, (snap) => {
+      setNotices(
+        snap.docs.map((d) => {
+          const v = d.data();
+          return {
+            id: d.id,
+            kind: v.kind,
+            title: v.title || '',
+            body: v.body || '',
+            forDate: v.forDate ?? null,
+            authorName: v.authorName || '선생님',
+            createdAt: v.createdAt?.toDate?.() ?? null,
+          } as NoticePost;
+        })
+      );
+    }, () => setNotices([]));
+  }, [classId]);
+
+  const noticeCounts = notices.reduce(
+    (acc, n) => ({ ...acc, [n.kind]: (acc[n.kind] || 0) + 1 }),
+    { notice: 0, meal: 0, homework: 0, quiz: 0 } as Record<NoticeKind, number>
+  );
 
   // ---- 칠판 낙서 ----
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
@@ -200,6 +235,8 @@ export default function ClassRoomPage() {
         penWidth={penWidth}
         onCommitStroke={handleCommitStroke}
         onRequestText={(p) => setTextPoint(p)}
+        noticeCounts={noticeCounts}
+        onOpenNotice={(k) => setNoticeKind(k)}
       />
 
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}
@@ -367,8 +404,18 @@ export default function ClassRoomPage() {
         </div>
       )}
 
+      {/* 알림판 모달 */}
+      {noticeKind && (
+        <NoticeModal
+          classId={classId}
+          posts={notices}
+          initialKind={noticeKind}
+          onClose={() => setNoticeKind(null)}
+        />
+      )}
+
       {/* 모바일 조이스틱 */}
-      {!showList && !showAdd && <MobileJoystick />}
+      {!showList && !showAdd && !noticeKind && <MobileJoystick />}
 
       {/* 하단 안내 */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden sm:block">

@@ -77,6 +77,20 @@ export interface RosterUploadDoc {
   uploadedAt: Timestamp;
 }
 
+export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz';
+
+/** 교실 알림판 글 (알림장·급식·숙제·퀴즈). 작성은 교직원만. */
+export interface NoticeDoc {
+  kind: NoticeKind;
+  title: string;
+  body: string;
+  /** 급식·알림장처럼 날짜가 의미 있는 글용 (YYYY-MM-DD) */
+  forDate: string | null;
+  authorUid: string;
+  authorName: string;
+  createdAt: Timestamp;
+}
+
 /** 칠판 낙서 한 획(또는 텍스트 한 개). 작성자는 항상 기록되며 익명 작성은 불가. */
 export interface BlackboardItemDoc {
   kind: 'stroke' | 'text';

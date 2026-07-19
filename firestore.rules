@@ -66,6 +66,28 @@ service cloud.firestore {
           allow read, write: if isStaff();
         }
 
+        // 알림판 (알림장·급식·숙제·퀴즈) — 읽기는 공개, 작성은 교직원만
+        match /notices/{noticeId} {
+          allow read: if true;
+          allow write: if isStaff();
+
+          // 로그인한 사람만 좋아요·댓글을 남길 수 있다
+          match /likes/{likeUid} {
+            allow read: if true;
+            allow create, delete: if isSignedIn() && request.auth.uid == likeUid;
+            allow update: if false;
+          }
+
+          match /comments/{commentId} {
+            allow read: if true;
+            allow create: if isSignedIn()
+                          && request.resource.data.authorUid == request.auth.uid;
+            allow update: if false;
+            allow delete: if isStaff()
+                          || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+          }
+        }
+
         // 칠판 낙서 — 읽기는 공개, 쓰기는 서버(Admin SDK)만.
         // 클라이언트가 직접 쓰지 못하게 막아야 작성자 위조와 IP 누락을 방지할 수 있다.
         match /blackboard/{itemId} {

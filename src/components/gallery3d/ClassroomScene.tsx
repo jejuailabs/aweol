@@ -6,6 +6,8 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle } from './walker';
 import Blackboard, { type BoardItem } from './Blackboard';
+import NoticeWall from './NoticeWall';
+import type { NoticeKind } from '@/lib/firestore-schema';
 
 // 책상+의자 한 세트를 하나의 장애물로 본다 (Desks의 rows/cols와 같은 값을 써야 한다)
 const DESK_ROWS = [1.2, 3.2];
@@ -42,6 +44,9 @@ interface ClassroomSceneProps {
   penWidth?: number;
   onCommitStroke?: (points: number[][], color: string, width: number) => void;
   onRequestText?: (point: number[]) => void;
+  /** 알림판 */
+  noticeCounts?: Record<NoticeKind, number>;
+  onOpenNotice?: (kind: NoticeKind) => void;
 }
 
 // --------------- 교실 구조 ---------------
@@ -420,6 +425,7 @@ export default function ClassroomScene({
   classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId,
   boardItems = [], canDraw = false, drawMode = 'pen', drawColor = '#FFFFFF', penWidth = 5,
   onCommitStroke = () => {}, onRequestText = () => {},
+  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0 }, onOpenNotice = () => {},
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
@@ -480,10 +486,11 @@ export default function ClassroomScene({
           canManage={canManage}
           onAddActivity={onAddActivity}
         />
+        <NoticeWall counts={noticeCounts} onOpen={onOpenNotice} />
         <Desks />
         <WalkerAvatar
           avatarPos={avatarPos}
-          bounds={{ xMin: -6, xMax: 6, zMin: -4.6, zMax: 5 }}
+          bounds={{ xMin: -6, xMax: 6, zMin: -4.6, zMax: 5.4 }}
           start={[0, 0, 3.5]}
           maxSpeed={3.8}
           avatarId={avatarId}
