@@ -466,7 +466,7 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
 
   // 드래그 회전 + 핀치/휠 줌 (시작 각도: 게시판이 살짝 보이게)
   useEffect(() => {
-    resetControls(-0.5, 5.2);
+    resetControls(-0.5, 5.2, 0.28);
     const el = containerRef.current;
     if (!el) return;
     return attachCameraControls(el, { minDist: 3, maxDist: 8 });
@@ -501,7 +501,6 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
         <DustPuffs />
         <FollowCamera
           avatarPos={avatarPos}
-          height={2.9}
           lookHeight={1.1}
           introFrom={[0, 3.4, 9.5]}
           introLook={[0, 1.8, -2]}

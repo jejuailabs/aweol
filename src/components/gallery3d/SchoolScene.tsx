@@ -379,10 +379,10 @@ export default function SchoolScene({
 
   // 드래그 회전 + 핀치/휠 줌
   useEffect(() => {
-    resetControls(0, 10);
+    resetControls(0, 11, 0.3);
     const el = containerRef.current;
     if (!el) return;
-    return attachCameraControls(el, { minDist: 5, maxDist: 17 });
+    return attachCameraControls(el, { minDist: 5, maxDist: 26 });
   }, []);
 
   return (
@@ -420,7 +420,6 @@ export default function SchoolScene({
         <DustPuffs />
         <FollowCamera
           avatarPos={avatarPos}
-          height={4.2}
           lookHeight={2.2}
           introFrom={[0, 9, 26]}
           introLook={[0, 3.2, -6]}

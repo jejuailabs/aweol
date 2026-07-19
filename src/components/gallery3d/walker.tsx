@@ -28,17 +28,22 @@ export function setJoystickDir(x: number, z: number) {
 }
 
 // 카메라 상태 (드래그 회전 + 핀치/휠 줌)
-export const camControl = { yaw: 0, dist: 6 };
+// pitch: 시선 높이 각도(라디안). 양수면 위에서 내려다보고, 음수면 아래에서 올려다본다.
+export const camControl = { yaw: 0, dist: 6, pitch: 0.34 };
 
-export function resetControls(yaw: number, dist: number) {
+const PITCH_MIN = -0.5; // 올려다보기 (하늘·무지개가 보이는 각도)
+const PITCH_MAX = 1.15; // 내려다보기 (거의 위에서 보는 각도)
+
+export function resetControls(yaw: number, dist: number, pitch = 0.34) {
   camControl.yaw = yaw;
   camControl.dist = dist;
+  camControl.pitch = pitch;
   joystickDir = { x: 0, z: 0 };
 }
 
 /**
  * 컨테이너에 카메라 조작 연결:
- * - 한 손가락/마우스 드래그 → 좌우 회전 (360도)
+ * - 한 손가락/마우스 드래그 → 좌우 360도 회전 + 상하 시점(피치)
  * - 두 손가락 핀치 → 줌 인/아웃
  * - 마우스 휠 → 줌
  */
@@ -71,6 +76,7 @@ export function attachCameraControls(
     if (!pointers.has(e.pointerId)) return;
     const prev = pointers.get(e.pointerId)!;
     const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pointers.size >= 2) {
@@ -81,8 +87,10 @@ export function attachCameraControls(
         camControl.dist = Math.max(opts.minDist, Math.min(opts.maxDist, pinchStartCamDist * scale));
       }
     } else {
-      // 드래그 회전
+      // 드래그: 좌우 = 회전, 위아래 = 시점 각도
+      // 위로 끌면 올려다보도록(피치 감소) 방향을 맞춘다
       camControl.yaw -= dx * 0.0065;
+      camControl.pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, camControl.pitch + dy * 0.005));
     }
   };
 
@@ -649,14 +657,12 @@ export function WalkerAvatar({
 
 export function FollowCamera({
   avatarPos,
-  height = 3.5,
   lookHeight = 1.2,
   introFrom,
   introLook,
   clamp,
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
-  height?: number;
   lookHeight?: number;
   introFrom?: [number, number, number];
   introLook?: [number, number, number];
@@ -670,18 +676,28 @@ export function FollowCamera({
   useFrame((_, delta) => {
     const yaw = camControl.yaw;
     const dist = camControl.dist;
-    // 줌아웃할수록 카메라가 조금 더 높아지는 자연스러운 3인칭 궤도
-    const camY = height * (0.4 + dist * 0.1);
-    const followPos = avatarPos.current.clone().add(
-      new THREE.Vector3(Math.sin(yaw) * dist, camY, Math.cos(yaw) * dist)
+    const pitch = camControl.pitch;
+
+    // 시선점을 중심으로 한 구면 궤도.
+    // pitch가 음수면 카메라가 시선점보다 낮아져 하늘(무지개 등)을 올려다보게 된다.
+    const horiz = dist * Math.cos(pitch);
+    const vert = dist * Math.sin(pitch);
+    const followLook = avatarPos.current.clone().add(new THREE.Vector3(0, lookHeight, 0));
+    const followPos = new THREE.Vector3(
+      followLook.x + Math.sin(yaw) * horiz,
+      followLook.y + vert,
+      followLook.z + Math.cos(yaw) * horiz
     );
-    // 카메라가 방 밖(벽 뒤)으로 나가지 않게 클램프
+
+    // 카메라가 바닥을 뚫고 내려가지 않게
+    followPos.y = Math.max(0.45, followPos.y);
+
+    // 실내에서는 벽 밖으로 나가지 않게 클램프
     if (clamp) {
       followPos.x = Math.max(clamp.xMin, Math.min(clamp.xMax, followPos.x));
       followPos.z = Math.max(clamp.zMin, Math.min(clamp.zMax, followPos.z));
       followPos.y = Math.max(clamp.yMin, Math.min(clamp.yMax, followPos.y));
     }
-    const followLook = avatarPos.current.clone().add(new THREE.Vector3(0, lookHeight, 0));
 
     if (introT.current < 1) {
       introT.current = Math.min(1, introT.current + delta * 0.45);

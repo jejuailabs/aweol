@@ -127,8 +127,8 @@ export default function ActivityExhibitPage() {
       {!selectedArtwork && !showUpload && (
         <div className="absolute bottom-6 right-4 z-30 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto">
           <div className="ac-bubble px-4 py-2.5 text-[10px] leading-relaxed">
-            <span className="hidden sm:inline">🚶 WASD 이동 · 🖱️ 드래그로 시점 회전 · ❗ 뜨면 작품 클릭!</span>
-            <span className="sm:hidden">🕹️ 조이스틱 이동 · 드래그 회전 · 작품 터치</span>
+            <span className="hidden sm:inline">🚶 WASD 이동 · 🖱️ 드래그로 상하좌우 시점 · 휠 줌 · ❗ 뜨면 작품 클릭!</span>
+            <span className="sm:hidden">🕹️ 조이스틱 이동 · 드래그로 시점 · 두 손가락 줌</span>
           </div>
         </div>
       )}

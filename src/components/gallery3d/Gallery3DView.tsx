@@ -516,7 +516,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
 
   // 드래그 회전 + 핀치/휠 줌
   useEffect(() => {
-    resetControls(0, 6);
+    resetControls(0, 6, 0.3);
     const el = containerRef.current;
     if (!el) return;
     return attachCameraControls(el, { minDist: 3.5, maxDist: 9 });
@@ -605,7 +605,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
         <DustPuffs />
         <FollowCamera
           avatarPos={avatarPos}
-          height={3.5}
+          lookHeight={1.3}
           introFrom={[0, 4.2, 14.5]}
           introLook={[0, 2.2, -6]}
           clamp={{ xMin: -7.6, xMax: 7.6, zMin: -7.6, zMax: 7.6, yMin: 1.4, yMax: 4.6 }}

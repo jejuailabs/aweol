@@ -138,7 +138,7 @@ export default function ClassRoomPage() {
       {/* 하단 안내 */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden sm:block">
         <div className="ac-bubble px-4 py-2.5 text-[11px]">
-          🚶 WASD 걷기 · 🖱️ 드래그 회전 · 휠/핀치 줌 · 게시판 포스터를 눌러 입장!
+          🚶 WASD 걷기 · 🖱️ 드래그로 상하좌우 시점 · 휠/핀치 줌 · 게시판 포스터를 눌러 입장!
         </div>
       </div>
 
