@@ -9,8 +9,19 @@ const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
-// 드래그 카메라 회전 상태
-const dragState = { yaw: 0 };
+// 드래그 카메라 회전 상태 (360도 자유 회전 + 줌)
+const dragState = { yaw: 0, radius: 6.4 };
+
+// 키 입력 (e.code 기반 — 한글 자판에서도 동작)
+const classKeys: Record<string, boolean> = {};
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    classKeys[e.code] = true;
+    if (e.code.startsWith('Arrow')) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => { classKeys[e.code] = false; });
+  window.addEventListener('blur', () => { Object.keys(classKeys).forEach((k) => { classKeys[k] = false; }); });
+}
 
 export interface ClassroomActivity {
   id: string;
@@ -25,6 +36,8 @@ interface ClassroomSceneProps {
   classLabel: string;
   activities: ClassroomActivity[];
   onActivitySelect: (id: string) => void;
+  canManage?: boolean;
+  onAddActivity?: () => void;
 }
 
 // --------------- 교실 구조 ---------------
@@ -170,44 +183,51 @@ function Blackboard({ classLabel }: { classLabel: string }) {
 function ActivityBoard({
   activities,
   onActivitySelect,
+  canManage,
+  onAddActivity,
 }: {
   activities: ClassroomActivity[];
   onActivitySelect: (id: string) => void;
+  canManage?: boolean;
+  onAddActivity?: () => void;
 }) {
-  const boardW = 9.6;
-  const boardH = 2.6;
+  const boardW = 10.2;
+  const boardH = 3.3;
+  // 4열 x 2행 슬롯 — 카드(가로형 약 1.7x1.05)가 여백을 두고 차곡차곡 들어가는 간격
+  const colX = [-3.72, -1.24, 1.24, 3.72];
+  const rowY = [0.82, -0.82];
 
   return (
-    <group position={[6.93, 2.05, 0]} rotation={[0, NEG_HALF_PI, 0]}>
+    <group position={[6.93, 2.1, 0]} rotation={[0, NEG_HALF_PI, 0]}>
       {/* 코르크 보드 */}
       <mesh castShadow>
-        <boxGeometry args={[boardW + 0.3, boardH + 0.3, 0.06]} />
+        <boxGeometry args={[boardW + 0.34, boardH + 0.34, 0.06]} />
         <meshStandardMaterial color="#A97B4F" />
       </mesh>
       <mesh position={[0, 0, 0.035]}>
         <planeGeometry args={[boardW, boardH]} />
         <meshStandardMaterial color="#D9B98A" roughness={0.95} />
       </mesh>
-      {/* 보드 제목 */}
-      <Html position={[0, boardH * 0.5 + 0.42, 0.05]} transform scale={0.4} pointerEvents="none">
+      {/* 보드 제목 — 동숲 팻말 */}
+      <Html position={[0, boardH * 0.5 + 0.4, 0.05]} transform scale={0.38} pointerEvents="none" zIndexRange={[5, 0]}>
         <div
           style={{
-            background: '#3EC46D', color: 'white', fontWeight: 800, fontSize: '30px',
-            padding: '10px 36px', borderRadius: '999px', fontFamily: 'Pretendard, sans-serif',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.2)', whiteSpace: 'nowrap', userSelect: 'none',
+            background: '#FFF8E7', color: '#7A6A52', fontWeight: 800, fontSize: '28px',
+            padding: '10px 38px', borderRadius: '999px', fontFamily: 'Pretendard, sans-serif',
+            border: '4px solid #EFE3CB',
+            boxShadow: '0 5px 0 #E3D5B8, 0 10px 18px rgba(0,0,0,0.18)',
+            whiteSpace: 'nowrap', userSelect: 'none',
           }}
         >
           🎨 우리 반 활동 전시
         </div>
       </Html>
 
-      {/* 활동 포스터들 (최대 8개, 2행) */}
+      {/* 활동 포스터들 (최대 8개, 4열 x 2행 차곡차곡) */}
       {activities.slice(0, 8).map((act, i) => {
-        const col = i % 4;
-        const row = i < 4 ? 0 : 1;
-        const x = -3.5 + col * 2.34;
-        const y = row === 0 ? 0.62 : -0.68;
-        const tilt = (i % 3 === 0 ? 1 : -1) * 0.035;
+        const x = colX[i % 4];
+        const y = rowY[i < 4 ? 0 : 1];
+        const tilt = (i % 3 === 0 ? 1 : -1) * 0.022;
         return (
           <ActivityPoster
             key={act.id}
@@ -218,6 +238,60 @@ function ActivityBoard({
           />
         );
       })}
+
+      {/* 교사 전용: 다음 빈 슬롯에 + 새 활동 카드 */}
+      {canManage && onAddActivity && activities.length < 8 && (() => {
+        const i = activities.length;
+        const x = colX[i % 4];
+        const y = rowY[i < 4 ? 0 : 1];
+        return <AddActivityPoster position={[x, y, 0.06]} onClick={onAddActivity} />;
+      })()}
+    </group>
+  );
+}
+
+function AddActivityPoster({
+  position,
+  onClick,
+}: {
+  position: [number, number, number];
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <group position={position}>
+      <Html position={[0, 0, 0.02]} transform scale={0.3} zIndexRange={[10, 0]}>
+        <button
+          onClick={onClick}
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => setHovered(false)}
+          style={{
+            width: '236px', height: '148px', borderRadius: '18px', cursor: 'pointer',
+            background: hovered ? 'rgba(255,248,231,0.85)' : 'rgba(255,248,231,0.5)',
+            border: '4px dashed #C9AE7E', fontFamily: 'Pretendard, sans-serif',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: '7px', transition: 'all 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transform: hovered ? 'translateY(-4px) scale(1.05)' : 'scale(1)',
+          }}
+        >
+          <div
+            style={{
+              width: '46px', height: '46px', borderRadius: '50%', background: '#8FD98A',
+              color: '#2E5B2A', fontSize: '30px', fontWeight: 800, lineHeight: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '3px solid #7BC876',
+              boxShadow: '0 4px 0 #6AB565, 0 8px 14px rgba(0,0,0,0.15)',
+            }}
+          >
+            +
+          </div>
+          <div style={{ fontWeight: 800, fontSize: '16px', color: '#7A6A52' }}>새 활동 만들기</div>
+          <div style={{ fontSize: '11px', color: '#A89880', lineHeight: 1.3, textAlign: 'center' }}>
+            수업 이름을 넣고 작품을 전시해요
+          </div>
+        </button>
+      </Html>
     </group>
   );
 }
@@ -238,35 +312,54 @@ function ActivityPoster({
   return (
     <group position={position} rotation={[0, 0, tilt]}>
       {/* 압정 */}
-      <mesh position={[0, 0.52, 0.045]}>
-        <sphereGeometry args={[0.045, 10, 10]} />
+      <mesh position={[0, 0.56, 0.05]}>
+        <sphereGeometry args={[0.05, 10, 10]} />
         <meshStandardMaterial color="#E74C3C" metalness={0.3} roughness={0.4} />
       </mesh>
-      {/* 포스터 카드 */}
-      <Html position={[0, 0, 0.02]} transform scale={0.4} zIndexRange={[10, 0]}>
+      {/* 동숲 명패식 가로 카드 */}
+      <Html position={[0, 0, 0.02]} transform scale={0.3} zIndexRange={[10, 0]}>
         <button
           onClick={onClick}
           onPointerEnter={() => setHovered(true)}
           onPointerLeave={() => setHovered(false)}
           style={{
-            width: '210px', height: '250px', borderRadius: '14px', border: 'none', cursor: 'pointer',
-            background: '#FFFFFF', overflow: 'hidden', fontFamily: 'Pretendard, sans-serif',
-            boxShadow: hovered ? '0 10px 26px rgba(0,0,0,0.35)' : '0 5px 14px rgba(0,0,0,0.22)',
-            transform: hovered ? 'scale(1.07)' : 'scale(1)',
-            transition: 'all 0.18s ease', display: 'flex', flexDirection: 'column', padding: 0,
+            width: '236px', height: '148px', borderRadius: '18px', cursor: 'pointer',
+            background: '#FFF8E7', overflow: 'hidden', fontFamily: 'Pretendard, sans-serif',
+            border: '3px solid #EFE3CB',
+            boxShadow: hovered
+              ? '0 6px 0 #E3D5B8, 0 14px 26px rgba(0,0,0,0.3)'
+              : '0 4px 0 #E3D5B8, 0 8px 16px rgba(0,0,0,0.2)',
+            transform: hovered ? 'translateY(-4px) scale(1.05)' : 'scale(1)',
+            transition: 'all 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            display: 'flex', flexDirection: 'column', padding: 0, textAlign: 'left',
           }}
         >
-          <div style={{ height: '120px', background: activity.color + '38', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '58px' }}>
-            {activity.emoji}
-          </div>
-          <div style={{ padding: '12px 14px', textAlign: 'left', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontWeight: 800, fontSize: '19px', color: '#2B2B2B', lineHeight: 1.2 }}>{activity.title}</div>
-            <div style={{ fontSize: '12.5px', color: '#6B7280', marginTop: '5px', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-              {activity.description}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px 6px' }}>
+            <div
+              style={{
+                width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
+                background: activity.color + '40', border: `2.5px solid ${activity.color}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
+              }}
+            >
+              {activity.emoji}
             </div>
-            <div style={{ marginTop: 'auto', fontSize: '11px', color: '#9CA3AF' }}>{activity.date}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: '17px', color: '#6B5B43', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {activity.title}
+              </div>
+              <div style={{ fontSize: '10.5px', color: '#A89880', marginTop: '2px' }}>{activity.date}</div>
+            </div>
           </div>
-          <div style={{ background: activity.color, color: 'white', fontWeight: 700, fontSize: '13px', padding: '7px 0' }}>
+          <div style={{ padding: '0 14px', fontSize: '11.5px', color: '#8A7A5F', lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {activity.description}
+          </div>
+          <div
+            style={{
+              marginTop: 'auto', background: activity.color, color: 'white', fontWeight: 800,
+              fontSize: '12px', padding: '7px 0', textAlign: 'center', letterSpacing: '0.02em',
+            }}
+          >
             전시실 입장 →
           </div>
         </button>
@@ -275,54 +368,92 @@ function ActivityPoster({
   );
 }
 
-// --------------- 책상들 ---------------
+// --------------- 책상들 (캔디 컬러 의자) ---------------
 function Desks() {
   const rows = [1.2, 3.2];
   const cols = [-3.6, -1.2, 1.2, 3.6];
+  const chairColors = ['#E8493C', '#FFD93D', '#4FA8E8', '#8FD98A'];
   return (
     <group>
-      {rows.map((z) =>
-        cols.map((x) => (
-          <group key={`desk-${x}-${z}`} position={[x, 0, z]}>
-            {/* 상판 */}
-            <mesh position={[0, 0.62, 0]} castShadow>
-              <boxGeometry args={[0.85, 0.05, 0.55]} />
-              <meshStandardMaterial color="#E8C89A" roughness={0.5} />
-            </mesh>
-            {/* 다리 */}
-            {([[-0.36, -0.22], [0.36, -0.22], [-0.36, 0.22], [0.36, 0.22]] as [number, number][]).map(([lx, lz]) => (
-              <mesh key={`l-${lx}-${lz}`} position={[lx, 0.3, lz]}>
-                <cylinderGeometry args={[0.025, 0.025, 0.6, 8]} />
-                <meshStandardMaterial color="#8A8A8A" metalness={0.6} roughness={0.3} />
+      {rows.map((z, ri) =>
+        cols.map((x, ci) => {
+          const chairColor = chairColors[(ri * 4 + ci) % 4];
+          return (
+            <group key={`desk-${x}-${z}`} position={[x, 0, z]}>
+              {/* 상판 */}
+              <mesh position={[0, 0.62, 0]} castShadow>
+                <boxGeometry args={[0.85, 0.05, 0.55]} />
+                <meshStandardMaterial color="#F2D5A0" roughness={0.5} />
               </mesh>
-            ))}
-            {/* 의자 */}
-            <mesh position={[0, 0.36, 0.5]} castShadow>
-              <boxGeometry args={[0.42, 0.05, 0.4]} />
-              <meshStandardMaterial color="#5FA8D3" />
-            </mesh>
-            <mesh position={[0, 0.62, 0.68]}>
-              <boxGeometry args={[0.42, 0.5, 0.05]} />
-              <meshStandardMaterial color="#5FA8D3" />
-            </mesh>
-          </group>
-        ))
+              {/* 다리 */}
+              {([[-0.36, -0.22], [0.36, -0.22], [-0.36, 0.22], [0.36, 0.22]] as [number, number][]).map(([lx, lz]) => (
+                <mesh key={`l-${lx}-${lz}`} position={[lx, 0.3, lz]}>
+                  <cylinderGeometry args={[0.025, 0.025, 0.6, 8]} />
+                  <meshStandardMaterial color="#8A8A8A" metalness={0.6} roughness={0.3} />
+                </mesh>
+              ))}
+              {/* 의자 — 반마다 다른 캔디 컬러 */}
+              <mesh position={[0, 0.36, 0.5]} castShadow>
+                <boxGeometry args={[0.42, 0.05, 0.4]} />
+                <meshStandardMaterial color={chairColor} roughness={0.55} />
+              </mesh>
+              <mesh position={[0, 0.62, 0.68]}>
+                <boxGeometry args={[0.42, 0.5, 0.05]} />
+                <meshStandardMaterial color={chairColor} roughness={0.55} />
+              </mesh>
+            </group>
+          );
+        })
       )}
+
+      {/* 교실 중앙 원형 러그 */}
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.012, -2.2]}>
+        <circleGeometry args={[1.7, 24]} />
+        <meshStandardMaterial color="#8FD98A" roughness={0.95} />
+      </mesh>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.018, -2.2]}>
+        <circleGeometry args={[1.3, 24]} />
+        <meshStandardMaterial color="#B8E8B4" roughness={0.95} />
+      </mesh>
+
+      {/* 천장 만국기 */}
+      {Array.from({ length: 11 }).map((_, i) => {
+        const t = i * 0.1;
+        const x = -6 + 12 * t;
+        const sag = Math.sin(t * PI) * 0.45;
+        const colors = ['#E8493C', '#FFD93D', '#4FA8E8', '#8FD98A', '#FF9EAF'];
+        return (
+          <mesh
+            key={`cflag-${i}`}
+            position={[x, 3.9 - sag, 0.5]}
+            rotation={[PI, 0, 0]}
+            scale={[1, 1, 0.2]}
+          >
+            <coneGeometry args={[0.13, 0.3, 3]} />
+            <meshStandardMaterial color={colors[i % 5]} side={THREE.DoubleSide} roughness={0.8} />
+          </mesh>
+        );
+      })}
     </group>
   );
 }
 
-// --------------- 카메라 연출 (드래그로 좌우 둘러보기) ---------------
+// --------------- 카메라 연출 (드래그+WASD, 360도 자유 회전) ---------------
 function ClassroomCamera() {
   const { camera } = useThree();
   const introT = useRef(0);
-  const target = useRef(new THREE.Vector3(0, 1.8, -1));
+  const target = useRef(new THREE.Vector3(0, 1.8, -0.5));
   const introFrom = useRef(new THREE.Vector3(0, 3.4, 9.5));
 
   useFrame((state, delta) => {
-    // 드래그 yaw에 따라 교실 중심을 둘러보는 궤도 카메라
+    // WASD/방향키: A·D 회전, W·S 줌
+    if (classKeys['KeyA'] || classKeys['ArrowLeft']) dragState.yaw += 1.8 * delta;
+    if (classKeys['KeyD'] || classKeys['ArrowRight']) dragState.yaw -= 1.8 * delta;
+    if (classKeys['KeyW'] || classKeys['ArrowUp']) dragState.radius = Math.max(3.2, dragState.radius - 4.5 * delta);
+    if (classKeys['KeyS'] || classKeys['ArrowDown']) dragState.radius = Math.min(8.5, dragState.radius + 4.5 * delta);
+
     const yaw = dragState.yaw;
-    const radius = 6.4;
+    const radius = dragState.radius;
     const orbitPos = new THREE.Vector3(
       target.current.x + Math.sin(yaw) * radius,
       2.6 + Math.cos(state.clock.elapsedTime * 0.2) * 0.08,
@@ -334,7 +465,7 @@ function ClassroomCamera() {
       const ease = 1 - Math.pow(1 - introT.current, 3);
       camera.position.lerpVectors(introFrom.current, orbitPos, ease);
     } else {
-      camera.position.lerp(orbitPos, 5 * delta);
+      camera.position.lerp(orbitPos, 6 * delta);
     }
     camera.lookAt(target.current);
   });
@@ -355,7 +486,7 @@ function ClassroomLighting() {
 }
 
 // --------------- 메인 ---------------
-export default function ClassroomScene({ classLabel, activities, onActivitySelect }: ClassroomSceneProps) {
+export default function ClassroomScene({ classLabel, activities, onActivitySelect, canManage, onAddActivity }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -382,6 +513,7 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
   // 마우스/터치 드래그로 교실 둘러보기
   useEffect(() => {
     dragState.yaw = -0.5; // 시작 시 게시판이 살짝 보이는 각도
+    dragState.radius = 6.4;
     const el = containerRef.current;
     if (!el) return;
     let dragging = false;
@@ -396,7 +528,7 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
       if (!dragging) return;
       const delta = e.clientX - lastX;
       lastX = e.clientX;
-      dragState.yaw = Math.max(-1.6, Math.min(1.6, dragState.yaw - delta * 0.005));
+      dragState.yaw -= delta * 0.005;
     };
     const onUp = () => { dragging = false; };
 
@@ -424,7 +556,12 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
         <ClassroomLighting />
         <RoomShell />
         <Blackboard classLabel={classLabel} />
-        <ActivityBoard activities={activities} onActivitySelect={onActivitySelect} />
+        <ActivityBoard
+          activities={activities}
+          onActivitySelect={onActivitySelect}
+          canManage={canManage}
+          onAddActivity={onAddActivity}
+        />
         <Desks />
         <ClassroomCamera />
       </Canvas>

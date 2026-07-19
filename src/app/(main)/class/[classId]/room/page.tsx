@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ActivityDoc } from '@/lib/firestore-schema';
+import { useAuth } from '@/lib/auth-context';
+import { canManageClass } from '@/lib/auth-helpers';
 import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
 
 const ClassroomScene = dynamic(() => import('@/components/gallery3d/ClassroomScene'), { ssr: false });
@@ -28,40 +30,68 @@ export default function ClassRoomPage() {
   const router = useRouter();
   const params = useParams();
   const classId = params.classId as string;
+  const { role } = useAuth();
   const [activities, setActivities] = useState<ClassroomActivity[]>([]);
   const [fetched, setFetched] = useState(false);
   const [showList, setShowList] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [hasRealData, setHasRealData] = useState(false);
 
-  useEffect(() => {
-    async function fetchActivities() {
-      if (!db) { setFetched(true); return; }
-      try {
-        const q = query(
-          collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities'),
-          orderBy('order', 'asc')
-        );
-        const snap = await getDocs(q);
-        const list = snap.docs.map((d, i) => {
-          const data = d.data() as ActivityDoc;
-          return {
-            id: d.id,
-            title: data.title,
-            description: data.description,
-            date: data.date && 'toDate' in data.date ? data.date.toDate().toLocaleDateString('ko-KR') : '',
-            emoji: ACTIVITY_EMOJI[i % ACTIVITY_EMOJI.length],
-            color: ACTIVITY_COLORS[i % ACTIVITY_COLORS.length],
-          };
-        });
-        setActivities(list);
-      } catch (e) {
-        console.error('Failed to fetch activities:', e);
-      }
-      setFetched(true);
+  const fetchActivities = useCallback(async () => {
+    if (!db) { setFetched(true); return; }
+    try {
+      const q = query(
+        collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities'),
+        orderBy('order', 'asc')
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d, i) => {
+        const data = d.data() as ActivityDoc;
+        return {
+          id: d.id,
+          title: data.title,
+          description: data.description,
+          date: data.date && 'toDate' in data.date ? data.date.toDate().toLocaleDateString('ko-KR') : '',
+          emoji: ACTIVITY_EMOJI[i % ACTIVITY_EMOJI.length],
+          color: ACTIVITY_COLORS[i % ACTIVITY_COLORS.length],
+        };
+      });
+      setActivities(list);
+      setHasRealData(list.length > 0);
+    } catch (e) {
+      console.error('Failed to fetch activities:', e);
     }
-    fetchActivities();
+    setFetched(true);
   }, [classId]);
 
-  const displayList = activities.length > 0 ? activities : fetched ? DEMO_ACTIVITIES : [];
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities]);
+
+  const handleAddActivity = useCallback(async () => {
+    if (!db || !newTitle.trim()) return;
+    setSaving(true);
+    const actId = `act-${Date.now()}`;
+    await setDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities', actId), {
+      title: newTitle.trim(),
+      description: newDesc.trim(),
+      date: serverTimestamp(),
+      thumbnailUrl: '',
+      order: activities.length,
+    });
+    setSaving(false);
+    setShowAdd(false);
+    setNewTitle('');
+    setNewDesc('');
+    fetchActivities();
+  }, [newTitle, newDesc, classId, activities.length, fetchActivities]);
+
+  const isTeacher = canManageClass(role);
+  // 교사가 보는 교실은 실데이터만 (빈 교실이면 + 버튼이 첫 슬롯에)
+  const displayList = hasRealData ? activities : fetched && !isTeacher ? DEMO_ACTIVITIES : activities;
 
   const handleEnter = (activityId: string) => {
     router.push(`/class/${classId}/activity/${activityId}`);
@@ -70,7 +100,13 @@ export default function ClassRoomPage() {
   return (
     <div className="relative w-full h-screen overflow-hidden">
       {/* 3D 교실 */}
-      <ClassroomScene classLabel={classId} activities={displayList} onActivitySelect={handleEnter} />
+      <ClassroomScene
+        classLabel={classId}
+        activities={displayList}
+        onActivitySelect={handleEnter}
+        canManage={isTeacher}
+        onAddActivity={() => setShowAdd(true)}
+      />
 
       {/* 상단 HUD */}
       <div className="absolute top-4 left-4 z-30 flex items-center gap-3">
@@ -96,7 +132,7 @@ export default function ClassRoomPage() {
       {/* 하단 안내 */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
         <div className="ac-bubble px-4 py-2.5 text-[11px]">
-          🖱️ 드래그로 교실을 둘러보고, 게시판의 활동 포스터를 눌러 입장!
+          🖱️ 드래그·A/D 360° 회전 · W/S 줌 · 게시판 포스터를 눌러 입장!
         </div>
       </div>
 
@@ -139,6 +175,72 @@ export default function ClassRoomPage() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 새 활동 만들기 모달 (교사 전용) */}
+      {showAdd && (
+        <div
+          className="modal-backdrop absolute inset-0 z-50 flex items-center justify-center px-5"
+          style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowAdd(false)}
+        >
+          <div
+            className="modal-card w-full max-w-[360px] rounded-3xl p-6"
+            style={{ background: 'var(--color-surface)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="text-3xl mb-1">📌</div>
+              <h3 className="text-base font-bold" style={{ color: 'var(--color-text-main)' }}>새 활동 만들기</h3>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+                게시판에 포스터가 붙고, 그 안에 작품을 전시할 수 있어요
+              </p>
+            </div>
+
+            <div className="mb-3">
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>수업(활동) 이름 *</div>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="예: 수채화 그리기"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+                autoFocus
+              />
+            </div>
+
+            <div className="mb-5">
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>한 줄 소개 (선택)</div>
+              <input
+                type="text"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="예: 봄 풍경을 수채화로 표현해봐요"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAdd(false)}
+                className="flex-1 rounded-xl py-3 text-sm font-bold"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleAddActivity}
+                disabled={!newTitle.trim() || saving}
+                className="flex-1 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {saving ? '만드는 중...' : '게시판에 붙이기'}
+              </button>
             </div>
           </div>
         </div>

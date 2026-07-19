@@ -72,6 +72,16 @@ export default function SchoolPage() {
         )}
       </div>
 
+      {/* 학생 — 우리 반 바로가기 */}
+      {role === 'student' && userDoc?.classIds && userDoc.classIds.length > 0 && (
+        <button
+          onClick={() => router.push(`/class/${userDoc.classIds[0]}/room`)}
+          className="ac-btn ac-btn-green absolute left-4 bottom-24 z-30 px-5 py-2.5 text-sm"
+        >
+          🎒 우리 반({userDoc.classIds[0]}) 바로가기
+        </button>
+      )}
+
       {/* 학부모 — 자녀 반 바로가기 */}
       {role === 'parent' && userDoc?.children && userDoc.children.length > 0 && (
         <div className="absolute left-4 bottom-24 z-30 flex flex-col gap-2">

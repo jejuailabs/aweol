@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
@@ -19,9 +19,40 @@ interface ClassSummary {
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, role, loading } = useAuth();
+  const { user, userDoc, role, loading } = useAuth();
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [totalPending, setTotalPending] = useState(0);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newGrade, setNewGrade] = useState('3');
+  const [newClassNum, setNewClassNum] = useState('');
+  const [newMotto, setNewMotto] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleCreateClass = useCallback(async () => {
+    const num = parseInt(newClassNum, 10);
+    if (!db || !user || !newGrade || !num || num < 1) return;
+    setCreating(true);
+    const classId = `${newGrade}-${num}`;
+    const year = String(new Date().getFullYear());
+    await setDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId), {
+      schoolId: SCHOOL_ID,
+      grade: newGrade,
+      classNumber: num,
+      year,
+      teacherUid: user.uid,
+      teacherName: userDoc?.displayName || '선생님',
+      motto: newMotto.trim() || '함께 웃고, 함께 자라자',
+      introText: '',
+      isArchived: false,
+      memberUids: [user.uid],
+    });
+    setCreating(false);
+    setShowCreate(false);
+    setNewClassNum('');
+    setNewMotto('');
+    setRefreshKey((k) => k + 1);
+  }, [newGrade, newClassNum, newMotto, user, userDoc]);
 
   useEffect(() => {
     if (!loading && (!user || !canAccessAdmin(role))) {
@@ -68,7 +99,7 @@ export default function AdminPage() {
     }
 
     if (!loading && user) fetchData();
-  }, [user, role, loading, router]);
+  }, [user, role, loading, router, refreshKey]);
 
   if (loading) {
     return (
@@ -110,9 +141,27 @@ export default function AdminPage() {
       </div>
 
       {/* 학급 목록 */}
-      <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--color-text-main)' }}>
-        학급 관리
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
+          학급 관리
+        </h2>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md transition-transform hover:scale-105"
+          style={{ background: 'var(--color-primary)' }}
+        >
+          + 반 만들기
+        </button>
+      </div>
+      {classes.length === 0 && (
+        <div
+          className="rounded-2xl p-8 text-center text-xs mb-3"
+          style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+        >
+          아직 만든 반이 없어요. &lsquo;+ 반 만들기&rsquo;로 첫 교실을 만들어보세요!<br />
+          반을 만들면 학교 건물 창문에 문패가 걸리고 빈 교실이 생깁니다.
+        </div>
+      )}
       <div className="flex flex-col gap-2.5">
         {classes.map((cls) => (
           <button
@@ -200,6 +249,92 @@ export default function AdminPage() {
           </div>
         </button>
       </div>
+
+      {/* 반 만들기 모달 */}
+      {showCreate && (
+        <div
+          className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center px-5"
+          style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            className="modal-card w-full max-w-[360px] rounded-3xl p-6"
+            style={{ background: 'var(--color-surface)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-5">
+              <div className="text-3xl mb-1">🏫</div>
+              <h3 className="text-base font-bold" style={{ color: 'var(--color-text-main)' }}>새 반 만들기</h3>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+                만들면 학교 창문에 문패가 걸리고 빈 교실이 생겨요
+              </p>
+            </div>
+
+            <div className="mb-3">
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>학년</div>
+              <div className="grid grid-cols-6 gap-1.5">
+                {['1', '2', '3', '4', '5', '6'].map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setNewGrade(g)}
+                    className="rounded-lg py-2 text-sm font-bold transition-all"
+                    style={{
+                      background: newGrade === g ? 'var(--color-primary)' : 'var(--color-surface-soft)',
+                      color: newGrade === g ? 'white' : 'var(--color-text-main)',
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>반 번호</div>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={newClassNum}
+                onChange={(e) => setNewClassNum(e.target.value)}
+                placeholder="예: 1"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+              />
+            </div>
+
+            <div className="mb-5">
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>급훈 (선택)</div>
+              <input
+                type="text"
+                value={newMotto}
+                onChange={(e) => setNewMotto(e.target.value)}
+                placeholder="함께 웃고, 함께 자라자"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="flex-1 rounded-xl py-3 text-sm font-bold"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateClass}
+                disabled={!newClassNum || creating}
+                className="flex-1 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {creating ? '만드는 중...' : `${newGrade}-${newClassNum || '?'}반 만들기`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

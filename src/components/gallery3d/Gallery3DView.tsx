@@ -212,6 +212,31 @@ function Room() {
           <meshStandardMaterial color="#FFF8E7" />
         </mesh>
       </group>
+
+      {/* 만국기 — 운동회 느낌의 천장 깃발 2줄 */}
+      {([[-6, 6, -3], [6, -6, 3]] as [number, number, number][]).map(([x1, x2, zOff], li) => (
+        <group key={`bunting-${li}`}>
+          {Array.from({ length: 13 }).map((_, i) => {
+            const t = i * (1 * 0.0833);
+            const x = x1 + (x2 - x1) * t;
+            const sag = Math.sin(t * PI) * 0.55;
+            const y = roomH - 0.35 - sag;
+            const z = zOff * (1 - t) + -zOff * t;
+            const colors = ['#E8493C', '#FFD93D', '#4FA8E8', '#8FD98A', '#FF9EAF', '#C3A6FF'];
+            return (
+              <mesh
+                key={`flag-${li}-${i}`}
+                position={[x, y, z]}
+                rotation={[PI, 0, 0]}
+                scale={[1, 1, 0.2]}
+              >
+                <coneGeometry args={[0.15, 0.34, 3]} />
+                <meshStandardMaterial color={colors[i % 6]} side={THREE.DoubleSide} roughness={0.8} />
+              </mesh>
+            );
+          })}
+        </group>
+      ))}
     </group>
   );
 }
@@ -459,6 +484,10 @@ function DustPuffs() {
 function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.Vector3> }) {
   const groupRef = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Mesh>(null);
+  const armLRef = useRef<THREE.Group>(null);
+  const armRRef = useRef<THREE.Group>(null);
+  const legLRef = useRef<THREE.Mesh>(null);
+  const legRRef = useRef<THREE.Mesh>(null);
   const bobPhase = useRef(0);
   const vel = useRef({ x: 0, z: 0 });
   const maxSpeed = 4.2;
@@ -541,9 +570,12 @@ function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.
     groupRef.current.scale.set(squash, stretch, squash);
     groupRef.current.position.y = bob * 0.09;
 
-    if (bodyRef.current) {
-      bodyRef.current.position.y = 0.55;
-    }
+    // 팔 스윙 + 다리 교차 (동숲 걸음걸이)
+    const swing = moving ? Math.sin(bobPhase.current) * 0.65 : 0;
+    if (armLRef.current) armLRef.current.rotation.x = swing;
+    if (armRRef.current) armRRef.current.rotation.x = -swing;
+    if (legLRef.current) legLRef.current.rotation.x = -swing * 0.8;
+    if (legRRef.current) legRRef.current.rotation.x = swing * 0.8;
 
     avatarPos.current.copy(groupRef.current.position);
     avatarPos.current.y = 0;
@@ -551,43 +583,139 @@ function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.
 
   return (
     <group ref={groupRef} position={[0, 0, 5]}>
-      {/* 몸통 */}
-      <mesh ref={bodyRef} position={[0, 0.55, 0]} castShadow>
-        <capsuleGeometry args={[0.18, 0.35, 8, 16]} />
-        <meshStandardMaterial color="#4ECDC4" />
+      {/* ===== 동숲 주민 비율 캐릭터 (큰 머리 + 아담한 몸) ===== */}
+
+      {/* 다리 */}
+      <mesh ref={legLRef} position={[-0.09, 0.16, 0]} castShadow>
+        <capsuleGeometry args={[0.055, 0.14, 6, 10]} />
+        <meshStandardMaterial color="#3D6BB3" />
       </mesh>
-      {/* 머리 */}
-      <mesh position={[0, 1.05, 0]} castShadow>
-        <sphereGeometry args={[0.2, 16, 16]} />
-        <meshStandardMaterial color="#FFE0BD" />
+      <mesh ref={legRRef} position={[0.09, 0.16, 0]} castShadow>
+        <capsuleGeometry args={[0.055, 0.14, 6, 10]} />
+        <meshStandardMaterial color="#3D6BB3" />
       </mesh>
-      {/* 머리카락 */}
-      <mesh position={[0, 1.18, -0.02]}>
-        <sphereGeometry args={[0.19, 16, 16, 0, Math.PI * 2, 0, HALF_PI]} />
-        <meshStandardMaterial color="#5B3A29" />
+      {/* 신발 (마리오풍 브라운) */}
+      <mesh position={[-0.09, 0.05, 0.03]}>
+        <sphereGeometry args={[0.075, 10, 10]} />
+        <meshStandardMaterial color="#7A4A2B" roughness={0.6} />
       </mesh>
-      {/* 눈 */}
-      <mesh position={[-0.07, 1.08, 0.16]}>
-        <sphereGeometry args={[0.035, 8, 8]} />
-        <meshStandardMaterial color="#2B2B2B" />
+      <mesh position={[0.09, 0.05, 0.03]}>
+        <sphereGeometry args={[0.075, 10, 10]} />
+        <meshStandardMaterial color="#7A4A2B" roughness={0.6} />
       </mesh>
-      <mesh position={[0.07, 1.08, 0.16]}>
-        <sphereGeometry args={[0.035, 8, 8]} />
-        <meshStandardMaterial color="#2B2B2B" />
+
+      {/* 몸통 — 마리오 레드 셔츠, 종 모양 */}
+      <mesh ref={bodyRef} position={[0, 0.46, 0]} castShadow>
+        <cylinderGeometry args={[0.13, 0.22, 0.42, 14]} />
+        <meshStandardMaterial color="#E8493C" roughness={0.65} />
       </mesh>
+      {/* 셔츠 노란 단추 */}
+      <mesh position={[0, 0.5, 0.185]}>
+        <sphereGeometry args={[0.032, 8, 8]} />
+        <meshStandardMaterial color="#FFD93D" metalness={0.2} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.38, 0.205]}>
+        <sphereGeometry args={[0.032, 8, 8]} />
+        <meshStandardMaterial color="#FFD93D" metalness={0.2} roughness={0.4} />
+      </mesh>
+
+      {/* 팔 (걸을 때 흔들림) */}
+      <group ref={armLRef} position={[-0.24, 0.62, 0]}>
+        <mesh position={[0, -0.11, 0]} castShadow>
+          <capsuleGeometry args={[0.05, 0.16, 6, 10]} />
+          <meshStandardMaterial color="#E8493C" roughness={0.65} />
+        </mesh>
+        <mesh position={[0, -0.24, 0]}>
+          <sphereGeometry args={[0.055, 10, 10]} />
+          <meshStandardMaterial color="#FFDDB8" />
+        </mesh>
+      </group>
+      <group ref={armRRef} position={[0.24, 0.62, 0]}>
+        <mesh position={[0, -0.11, 0]} castShadow>
+          <capsuleGeometry args={[0.05, 0.16, 6, 10]} />
+          <meshStandardMaterial color="#E8493C" roughness={0.65} />
+        </mesh>
+        <mesh position={[0, -0.24, 0]}>
+          <sphereGeometry args={[0.055, 10, 10]} />
+          <meshStandardMaterial color="#FFDDB8" />
+        </mesh>
+      </group>
+
+      {/* 머리 — 동숲식 큰 머리 */}
+      <mesh position={[0, 1.02, 0]} castShadow>
+        <sphereGeometry args={[0.3, 20, 20]} />
+        <meshStandardMaterial color="#FFDDB8" />
+      </mesh>
+      {/* 앞머리 + 옆머리 */}
+      <mesh position={[0, 1.2, -0.02]}>
+        <sphereGeometry args={[0.29, 20, 20, 0, Math.PI * 2, 0, HALF_PI * 1.1]} />
+        <meshStandardMaterial color="#6B4226" roughness={0.85} />
+      </mesh>
+      <mesh position={[-0.26, 1.05, 0]}>
+        <sphereGeometry args={[0.09, 10, 10]} />
+        <meshStandardMaterial color="#6B4226" roughness={0.85} />
+      </mesh>
+      <mesh position={[0.26, 1.05, 0]}>
+        <sphereGeometry args={[0.09, 10, 10]} />
+        <meshStandardMaterial color="#6B4226" roughness={0.85} />
+      </mesh>
+      {/* 앞머리 삐죽 (마리오 M 느낌의 포인트) */}
+      <mesh position={[0, 1.28, 0.2]} rotation={[0.5, 0, 0]}>
+        <coneGeometry args={[0.06, 0.12, 8]} />
+        <meshStandardMaterial color="#6B4226" roughness={0.85} />
+      </mesh>
+
+      {/* 눈 — 크고 반짝이는 동숲 눈 */}
+      <mesh position={[-0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
+        <sphereGeometry args={[0.055, 12, 12]} />
+        <meshStandardMaterial color="#2B2016" />
+      </mesh>
+      <mesh position={[0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
+        <sphereGeometry args={[0.055, 12, 12]} />
+        <meshStandardMaterial color="#2B2016" />
+      </mesh>
+      {/* 눈 하이라이트 */}
+      <mesh position={[-0.085, 1.08, 0.29]}>
+        <sphereGeometry args={[0.016, 6, 6]} />
+        <meshBasicMaterial color="#FFFFFF" />
+      </mesh>
+      <mesh position={[0.115, 1.08, 0.29]}>
+        <sphereGeometry args={[0.016, 6, 6]} />
+        <meshBasicMaterial color="#FFFFFF" />
+      </mesh>
+
+      {/* 코 (마리오풍 동그란 코, 아주 작게) */}
+      <mesh position={[0, 0.97, 0.29]}>
+        <sphereGeometry args={[0.035, 10, 10]} />
+        <meshStandardMaterial color="#FFC89E" />
+      </mesh>
+
+      {/* 입 — 방긋 */}
+      <mesh position={[0, 0.9, 0.27]} rotation={[0.35, 0, 0]} scale={[1.5, 0.7, 0.5]}>
+        <sphereGeometry args={[0.035, 10, 10]} />
+        <meshStandardMaterial color="#C0392B" />
+      </mesh>
+
       {/* 볼 블러셔 */}
-      <mesh position={[-0.12, 1.02, 0.14]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshStandardMaterial color="#FFB6C1" transparent opacity={0.5} />
+      <mesh position={[-0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
       </mesh>
-      <mesh position={[0.12, 1.02, 0.14]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshStandardMaterial color="#FFB6C1" transparent opacity={0.5} />
+      <mesh position={[0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
       </mesh>
+
+      {/* 노란 별 모자 포인트 (마리오 스타 오마주) */}
+      <mesh position={[0.18, 1.32, 0.12]} rotation={[0.3, 0.4, 0.3]}>
+        <octahedronGeometry args={[0.05, 0]} />
+        <meshStandardMaterial color="#FFD93D" emissive="#FFD93D" emissiveIntensity={0.35} />
+      </mesh>
+
       {/* 바닥 그림자 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[0.3, 16]} />
-        <meshStandardMaterial color="#000000" transparent opacity={0.12} />
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.012, 0]}>
+        <circleGeometry args={[0.32, 18]} />
+        <meshStandardMaterial color="#000000" transparent opacity={0.14} />
       </mesh>
     </group>
   );

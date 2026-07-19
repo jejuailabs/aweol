@@ -55,7 +55,7 @@ export interface ArtworkDoc {
   type: 'flat' | 'sculpture';
   artistComment: string;
   uploadedBy: string;
-  uploadedByRole: 'student' | 'parent';
+  uploadedByRole: 'student' | 'parent' | 'teacher';
   uploadedAt: Timestamp;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason: string | null;

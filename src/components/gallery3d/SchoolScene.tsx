@@ -12,15 +12,94 @@ const NEG_HALF_PI = -PI * 0.5;
 // 드래그 카메라 회전 상태
 const dragState = { yaw: 0 };
 
+// --------------- 무지개 (마리오 감성) ---------------
+function Rainbow() {
+  const bands = [
+    { r: 13, color: '#FF6B6B' },
+    { r: 12.2, color: '#FFD93D' },
+    { r: 11.4, color: '#8FD98A' },
+    { r: 10.6, color: '#74C7EC' },
+  ];
+  return (
+    <group position={[-16, 0, -22]} rotation={[0, 0.35, 0]}>
+      {bands.map((b) => (
+        <mesh key={b.color} rotation={[0, 0, 0]}>
+          <torusGeometry args={[b.r, 0.35, 10, 40, PI]} />
+          <meshStandardMaterial color={b.color} roughness={0.9} transparent opacity={0.85} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// --------------- 꽃 한 송이 ---------------
+function Flower({ position, color }: { position: [number, number, number]; color: string }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.12, 0]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.24, 6]} />
+        <meshStandardMaterial color="#4FA85E" />
+      </mesh>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const a = i * (PI * 0.4);
+        return (
+          <mesh key={i} position={[Math.cos(a) * 0.07, 0.26, Math.sin(a) * 0.07]}>
+            <sphereGeometry args={[0.055, 8, 8]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, 0.26, 0]}>
+        <sphereGeometry args={[0.05, 8, 8]} />
+        <meshStandardMaterial color="#FFD93D" />
+      </mesh>
+    </group>
+  );
+}
+
 // --------------- 땅 + 길 ---------------
 function Ground() {
+  const flowerSpots: [number, number, string][] = [
+    [-7, 6.5, '#FF8FB1'], [-6.2, 7.8, '#FFD93D'], [7.2, 6.8, '#FF8FB1'],
+    [6.4, 8, '#C3A6FF'], [-11, 4, '#FFD93D'], [11, 3.5, '#FF8FB1'],
+    [-9.5, 8.5, '#C3A6FF'], [9.8, 9, '#FFD93D'],
+  ];
   return (
     <group>
-      {/* 잔디 */}
+      {/* 잔디 — 마리오처럼 쨍한 그린 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[80, 60]} />
-        <meshStandardMaterial color="#7EC850" roughness={0.95} />
+        <meshStandardMaterial color="#6BCB4F" roughness={0.95} />
       </mesh>
+
+      {/* 뒷동산 (둥근 언덕들) */}
+      <mesh position={[-24, -2.5, -20]} scale={[1.6, 1, 1.4]}>
+        <sphereGeometry args={[8, 20, 20]} />
+        <meshStandardMaterial color="#5BB944" roughness={0.95} />
+      </mesh>
+      <mesh position={[24, -3.5, -22]} scale={[1.8, 1, 1.5]}>
+        <sphereGeometry args={[9, 20, 20]} />
+        <meshStandardMaterial color="#6BCB4F" roughness={0.95} />
+      </mesh>
+
+      {/* 꽃밭 흩뿌리기 */}
+      {flowerSpots.map(([x, z, c], i) => (
+        <Flower key={`flw-${i}`} position={[x, 0, z]} color={c} />
+      ))}
+
+      {/* 건물 앞 수풀 */}
+      {[-10.2, -8.8, 8.8, 10.2].map((x) => (
+        <group key={`bush-${x}`} position={[x, 0, -2.2]}>
+          <mesh position={[0, 0.35, 0]} castShadow>
+            <sphereGeometry args={[0.5, 12, 12]} />
+            <meshStandardMaterial color="#4FA85E" roughness={0.95} />
+          </mesh>
+          <mesh position={[0.35, 0.28, 0.1]}>
+            <sphereGeometry args={[0.34, 10, 10]} />
+            <meshStandardMaterial color="#5FBC6E" roughness={0.95} />
+          </mesh>
+        </group>
+      ))}
       {/* 진입로 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.01, 8]}>
         <planeGeometry args={[4.5, 22]} />
@@ -121,7 +200,7 @@ function SchoolBuilding({
       {/* 지붕 */}
       <mesh position={[0, bodyH + 0.55, 0]}>
         <boxGeometry args={[bodyW + 1, 1.1, bodyD + 1]} />
-        <meshStandardMaterial color="#E0704A" roughness={0.6} />
+        <meshStandardMaterial color="#E8493C" roughness={0.6} />
       </mesh>
       {/* 중앙 현관탑 */}
       <mesh position={[0, 3.9, bodyD * 0.5 + 0.6]} castShadow>
@@ -130,7 +209,7 @@ function SchoolBuilding({
       </mesh>
       <mesh position={[0, 8.15, bodyD * 0.5 + 0.6]}>
         <boxGeometry args={[5.2, 0.9, 2]} />
-        <meshStandardMaterial color="#D9603C" roughness={0.6} />
+        <meshStandardMaterial color="#D63C2F" roughness={0.6} />
       </mesh>
       {/* 현관문 */}
       <mesh position={[0, 1.25, bodyD * 0.5 + 1.32]}>
@@ -374,6 +453,7 @@ export default function SchoolScene({
         <ambientLight intensity={0.65} color="#FFF8E7" />
         <directionalLight position={[10, 14, 8]} intensity={1.1} color="#FFF4DC" castShadow />
         <Ground />
+        <Rainbow />
         <SchoolBuilding classes={classes} onClassSelect={onClassSelect} />
         <FlagPole />
         <Tree position={[-10.5, 0, -1]} scale={1.15} />

@@ -5,7 +5,8 @@ export function canManageClass(role: UserRole | null): boolean {
 }
 
 export function canUploadArtwork(role: UserRole | null): boolean {
-  return role === 'student' || role === 'parent';
+  // 교사는 아이들 작품 사진을 촬영해 직접 올린다
+  return role === 'student' || role === 'parent' || role === 'teacher' || role === 'super_admin';
 }
 
 export function canApproveArtwork(role: UserRole | null): boolean {
