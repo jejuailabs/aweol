@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useEffect } from 'react';
-import { setJoystickDir } from './Gallery3DView';
+import { setJoystickDir } from './walker';
 
 export default function MobileJoystick() {
   const baseRef = useRef<HTMLDivElement>(null);

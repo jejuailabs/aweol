@@ -84,28 +84,26 @@ export default function ActivityExhibitPage() {
         onArtworkClick={(artwork) => setSelectedArtwork(artwork as ArtworkData)}
       />
 
-      {/* 상단 HUD */}
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-3">
+      {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}
+      <div className="absolute top-4 left-4 right-4 z-30 flex items-center gap-2">
         <button
           onClick={() => router.push(`/class/${classId}/room`)}
-          className="ac-btn px-4 py-2 text-xs"
+          className="ac-btn shrink-0 px-3.5 py-2 text-xs"
         >
           ← 교실로
         </button>
-        <div className="ac-bubble px-4 py-2 text-xs">
+        <div className="ac-bubble hidden sm:block px-4 py-2 text-xs truncate">
           🖼️ {activity?.title || activityId}
         </div>
+        {canUploadArtwork(role) && (
+          <button
+            onClick={() => setShowUpload(true)}
+            className="ac-btn ac-btn-green ml-auto shrink-0 px-3.5 py-2 text-xs"
+          >
+            + 작품 올리기
+          </button>
+        )}
       </div>
-
-      {/* 작품 올리기 버튼 (학생/학부모) */}
-      {canUploadArtwork(role) && (
-        <button
-          onClick={() => setShowUpload(true)}
-          className="ac-btn ac-btn-green absolute top-4 right-4 z-30 px-4 py-2 text-xs"
-        >
-          + 작품 올리기
-        </button>
-      )}
 
       {/* 모바일 조이스틱 */}
       {!selectedArtwork && !showUpload && <MobileJoystick />}

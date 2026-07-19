@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import Mascot from '@/components/mascot/Mascot';
 
 const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
 const SCHOOL_ID = 'aewol-elementary';
 
@@ -110,10 +111,13 @@ export default function SchoolPage() {
         </div>
       )}
 
+      {/* 모바일 조이스틱 */}
+      <MobileJoystick />
+
       {/* 마스코트 + 말풍선 */}
       {showMascot && (
         <Mascot
-          message="창문에 걸린 반 문패를 눌러 입장해봐!"
+          message="운동장을 걸어다니고, 창문의 반 문패를 눌러 입장해봐!"
           onDismiss={() => setShowMascot(false)}
         />
       )}

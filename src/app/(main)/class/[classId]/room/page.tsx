@@ -11,6 +11,7 @@ import { canManageClass } from '@/lib/auth-helpers';
 import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
 
 const ClassroomScene = dynamic(() => import('@/components/gallery3d/ClassroomScene'), { ssr: false });
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
 const SCHOOL_ID = 'aewol-elementary';
 
@@ -108,31 +109,32 @@ export default function ClassRoomPage() {
         onAddActivity={() => setShowAdd(true)}
       />
 
-      {/* 상단 HUD */}
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-3">
+      {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}
+      <div className="absolute top-4 left-4 right-4 z-30 flex items-center gap-2">
         <button
           onClick={() => router.push('/school')}
-          className="ac-btn px-4 py-2 text-xs"
+          className="ac-btn shrink-0 px-3.5 py-2 text-xs"
         >
           ← 학교로
         </button>
-        <div className="ac-bubble px-4 py-2 text-xs">
+        <div className="ac-bubble hidden sm:block px-4 py-2 text-xs truncate">
           📚 {classId} 교실
         </div>
+        <button
+          onClick={() => setShowList(true)}
+          className="ac-btn ac-btn-green ml-auto shrink-0 px-3.5 py-2 text-xs"
+        >
+          📋 활동 목록
+        </button>
       </div>
 
-      {/* 목록 보기 토글 (모바일 배려) */}
-      <button
-        onClick={() => setShowList(true)}
-        className="ac-btn ac-btn-green absolute top-4 right-4 z-30 px-4 py-2 text-xs"
-      >
-        📋 활동 목록
-      </button>
+      {/* 모바일 조이스틱 */}
+      {!showList && !showAdd && <MobileJoystick />}
 
       {/* 하단 안내 */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden sm:block">
         <div className="ac-bubble px-4 py-2.5 text-[11px]">
-          🖱️ 드래그·A/D 360° 회전 · W/S 줌 · 게시판 포스터를 눌러 입장!
+          🚶 WASD 걷기 · 🖱️ 드래그 회전 · 휠/핀치 줌 · 게시판 포스터를 눌러 입장!
         </div>
       </div>
 

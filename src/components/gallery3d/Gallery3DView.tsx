@@ -1,9 +1,12 @@
 'use client';
 
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls } from './walker';
+
+export { setJoystickDir } from './walker';
 
 interface ArtworkData {
   id: string;
@@ -21,26 +24,6 @@ interface ExhibitRoomProps {
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
-
-// --------------- 키 입력 상태 (e.code 기반 — 한글 자판 상태에서도 WASD 동작) ---------------
-const keyState: Record<string, boolean> = {};
-if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    keyState[e.code] = true;
-    if (e.code.startsWith('Arrow')) e.preventDefault();
-  });
-  window.addEventListener('keyup', (e) => { keyState[e.code] = false; });
-  window.addEventListener('blur', () => { Object.keys(keyState).forEach((k) => { keyState[k] = false; }); });
-}
-
-// --------------- 카메라 회전 상태 (마우스/터치 드래그) ---------------
-const camControl = { yaw: 0 };
-
-// --------------- 조이스틱 상태 (모바일) ---------------
-let joystickDir = { x: 0, z: 0 };
-export function setJoystickDir(x: number, z: number) {
-  joystickDir = { x, z };
-}
 
 // --------------- 벽면 (개선된 질감) ---------------
 function Room() {
@@ -436,324 +419,6 @@ function SculptureArtwork({
   );
 }
 
-// --------------- 발밑 먼지 파티클 (동숲식 걸음 연출) ---------------
-const dustPool: { pos: THREE.Vector3; life: number }[] = Array.from({ length: 10 }, () => ({
-  pos: new THREE.Vector3(0, -10, 0),
-  life: 0,
-}));
-let dustSpawnTimer = 0;
-let avatarIsMoving = false;
-
-function DustPuffs() {
-  const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
-
-  useFrame((_, delta) => {
-    dustPool.forEach((p, i) => {
-      const m = meshRefs.current[i];
-      if (!m) return;
-      if (p.life > 0) {
-        p.life = Math.max(0, p.life - delta * 2.2);
-        m.position.set(p.pos.x, p.pos.y + (1 - p.life) * 0.25, p.pos.z);
-        const s = 0.55 + (1 - p.life) * 0.7;
-        m.scale.set(s, s, s);
-        (m.material as THREE.MeshBasicMaterial).opacity = p.life * 0.4;
-        m.visible = true;
-      } else {
-        m.visible = false;
-      }
-    });
-  });
-
-  return (
-    <group>
-      {dustPool.map((_, i) => (
-        <mesh
-          key={`dust-${i}`}
-          ref={(el) => { meshRefs.current[i] = el; }}
-          visible={false}
-        >
-          <sphereGeometry args={[0.07, 6, 6]} />
-          <meshBasicMaterial color="#EADFC8" transparent opacity={0} depthWrite={false} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-// --------------- 아바타 캐릭터 (동숲식 모멘텀 걷기) ---------------
-function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.Vector3> }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const bodyRef = useRef<THREE.Mesh>(null);
-  const armLRef = useRef<THREE.Group>(null);
-  const armRRef = useRef<THREE.Group>(null);
-  const legLRef = useRef<THREE.Mesh>(null);
-  const legRRef = useRef<THREE.Mesh>(null);
-  const bobPhase = useRef(0);
-  const vel = useRef({ x: 0, z: 0 });
-  const maxSpeed = 4.2;
-  const accel = 16;   // 출발 가속 (동숲처럼 살짝 미끄러지듯)
-  const decel = 11;   // 정지 감속
-  const roomBound = 7;
-
-  useFrame((state, delta) => {
-    if (!groupRef.current) return;
-
-    let dx = 0;
-    let dz = 0;
-    if (keyState['KeyW'] || keyState['ArrowUp']) dz = -1;
-    if (keyState['KeyS'] || keyState['ArrowDown']) dz = 1;
-    if (keyState['KeyA'] || keyState['ArrowLeft']) dx = -1;
-    if (keyState['KeyD'] || keyState['ArrowRight']) dx = 1;
-
-    dx += joystickDir.x;
-    dz += joystickDir.z;
-
-    const inputLen = Math.sqrt(dx * dx + dz * dz);
-    let tx = 0;
-    let tz = 0;
-    if (inputLen > 0.1) {
-      const inv = Math.pow(inputLen, -1);
-      // 카메라 방향 기준 이동 (드래그로 회전한 시점에 맞춰 W = 앞으로)
-      const yaw = camControl.yaw;
-      const cosY = Math.cos(yaw);
-      const sinY = Math.sin(yaw);
-      const ndx = dx * inv;
-      const ndz = dz * inv;
-      tx = (ndx * cosY + ndz * sinY) * maxSpeed;
-      tz = (-ndx * sinY + ndz * cosY) * maxSpeed;
-    }
-
-    // 모멘텀: 목표 속도로 부드럽게 가속/감속
-    const rate = inputLen > 0.1 ? accel : decel;
-    vel.current.x += (tx - vel.current.x) * Math.min(1, rate * delta);
-    vel.current.z += (tz - vel.current.z) * Math.min(1, rate * delta);
-
-    const speedNow = Math.sqrt(vel.current.x * vel.current.x + vel.current.z * vel.current.z);
-    const moving = speedNow > 0.35;
-    avatarIsMoving = moving;
-
-    const newX = groupRef.current.position.x + vel.current.x * delta;
-    const newZ = groupRef.current.position.z + vel.current.z * delta;
-    groupRef.current.position.x = Math.max(-roomBound, Math.min(roomBound, newX));
-    groupRef.current.position.z = Math.max(-roomBound, Math.min(roomBound, newZ));
-
-    if (moving) {
-      const targetAngle = Math.atan2(vel.current.x, vel.current.z);
-      const currentAngle = groupRef.current.rotation.y;
-      let diff = targetAngle - currentAngle;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      groupRef.current.rotation.y += diff * 10 * delta;
-
-      bobPhase.current += delta * (8 + speedNow * 2);
-
-      // 발밑 먼지 스폰
-      dustSpawnTimer -= delta;
-      if (dustSpawnTimer <= 0) {
-        dustSpawnTimer = 0.16;
-        const slot = dustPool.find((p) => p.life <= 0);
-        if (slot) {
-          slot.pos.set(
-            groupRef.current.position.x + (Math.sin(bobPhase.current) * 0.08),
-            0.06,
-            groupRef.current.position.z + 0.12
-          );
-          slot.life = 1;
-        }
-      }
-    }
-
-    // 스쿼시 & 스트레치: 걸을 때 통통 튀는 느낌
-    const bob = moving ? Math.abs(Math.sin(bobPhase.current)) : 0;
-    const squash = 1 - bob * 0.07;
-    const stretch = 1 + bob * 0.05;
-    groupRef.current.scale.set(squash, stretch, squash);
-    groupRef.current.position.y = bob * 0.09;
-
-    // 팔 스윙 + 다리 교차 (동숲 걸음걸이)
-    const swing = moving ? Math.sin(bobPhase.current) * 0.65 : 0;
-    if (armLRef.current) armLRef.current.rotation.x = swing;
-    if (armRRef.current) armRRef.current.rotation.x = -swing;
-    if (legLRef.current) legLRef.current.rotation.x = -swing * 0.8;
-    if (legRRef.current) legRRef.current.rotation.x = swing * 0.8;
-
-    avatarPos.current.copy(groupRef.current.position);
-    avatarPos.current.y = 0;
-  });
-
-  return (
-    <group ref={groupRef} position={[0, 0, 5]}>
-      {/* ===== 동숲 주민 비율 캐릭터 (큰 머리 + 아담한 몸) ===== */}
-
-      {/* 다리 */}
-      <mesh ref={legLRef} position={[-0.09, 0.16, 0]} castShadow>
-        <capsuleGeometry args={[0.055, 0.14, 6, 10]} />
-        <meshStandardMaterial color="#3D6BB3" />
-      </mesh>
-      <mesh ref={legRRef} position={[0.09, 0.16, 0]} castShadow>
-        <capsuleGeometry args={[0.055, 0.14, 6, 10]} />
-        <meshStandardMaterial color="#3D6BB3" />
-      </mesh>
-      {/* 신발 (마리오풍 브라운) */}
-      <mesh position={[-0.09, 0.05, 0.03]}>
-        <sphereGeometry args={[0.075, 10, 10]} />
-        <meshStandardMaterial color="#7A4A2B" roughness={0.6} />
-      </mesh>
-      <mesh position={[0.09, 0.05, 0.03]}>
-        <sphereGeometry args={[0.075, 10, 10]} />
-        <meshStandardMaterial color="#7A4A2B" roughness={0.6} />
-      </mesh>
-
-      {/* 몸통 — 마리오 레드 셔츠, 종 모양 */}
-      <mesh ref={bodyRef} position={[0, 0.46, 0]} castShadow>
-        <cylinderGeometry args={[0.13, 0.22, 0.42, 14]} />
-        <meshStandardMaterial color="#E8493C" roughness={0.65} />
-      </mesh>
-      {/* 셔츠 노란 단추 */}
-      <mesh position={[0, 0.5, 0.185]}>
-        <sphereGeometry args={[0.032, 8, 8]} />
-        <meshStandardMaterial color="#FFD93D" metalness={0.2} roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.38, 0.205]}>
-        <sphereGeometry args={[0.032, 8, 8]} />
-        <meshStandardMaterial color="#FFD93D" metalness={0.2} roughness={0.4} />
-      </mesh>
-
-      {/* 팔 (걸을 때 흔들림) */}
-      <group ref={armLRef} position={[-0.24, 0.62, 0]}>
-        <mesh position={[0, -0.11, 0]} castShadow>
-          <capsuleGeometry args={[0.05, 0.16, 6, 10]} />
-          <meshStandardMaterial color="#E8493C" roughness={0.65} />
-        </mesh>
-        <mesh position={[0, -0.24, 0]}>
-          <sphereGeometry args={[0.055, 10, 10]} />
-          <meshStandardMaterial color="#FFDDB8" />
-        </mesh>
-      </group>
-      <group ref={armRRef} position={[0.24, 0.62, 0]}>
-        <mesh position={[0, -0.11, 0]} castShadow>
-          <capsuleGeometry args={[0.05, 0.16, 6, 10]} />
-          <meshStandardMaterial color="#E8493C" roughness={0.65} />
-        </mesh>
-        <mesh position={[0, -0.24, 0]}>
-          <sphereGeometry args={[0.055, 10, 10]} />
-          <meshStandardMaterial color="#FFDDB8" />
-        </mesh>
-      </group>
-
-      {/* 머리 — 동숲식 큰 머리 */}
-      <mesh position={[0, 1.02, 0]} castShadow>
-        <sphereGeometry args={[0.3, 20, 20]} />
-        <meshStandardMaterial color="#FFDDB8" />
-      </mesh>
-      {/* 앞머리 + 옆머리 */}
-      <mesh position={[0, 1.2, -0.02]}>
-        <sphereGeometry args={[0.29, 20, 20, 0, Math.PI * 2, 0, HALF_PI * 1.1]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-      <mesh position={[-0.26, 1.05, 0]}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-      <mesh position={[0.26, 1.05, 0]}>
-        <sphereGeometry args={[0.09, 10, 10]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-      {/* 앞머리 삐죽 (마리오 M 느낌의 포인트) */}
-      <mesh position={[0, 1.28, 0.2]} rotation={[0.5, 0, 0]}>
-        <coneGeometry args={[0.06, 0.12, 8]} />
-        <meshStandardMaterial color="#6B4226" roughness={0.85} />
-      </mesh>
-
-      {/* 눈 — 크고 반짝이는 동숲 눈 */}
-      <mesh position={[-0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
-        <sphereGeometry args={[0.055, 12, 12]} />
-        <meshStandardMaterial color="#2B2016" />
-      </mesh>
-      <mesh position={[0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
-        <sphereGeometry args={[0.055, 12, 12]} />
-        <meshStandardMaterial color="#2B2016" />
-      </mesh>
-      {/* 눈 하이라이트 */}
-      <mesh position={[-0.085, 1.08, 0.29]}>
-        <sphereGeometry args={[0.016, 6, 6]} />
-        <meshBasicMaterial color="#FFFFFF" />
-      </mesh>
-      <mesh position={[0.115, 1.08, 0.29]}>
-        <sphereGeometry args={[0.016, 6, 6]} />
-        <meshBasicMaterial color="#FFFFFF" />
-      </mesh>
-
-      {/* 코 (마리오풍 동그란 코, 아주 작게) */}
-      <mesh position={[0, 0.97, 0.29]}>
-        <sphereGeometry args={[0.035, 10, 10]} />
-        <meshStandardMaterial color="#FFC89E" />
-      </mesh>
-
-      {/* 입 — 방긋 */}
-      <mesh position={[0, 0.9, 0.27]} rotation={[0.35, 0, 0]} scale={[1.5, 0.7, 0.5]}>
-        <sphereGeometry args={[0.035, 10, 10]} />
-        <meshStandardMaterial color="#C0392B" />
-      </mesh>
-
-      {/* 볼 블러셔 */}
-      <mesh position={[-0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
-      </mesh>
-      <mesh position={[0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshStandardMaterial color="#FF9EAF" transparent opacity={0.65} />
-      </mesh>
-
-      {/* 노란 별 모자 포인트 (마리오 스타 오마주) */}
-      <mesh position={[0.18, 1.32, 0.12]} rotation={[0.3, 0.4, 0.3]}>
-        <octahedronGeometry args={[0.05, 0]} />
-        <meshStandardMaterial color="#FFD93D" emissive="#FFD93D" emissiveIntensity={0.35} />
-      </mesh>
-
-      {/* 바닥 그림자 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.012, 0]}>
-        <circleGeometry args={[0.32, 18]} />
-        <meshStandardMaterial color="#000000" transparent opacity={0.14} />
-      </mesh>
-    </group>
-  );
-}
-
-// --------------- 카메라 팔로우 (입장 연출 포함) ---------------
-function CameraFollower({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.Vector3> }) {
-  const { camera } = useThree();
-  const lookOffset = useMemo(() => new THREE.Vector3(0, 1.2, 0), []);
-  const introT = useRef(0);
-  const introFrom = useMemo(() => new THREE.Vector3(0, 4.2, 14.5), []);
-  const introLookFrom = useMemo(() => new THREE.Vector3(0, 2.2, -6), []);
-
-  useFrame((_, delta) => {
-    const yaw = camControl.yaw;
-    const dist = 6;
-    const followPos = avatarPos.current.clone().add(
-      new THREE.Vector3(Math.sin(yaw) * dist, 3.5, Math.cos(yaw) * dist)
-    );
-    const followLook = avatarPos.current.clone().add(lookOffset);
-
-    if (introT.current < 1) {
-      introT.current = Math.min(1, introT.current + delta * 0.45);
-      const t = introT.current;
-      const ease = 1 - Math.pow(1 - t, 3);
-      camera.position.lerpVectors(introFrom, followPos, ease);
-      const look = introLookFrom.clone().lerp(followLook, ease);
-      camera.lookAt(look);
-      return;
-    }
-
-    camera.position.lerp(followPos, 4 * delta);
-    camera.lookAt(followLook);
-  });
-
-  return null;
-}
-
 // --------------- 캔버스 크기 보정 ---------------
 function CanvasResizer({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
   const { gl, camera, set, size: storeSize } = useThree();
@@ -861,38 +526,12 @@ export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomPro
     return () => { cancelAnimationFrame(raf); clearTimeout(timer); clearTimeout(timer2); };
   }, []);
 
-  // 마우스/터치 드래그로 카메라 좌우 회전
+  // 드래그 회전 + 핀치/휠 줌
   useEffect(() => {
-    camControl.yaw = 0;
+    resetControls(0, 6);
     const el = containerRef.current;
     if (!el) return;
-    let dragging = false;
-    let lastX = 0;
-
-    const onDown = (e: PointerEvent) => {
-      // 조이스틱/버튼 위에서는 드래그 시작 안 함
-      if ((e.target as HTMLElement).closest('button')) return;
-      dragging = true;
-      lastX = e.clientX;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      const delta = e.clientX - lastX;
-      lastX = e.clientX;
-      camControl.yaw -= delta * 0.0065;
-    };
-    const onUp = () => { dragging = false; };
-
-    el.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-    return () => {
-      el.removeEventListener('pointerdown', onDown);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-    };
+    return attachCameraControls(el, { minDist: 3.5, maxDist: 9 });
   }, []);
 
   const flatArtworks = displayArtworks.filter((a) => a.type === 'flat');
@@ -969,9 +608,19 @@ export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomPro
           );
         })}
 
-        <WalkingAvatar avatarPos={avatarPos} />
+        <WalkerAvatar
+          avatarPos={avatarPos}
+          bounds={{ xMin: -7, xMax: 7, zMin: -7, zMax: 7 }}
+          start={[0, 0, 5]}
+        />
         <DustPuffs />
-        <CameraFollower avatarPos={avatarPos} />
+        <FollowCamera
+          avatarPos={avatarPos}
+          height={3.5}
+          introFrom={[0, 4.2, 14.5]}
+          introLook={[0, 2.2, -6]}
+          clamp={{ xMin: -7.6, xMax: 7.6, zMin: -7.6, zMax: 7.6, yMin: 1.4, yMax: 4.6 }}
+        />
       </Canvas>
     </div>
   );

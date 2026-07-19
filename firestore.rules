@@ -88,6 +88,12 @@ service cloud.firestore {
               allow delete: if isStaff()
                             || (isSignedIn() && resource.data.authorUid == request.auth.uid);
             }
+
+            match /likes/{likeUid} {
+              allow read: if true;
+              allow create, delete: if isSignedIn() && request.auth.uid == likeUid;
+              allow update: if false;
+            }
           }
         }
       }

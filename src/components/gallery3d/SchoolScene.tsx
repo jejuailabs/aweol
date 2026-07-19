@@ -1,16 +1,14 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls } from './walker';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
-
-// 드래그 카메라 회전 상태
-const dragState = { yaw: 0 };
 
 // --------------- 무지개 (마리오 감성) ---------------
 function Rainbow() {
@@ -345,35 +343,6 @@ function Cloud({ position, speed = 0.2 }: { position: [number, number, number]; 
   );
 }
 
-// --------------- 카메라 (드래그로 좌우 둘러보기) ---------------
-function SchoolCamera() {
-  const { camera } = useThree();
-  const introT = useRef(0);
-  const target = useRef(new THREE.Vector3(0, 3.2, -6));
-  const introFrom = useRef(new THREE.Vector3(0, 9, 26));
-
-  useFrame((state, delta) => {
-    const yaw = dragState.yaw;
-    const radius = 22;
-    const orbitPos = new THREE.Vector3(
-      target.current.x + Math.sin(yaw) * radius,
-      4.2 + Math.cos(state.clock.elapsedTime * 0.15) * 0.25,
-      target.current.z + Math.cos(yaw) * radius
-    );
-
-    if (introT.current < 1) {
-      introT.current = Math.min(1, introT.current + delta * 0.4);
-      const ease = 1 - Math.pow(1 - introT.current, 3);
-      camera.position.lerpVectors(introFrom.current, orbitPos, ease);
-    } else {
-      camera.position.lerp(orbitPos, 4 * delta);
-    }
-    camera.lookAt(target.current);
-  });
-
-  return null;
-}
-
 // --------------- 메인 ---------------
 export default function SchoolScene({
   classes = [],
@@ -383,6 +352,7 @@ export default function SchoolScene({
   onClassSelect?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const avatarPos = useRef(new THREE.Vector3(0, 0, 11));
 
   useEffect(() => {
     const el = containerRef.current;
@@ -405,37 +375,12 @@ export default function SchoolScene({
     return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // 마우스/터치 드래그로 학교 둘러보기
+  // 드래그 회전 + 핀치/휠 줌
   useEffect(() => {
-    dragState.yaw = 0;
+    resetControls(0, 10);
     const el = containerRef.current;
     if (!el) return;
-    let dragging = false;
-    let lastX = 0;
-
-    const onDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest('button')) return;
-      dragging = true;
-      lastX = e.clientX;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      const delta = e.clientX - lastX;
-      lastX = e.clientX;
-      dragState.yaw = Math.max(-0.9, Math.min(0.9, dragState.yaw - delta * 0.004));
-    };
-    const onUp = () => { dragging = false; };
-
-    el.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-    return () => {
-      el.removeEventListener('pointerdown', onDown);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-    };
+    return attachCameraControls(el, { minDist: 5, maxDist: 17 });
   }, []);
 
   return (
@@ -463,7 +408,20 @@ export default function SchoolScene({
         <Cloud position={[-9, 12, -14]} speed={0.14} />
         <Cloud position={[7, 13.5, -16]} speed={0.1} />
         <Cloud position={[0, 11, -12]} speed={0.18} />
-        <SchoolCamera />
+        <WalkerAvatar
+          avatarPos={avatarPos}
+          bounds={{ xMin: -14, xMax: 14, zMin: -1.5, zMax: 16 }}
+          start={[0, 0, 11]}
+          maxSpeed={5}
+        />
+        <DustPuffs />
+        <FollowCamera
+          avatarPos={avatarPos}
+          height={4.2}
+          lookHeight={2.2}
+          introFrom={[0, 9, 26]}
+          introLook={[0, 3.2, -6]}
+        />
       </Canvas>
     </div>
   );

@@ -1,27 +1,14 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls } from './walker';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
-
-// 드래그 카메라 회전 상태 (360도 자유 회전 + 줌)
-const dragState = { yaw: 0, radius: 6.4 };
-
-// 키 입력 (e.code 기반 — 한글 자판에서도 동작)
-const classKeys: Record<string, boolean> = {};
-if (typeof window !== 'undefined') {
-  window.addEventListener('keydown', (e) => {
-    classKeys[e.code] = true;
-    if (e.code.startsWith('Arrow')) e.preventDefault();
-  });
-  window.addEventListener('keyup', (e) => { classKeys[e.code] = false; });
-  window.addEventListener('blur', () => { Object.keys(classKeys).forEach((k) => { classKeys[k] = false; }); });
-}
 
 export interface ClassroomActivity {
   id: string;
@@ -438,41 +425,6 @@ function Desks() {
   );
 }
 
-// --------------- 카메라 연출 (드래그+WASD, 360도 자유 회전) ---------------
-function ClassroomCamera() {
-  const { camera } = useThree();
-  const introT = useRef(0);
-  const target = useRef(new THREE.Vector3(0, 1.8, -0.5));
-  const introFrom = useRef(new THREE.Vector3(0, 3.4, 9.5));
-
-  useFrame((state, delta) => {
-    // WASD/방향키: A·D 회전, W·S 줌
-    if (classKeys['KeyA'] || classKeys['ArrowLeft']) dragState.yaw += 1.8 * delta;
-    if (classKeys['KeyD'] || classKeys['ArrowRight']) dragState.yaw -= 1.8 * delta;
-    if (classKeys['KeyW'] || classKeys['ArrowUp']) dragState.radius = Math.max(3.2, dragState.radius - 4.5 * delta);
-    if (classKeys['KeyS'] || classKeys['ArrowDown']) dragState.radius = Math.min(8.5, dragState.radius + 4.5 * delta);
-
-    const yaw = dragState.yaw;
-    const radius = dragState.radius;
-    const orbitPos = new THREE.Vector3(
-      target.current.x + Math.sin(yaw) * radius,
-      2.6 + Math.cos(state.clock.elapsedTime * 0.2) * 0.08,
-      target.current.z + Math.cos(yaw) * radius
-    );
-
-    if (introT.current < 1) {
-      introT.current = Math.min(1, introT.current + delta * 0.5);
-      const ease = 1 - Math.pow(1 - introT.current, 3);
-      camera.position.lerpVectors(introFrom.current, orbitPos, ease);
-    } else {
-      camera.position.lerp(orbitPos, 6 * delta);
-    }
-    camera.lookAt(target.current);
-  });
-
-  return null;
-}
-
 // --------------- 조명 ---------------
 function ClassroomLighting() {
   return (
@@ -488,6 +440,7 @@ function ClassroomLighting() {
 // --------------- 메인 ---------------
 export default function ClassroomScene({ classLabel, activities, onActivitySelect, canManage, onAddActivity }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
 
   useEffect(() => {
     const el = containerRef.current;
@@ -510,38 +463,12 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
     return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // 마우스/터치 드래그로 교실 둘러보기
+  // 드래그 회전 + 핀치/휠 줌 (시작 각도: 게시판이 살짝 보이게)
   useEffect(() => {
-    dragState.yaw = -0.5; // 시작 시 게시판이 살짝 보이는 각도
-    dragState.radius = 6.4;
+    resetControls(-0.5, 5.2);
     const el = containerRef.current;
     if (!el) return;
-    let dragging = false;
-    let lastX = 0;
-
-    const onDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement).closest('button')) return;
-      dragging = true;
-      lastX = e.clientX;
-    };
-    const onMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      const delta = e.clientX - lastX;
-      lastX = e.clientX;
-      dragState.yaw -= delta * 0.005;
-    };
-    const onUp = () => { dragging = false; };
-
-    el.addEventListener('pointerdown', onDown);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-    return () => {
-      el.removeEventListener('pointerdown', onDown);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-    };
+    return attachCameraControls(el, { minDist: 3, maxDist: 8 });
   }, []);
 
   return (
@@ -563,7 +490,21 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
           onAddActivity={onAddActivity}
         />
         <Desks />
-        <ClassroomCamera />
+        <WalkerAvatar
+          avatarPos={avatarPos}
+          bounds={{ xMin: -6, xMax: 6, zMin: -4.6, zMax: 5 }}
+          start={[0, 0, 3.5]}
+          maxSpeed={3.8}
+        />
+        <DustPuffs />
+        <FollowCamera
+          avatarPos={avatarPos}
+          height={2.9}
+          lookHeight={1.1}
+          introFrom={[0, 3.4, 9.5]}
+          introLook={[0, 1.8, -2]}
+          clamp={{ xMin: -6.6, xMax: 6.6, zMin: -5.6, zMax: 5.6, yMin: 1.2, yMax: 3.9 }}
+        />
       </Canvas>
     </div>
   );
