@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
 import Mascot from '@/components/mascot/Mascot';
+import ProfileMenu from '@/components/navigation/ProfileMenu';
 
 const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -15,7 +16,7 @@ const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoysti
 const SCHOOL_ID = 'aewol-elementary';
 
 export default function SchoolPage() {
-  const { user, userDoc, role } = useAuth();
+  const { userDoc, role } = useAuth();
   const router = useRouter();
   const [classes, setClasses] = useState<(ClassDoc & { id: string })[]>([]);
   const [showMascot, setShowMascot] = useState(true);
@@ -48,29 +49,9 @@ export default function SchoolPage() {
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
       <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} />
 
-      {/* 상단 로그인/프로필 버튼 */}
+      {/* 상단 로그인/프로필 메뉴 */}
       <div className="absolute top-4 right-4 z-40">
-        {user ? (
-          <div
-            className="w-10 h-10 rounded-full overflow-hidden border-2 shadow-lg"
-            style={{ borderColor: 'var(--color-primary)' }}
-          >
-            {userDoc?.photoURL ? (
-              <img src={userDoc.photoURL} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-white text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
-                {userDoc?.displayName?.[0] || '?'}
-              </div>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={() => router.push('/login')}
-            className="ac-btn px-4 py-2 text-xs"
-          >
-            🔑 로그인
-          </button>
-        )}
+        <ProfileMenu />
       </div>
 
       {/* 학생 — 우리 반 바로가기 */}

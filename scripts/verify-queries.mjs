@@ -111,7 +111,42 @@ await check('활동(전시실) 생성', async () => {
   await deleteDoc(ref);
 });
 
+// ---------- 3) 학생 계정 — 관리 기능이 막히는지 ----------
+console.log('\n[학생 — 관리 기능 차단 확인]');
 await signOut(clientAuth);
+
+const STUDENT_UID = 'zz-verify-student';
+await getAdminDb().collection('users').doc(STUDENT_UID).set({
+  displayName: '검증용학생', role: 'student', classIds: ['3-1'], children: [],
+});
+await signInWithCustomToken(clientAuth, await getAdminAuth().createCustomToken(STUDENT_UID));
+
+await check('새 활동(전시실) 생성 — 차단돼야 함', async () => {
+  const ref = doc(cdb, 'schools/aewol-elementary/classes/3-1/activities/zz-student-tmp');
+  await setDoc(ref, { title: '학생이만든활동', order: 99 });
+  await deleteDoc(ref);
+}, 'deny');
+await check('반 만들기 — 차단돼야 함', async () => {
+  const ref = doc(cdb, 'schools/aewol-elementary/classes/zz-9-9');
+  await setDoc(ref, { grade: '9', classNumber: 9, isArchived: false });
+  await deleteDoc(ref);
+}, 'deny');
+await check('학생 명부 수정 — 차단돼야 함', async () => {
+  const ref = doc(cdb, 'schools/aewol-elementary/classes/3-1/students/zz-student-tmp');
+  await setDoc(ref, { number: 99, name: '몰래추가' });
+  await deleteDoc(ref);
+}, 'deny');
+await check('남의 작품 승인 — 차단돼야 함', async () => {
+  const s = await getDocs(
+    query(collection(cdb, 'schools/aewol-elementary/classes/3-1/activities/watercolor/artworks'), where('status', '==', 'approved'))
+  );
+  const target = s.docs[0];
+  await setDoc(target.ref, { status: 'approved', title: '해킹시도' }, { merge: true });
+}, 'deny');
+
+await signOut(clientAuth);
+await getAdminDb().collection('users').doc(STUDENT_UID).delete();
+
 console.log(`\n실패 ${failed}건`);
 process.exit(failed > 0 ? 1 : 0);
 
