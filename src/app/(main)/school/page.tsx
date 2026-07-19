@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
-import { APP_IMAGES } from '@/lib/image-urls';
 import Mascot from '@/components/mascot/Mascot';
+
+const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
 
 const SCHOOL_ID = 'aewol-elementary';
 
@@ -19,11 +21,6 @@ export default function SchoolPage() {
   const [showMascot, setShowMascot] = useState(true);
 
   useEffect(() => {
-    if (role === 'parent' && userDoc?.children && userDoc.children.length === 1) {
-      router.replace(`/class/${userDoc.children[0].classId}/room`);
-      return;
-    }
-
     async function fetchClasses() {
       if (!db) return;
       const q = query(
@@ -36,7 +33,7 @@ export default function SchoolPage() {
       setClasses(list);
     }
     fetchClasses();
-  }, [role, userDoc, router]);
+  }, []);
 
   const handleClassSelect = (classId: string) => {
     setSelectedId(classId);
@@ -49,23 +46,8 @@ export default function SchoolPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* 학교 전경 일러스트 배경 */}
-      <div className="absolute inset-0">
-        <img
-          src={APP_IMAGES.schoolEventMain}
-          alt="애월초등학교"
-          className="w-full h-full object-cover object-top"
-        />
-      </div>
-
-      {/* 학교 이름 오버레이 */}
-      <div className="absolute top-[52%] left-1/2 -translate-x-1/2 z-20">
-        <div className="rounded-lg px-6 py-1.5 backdrop-blur-sm" style={{ background: 'rgba(255,245,230,0.85)' }}>
-          <h1 className="text-lg font-bold tracking-wide" style={{ color: '#5B4A3B' }}>
-            애월초등학교
-          </h1>
-        </div>
-      </div>
+      {/* 3D 학교 전경 */}
+      <SchoolScene />
 
       {/* 상단 로그인/프로필 버튼 */}
       <div className="absolute top-4 right-4 z-40">
@@ -114,6 +96,34 @@ export default function SchoolPage() {
           </button>
         ))}
       </div>
+
+      {/* 학부모 — 자녀 반 바로가기 */}
+      {role === 'parent' && userDoc?.children && userDoc.children.length > 0 && (
+        <div className="absolute left-4 bottom-24 z-30 flex flex-col gap-2">
+          <div
+            className="text-[10px] font-bold px-2"
+            style={{ color: '#FFFFFF', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
+          >
+            👨‍👩‍👧 내 아이 반 바로가기
+          </div>
+          {userDoc.children.map((child) => (
+            <button
+              key={child.studentUid + child.classId}
+              onClick={() => router.push(`/class/${child.classId}/room`)}
+              className="flex items-center gap-2 rounded-full pl-3 pr-4 py-2 text-xs font-bold shadow-lg transition-transform hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.92)', color: '#2B2B2B' }}
+            >
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-full text-white text-[10px]"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {child.name?.[0] || '🙂'}
+              </span>
+              {child.name} · {child.classId}반
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 마스코트 + 말풍선 */}
       {showMascot && (

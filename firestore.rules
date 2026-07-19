@@ -1,0 +1,106 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- 헬퍼 ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return isSignedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    function isStaff() {
+      return userRole() == 'teacher' || userRole() == 'super_admin';
+    }
+
+    // ---------- 작품 (collectionGroup 조회용 — /gallery, /my-stand) ----------
+    // 승인된 작품은 누구나(비로그인 포함) 조회 가능
+    match /{path=**}/artworks/{artworkId} {
+      allow read: if resource.data.status == 'approved'
+                  || (isSignedIn()
+                      && (resource.data.uploadedBy == request.auth.uid
+                          || resource.data.artistUid == request.auth.uid))
+                  || isStaff();
+    }
+
+    // ---------- 댓글 (collectionGroup 조회 대비) ----------
+    match /{path=**}/comments/{commentId} {
+      allow read: if true;
+    }
+
+    // ---------- 사용자 ----------
+    match /users/{uid} {
+      // 본인 문서는 읽기/생성/수정 가능, 교사는 전체 열람 가능
+      allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // ---------- 학교/학년/학급 ----------
+    match /schools/{schoolId} {
+      allow read: if true;              // 전시는 공개
+      allow write: if isStaff();
+
+      match /grades/{gradeId} {
+        allow read: if true;
+        allow write: if isStaff();
+      }
+
+      match /classes/{classId} {
+        allow read: if true;
+        allow write: if isStaff();
+
+        match /activities/{activityId} {
+          allow read: if true;
+          allow write: if isStaff();
+
+          match /artworks/{artworkId} {
+            // 승인된 작품은 공개, 미승인은 작성자(업로더/작가)와 교사만
+            allow read: if resource.data.status == 'approved'
+                        || isStaff()
+                        || (isSignedIn()
+                            && (resource.data.uploadedBy == request.auth.uid
+                                || resource.data.artistUid == request.auth.uid));
+            // 학생/학부모/교사가 업로드 (항상 pending으로 생성)
+            allow create: if isSignedIn()
+                          && request.resource.data.uploadedBy == request.auth.uid
+                          && (isStaff() || request.resource.data.status == 'pending');
+            // 승인/반려는 교사만, 본인은 pending 상태에서 내용 수정 가능
+            allow update: if isStaff()
+                          || (isSignedIn()
+                              && resource.data.uploadedBy == request.auth.uid
+                              && resource.data.status == 'pending'
+                              && request.resource.data.status == 'pending');
+            allow delete: if isStaff()
+                          || (isSignedIn() && resource.data.uploadedBy == request.auth.uid);
+
+            match /comments/{commentId} {
+              allow read: if true;
+              allow create: if isSignedIn()
+                            && request.resource.data.authorUid == request.auth.uid;
+              allow update: if false;
+              allow delete: if isStaff()
+                            || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+            }
+          }
+        }
+      }
+    }
+
+    // ---------- 명부 업로드 기록 ----------
+    match /rosterUploads/{uploadId} {
+      allow read, write: if isStaff();
+    }
+
+    // 그 외 전부 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

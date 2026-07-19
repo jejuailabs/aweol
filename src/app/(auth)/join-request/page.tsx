@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -13,13 +13,15 @@ export default function JoinRequestPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (!user) {
-    router.replace('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    } else if (userDoc?.role) {
+      router.replace('/school');
+    }
+  }, [user, userDoc, router]);
 
-  if (userDoc?.role) {
-    router.replace('/school');
+  if (!user || userDoc?.role) {
     return null;
   }
 

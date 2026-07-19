@@ -1,0 +1,280 @@
+'use client';
+
+import { useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
+import * as THREE from 'three';
+
+const PI = Math.PI;
+const HALF_PI = PI * 0.5;
+const NEG_HALF_PI = -PI * 0.5;
+
+// --------------- 땅 + 길 ---------------
+function Ground() {
+  return (
+    <group>
+      {/* 잔디 */}
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 60]} />
+        <meshStandardMaterial color="#7EC850" roughness={0.95} />
+      </mesh>
+      {/* 진입로 */}
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.01, 8]}>
+        <planeGeometry args={[4.5, 22]} />
+        <meshStandardMaterial color="#E8DCC8" roughness={0.9} />
+      </mesh>
+      {/* 운동장 트랙 */}
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[-14, 0.01, 10]}>
+        <circleGeometry args={[8, 32]} />
+        <meshStandardMaterial color="#D9A876" roughness={0.9} />
+      </mesh>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[-14, 0.02, 10]}>
+        <circleGeometry args={[5.5, 32]} />
+        <meshStandardMaterial color="#8FD070" roughness={0.95} />
+      </mesh>
+      {/* 화단 */}
+      {([[-4.5, 3], [4.5, 3]] as [number, number][]).map(([x, z]) => (
+        <group key={`fb-${x}`} position={[x, 0, z]}>
+          <mesh position={[0, 0.15, 0]}>
+            <boxGeometry args={[2.6, 0.3, 1.2]} />
+            <meshStandardMaterial color="#B08860" />
+          </mesh>
+          {[-0.8, 0, 0.8].map((fx) => (
+            <group key={`f-${fx}`} position={[fx, 0.42, 0]}>
+              <mesh>
+                <sphereGeometry args={[0.16, 8, 8]} />
+                <meshStandardMaterial color={fx === 0 ? '#FF8FB1' : '#FFD93D'} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// --------------- 학교 건물 ---------------
+function SchoolBuilding() {
+  const bodyW = 18;
+  const bodyH = 6.5;
+  const bodyD = 6;
+
+  return (
+    <group position={[0, 0, -6]}>
+      {/* 본관 */}
+      <mesh position={[0, bodyH * 0.5, 0]} castShadow>
+        <boxGeometry args={[bodyW, bodyH, bodyD]} />
+        <meshStandardMaterial color="#FFF3E0" roughness={0.7} />
+      </mesh>
+      {/* 지붕 */}
+      <mesh position={[0, bodyH + 0.55, 0]}>
+        <boxGeometry args={[bodyW + 1, 1.1, bodyD + 1]} />
+        <meshStandardMaterial color="#E0704A" roughness={0.6} />
+      </mesh>
+      {/* 중앙 현관탑 */}
+      <mesh position={[0, 3.9, bodyD * 0.5 + 0.6]} castShadow>
+        <boxGeometry args={[4.6, 7.8, 1.4]} />
+        <meshStandardMaterial color="#FFE8CC" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 8.15, bodyD * 0.5 + 0.6]}>
+        <boxGeometry args={[5.2, 0.9, 2]} />
+        <meshStandardMaterial color="#D9603C" roughness={0.6} />
+      </mesh>
+      {/* 현관문 */}
+      <mesh position={[0, 1.25, bodyD * 0.5 + 1.32]}>
+        <boxGeometry args={[2.2, 2.5, 0.12]} />
+        <meshStandardMaterial color="#8A5A3B" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 1.25, bodyD * 0.5 + 1.39]}>
+        <planeGeometry args={[0.9, 1.9]} />
+        <meshStandardMaterial color="#5B3A24" />
+      </mesh>
+      {/* 현관 위 시계 */}
+      <mesh position={[0, 5.6, bodyD * 0.5 + 1.32]} rotation={[HALF_PI, 0, 0]}>
+        <cylinderGeometry args={[0.65, 0.65, 0.1, 24]} />
+        <meshStandardMaterial color="#FFFFFF" />
+      </mesh>
+      {/* 창문 2층 x 8칸 (좌우) */}
+      {[1.9, 4.4].map((y) =>
+        [-7.5, -5.4, -3.3, 3.3, 5.4, 7.5].map((x) => (
+          <group key={`w-${x}-${y}`} position={[x, y, bodyD * 0.5 + 0.02]}>
+            <mesh>
+              <boxGeometry args={[1.5, 1.6, 0.05]} />
+              <meshStandardMaterial color="#FFFFFF" />
+            </mesh>
+            <mesh position={[0, 0, 0.03]}>
+              <planeGeometry args={[1.28, 1.38]} />
+              <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.25} />
+            </mesh>
+          </group>
+        ))
+      )}
+      {/* 학교 간판 */}
+      <Html position={[0, 6.9, bodyD * 0.5 + 1.4]} transform scale={0.5} pointerEvents="none">
+        <div
+          style={{
+            background: '#FFF8E7', border: '3px solid #B08860', borderRadius: '12px',
+            padding: '8px 30px', fontFamily: 'Pretendard, sans-serif', fontWeight: 800,
+            fontSize: '30px', color: '#5B4A3B', whiteSpace: 'nowrap', userSelect: 'none',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+          }}
+        >
+          🏫 애월초등학교
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// --------------- 깃대 ---------------
+function FlagPole() {
+  const flagRef = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (flagRef.current) {
+      flagRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 2.2) * 0.18;
+    }
+  });
+  return (
+    <group position={[7.5, 0, 1]}>
+      <mesh position={[0, 3, 0]}>
+        <cylinderGeometry args={[0.05, 0.07, 6, 8]} />
+        <meshStandardMaterial color="#C0C0C0" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh ref={flagRef} position={[0.62, 5.55, 0]}>
+        <planeGeometry args={[1.2, 0.75]} />
+        <meshStandardMaterial color="#FFFFFF" side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+// --------------- 나무 ---------------
+function Tree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh position={[0, 0.9, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.24, 1.8, 8]} />
+        <meshStandardMaterial color="#8A5A3B" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 2.2, 0]} castShadow>
+        <sphereGeometry args={[1.05, 12, 12]} />
+        <meshStandardMaterial color="#4FA85E" roughness={0.95} />
+      </mesh>
+      <mesh position={[0.55, 2.7, 0.15]}>
+        <sphereGeometry args={[0.65, 10, 10]} />
+        <meshStandardMaterial color="#5FBC6E" roughness={0.95} />
+      </mesh>
+      <mesh position={[-0.5, 2.65, -0.1]}>
+        <sphereGeometry args={[0.55, 10, 10]} />
+        <meshStandardMaterial color="#3E8E4D" roughness={0.95} />
+      </mesh>
+    </group>
+  );
+}
+
+// --------------- 구름 ---------------
+function Cloud({ position, speed = 0.2 }: { position: [number, number, number]; speed?: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const startX = position[0];
+  useFrame((state) => {
+    if (ref.current) {
+      ref.current.position.x = startX + Math.sin(state.clock.elapsedTime * speed) * 3;
+    }
+  });
+  return (
+    <group ref={ref} position={position}>
+      <mesh>
+        <sphereGeometry args={[1.1, 10, 10]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={1} />
+      </mesh>
+      <mesh position={[1, 0.15, 0]}>
+        <sphereGeometry args={[0.8, 10, 10]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={1} />
+      </mesh>
+      <mesh position={[-1, 0.1, 0]}>
+        <sphereGeometry args={[0.75, 10, 10]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
+// --------------- 카메라 ---------------
+function SchoolCamera() {
+  const { camera, pointer } = useThree();
+  const introT = useRef(0);
+  const base = useRef(new THREE.Vector3(0, 4.2, 16));
+  const introFrom = useRef(new THREE.Vector3(0, 9, 26));
+
+  useFrame((state, delta) => {
+    if (introT.current < 1) {
+      introT.current = Math.min(1, introT.current + delta * 0.4);
+      const ease = 1 - Math.pow(1 - introT.current, 3);
+      camera.position.lerpVectors(introFrom.current, base.current, ease);
+    } else {
+      const t = state.clock.elapsedTime;
+      const targetX = base.current.x + Math.sin(t * 0.18) * 0.6 + pointer.x * 1.2;
+      const targetY = base.current.y + Math.cos(t * 0.15) * 0.25 + pointer.y * 0.5;
+      camera.position.x += (targetX - camera.position.x) * 1.5 * delta;
+      camera.position.y += (targetY - camera.position.y) * 1.5 * delta;
+    }
+    camera.lookAt(0, 3.2, -4);
+  });
+
+  return null;
+}
+
+// --------------- 메인 ---------------
+export default function SchoolScene() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let raf = 0;
+    const fix = () => {
+      const canvas = el.querySelector('canvas');
+      if (!canvas) { raf = requestAnimationFrame(fix); return; }
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0 && canvas.width !== w * 2 && canvas.width !== w) {
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+      }
+    };
+    raf = requestAnimationFrame(fix);
+    const t1 = setTimeout(fix, 120);
+    const t2 = setTimeout(fix, 500);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      <Canvas
+        shadows
+        camera={{ position: [0, 9, 26], fov: 50, near: 0.1, far: 120 }}
+        gl={{ antialias: true }}
+        dpr={[1, 2]}
+        style={{
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'linear-gradient(180deg, #6EC6F0 0%, #A8DDF5 45%, #D8F0FB 100%)',
+        }}
+      >
+        <ambientLight intensity={0.65} color="#FFF8E7" />
+        <directionalLight position={[10, 14, 8]} intensity={1.1} color="#FFF4DC" castShadow />
+        <Ground />
+        <SchoolBuilding />
+        <FlagPole />
+        <Tree position={[-10.5, 0, -1]} scale={1.15} />
+        <Tree position={[10.5, 0, -1.5]} scale={1.05} />
+        <Tree position={[-8, 0, 4]} scale={0.85} />
+        <Tree position={[12, 0, 5]} scale={0.9} />
+        <Cloud position={[-9, 12, -14]} speed={0.14} />
+        <Cloud position={[7, 13.5, -16]} speed={0.1} />
+        <Cloud position={[0, 11, -12]} speed={0.18} />
+        <SchoolCamera />
+      </Canvas>
+    </div>
+  );
+}

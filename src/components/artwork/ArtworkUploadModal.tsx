@@ -36,7 +36,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
     setUploading(true);
 
     const artworkId = `art-${Date.now()}`;
-    const storagePath = `artworks/${artworkId}/${file.name}`;
+    const storagePath = `artworks/${user.uid}/${artworkId}-${file.name}`;
     const storageRef = ref(storage, storagePath);
 
     await uploadBytes(storageRef, file);

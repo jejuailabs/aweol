@@ -117,6 +117,94 @@ function Room() {
           <meshStandardMaterial color="#888" metalness={0.8} roughness={0.2} />
         </mesh>
       ))}
+
+      {/* 걸레받이 (3면) */}
+      <mesh position={[0, 0.06, -halfD + 0.02]}>
+        <boxGeometry args={[roomW, 0.12, 0.04]} />
+        <meshStandardMaterial color="#8B6544" />
+      </mesh>
+      <mesh position={[-halfW + 0.02, 0.06, 0]} rotation={[0, HALF_PI, 0]}>
+        <boxGeometry args={[roomD, 0.12, 0.04]} />
+        <meshStandardMaterial color="#8B6544" />
+      </mesh>
+      <mesh position={[halfW - 0.02, 0.06, 0]} rotation={[0, NEG_HALF_PI, 0]}>
+        <boxGeometry args={[roomD, 0.12, 0.04]} />
+        <meshStandardMaterial color="#8B6544" />
+      </mesh>
+
+      {/* 천장 몰딩 (3면) */}
+      <mesh position={[0, roomH - 0.08, -halfD + 0.03]}>
+        <boxGeometry args={[roomW, 0.16, 0.06]} />
+        <meshStandardMaterial color="#F0E4D4" />
+      </mesh>
+      <mesh position={[-halfW + 0.03, roomH - 0.08, 0]} rotation={[0, HALF_PI, 0]}>
+        <boxGeometry args={[roomD, 0.16, 0.06]} />
+        <meshStandardMaterial color="#F0E4D4" />
+      </mesh>
+      <mesh position={[halfW - 0.03, roomH - 0.08, 0]} rotation={[0, NEG_HALF_PI, 0]}>
+        <boxGeometry args={[roomD, 0.16, 0.06]} />
+        <meshStandardMaterial color="#F0E4D4" />
+      </mesh>
+
+      {/* 중앙 카펫 러너 */}
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.01, 1]}>
+        <planeGeometry args={[3.2, 11]} />
+        <meshStandardMaterial color="#7B4B94" roughness={0.95} />
+      </mesh>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.012, 1]}>
+        <planeGeometry args={[2.8, 10.6]} />
+        <meshStandardMaterial color="#9B6BB4" roughness={0.95} />
+      </mesh>
+
+      {/* 관람 벤치 2개 */}
+      {[-2.5, 2.5].map((x) => (
+        <group key={`bench-${x}`} position={[x, 0, 2.5]}>
+          <mesh position={[0, 0.42, 0]} castShadow>
+            <boxGeometry args={[1.6, 0.08, 0.5]} />
+            <meshStandardMaterial color="#A0714A" roughness={0.5} />
+          </mesh>
+          {[-0.65, 0.65].map((lx) => (
+            <mesh key={`leg-${lx}`} position={[lx, 0.19, 0]}>
+              <boxGeometry args={[0.08, 0.38, 0.42]} />
+              <meshStandardMaterial color="#7A5230" />
+            </mesh>
+          ))}
+        </group>
+      ))}
+
+      {/* 코너 화분 4개 */}
+      {([[-7, -7], [7, -7], [-7, 6.5], [7, 6.5]] as [number, number][]).map(([px, pz]) => (
+        <group key={`plant-${px}-${pz}`} position={[px, 0, pz]}>
+          <mesh position={[0, 0.3, 0]} castShadow>
+            <cylinderGeometry args={[0.28, 0.35, 0.6, 12]} />
+            <meshStandardMaterial color="#C96A4A" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.9, 0]}>
+            <sphereGeometry args={[0.42, 12, 12]} />
+            <meshStandardMaterial color="#3E8E4D" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.22, 1.15, 0.1]}>
+            <sphereGeometry args={[0.26, 10, 10]} />
+            <meshStandardMaterial color="#4FA85E" roughness={0.9} />
+          </mesh>
+          <mesh position={[-0.2, 1.1, -0.12]}>
+            <sphereGeometry args={[0.22, 10, 10]} />
+            <meshStandardMaterial color="#357A42" roughness={0.9} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* 입구 안내판 */}
+      <group position={[0, 0, 7.4]}>
+        <mesh position={[0, 0.75, 0]} rotation={[-0.18, 0, 0]} castShadow>
+          <boxGeometry args={[1.1, 1.3, 0.06]} />
+          <meshStandardMaterial color="#5B4A3B" />
+        </mesh>
+        <mesh position={[0, 0.78, 0.035]} rotation={[-0.18, 0, 0]}>
+          <planeGeometry args={[0.94, 1.1]} />
+          <meshStandardMaterial color="#FFF8E7" />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -191,20 +279,32 @@ function WallArtwork({
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      {/* 액자 외곽 */}
+      {/* 액자 외곽 — 원목 */}
       <mesh onClick={onClick} castShadow>
-        <boxGeometry args={[frameW + 0.2, frameH + 0.2, 0.1]} />
-        <meshStandardMaterial color={hovered ? '#D4A574' : '#F0E0D0'} />
+        <boxGeometry args={[frameW + 0.24, frameH + 0.24, 0.09]} />
+        <meshStandardMaterial color={hovered ? '#B8894F' : '#9C7040'} roughness={0.4} />
+      </mesh>
+
+      {/* 금테 몰딩 */}
+      <mesh position={[0, 0, 0.046]}>
+        <boxGeometry args={[frameW + 0.14, frameH + 0.14, 0.015]} />
+        <meshStandardMaterial color="#D9B45B" metalness={0.65} roughness={0.3} />
       </mesh>
 
       {/* 내부 매트 */}
-      <mesh position={[0, 0, 0.04]}>
-        <planeGeometry args={[frameW + 0.05, frameH + 0.05]} />
-        <meshStandardMaterial color="#FFFFFF" />
+      <mesh position={[0, 0, 0.056]}>
+        <planeGeometry args={[frameW + 0.06, frameH + 0.06]} />
+        <meshStandardMaterial color="#FFFDF6" />
+      </mesh>
+
+      {/* 이름 명패 */}
+      <mesh position={[0, -(frameH * 0.5) - 0.24, 0.02]}>
+        <boxGeometry args={[0.72, 0.16, 0.02]} />
+        <meshStandardMaterial color="#C8A860" metalness={0.5} roughness={0.35} />
       </mesh>
 
       {/* 작품 이미지 */}
-      <group position={[0, 0, 0.06]} onClick={onClick}>
+      <group position={[0, 0, 0.07]} onClick={onClick}>
         <ArtworkImage url={artwork.imageUrl} width={frameW - 0.1} height={frameH - 0.1} />
       </group>
 
@@ -395,18 +495,31 @@ function WalkingAvatar({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.
   );
 }
 
-// --------------- 카메라 팔로우 ---------------
+// --------------- 카메라 팔로우 (입장 연출 포함) ---------------
 function CameraFollower({ avatarPos }: { avatarPos: React.MutableRefObject<THREE.Vector3> }) {
   const { camera } = useThree();
   const cameraOffset = useMemo(() => new THREE.Vector3(0, 3.5, 6), []);
   const lookOffset = useMemo(() => new THREE.Vector3(0, 1.2, 0), []);
+  const introT = useRef(0);
+  const introFrom = useMemo(() => new THREE.Vector3(0, 4.2, 14.5), []);
+  const introLookFrom = useMemo(() => new THREE.Vector3(0, 2.2, -6), []);
 
   useFrame((_, delta) => {
-    const targetPos = avatarPos.current.clone().add(cameraOffset);
-    camera.position.lerp(targetPos, 4 * delta);
+    const followPos = avatarPos.current.clone().add(cameraOffset);
+    const followLook = avatarPos.current.clone().add(lookOffset);
 
-    const lookTarget = avatarPos.current.clone().add(lookOffset);
-    camera.lookAt(lookTarget);
+    if (introT.current < 1) {
+      introT.current = Math.min(1, introT.current + delta * 0.45);
+      const t = introT.current;
+      const ease = 1 - Math.pow(1 - t, 3);
+      camera.position.lerpVectors(introFrom, followPos, ease);
+      const look = introLookFrom.clone().lerp(followLook, ease);
+      camera.lookAt(look);
+      return;
+    }
+
+    camera.position.lerp(followPos, 4 * delta);
+    camera.lookAt(followLook);
   });
 
   return null;
@@ -432,7 +545,7 @@ function CanvasResizer({ containerRef }: { containerRef: React.RefObject<HTMLDiv
         camera.aspect = w * Math.pow(h, -1);
         camera.updateProjectionMatrix();
       }
-      set({ size: { width: w, height: h, top: 0, left: 0, updateStyle: false } });
+      set({ size: { width: w, height: h, top: 0, left: 0 } });
       fixedRef.current = true;
     };
 

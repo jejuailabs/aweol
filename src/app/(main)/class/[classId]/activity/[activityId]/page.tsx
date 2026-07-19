@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc, ActivityDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
@@ -42,9 +42,10 @@ export default function ActivityExhibitPage() {
   const fetchArtworks = useCallback(async () => {
     if (!db) return;
     try {
-      const artSnap = await getDocs(collection(db, basePath));
+      const artSnap = await getDocs(
+        query(collection(db, basePath), where('status', '==', 'approved'))
+      );
       const list = artSnap.docs
-        .filter((d) => d.data().status === 'approved')
         .map((d) => {
           const data = d.data() as ArtworkDoc;
           return {

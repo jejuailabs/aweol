@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // 앱 공용 이미지 (학교 전경 등) — 읽기 공개, 쓰기 금지(콘솔/서버에서만)
+    match /app-assets/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 작품 이미지 — 읽기 공개(전시), 업로드는 로그인 사용자 본인 경로에만
+    match /artworks/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // 그 외 전부 차단
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

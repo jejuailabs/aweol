@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collectionGroup, getDocs } from 'firebase/firestore';
+import { collectionGroup, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
 
@@ -16,10 +16,10 @@ export default function GalleryPage() {
     async function fetchAll() {
       if (!db) return;
       try {
-        const snap = await getDocs(collectionGroup(db, 'artworks'));
-        const list = snap.docs
-          .filter((d) => d.data().status === 'approved')
-          .map((d) => ({ id: d.id, path: d.ref.path, ...d.data() } as ArtworkItem));
+        const snap = await getDocs(
+          query(collectionGroup(db, 'artworks'), where('status', '==', 'approved'))
+        );
+        const list = snap.docs.map((d) => ({ id: d.id, path: d.ref.path, ...d.data() } as ArtworkItem));
         setArtworks(list);
       } catch (e) {
         console.error('Failed to fetch gallery:', e);

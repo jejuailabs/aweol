@@ -5,7 +5,7 @@ import BottomNav from '@/components/navigation/BottomNav';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isExhibitRoom = pathname?.includes('/activity/');
+  const isExhibitRoom = pathname?.includes('/activity/') || pathname?.endsWith('/room');
 
   if (isExhibitRoom) {
     return <>{children}</>;
