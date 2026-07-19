@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collectionGroup, getDocs, query, where } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
 
@@ -22,7 +22,31 @@ export default function GalleryPage() {
         const list = snap.docs.map((d) => ({ id: d.id, path: d.ref.path, ...d.data() } as ArtworkItem));
         setArtworks(list);
       } catch (e) {
-        console.error('Failed to fetch gallery:', e);
+        // collection-group 인덱스가 아직 없으면 반→활동→작품 순회로 폴백
+        console.warn('collectionGroup 쿼리 실패, 순회 방식으로 폴백:', e);
+        try {
+          const list: ArtworkItem[] = [];
+          const classSnap = await getDocs(collection(db, 'schools', 'aewol-elementary', 'classes'));
+          for (const cls of classSnap.docs) {
+            const actSnap = await getDocs(
+              collection(db, 'schools', 'aewol-elementary', 'classes', cls.id, 'activities')
+            );
+            for (const act of actSnap.docs) {
+              const artSnap = await getDocs(
+                query(
+                  collection(db, 'schools', 'aewol-elementary', 'classes', cls.id, 'activities', act.id, 'artworks'),
+                  where('status', '==', 'approved')
+                )
+              );
+              artSnap.docs.forEach((d) => {
+                list.push({ id: d.id, path: d.ref.path, ...d.data() } as ArtworkItem);
+              });
+            }
+          }
+          setArtworks(list);
+        } catch (e2) {
+          console.error('Failed to fetch gallery:', e2);
+        }
       }
       setFetched(true);
     }

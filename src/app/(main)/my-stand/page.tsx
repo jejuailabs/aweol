@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collectionGroup, getDocs, query, where } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
@@ -43,7 +43,29 @@ export default function MyStandPage() {
         const snap = await getDocs(q);
         setMyArtworks(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ArtworkDoc & { id: string })));
       } catch (e) {
-        console.error('Failed to fetch my artworks:', e);
+        // collection-group 인덱스가 없으면 반→활동 순회로 폴백
+        console.warn('collectionGroup 쿼리 실패, 순회 방식으로 폴백:', e);
+        try {
+          const list: (ArtworkDoc & { id: string })[] = [];
+          const classSnap = await getDocs(collection(db, 'schools', 'aewol-elementary', 'classes'));
+          for (const cls of classSnap.docs) {
+            const actSnap = await getDocs(
+              collection(db, 'schools', 'aewol-elementary', 'classes', cls.id, 'activities')
+            );
+            for (const act of actSnap.docs) {
+              const artSnap = await getDocs(
+                query(
+                  collection(db, 'schools', 'aewol-elementary', 'classes', cls.id, 'activities', act.id, 'artworks'),
+                  where('artistUid', '==', user.uid)
+                )
+              );
+              artSnap.docs.forEach((d) => list.push({ id: d.id, ...d.data() } as ArtworkDoc & { id: string }));
+            }
+          }
+          setMyArtworks(list);
+        } catch (e2) {
+          console.error('Failed to fetch my artworks:', e2);
+        }
       }
       setFetched(true);
     }
