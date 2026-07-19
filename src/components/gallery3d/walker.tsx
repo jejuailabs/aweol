@@ -250,6 +250,25 @@ export interface WalkerBounds {
   zMax: number;
 }
 
+/** 통과할 수 없는 사각 장애물 (책상·벤치·좌대 등) */
+export interface Obstacle {
+  x: number;
+  z: number;
+  halfW: number;
+  halfD: number;
+}
+
+const AVATAR_RADIUS = 0.28;
+
+function isBlocked(x: number, z: number, obstacles: Obstacle[]) {
+  for (const o of obstacles) {
+    const overlapX = Math.abs(x - o.x) - (o.halfW + AVATAR_RADIUS);
+    const overlapZ = Math.abs(z - o.z) - (o.halfD + AVATAR_RADIUS);
+    if (overlapX < 0 && overlapZ < 0) return true;
+  }
+  return false;
+}
+
 export function WalkerAvatar({
   avatarPos,
   bounds,
@@ -257,6 +276,7 @@ export function WalkerAvatar({
   maxSpeed = 4.2,
   scale = 1,
   avatarId,
+  obstacles = [],
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
   bounds: WalkerBounds;
@@ -264,6 +284,7 @@ export function WalkerAvatar({
   maxSpeed?: number;
   scale?: number;
   avatarId?: string | null;
+  obstacles?: Obstacle[];
 }) {
   const look = getAvatarLook(avatarId);
   const groupRef = useRef<THREE.Group>(null);
@@ -310,10 +331,23 @@ export function WalkerAvatar({
     const speedNow = Math.sqrt(vel.current.x * vel.current.x + vel.current.z * vel.current.z);
     const moving = speedNow > 0.35;
 
-    const newX = groupRef.current.position.x + vel.current.x * delta;
-    const newZ = groupRef.current.position.z + vel.current.z * delta;
-    groupRef.current.position.x = Math.max(bounds.xMin, Math.min(bounds.xMax, newX));
-    groupRef.current.position.z = Math.max(bounds.zMin, Math.min(bounds.zMax, newZ));
+    // 축별로 따로 판정해서 장애물에 부딪히면 벽을 타고 미끄러지듯 이동한다
+    const curX = groupRef.current.position.x;
+    const curZ = groupRef.current.position.z;
+
+    const tryX = Math.max(bounds.xMin, Math.min(bounds.xMax, curX + vel.current.x * delta));
+    if (!isBlocked(tryX, curZ, obstacles)) {
+      groupRef.current.position.x = tryX;
+    } else {
+      vel.current.x = 0;
+    }
+
+    const tryZ = Math.max(bounds.zMin, Math.min(bounds.zMax, curZ + vel.current.z * delta));
+    if (!isBlocked(groupRef.current.position.x, tryZ, obstacles)) {
+      groupRef.current.position.z = tryZ;
+    } else {
+      vel.current.z = 0;
+    }
 
     if (moving) {
       const targetAngle = Math.atan2(vel.current.x, vel.current.z);

@@ -66,6 +66,13 @@ service cloud.firestore {
           allow read, write: if isStaff();
         }
 
+        // 칠판 낙서 — 읽기는 공개, 쓰기는 서버(Admin SDK)만.
+        // 클라이언트가 직접 쓰지 못하게 막아야 작성자 위조와 IP 누락을 방지할 수 있다.
+        match /blackboard/{itemId} {
+          allow read: if true;
+          allow write: if false;
+        }
+
         match /activities/{activityId} {
           allow read: if true;
           allow write: if isStaff();
@@ -107,6 +114,13 @@ service cloud.firestore {
           }
         }
       }
+    }
+
+    // ---------- 접근 기록 (계정 도용 추적) ----------
+    // IP가 담긴 민감 정보이므로 슈퍼 관리자만 열람. 쓰기는 서버만.
+    match /accessLogs/{logId} {
+      allow read: if isSignedIn() && userRole() == 'super_admin';
+      allow write: if false;
     }
 
     // 그 외 전부 차단

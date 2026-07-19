@@ -4,7 +4,15 @@ import { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle } from './walker';
+
+// 벤치 2개 + 코너 화분 4개 (Room의 배치와 같은 값)
+const ROOM_OBSTACLES: Obstacle[] = [
+  ...[-2.5, 2.5].map((x) => ({ x, z: 2.5, halfW: 0.85, halfD: 0.3 })),
+  ...([[-7, -7], [7, -7], [-7, 6.5], [7, 6.5]] as [number, number][]).map(([x, z]) => ({
+    x, z, halfW: 0.4, halfD: 0.4,
+  })),
+];
 
 export { setJoystickDir } from './walker';
 
@@ -525,6 +533,18 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
   const flatArtworks = displayArtworks.filter((a) => a.type === 'flat');
   const sculptureArtworks = displayArtworks.filter((a) => a.type === 'sculpture');
 
+  // 조형물 좌대도 장애물 (아래 배치 계산과 같은 식을 쓴다)
+  const sculptureOffset = (sculptureArtworks.length - 1) * 0.5;
+  const obstacles: Obstacle[] = [
+    ...ROOM_OBSTACLES,
+    ...sculptureArtworks.map((_, i) => ({
+      x: (i - sculptureOffset) * 3,
+      z: -2,
+      halfW: 0.55,
+      halfD: 0.55,
+    })),
+  ];
+
   type WallPlacement = { artwork: ArtworkData; pos: [number, number, number]; rot: [number, number, number] };
   const wallPlacements: WallPlacement[] = [];
 
@@ -606,6 +626,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
           bounds={{ xMin: -7, xMax: 7, zMin: -7, zMax: 7 }}
           start={[0, 0, 5]}
           avatarId={avatarId}
+          obstacles={obstacles}
         />
         <DustPuffs />
         <FollowCamera

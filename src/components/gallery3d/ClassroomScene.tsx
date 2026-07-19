@@ -4,7 +4,15 @@ import { useRef, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle } from './walker';
+import Blackboard, { type BoardItem } from './Blackboard';
+
+// 책상+의자 한 세트를 하나의 장애물로 본다 (Desks의 rows/cols와 같은 값을 써야 한다)
+const DESK_ROWS = [1.2, 3.2];
+const DESK_COLS = [-3.6, -1.2, 1.2, 3.6];
+const CLASSROOM_OBSTACLES: Obstacle[] = DESK_ROWS.flatMap((z) =>
+  DESK_COLS.map((x) => ({ x, z: z + 0.3, halfW: 0.46, halfD: 0.6 }))
+);
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -26,6 +34,14 @@ interface ClassroomSceneProps {
   canManage?: boolean;
   onAddActivity?: () => void;
   avatarId?: string | null;
+  /** 칠판 낙서 */
+  boardItems?: BoardItem[];
+  canDraw?: boolean;
+  drawMode?: 'pen' | 'eraser' | 'text';
+  drawColor?: string;
+  penWidth?: number;
+  onCommitStroke?: (points: number[][], color: string, width: number) => void;
+  onRequestText?: (point: number[]) => void;
 }
 
 // --------------- 교실 구조 ---------------
@@ -124,45 +140,6 @@ function RoomShell() {
           <meshStandardMaterial color="#FFFFFF" />
         </mesh>
       </group>
-    </group>
-  );
-}
-
-// --------------- 칠판 ---------------
-function Blackboard({ classLabel }: { classLabel: string }) {
-  return (
-    <group position={[0, 2.15, -5.93]}>
-      {/* 나무 프레임 */}
-      <mesh castShadow>
-        <boxGeometry args={[6.4, 2.15, 0.08]} />
-        <meshStandardMaterial color="#A97B4F" roughness={0.5} />
-      </mesh>
-      {/* 칠판면 */}
-      <mesh position={[0, 0.04, 0.045]}>
-        <planeGeometry args={[6.05, 1.85]} />
-        <meshStandardMaterial color="#2E5844" roughness={0.85} />
-      </mesh>
-      {/* 분필 받침 */}
-      <mesh position={[0, -1.12, 0.12]}>
-        <boxGeometry args={[6.4, 0.07, 0.22]} />
-        <meshStandardMaterial color="#8F6238" />
-      </mesh>
-      {/* 칠판 글씨 */}
-      <Html position={[0, 0.1, 0.06]} transform scale={0.42} pointerEvents="none">
-        <div style={{ width: '560px', textAlign: 'center', userSelect: 'none' }}>
-          <div style={{ color: '#FFF8E7', fontSize: '44px', fontWeight: 800, textShadow: '0 0 6px rgba(255,255,255,0.25)', fontFamily: 'Pretendard, sans-serif' }}>
-            {classLabel} 교실
-          </div>
-          <div style={{ color: '#CDE8D8', fontSize: '20px', marginTop: '8px', fontFamily: 'Pretendard, sans-serif' }}>
-            게시판에서 보고 싶은 활동을 눌러보세요 ✏️
-          </div>
-        </div>
-      </Html>
-      {/* 태극기 */}
-      <mesh position={[0, 1.55, 0]}>
-        <boxGeometry args={[0.75, 0.5, 0.03]} />
-        <meshStandardMaterial color="#FFFFFF" />
-      </mesh>
     </group>
   );
 }
@@ -358,8 +335,8 @@ function ActivityPoster({
 
 // --------------- 책상들 (캔디 컬러 의자) ---------------
 function Desks() {
-  const rows = [1.2, 3.2];
-  const cols = [-3.6, -1.2, 1.2, 3.6];
+  const rows = DESK_ROWS;
+  const cols = DESK_COLS;
   const chairColors = ['#E8493C', '#FFD93D', '#4FA8E8', '#8FD98A'];
   return (
     <group>
@@ -439,7 +416,11 @@ function ClassroomLighting() {
 }
 
 // --------------- 메인 ---------------
-export default function ClassroomScene({ classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId }: ClassroomSceneProps) {
+export default function ClassroomScene({
+  classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId,
+  boardItems = [], canDraw = false, drawMode = 'pen', drawColor = '#FFFFFF', penWidth = 5,
+  onCommitStroke = () => {}, onRequestText = () => {},
+}: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
 
@@ -483,7 +464,16 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
       >
         <ClassroomLighting />
         <RoomShell />
-        <Blackboard classLabel={classLabel} />
+        <Blackboard
+          classLabel={classLabel}
+          items={boardItems}
+          canDraw={canDraw}
+          drawMode={drawMode}
+          color={drawColor}
+          penWidth={penWidth}
+          onCommitStroke={onCommitStroke}
+          onRequestText={onRequestText}
+        />
         <ActivityBoard
           activities={activities}
           onActivitySelect={onActivitySelect}
@@ -497,6 +487,7 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
           start={[0, 0, 3.5]}
           maxSpeed={3.8}
           avatarId={avatarId}
+          obstacles={CLASSROOM_OBSTACLES}
         />
         <DustPuffs />
         <FollowCamera

@@ -4,7 +4,18 @@ import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle } from './walker';
+
+// 나무 줄기와 화단 (아래 배치와 같은 좌표)
+const SCHOOL_OBSTACLES: Obstacle[] = [
+  { x: -10.5, z: -1, halfW: 0.4, halfD: 0.4 },
+  { x: 10.5, z: -1.5, halfW: 0.4, halfD: 0.4 },
+  { x: -8, z: 4, halfW: 0.35, halfD: 0.35 },
+  { x: 12, z: 5, halfW: 0.35, halfD: 0.35 },
+  { x: -4.5, z: 3, halfW: 1.35, halfD: 0.65 },
+  { x: 4.5, z: 3, halfW: 1.35, halfD: 0.65 },
+  { x: 7.5, z: 1, halfW: 0.25, halfD: 0.25 },
+];
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -416,6 +427,7 @@ export default function SchoolScene({
           start={[0, 0, 11]}
           maxSpeed={5}
           avatarId={avatarId}
+          obstacles={SCHOOL_OBSTACLES}
         />
         <DustPuffs />
         <FollowCamera

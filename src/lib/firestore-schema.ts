@@ -77,6 +77,33 @@ export interface RosterUploadDoc {
   uploadedAt: Timestamp;
 }
 
+/** 칠판 낙서 한 획(또는 텍스트 한 개). 작성자는 항상 기록되며 익명 작성은 불가. */
+export interface BlackboardItemDoc {
+  kind: 'stroke' | 'text';
+  /** 정규화 좌표(0~1)를 [x,y,x,y,...] 로 편 배열. Firestore가 중첩 배열을 못 쓴다. */
+  points: number[];
+  color: string;
+  width: number;
+  /** kind === 'text' 일 때만 */
+  text?: string;
+  authorUid: string;
+  authorName: string;
+  authorRole: UserRole;
+  createdAt: Timestamp;
+}
+
+/** 계정 도용 추적용 접근 기록. 슈퍼 관리자만 조회 가능. */
+export interface AccessLogDoc {
+  uid: string;
+  displayName: string;
+  role: UserRole | null;
+  action: string;
+  classId: string | null;
+  ip: string;
+  userAgent: string;
+  createdAt: Timestamp;
+}
+
 export type AvatarId =
   | 'avatar_01'
   | 'avatar_02'

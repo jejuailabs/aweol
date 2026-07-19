@@ -43,7 +43,7 @@ const EMPTY_MEMBERS: MemberStat = { teachers: [], students: [], parents: [], pen
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, userDoc, role, loading } = useAuth();
+  const { user, userDoc, role, actualRole, loading } = useAuth();
   const [classes, setClasses] = useState<ClassStat[]>([]);
   const [members, setMembers] = useState<MemberStat>(EMPTY_MEMBERS);
   const [fetched, setFetched] = useState(false);
@@ -448,6 +448,19 @@ export default function AdminPage() {
             직접 입력 / 엑셀 등록
           </div>
         </button>
+        {actualRole === 'super_admin' && (
+          <button
+            onClick={() => router.push('/admin/logs')}
+            className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
+            style={{ background: 'var(--color-surface-soft)' }}
+          >
+            <div className="text-2xl mb-2">🔎</div>
+            <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>접근 기록</div>
+            <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+              작성자·IP 확인 (도용 추적)
+            </div>
+          </button>
+        )}
       </div>
 
       {/* 반 만들기 모달 */}
