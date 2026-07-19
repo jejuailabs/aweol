@@ -23,6 +23,8 @@ export default function AdminPage() {
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [totalPending, setTotalPending] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [stats, setStats] = useState({ activities: 0, artworks: 0, approved: 0, pending: 0, rejected: 0, students: 0 });
   const [newGrade, setNewGrade] = useState('3');
   const [newClassNum, setNewClassNum] = useState('');
   const [newMotto, setNewMotto] = useState('');
@@ -68,19 +70,32 @@ export default function AdminPage() {
 
       let pending = 0;
       const summaries: ClassSummary[] = [];
+      const totals = { activities: 0, artworks: 0, approved: 0, pending: 0, rejected: 0, students: 0 };
 
       for (const cls of classSnap.docs) {
         const data = cls.data();
         const activitiesSnap = await getDocs(
           collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'activities')
         );
+        totals.activities += activitiesSnap.size;
+
+        const studentsSnap = await getDocs(
+          collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'students')
+        );
+        totals.students += studentsSnap.size;
 
         let classPending = 0;
         for (const act of activitiesSnap.docs) {
           const artSnap = await getDocs(
             collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'activities', act.id, 'artworks')
           );
-          classPending += artSnap.docs.filter((d) => d.data().status === 'pending').length;
+          totals.artworks += artSnap.size;
+          for (const art of artSnap.docs) {
+            const st = art.data().status;
+            if (st === 'approved') totals.approved += 1;
+            else if (st === 'pending') { totals.pending += 1; classPending += 1; }
+            else if (st === 'rejected') totals.rejected += 1;
+          }
         }
 
         pending += classPending;
@@ -96,6 +111,7 @@ export default function AdminPage() {
       summaries.sort((a, b) => a.classNumber - b.classNumber);
       setClasses(summaries);
       setTotalPending(pending);
+      setStats(totals);
     }
 
     if (!loading && user) fetchData();
@@ -229,26 +245,56 @@ export default function AdminPage() {
           </div>
         </button>
         <button
-          className="rounded-2xl p-4 text-left"
-          style={{ background: 'var(--color-surface-soft)' }}
+          onClick={() => setShowStats((v) => !v)}
+          className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
+          style={{ background: showStats ? '#E8F5EC' : 'var(--color-surface-soft)' }}
         >
           <div className="text-2xl mb-2">📊</div>
           <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>통계</div>
           <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
-            활동/참여 현황
-          </div>
-        </button>
-        <button
-          className="rounded-2xl p-4 text-left"
-          style={{ background: 'var(--color-surface-soft)' }}
-        >
-          <div className="text-2xl mb-2">⚙️</div>
-          <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>설정</div>
-          <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
-            학급/학교 설정
+            {showStats ? '접기' : '활동/참여 현황'}
           </div>
         </button>
       </div>
+
+      {/* 통계 패널 */}
+      {showStats && (
+        <div className="mt-3 rounded-2xl p-4" style={{ background: 'var(--color-surface-soft)' }}>
+          <div className="text-xs font-bold mb-3" style={{ color: 'var(--color-text-main)' }}>
+            📊 우리 학교 전시 현황
+          </div>
+          <div className="grid grid-cols-3 gap-2.5 mb-3">
+            {[
+              { label: '등록 학생', value: stats.students, color: 'var(--color-text-main)' },
+              { label: '수업(활동)', value: stats.activities, color: 'var(--color-text-main)' },
+              { label: '전체 작품', value: stats.artworks, color: 'var(--color-text-main)' },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: 'var(--color-surface)' }}>
+                <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {[
+              { label: '전시 중', value: stats.approved, color: 'var(--color-primary)' },
+              { label: '승인 대기', value: stats.pending, color: '#E8A33C' },
+              { label: '반려', value: stats.rejected, color: '#E8604C' },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: 'var(--color-surface)' }}>
+                <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {stats.artworks > 0 && (
+            <div className="mt-3 text-[11px] text-center" style={{ color: 'var(--color-text-sub)' }}>
+              전시율 {Math.round(stats.approved * 100 / stats.artworks)}% · 학생 1인당 평균{' '}
+              {stats.students > 0 ? (stats.artworks / stats.students).toFixed(1) : '—'}점
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 반 만들기 모달 */}
       {showCreate && (

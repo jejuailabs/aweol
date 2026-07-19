@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
+import ArtworkDetailModal from '@/components/artwork/ArtworkDetailModal';
 
 type ArtworkItem = ArtworkDoc & { id: string; path: string };
 
@@ -11,6 +12,7 @@ export default function GalleryPage() {
   const [artworks, setArtworks] = useState<ArtworkItem[]>([]);
   const [filter, setFilter] = useState<'all' | 'flat' | 'sculpture'>('all');
   const [fetched, setFetched] = useState(false);
+  const [selected, setSelected] = useState<ArtworkItem | null>(null);
 
   useEffect(() => {
     async function fetchAll() {
@@ -95,9 +97,10 @@ export default function GalleryPage() {
       {/* 벽돌형 그리드 */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {filtered.map((art) => (
-          <div
+          <button
             key={art.path}
-            className="rounded-2xl overflow-hidden shadow-md transition-transform hover:scale-[1.02]"
+            onClick={() => setSelected(art)}
+            className="rounded-2xl overflow-hidden shadow-md transition-transform hover:scale-[1.02] text-left"
             style={{ background: 'var(--color-surface)' }}
           >
             <div className="h-32 flex items-center justify-center overflow-hidden" style={{ background: 'var(--color-surface-soft)' }}>
@@ -112,9 +115,27 @@ export default function GalleryPage() {
               <div className="text-xs font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{art.title}</div>
               <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{art.artistName}</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
+
+      {/* 작품 상세 — path에서 상위 컬렉션 경로를 잘라내 모달에 전달 */}
+      {selected && (
+        <div className="fixed inset-0 z-50">
+          <ArtworkDetailModal
+            artwork={{
+              id: selected.id,
+              title: selected.title,
+              artistName: selected.artistName,
+              imageUrl: selected.imageUrl,
+              type: selected.type,
+              artistComment: selected.artistComment,
+            }}
+            collectionPath={selected.path.split('/').slice(0, -1).join('/')}
+            onClose={() => setSelected(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }

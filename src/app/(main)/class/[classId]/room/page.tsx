@@ -18,15 +18,6 @@ const SCHOOL_ID = 'aewol-elementary';
 const ACTIVITY_EMOJI = ['🎨', '🏺', '🖼️', '✏️', '📝', '✂️', '🌈', '🎭'];
 const ACTIVITY_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#F5A623', '#DDA0DD', '#5FA8D3', '#3EC46D'];
 
-const DEMO_ACTIVITIES: ClassroomActivity[] = [
-  { id: 'demo-1', title: '수채화 그리기', description: '봄 풍경을 수채화로 표현해봐요', date: '2025. 3. 15.', emoji: '🎨', color: '#FF6B6B' },
-  { id: 'demo-2', title: '점토 공예', description: '나만의 동물 친구를 만들어요', date: '2025. 4. 10.', emoji: '🏺', color: '#4ECDC4' },
-  { id: 'demo-3', title: '판화 수업', description: '고무판화로 나를 표현해요', date: '2025. 5. 20.', emoji: '🖼️', color: '#45B7D1' },
-  { id: 'demo-4', title: '자화상 그리기', description: '거울 속 나의 모습을 그려봐요', date: '2025. 6. 5.', emoji: '✏️', color: '#96CEB4' },
-  { id: 'demo-5', title: '여름 일기', description: '여름 방학 추억을 글과 그림으로', date: '2025. 7. 18.', emoji: '📝', color: '#F5A623' },
-  { id: 'demo-6', title: '콜라주 만들기', description: '잡지와 색종이로 꿈의 세계를', date: '2025. 9. 12.', emoji: '✂️', color: '#DDA0DD' },
-];
-
 export default function ClassRoomPage() {
   const router = useRouter();
   const params = useParams();
@@ -91,8 +82,9 @@ export default function ClassRoomPage() {
   }, [newTitle, newDesc, classId, activities.length, fetchActivities]);
 
   const isTeacher = canManageClass(role);
-  // 교사가 보는 교실은 실데이터만 (빈 교실이면 + 버튼이 첫 슬롯에)
-  const displayList = hasRealData ? activities : fetched && !isTeacher ? DEMO_ACTIVITIES : activities;
+  // 항상 실데이터만 표시 — 가짜 활동은 클릭하면 빈 전시실로 가므로 쓰지 않는다
+  const displayList = activities;
+  const isEmpty = fetched && activities.length === 0;
 
   const handleEnter = (activityId: string) => {
     router.push(`/class/${classId}/activity/${activityId}`);
@@ -127,6 +119,17 @@ export default function ClassRoomPage() {
           📋 활동 목록
         </button>
       </div>
+
+      {/* 빈 교실 안내 */}
+      {isEmpty && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 px-4 w-full max-w-[400px] pointer-events-none">
+          <div className="ac-bubble px-5 py-3.5 text-center text-[11px] leading-relaxed">
+            {isTeacher
+              ? '아직 활동이 없어요. 게시판의 ➕ 카드를 눌러 첫 수업을 만들어보세요!'
+              : '아직 이 반에는 전시된 활동이 없어요. 선생님이 수업을 등록하면 여기에 걸립니다 🎨'}
+          </div>
+        </div>
+      )}
 
       {/* 모바일 조이스틱 */}
       {!showList && !showAdd && <MobileJoystick />}

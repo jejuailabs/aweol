@@ -486,22 +486,9 @@ function GalleryLighting() {
   );
 }
 
-// --------------- 데모 작품 ---------------
-const DEMO_ARTWORKS: ArtworkData[] = [
-  { id: '1', title: '봄날의 꽃밭', artistName: '김하늘', imageUrl: '', type: 'flat' },
-  { id: '2', title: '우리집 강아지', artistName: '이서준', imageUrl: '', type: 'flat' },
-  { id: '3', title: '바다 풍경', artistName: '박지우', imageUrl: '', type: 'flat' },
-  { id: '4', title: '나의 보물상자', artistName: '최민서', imageUrl: '', type: 'sculpture' },
-  { id: '5', title: '가을 단풍', artistName: '정서윤', imageUrl: '', type: 'flat' },
-  { id: '6', title: '꿈속의 세계', artistName: '윤도현', imageUrl: '', type: 'flat' },
-  { id: '7', title: '무지개 마을', artistName: '한소율', imageUrl: '', type: 'flat' },
-  { id: '8', title: '우주 탐험', artistName: '강예린', imageUrl: '', type: 'flat' },
-  { id: '9', title: '엄마 아빠', artistName: '오시우', imageUrl: '', type: 'flat' },
-  { id: '10', title: '나비 정원', artistName: '신지호', imageUrl: '', type: 'sculpture' },
-];
-
 export default function ExhibitRoom({ artworks, onArtworkClick }: ExhibitRoomProps) {
-  const displayArtworks = artworks.length > 0 ? artworks : DEMO_ARTWORKS;
+  // 실제 승인된 작품만 전시한다 (가짜 작품으로 벽을 채우지 않음)
+  const displayArtworks = artworks;
   const avatarPos = useRef(new THREE.Vector3(0, 0, 5));
   const containerRef = useRef<HTMLDivElement>(null);
 

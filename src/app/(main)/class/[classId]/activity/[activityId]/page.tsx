@@ -34,6 +34,7 @@ export default function ActivityExhibitPage() {
 
   const [activity, setActivity] = useState<ActivityDoc | null>(null);
   const [artworks, setArtworks] = useState<ArtworkData[]>([]);
+  const [fetched, setFetched] = useState(false);
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkData | null>(null);
   const [showUpload, setShowUpload] = useState(false);
 
@@ -61,6 +62,7 @@ export default function ActivityExhibitPage() {
     } catch (e) {
       console.error('Failed to fetch artworks:', e);
     }
+    setFetched(true);
   }, [basePath]);
 
   useEffect(() => {
@@ -104,6 +106,18 @@ export default function ActivityExhibitPage() {
           </button>
         )}
       </div>
+
+      {/* 빈 전시실 안내 */}
+      {fetched && artworks.length === 0 && !selectedArtwork && !showUpload && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 px-4 w-full max-w-[380px] pointer-events-none">
+          <div className="ac-bubble px-5 py-4 text-center text-[11px] leading-relaxed">
+            🖼️ 아직 전시된 작품이 없어요<br />
+            {canUploadArtwork(role)
+              ? '오른쪽 위 [+ 작품 올리기]로 첫 작품을 걸어보세요!'
+              : '작품이 승인되면 이 벽에 걸립니다'}
+          </div>
+        </div>
+      )}
 
       {/* 모바일 조이스틱 */}
       {!selectedArtwork && !showUpload && <MobileJoystick />}
