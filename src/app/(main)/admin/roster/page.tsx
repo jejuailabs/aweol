@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -26,12 +26,29 @@ export default function RosterPage() {
   const [message, setMessage] = useState('');
   const [orphanStudents, setOrphanStudents] = useState<{ id: string; name: string }[]>([]);
 
+  // 수동 등록
+  const [mode, setMode] = useState<'manual' | 'excel'>('manual');
+  const [newName, setNewName] = useState('');
+  const [newNumber, setNewNumber] = useState('');
+  const [bulkText, setBulkText] = useState('');
+  const [showBulk, setShowBulk] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingNum, setEditingNum] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const studentsCol = useCallback(() => {
+    if (!db) return null;
+    return collection(db, 'schools', SCHOOL_ID, 'classes', selectedClass, 'students');
+  }, [selectedClass]);
+
+  const nextNumber = students.length > 0 ? Math.max(...students.map((s) => s.number)) + 1 : 1;
+
   // 새 명부에 없는 기존 학생을 교사가 확인 후 직접 삭제
   const handleDeleteOrphans = async () => {
-    if (!db || orphanStudents.length === 0) return;
-    const studentsRef = collection(db, 'schools', SCHOOL_ID, 'classes', selectedClass, 'students');
+    const col = studentsCol();
+    if (!col || orphanStudents.length === 0) return;
     for (const o of orphanStudents) {
-      await deleteDoc(doc(studentsRef, o.id));
+      await deleteDoc(doc(col, o.id));
     }
     setStudents((prev) => prev.filter((s) => !orphanStudents.some((o) => o.id === `student-${s.number}`)));
     setMessage(`${orphanStudents.length}명을 명단에서 삭제했습니다.`);
@@ -53,9 +70,13 @@ export default function RosterPage() {
         .map((d) => ({ id: d.id, label: `${d.data().grade}-${d.data().classNumber}반` }))
         .sort((a, b) => a.id.localeCompare(b.id));
       setClasses(list);
+      if (list.length > 0 && !list.some((c) => c.id === selectedClass)) {
+        setSelectedClass(list[0].id);
+      }
     }
 
     if (!loading && user) fetchClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, role, loading, router]);
 
   useEffect(() => {
@@ -72,6 +93,83 @@ export default function RosterPage() {
     fetchStudents();
   }, [selectedClass]);
 
+  // ---------- 수동: 한 명 추가 ----------
+  const handleAddOne = async () => {
+    const col = studentsCol();
+    const name = newName.trim();
+    if (!col || !name) return;
+    const num = parseInt(newNumber, 10) || nextNumber;
+
+    if (students.some((s) => s.number === num)) {
+      setMessage(`${num}번은 이미 있어요. 다른 번호를 쓰거나 기존 학생을 수정하세요.`);
+      return;
+    }
+
+    setSaving(true);
+    await setDoc(doc(col, `student-${num}`), { number: num, name }, { merge: true });
+    setStudents((prev) => [...prev, { number: num, name, classId: selectedClass }].sort((a, b) => a.number - b.number));
+    setNewName('');
+    setNewNumber('');
+    setMessage(`${num}번 ${name} 학생을 추가했습니다.`);
+    setSaving(false);
+  };
+
+  // ---------- 수동: 이름 목록 붙여넣기 ----------
+  const parsedBulk = bulkText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      // "1 김하늘", "1. 김하늘", "1,김하늘", "김하늘" 모두 허용
+      const m = line.match(/^(\d+)\s*[.,)\s]\s*(.+)$/);
+      if (m) return { number: parseInt(m[1], 10), name: m[2].trim() };
+      return { number: 0, name: line };
+    })
+    .filter((s) => s.name);
+
+  const handleBulkAdd = async () => {
+    const col = studentsCol();
+    if (!col || parsedBulk.length === 0) return;
+    setSaving(true);
+
+    let auto = nextNumber;
+    const added: StudentRow[] = [];
+    for (const row of parsedBulk) {
+      const num = row.number > 0 ? row.number : auto++;
+      await setDoc(doc(col, `student-${num}`), { number: num, name: row.name }, { merge: true });
+      added.push({ number: num, name: row.name, classId: selectedClass });
+    }
+
+    setStudents((prev) => {
+      const map = new Map(prev.map((s) => [s.number, s]));
+      added.forEach((s) => map.set(s.number, s));
+      return [...map.values()].sort((a, b) => a.number - b.number);
+    });
+    setBulkText('');
+    setShowBulk(false);
+    setMessage(`${added.length}명을 등록했습니다.`);
+    setSaving(false);
+  };
+
+  // ---------- 수동: 이름 수정 / 삭제 ----------
+  const handleSaveEdit = async (num: number) => {
+    const col = studentsCol();
+    const name = editName.trim();
+    if (!col || !name) { setEditingNum(null); return; }
+    await setDoc(doc(col, `student-${num}`), { number: num, name }, { merge: true });
+    setStudents((prev) => prev.map((s) => (s.number === num ? { ...s, name } : s)));
+    setEditingNum(null);
+  };
+
+  const handleDeleteStudent = async (num: number) => {
+    const col = studentsCol();
+    if (!col) return;
+    await deleteDoc(doc(col, `student-${num}`));
+    setStudents((prev) => prev.filter((s) => s.number !== num));
+    setMessage(`${num}번 학생을 삭제했습니다.`);
+  };
+
+  // ---------- 엑셀 업로드 ----------
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !db || !user) return;
@@ -139,7 +237,7 @@ export default function RosterPage() {
   }
 
   return (
-    <div className="px-4 pt-6 pb-24">
+    <div className="px-4 pt-6 pb-24 mx-auto max-w-[720px]">
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => router.push('/admin')}
@@ -170,63 +268,172 @@ export default function RosterPage() {
         ))}
       </div>
 
-      {/* 엑셀 업로드 */}
-      <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--color-surface-soft)' }}>
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
-              엑셀로 명부 등록
-            </div>
-            <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
-              &ldquo;번호&rdquo;, &ldquo;이름&rdquo; 컬럼이 포함된 엑셀 파일
-            </div>
-          </div>
+      {/* 등록 방법 선택 */}
+      <div className="flex gap-2 mb-3">
+        {([
+          { key: 'manual', label: '✏️ 직접 입력' },
+          { key: 'excel', label: '📄 엑셀 업로드' },
+        ] as const).map((t) => (
           <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="rounded-xl px-4 py-2 text-xs font-bold text-white"
-            style={{ background: 'var(--color-primary)' }}
+            key={t.key}
+            onClick={() => setMode(t.key)}
+            className="flex-1 rounded-xl py-2.5 text-xs font-bold transition-all"
+            style={{
+              background: mode === t.key ? 'var(--color-surface)' : 'transparent',
+              color: mode === t.key ? 'var(--color-text-main)' : 'var(--color-text-sub)',
+              border: mode === t.key ? '2px solid var(--color-primary)' : '2px solid var(--color-surface-soft)',
+            }}
           >
-            {uploading ? '처리 중...' : '파일 선택'}
+            {t.label}
           </button>
-        </div>
-        {message && (
-          <div className="text-xs font-bold mt-2" style={{ color: message.includes('오류') ? '#FF6B6B' : 'var(--color-primary)' }}>
-            {message}
-          </div>
-        )}
-
-        {/* 새 명부에 없는 기존 학생 — 자동 삭제하지 않고 확인받는다 */}
-        {orphanStudents.length > 0 && (
-          <div className="mt-3 rounded-xl p-3.5 text-left" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
-            <div className="text-xs font-bold mb-1" style={{ color: '#8A6D2F' }}>
-              ⚠️ 새 명부에 없는 학생 {orphanStudents.length}명
-            </div>
-            <div className="text-[11px] mb-2.5 leading-relaxed" style={{ color: '#A08A5B' }}>
-              {orphanStudents.map((o) => o.name).join(', ')}
-              <br />
-              전학·오타일 수 있어 자동으로 지우지 않았어요. 확인 후 삭제하세요.
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDeleteOrphans}
-                className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
-                style={{ background: '#E8604C' }}
-              >
-                명단에서 삭제
-              </button>
-              <button
-                onClick={() => setOrphanStudents([])}
-                className="rounded-lg px-3 py-1.5 text-[11px] font-bold"
-                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
-              >
-                그대로 두기
-              </button>
-            </div>
-          </div>
-        )}
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+        ))}
       </div>
+
+      {/* ===== 직접 입력 ===== */}
+      {mode === 'manual' && (
+        <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--color-surface-soft)' }}>
+          <div className="text-sm font-bold mb-2.5" style={{ color: 'var(--color-text-main)' }}>
+            학생 추가
+          </div>
+
+          <div className="flex gap-2 mb-2">
+            <input
+              type="number"
+              value={newNumber}
+              onChange={(e) => setNewNumber(e.target.value)}
+              placeholder={String(nextNumber)}
+              className="w-16 shrink-0 rounded-xl px-3 py-2.5 text-sm outline-none text-center"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+            />
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAddOne(); }}
+              placeholder="학생 이름 (엔터로 빠르게 추가)"
+              className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+            />
+            <button
+              onClick={handleAddOne}
+              disabled={!newName.trim() || saving}
+              className="shrink-0 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-40"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              추가
+            </button>
+          </div>
+          <p className="text-[10px] mb-3" style={{ color: 'var(--color-text-sub)' }}>
+            번호를 비우면 {nextNumber}번으로 자동 지정돼요
+          </p>
+
+          {/* 여러 명 붙여넣기 */}
+          <button
+            onClick={() => setShowBulk((v) => !v)}
+            className="w-full rounded-xl py-2.5 text-xs font-bold"
+            style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+          >
+            {showBulk ? '▲ 접기' : '📋 여러 명 한 번에 붙여넣기'}
+          </button>
+
+          {showBulk && (
+            <div className="mt-2.5">
+              <textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                rows={6}
+                placeholder={'한 줄에 한 명씩 붙여넣으세요\n\n김하늘\n이서준\n박지우\n\n번호를 같이 써도 돼요:\n1 김하늘\n2. 이서준\n3, 박지우'}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+              />
+              {parsedBulk.length > 0 && (
+                <div className="text-[11px] mt-1.5 mb-2 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+                  {parsedBulk.length}명 인식됨 ·{' '}
+                  {parsedBulk.slice(0, 5).map((p) => p.name).join(', ')}
+                  {parsedBulk.length > 5 ? ` 외 ${parsedBulk.length - 5}명` : ''}
+                </div>
+              )}
+              <button
+                onClick={handleBulkAdd}
+                disabled={parsedBulk.length === 0 || saving}
+                className="w-full rounded-xl py-2.5 text-xs font-bold text-white disabled:opacity-40"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {saving ? '등록 중...' : `${parsedBulk.length}명 등록하기`}
+              </button>
+            </div>
+          )}
+
+          {message && (
+            <div
+              className="text-xs font-bold mt-2.5"
+              style={{ color: message.includes('오류') || message.includes('이미') ? '#E8604C' : 'var(--color-primary)' }}
+            >
+              {message}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== 엑셀 업로드 ===== */}
+      {mode === 'excel' && (
+        <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--color-surface-soft)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
+                엑셀로 명부 등록
+              </div>
+              <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+                &ldquo;번호&rdquo;, &ldquo;이름&rdquo; 컬럼이 포함된 엑셀 파일
+              </div>
+            </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="rounded-xl px-4 py-2 text-xs font-bold text-white"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {uploading ? '처리 중...' : '파일 선택'}
+            </button>
+          </div>
+          {message && (
+            <div className="text-xs font-bold mt-2" style={{ color: message.includes('오류') ? '#FF6B6B' : 'var(--color-primary)' }}>
+              {message}
+            </div>
+          )}
+
+          {/* 새 명부에 없는 기존 학생 — 자동 삭제하지 않고 확인받는다 */}
+          {orphanStudents.length > 0 && (
+            <div className="mt-3 rounded-xl p-3.5 text-left" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
+              <div className="text-xs font-bold mb-1" style={{ color: '#8A6D2F' }}>
+                ⚠️ 새 명부에 없는 학생 {orphanStudents.length}명
+              </div>
+              <div className="text-[11px] mb-2.5 leading-relaxed" style={{ color: '#A08A5B' }}>
+                {orphanStudents.map((o) => o.name).join(', ')}
+                <br />
+                전학·오타일 수 있어 자동으로 지우지 않았어요. 확인 후 삭제하세요.
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDeleteOrphans}
+                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
+                  style={{ background: '#E8604C' }}
+                >
+                  명단에서 삭제
+                </button>
+                <button
+                  onClick={() => setOrphanStudents([])}
+                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold"
+                  style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+                >
+                  그대로 두기
+                </button>
+              </div>
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelUpload} />
+        </div>
+      )}
 
       {/* 학생 목록 */}
       {students.length === 0 ? (
@@ -234,6 +441,9 @@ export default function RosterPage() {
           <div className="text-4xl mb-3">📋</div>
           <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
             등록된 학생이 없습니다
+          </div>
+          <div className="text-[11px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+            위에서 직접 입력하거나 엑셀로 등록해보세요
           </div>
         </div>
       ) : (
@@ -244,17 +454,54 @@ export default function RosterPage() {
           >
             <div className="w-12">번호</div>
             <div className="flex-1">이름</div>
+            <div className="w-16 text-right">관리</div>
           </div>
-          {students.map((s, i) => (
+          {students.map((s) => (
             <div
-              key={i}
-              className="flex items-center px-4 py-3 border-t text-sm"
+              key={s.number}
+              className="flex items-center px-4 py-2.5 border-t text-sm"
               style={{ borderColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}
             >
               <div className="w-12 text-xs font-bold" style={{ color: 'var(--color-text-sub)' }}>
                 {s.number}
               </div>
-              <div className="flex-1 font-medium">{s.name}</div>
+              <div className="flex-1 min-w-0">
+                {editingNum === s.number ? (
+                  <input
+                    type="text"
+                    value={editName}
+                    autoFocus
+                    onChange={(e) => setEditName(e.target.value)}
+                    onBlur={() => handleSaveEdit(s.number)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSaveEdit(s.number);
+                      if (e.key === 'Escape') setEditingNum(null);
+                    }}
+                    className="w-full rounded-lg px-2 py-1 text-sm outline-none"
+                    style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+                  />
+                ) : (
+                  <span className="font-medium">{s.name}</span>
+                )}
+              </div>
+              <div className="w-16 flex justify-end gap-1">
+                <button
+                  onClick={() => { setEditingNum(s.number); setEditName(s.name); }}
+                  className="w-7 h-7 rounded-lg text-[11px]"
+                  style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
+                  title="이름 수정"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => handleDeleteStudent(s.number)}
+                  className="w-7 h-7 rounded-lg text-[11px]"
+                  style={{ background: 'var(--color-surface)', color: '#E8604C' }}
+                  title="삭제"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ))}
           <div
