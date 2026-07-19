@@ -38,6 +38,13 @@ body {
   height: 100% !important;
 }
 
+/* 3D 씬 위에서는 브라우저 기본 확대·축소/스크롤 제스처를 끄고
+   두 손가락 동작을 카메라 줌으로만 쓴다 (캔버스까지 확실히 적용) */
+.scene-3d,
+.scene-3d * {
+  touch-action: none;
+}
+
 @keyframes modal-fade {
   from { opacity: 0; }
   to { opacity: 1; }

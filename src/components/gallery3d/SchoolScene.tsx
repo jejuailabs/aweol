@@ -386,7 +386,7 @@ export default function SchoolScene({
   }, []);
 
   return (
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+    <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
         shadows
         camera={{ position: [0, 9, 26], fov: 50, near: 0.1, far: 120 }}

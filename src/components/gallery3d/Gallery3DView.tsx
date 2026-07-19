@@ -519,7 +519,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
     resetControls(0, 6, 0.3);
     const el = containerRef.current;
     if (!el) return;
-    return attachCameraControls(el, { minDist: 3.5, maxDist: 9 });
+    return attachCameraControls(el, { minDist: 3.5, maxDist: 13 });
   }, []);
 
   const flatArtworks = displayArtworks.filter((a) => a.type === 'flat');
@@ -543,10 +543,15 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
   });
 
   return (
-    <div ref={containerRef} id="exhibit-container" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+    <div
+      ref={containerRef}
+      id="exhibit-container"
+      className="scene-3d"
+      style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}
+    >
       <Canvas
         shadows
-        camera={{ position: [0, 3.5, 11], fov: 55, near: 0.1, far: 100 }}
+        camera={{ position: [0, 3.5, 11], fov: 60, near: 0.1, far: 100 }}
         gl={{ antialias: true }}
         dpr={[1, 2]}
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#1a1a2e' }}

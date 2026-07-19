@@ -105,17 +105,32 @@ export function attachCameraControls(
     camControl.dist = Math.max(opts.minDist, Math.min(opts.maxDist, camControl.dist + dir * 0.6));
   };
 
+  // 두 손가락 제스처가 브라우저의 페이지 확대·축소로 새는 것을 막는다.
+  // (touch-action만으로는 iOS 사파리에서 부족해서 이벤트도 함께 막아야 한다)
+  const onTouchMove = (e: TouchEvent) => {
+    if (e.touches.length >= 2) e.preventDefault();
+  };
+  const onGesture = (e: Event) => e.preventDefault();
+
   el.addEventListener('pointerdown', onDown);
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onUp);
   el.addEventListener('wheel', onWheel, { passive: false });
+  el.addEventListener('touchmove', onTouchMove, { passive: false });
+  el.addEventListener('gesturestart', onGesture as EventListener);
+  el.addEventListener('gesturechange', onGesture as EventListener);
+  el.addEventListener('gestureend', onGesture as EventListener);
 
   return () => {
     el.removeEventListener('pointerdown', onDown);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', onUp);
+    el.removeEventListener('touchmove', onTouchMove);
+    el.removeEventListener('gesturestart', onGesture as EventListener);
+    el.removeEventListener('gesturechange', onGesture as EventListener);
+    el.removeEventListener('gestureend', onGesture as EventListener);
     el.removeEventListener('wheel', onWheel);
   };
 }

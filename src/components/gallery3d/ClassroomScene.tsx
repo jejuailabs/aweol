@@ -469,14 +469,14 @@ export default function ClassroomScene({ classLabel, activities, onActivitySelec
     resetControls(-0.5, 5.2, 0.28);
     const el = containerRef.current;
     if (!el) return;
-    return attachCameraControls(el, { minDist: 3, maxDist: 8 });
+    return attachCameraControls(el, { minDist: 3, maxDist: 12 });
   }, []);
 
   return (
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+    <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
         shadows
-        camera={{ position: [0, 3.4, 9.5], fov: 52, near: 0.1, far: 60 }}
+        camera={{ position: [0, 3.4, 9.5], fov: 62, near: 0.1, far: 60 }}
         gl={{ antialias: true }}
         dpr={[1, 2]}
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#F2E9D8' }}
