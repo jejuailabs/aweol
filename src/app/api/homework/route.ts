@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool, isTeacherOfClass } from '@/lib/firebase-admin';
 import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
 
 export const runtime = 'nodejs';
@@ -147,9 +147,9 @@ export async function PATCH(req: NextRequest) {
   if (!schoolId || !classId || !homeworkId || !studentUid) {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
-  // 이 학교 소속 교직원만. 승인된 교사라도 남의 학교는 건드릴 수 없다.
-  if (!isStaffOfSchool(user, schoolId)) {
-    return NextResponse.json({ error: '이 학교의 선생님이 아닙니다' }, { status: 403 });
+  // 담당 반만. 같은 학교라도 남의 반 제출물은 손대지 못한다.
+  if (!isTeacherOfClass(user, schoolId, classId)) {
+    return NextResponse.json({ error: '담당하는 반이 아닙니다' }, { status: 403 });
   }
 
   const db = adminDb();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
 import { compressImage } from '@/lib/image-compress';
 import { storagePathFromUrl } from '@/lib/storage-path';
 
@@ -169,8 +169,9 @@ export async function PATCH(req: NextRequest) {
 
   const schoolId = String(form.get('schoolId') || '').trim();
   if (!schoolId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
-  if (!isStaffOfSchool(user, schoolId)) {
-    return NextResponse.json({ error: '이 학교의 선생님이 아닙니다' }, { status: 403 });
+  // 학교 이름·대표 이미지는 학교 공용이라 담임 한 명이 바꾸면 안 된다
+  if (user.role !== 'super_admin') {
+    return NextResponse.json({ error: '총관리자만 학교 정보를 바꿀 수 있습니다' }, { status: 403 });
   }
 
   const db = adminDb();

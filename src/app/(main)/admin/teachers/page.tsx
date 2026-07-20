@@ -19,6 +19,7 @@ interface Applicant {
   photoURL: string;
   schoolId: string;
   schoolName: string;
+  classId: string;
 }
 
 export default function TeacherApprovalPage() {
@@ -59,6 +60,7 @@ export default function TeacherApprovalPage() {
               photoURL: d.data().photoURL || '',
               schoolId: sid,
               schoolName: schoolNames[sid] || sid || '(학교 미지정)',
+              classId: d.data().pendingClassId || '',
             };
           })
         ),
@@ -97,8 +99,8 @@ export default function TeacherApprovalPage() {
         👩‍🏫 선생님 승인
       </h1>
       <p className="text-xs mb-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-        승인하면 이 계정은 <b>신청한 학교</b>의 명부와 제출물을 볼 수 있게 됩니다.
-        아는 분인지, 그 학교 선생님이 맞는지 확인하고 승인해 주세요.
+        승인하면 이 계정은 <b>신청한 반</b>의 명부와 제출물을 볼 수 있게 됩니다.
+        같은 학교라도 다른 반은 보지 못합니다. 아는 분인지, 그 반 담임이 맞는지 확인해 주세요.
       </p>
 
       {list.length === 0 ? (
@@ -132,7 +134,7 @@ export default function TeacherApprovalPage() {
                   {a.displayName}
                 </div>
                 <div className="text-[11px] font-bold truncate" style={{ color: 'var(--color-primary)' }}>
-                  🏫 {a.schoolName}
+                  🏫 {a.schoolName} {a.classId ? `· ${a.classId}반` : '· (반 미지정)'}
                 </div>
                 <div className="text-[10px] truncate" style={{ color: 'var(--color-text-sub)' }}>
                   {a.uid}

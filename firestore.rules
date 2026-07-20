@@ -40,6 +40,19 @@ service cloud.firestore {
             || (userRole() == 'teacher' && schoolId in userData().get('schoolIds', [])));
     }
 
+    /**
+     * 이 **반**의 담당 교사인가.
+     * 학교 소속만으로는 부족하다 — 한 학교에 교사가 여럿인데 아무나 남의 반 명부를 보고
+     * 숙제를 고칠 수 있으면 안 된다. 반 단위 자료는 전부 이걸 쓴다.
+     */
+    function isTeacherOf(schoolId, classId) {
+      return isSignedIn()
+        && (isSuper()
+            || (userRole() == 'teacher'
+                && schoolId in userData().get('schoolIds', [])
+                && classId in userData().get('classIds', [])));
+    }
+
     // ---------- 작품 (collectionGroup 조회용 — /gallery, /my-stand) ----------
     // 승인된 작품은 누구나(비로그인 포함) 조회 가능
     match /{path=**}/artworks/{artworkId} {
@@ -109,7 +122,8 @@ service cloud.firestore {
       // 학교 생성·삭제는 총관리자만 (지도에 아무나 학교를 올릴 수 없다).
       // 교직원은 기존 학교의 정보만 손볼 수 있다.
       allow create, delete: if isSignedIn() && isSuper();
-      allow update: if isStaffOf(schoolId);
+      // 학교 이름·대표 이미지는 학교 공용이라 담임 한 명이 바꾸면 안 된다
+      allow update: if isSuper();
 
       match /grades/{gradeId} {
         allow read: if true;
@@ -129,17 +143,19 @@ service cloud.firestore {
 
       match /classes/{classId} {
         allow read: if true;
-        allow write: if isStaffOf(schoolId);
+        // 반 정보 수정은 담임만. 반을 새로 만드는 건 아래 create 로 학교 교직원에게 열어둔다.
+        allow update, delete: if isTeacherOf(schoolId, classId);
+        allow create: if isStaffOf(schoolId);
 
         // 학생 명부 — 미성년자 개인정보이므로 교직원만 열람·수정
         match /students/{studentId} {
-          allow read, write: if isStaffOf(schoolId);
+          allow read, write: if isTeacherOf(schoolId, classId);
         }
 
         // 알림판 (알림장·급식·숙제·퀴즈) — 읽기는 공개, 작성은 교직원만
         match /notices/{noticeId} {
           allow read: if true;
-          allow write: if isStaffOf(schoolId);
+          allow write: if isTeacherOf(schoolId, classId);
 
           // 로그인한 사람만 좋아요·댓글을 남길 수 있다
           match /likes/{likeUid} {
@@ -153,7 +169,7 @@ service cloud.firestore {
             allow create: if isSignedIn()
                           && request.resource.data.authorUid == request.auth.uid;
             allow update: if false;
-            allow delete: if isStaffOf(schoolId)
+            allow delete: if isTeacherOf(schoolId, classId)
                           || (isSignedIn() && resource.data.authorUid == request.auth.uid);
           }
         }
@@ -161,12 +177,12 @@ service cloud.firestore {
         // 숙제 — 과제 자체(제목·설명)는 공개, 출제는 교직원만
         match /homeworks/{hwId} {
           allow read: if true;
-          allow write: if isStaffOf(schoolId);
+          allow write: if isTeacherOf(schoolId, classId);
 
           // 제출물은 서버(API)만 쓴다. AI 검수를 거치지 않고는 올라올 수 없게 한다.
           // 읽기: 교직원 / 본인 / '아이들과 함께 보기'로 공개된 승인 제출물
           match /submissions/{studentUid} {
-            allow read: if isStaffOf(schoolId)
+            allow read: if isTeacherOf(schoolId, classId)
                         || (isSignedIn() && request.auth.uid == studentUid)
                         || resource.data.publicToClass == true;
             allow write: if false;
@@ -174,7 +190,7 @@ service cloud.firestore {
 
           // 콕 찌르기 — 찔린 본인과 교직원만 본다. 친구가 누가 안 냈는지 훑어볼 수 없어야 한다.
           match /nudges/{studentUid} {
-            allow read: if isStaffOf(schoolId) || (isSignedIn() && request.auth.uid == studentUid);
+            allow read: if isTeacherOf(schoolId, classId) || (isSignedIn() && request.auth.uid == studentUid);
             allow write: if false;
           }
         }
@@ -182,7 +198,7 @@ service cloud.firestore {
         // 퀴즈 — 문제는 공개, 정답은 절대 공개하지 않는다.
         match /quizzes/{quizId} {
           allow read: if true;
-          allow write: if isStaffOf(schoolId);
+          allow write: if isTeacherOf(schoolId, classId);
 
           // 문항(지문·보기)만 공개. 정답 필드는 여기 두지 않는다 —
           // 두는 순간 개발자도구로 그냥 보인다.
@@ -193,13 +209,13 @@ service cloud.firestore {
 
           // 정답. 학생이 읽으면 퀴즈가 성립하지 않는다. 채점은 서버가 한다.
           match /answerKeys/{qId} {
-            allow read: if isStaffOf(schoolId);
+            allow read: if isTeacherOf(schoolId, classId);
             allow write: if false;
           }
 
           // 제출물 — 교직원 / 본인 / 공개된 것
           match /submissions/{studentUid} {
-            allow read: if isStaffOf(schoolId)
+            allow read: if isTeacherOf(schoolId, classId)
                         || (isSignedIn() && request.auth.uid == studentUid)
                         || resource.data.publicToClass == true;
             allow write: if false;
@@ -213,7 +229,7 @@ service cloud.firestore {
 
           // 정답 좌표. 학생이 읽으면 게임이 성립하지 않는다. 판정도 서버가 한다.
           match /answerKey/{docId} {
-            allow read: if isStaffOf(schoolId);
+            allow read: if isTeacherOf(schoolId, classId);
             allow write: if false;
           }
 
@@ -234,26 +250,26 @@ service cloud.firestore {
 
         match /activities/{activityId} {
           allow read: if true;
-          allow write: if isStaffOf(schoolId);
+          allow write: if isTeacherOf(schoolId, classId);
 
           match /artworks/{artworkId} {
             // 승인된 작품은 공개, 미승인은 작성자(업로더/작가)와 교사만
             allow read: if resource.data.status == 'approved'
-                        || isStaffOf(schoolId)
+                        || isTeacherOf(schoolId, classId)
                         || (isSignedIn()
                             && (resource.data.uploadedBy == request.auth.uid
                                 || resource.data.artistUid == request.auth.uid));
             // 학생/학부모/교사가 업로드 (항상 pending으로 생성)
             allow create: if isSignedIn()
                           && request.resource.data.uploadedBy == request.auth.uid
-                          && (isStaffOf(schoolId) || request.resource.data.status == 'pending');
+                          && (isTeacherOf(schoolId, classId) || request.resource.data.status == 'pending');
             // 승인/반려는 교사만, 본인은 pending 상태에서 내용 수정 가능
-            allow update: if isStaffOf(schoolId)
+            allow update: if isTeacherOf(schoolId, classId)
                           || (isSignedIn()
                               && resource.data.uploadedBy == request.auth.uid
                               && resource.data.status == 'pending'
                               && request.resource.data.status == 'pending');
-            allow delete: if isStaffOf(schoolId)
+            allow delete: if isTeacherOf(schoolId, classId)
                           || (isSignedIn() && resource.data.uploadedBy == request.auth.uid);
 
             match /comments/{commentId} {
@@ -261,7 +277,7 @@ service cloud.firestore {
               allow create: if isSignedIn()
                             && request.resource.data.authorUid == request.auth.uid;
               allow update: if false;
-              allow delete: if isStaffOf(schoolId)
+              allow delete: if isTeacherOf(schoolId, classId)
                             || (isSignedIn() && resource.data.authorUid == request.auth.uid);
             }
 

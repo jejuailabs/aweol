@@ -176,8 +176,18 @@ export default function AdminPage() {
         pendingByActivity.set(key, (pendingByActivity.get(key) ?? 0) + 1);
       });
 
+      /**
+       * 담당 반만 읽는다.
+       * 명부는 이제 담임만 읽을 수 있어서, 전체 반을 돌면 남의 반에서 권한 오류가 난다.
+       * (총관리자는 전부 본다)
+       */
+      const mine = userDoc?.classIds || [];
+      const targetClasses = role === 'super_admin'
+        ? classSnap.docs
+        : classSnap.docs.filter((c) => mine.includes(c.id) || c.data().teacherUid === user?.uid);
+
       const stats: ClassStat[] = [];
-      for (const cls of classSnap.docs) {
+      for (const cls of targetClasses) {
         const data = cls.data();
         const [studentsSnap, activitiesSnap] = await Promise.all([
           getDocs(collection(db, 'schools', schoolId, 'classes', cls.id, 'students')),
@@ -233,7 +243,7 @@ export default function AdminPage() {
     }
 
     if (!loading && user) fetchData();
-  }, [user, role, loading, router, refreshKey]);
+  }, [user, userDoc, role, loading, router, refreshKey]);
 
   if (loading) {
     return (
@@ -244,9 +254,18 @@ export default function AdminPage() {
   }
 
   // 교사는 본인이 담당하는 반만 본다 (담당 반이 없으면 전체를 보여줘 초기 세팅을 돕는다)
-  const myClasses = classes.filter((c) => c.teacherUid === user?.uid);
+  /**
+   * 담당 반 판정은 users.classIds 를 기준으로 한다.
+   * teacherUid 만 보면 담임이 비어 있는 반까지 '내 반'에서 빠진다.
+   */
+  const myClassIds = userDoc?.classIds || [];
+  const myClasses = classes.filter((c) => myClassIds.includes(c.id) || c.teacherUid === user?.uid);
   const noOwnedClass = !isSuper && myClasses.length === 0;
-  const visibleClasses = isSuper ? classes : myClasses.length > 0 ? myClasses : classes;
+  /**
+   * 담당 반이 없다고 전체 반을 보여주면 안 된다.
+   * 규칙이 남의 반 명부·제출물을 막고 있어서 화면만 깨지고, 애초에 보여줄 이유도 없다.
+   */
+  const visibleClasses = isSuper ? classes : myClasses;
 
   // 작품 수(-1)는 아직 안 읽은 반이라 합계에서 뺀다
   const totals = visibleClasses.reduce(

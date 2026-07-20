@@ -103,6 +103,26 @@ export function isStaffOfSchool(
   return user.role === 'teacher' && user.schoolIds.includes(schoolId);
 }
 
+/**
+ * 이 **반**의 담당 교사인가.
+ *
+ * 학교 소속만으로는 부족하다. 한 학교에 교사가 여럿인데 아무나 남의 반 명부를 보고
+ * 숙제를 고칠 수 있으면 안 된다. 담당 반 안에서만 권한이 통해야 한다.
+ * 슈퍼관리자만 전체를 넘나든다.
+ */
+export function isTeacherOfClass(
+  user: { role: string | null; schoolIds: string[]; classIds: string[] },
+  schoolId: string,
+  classId: string
+): boolean {
+  if (user.role === 'super_admin') return true;
+  return (
+    user.role === 'teacher' &&
+    user.schoolIds.includes(schoolId) &&
+    user.classIds.includes(classId)
+  );
+}
+
 /** 학교를 특정하지 않는 자리에서만 쓴다 (예: 도장 도안 구입) */
 export function isStaffRole(role: string | null): boolean {
   return role === 'teacher' || role === 'super_admin';

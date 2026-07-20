@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool, isTeacherOfClass } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
@@ -118,8 +118,8 @@ export async function DELETE(req: NextRequest) {
   const schoolId = sp.get('schoolId');
   const classId = sp.get('classId');
   if (!schoolId || !classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
-  if (!isStaffOfSchool(user, schoolId)) {
-    return NextResponse.json({ error: '이 학교의 선생님이 아닙니다' }, { status: 403 });
+  if (!isTeacherOfClass(user, schoolId, classId)) {
+    return NextResponse.json({ error: '담당하는 반이 아닙니다' }, { status: 403 });
   }
 
   const db = adminDb();

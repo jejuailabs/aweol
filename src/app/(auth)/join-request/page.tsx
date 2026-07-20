@@ -15,6 +15,8 @@ export default function JoinRequestPage() {
   const [error, setError] = useState('');
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
   const [schoolId, setSchoolId] = useState('');
+  const [grade, setGrade] = useState('');
+  const [classNumber, setClassNumber] = useState('');
 
   // 교사는 소속 학교를 밝혀야 한다 — 권한이 그 학교 안에서만 통한다
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function JoinRequestPage() {
       const res = await fetch('/api/role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ role: selectedRole, schoolId }),
+        body: JSON.stringify({ role: selectedRole, schoolId, grade: Number(grade), classNumber: Number(classNumber) }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -157,12 +159,32 @@ export default function JoinRequestPage() {
                   ))
                 )}
               </div>
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                맡으신 학년과 반
+              </div>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="number" min={1} max={6} value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  placeholder="학년"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-main)' }}
+                />
+                <input
+                  type="number" min={1} max={20} value={classNumber}
+                  onChange={(e) => setClassNumber(e.target.value)}
+                  placeholder="반"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-main)' }}
+                />
+              </div>
               <div
                 className="rounded-xl px-4 py-3 text-[11px] leading-relaxed"
                 style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
               >
                 ⏳ 선생님은 아이들 명부를 다루기 때문에 <b>총관리자 확인</b>을 거쳐요.
-                권한은 <b>고른 학교 안에서만</b> 쓸 수 있어요.
+                권한은 <b>맡으신 반 안에서만</b> 쓸 수 있어요 — 같은 학교라도 다른 반은
+                보거나 고칠 수 없습니다.
               </div>
             </div>
           )}
@@ -180,7 +202,10 @@ export default function JoinRequestPage() {
 
           <button
             onClick={handleRoleNext}
-            disabled={!selectedRole || loading || (selectedRole === 'teacher' && !schoolId)}
+            disabled={
+              !selectedRole || loading ||
+              (selectedRole === 'teacher' && (!schoolId || !grade || !classNumber))
+            }
             className="mt-8 rounded-full px-8 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
             style={{ background: 'var(--color-primary)' }}
           >

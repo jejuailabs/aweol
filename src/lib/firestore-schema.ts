@@ -11,11 +11,17 @@ export interface UserDoc {
   pendingRole: UserRole | null;
   /** 교사 신청 시 고른 학교. 승인되면 schoolIds 로 옮겨간다. */
   pendingSchoolId: string | null;
+  /** 교사 신청 시 적은 담당 반(예: '3-2'). 승인되면 classIds 로 옮겨간다. */
+  pendingClassId: string | null;
   /**
    * 교사가 소속된 학교. **교사 권한은 이 목록 안에서만 통한다.**
    * 슈퍼관리자는 비어 있어도 전체를 넘나든다.
    */
   schoolIds: string[];
+  /**
+   * 소속 반. 학생·학부모에게는 '내 반', 교사에게는 **'내가 맡은 반'** 이다.
+   * 교사도 이 목록 밖의 반은 남의 반이라 손대지 못한다.
+   */
   classIds: string[];
   children: { studentUid: string; classId: string; name: string }[];
   pendingClassRequest: string | null;

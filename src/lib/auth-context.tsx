@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: null,
             pendingRole: null,
             pendingSchoolId: null,
+            pendingClassId: null,
             schoolIds: [],
             classIds: [],
             children: [],

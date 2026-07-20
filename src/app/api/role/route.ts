@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
 
-  let body: { role?: string; schoolId?: string };
+  let body: { role?: string; schoolId?: string; grade?: unknown; classNumber?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, role, pending: false });
   }
 
-  // 교사는 어느 학교인지 밝혀야 한다. 권한이 그 학교 안에서만 통하기 때문이다.
+  // 교사는 **어느 학교 몇 학년 몇 반**인지 밝혀야 한다.
+  // 권한이 그 반 안에서만 통하기 때문에, 반이 없으면 아무것도 할 수 없다.
   const schoolId = typeof body.schoolId === 'string' ? body.schoolId.trim() : '';
   if (!schoolId) {
     return NextResponse.json({ error: '학교를 골라주세요' }, { status: 400 });
@@ -64,8 +65,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '없는 학교예요' }, { status: 404 });
   }
 
+  const grade = Number(body.grade);
+  const classNumber = Number(body.classNumber);
+  if (!Number.isInteger(grade) || grade < 1 || grade > 6
+      || !Number.isInteger(classNumber) || classNumber < 1 || classNumber > 20) {
+    return NextResponse.json({ error: '맡으신 학년과 반을 알려주세요' }, { status: 400 });
+  }
+  const classId = `${grade}-${classNumber}`;
+
+  const classSnap = await db
+    .collection('schools').doc(schoolId)
+    .collection('classes').doc(classId).get();
+  if (!classSnap.exists) {
+    return NextResponse.json(
+      { error: `${grade}학년 ${classNumber}반이 아직 없어요. 총관리자에게 문의해 주세요.` },
+      { status: 404 }
+    );
+  }
+  // 이미 다른 선생님이 맡고 있으면 알려준다 (막지는 않는다 — 전담·교체가 있다)
+  const takenBy = (classSnap.data()?.teacherUid as string) || '';
+
   await ref.set(
-    { role: null, pendingRole: role, pendingSchoolId: schoolId, schoolIds: [], classIds: [] },
+    {
+      role: null,
+      pendingRole: role,
+      pendingSchoolId: schoolId,
+      pendingClassId: classId,
+      schoolIds: [],
+      classIds: [],
+    },
     { merge: true }
   );
 
@@ -75,13 +103,13 @@ export async function POST(req: NextRequest) {
     role: null,
     action: '교사 신청',
     classId: null,
-    detail: `${user.displayName} → ${schoolId}`,
+    detail: `${user.displayName} → ${schoolId} ${classId}${takenBy ? ' (담임 있음)' : ''}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  return NextResponse.json({ ok: true, role: null, pending: true });
+  return NextResponse.json({ ok: true, role: null, pending: true, classId });
 }
 
 /** 슈퍼관리자의 승인 / 거절 */
@@ -118,17 +146,39 @@ export async function PATCH(req: NextRequest) {
 
   const granted = body.approve === true ? (target.pendingRole as string) : null;
   const schoolId = (target.pendingSchoolId as string) || '';
-  if (granted && !schoolId) {
-    // 학교 없이 교사가 되면 예전처럼 전역 권한이 된다
-    return NextResponse.json({ error: '신청에 학교 정보가 없습니다' }, { status: 409 });
+  const classId = (target.pendingClassId as string) || '';
+  if (granted && (!schoolId || !classId)) {
+    // 학교·반 없이 교사가 되면 권한 범위가 없거나 전역이 된다
+    return NextResponse.json({ error: '신청에 학교·반 정보가 없습니다' }, { status: 409 });
   }
 
   await ref.set(
     granted
-      ? { role: granted, pendingRole: null, pendingSchoolId: null, schoolIds: [schoolId] }
-      : { pendingRole: null, pendingSchoolId: null },
+      ? {
+          role: granted,
+          pendingRole: null,
+          pendingSchoolId: null,
+          pendingClassId: null,
+          schoolIds: [schoolId],
+          classIds: [classId],
+        }
+      : { pendingRole: null, pendingSchoolId: null, pendingClassId: null },
     { merge: true }
   );
+
+  // 담임이 비어 있으면 채워준다. 이미 있으면 건드리지 않는다(빼앗으면 안 된다).
+  if (granted) {
+    const classRef = db
+      .collection('schools').doc(schoolId)
+      .collection('classes').doc(classId);
+    const cls = await classRef.get();
+    if (cls.exists && !(cls.data()?.teacherUid)) {
+      await classRef.set(
+        { teacherUid: uid, teacherName: (target.displayName as string) || '선생님' },
+        { merge: true }
+      );
+    }
+  }
 
   await db.collection('accessLogs').add({
     uid: user.uid,
@@ -136,11 +186,11 @@ export async function PATCH(req: NextRequest) {
     role: user.role,
     action: granted ? '교사 승인' : '교사 거절',
     classId: null,
-    detail: `${target.displayName || uid}${granted ? ` → ${schoolId}` : ''}`,
+    detail: `${target.displayName || uid}${granted ? ` → ${schoolId} ${classId}` : ''}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  return NextResponse.json({ ok: true, uid, role: granted, schoolId: granted ? schoolId : null });
+  return NextResponse.json({ ok: true, uid, role: granted, schoolId: granted ? schoolId : null, classId: granted ? classId : null });
 }
