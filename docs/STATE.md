@@ -1,6 +1,6 @@
 # 애월초 학급 전시실 — 작업 상태
 
-> 새 세션에서 이어서 작업할 때 이 문서만 읽으면 된다. 마지막 갱신: 도장 경제 완료 시점.
+> 새 세션에서 이어서 작업할 때 이 문서만 읽으면 된다. 마지막 갱신: 퀴즈 완료 시점.
 
 ## 무엇을 만들고 있나
 
@@ -25,6 +25,8 @@
    $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-blackboard.mjs
    $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-homework.mjs
    $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-shop.mjs
+   $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-role.mjs
+   $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-quiz.mjs
    ```
    푸시 직후 바로 돌리면 구버전이 응답한다. 2~3분 기다렸다가 검증한다.
 4. **Firestore는 중첩 배열을 저장 못 한다.** 좌표는 `[x,y,x,y,...]` 로 펴서 넣는다.
@@ -46,11 +48,15 @@
 /admin/[schoolId]/{approval,roster,class/[id]}
 /admin/logs                                        접근 기록 (슈퍼관리자 전용)
 /join-class                                        학생코드 입력
-API: /api/{school,school-image,student-code,blackboard,homework,enhance}
+API: /api/{school,school-image,student-code,blackboard,homework,enhance,
+          role,shop,quiz,quiz-explain}
 ```
 
-Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,homeworks,blackboard}`
-- `studentCodes`, `blackboard`, `homeworks/*/submissions` 는 **클라이언트 쓰기 금지, 서버 전용**
+Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,homeworks,quizzes,blackboard}`
+- `studentCodes`, `blackboard`, `homeworks/*/submissions`, `quizzes/*` 하위,
+  `users/*/{inventory,stampLedger}` 는 **클라이언트 쓰기 금지, 서버 전용**
+- `quizzes/*/answerKeys` 는 **교직원만 읽기** (학생이 읽으면 퀴즈가 성립하지 않는다)
+- users 문서의 `role`·`pendingRole`·`classIds`·`stamps`·`avatarCustom` 은 클라이언트 쓰기 금지
 - `accessLogs` 는 슈퍼관리자만 읽기
 
 ## 완료된 것
@@ -62,7 +68,8 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 학생코드(명부↔계정 연결, 학부모 자녀 연결까지) · 관리자/교사 대시보드 ·
 역할 테스트 모드(🧪) · 사운드 9종(Web Audio 합성) · 보안 규칙 + 검증 스크립트 ·
 **숙제 교사 현황판**(명부 기반 3색 그리드 · 콕 찌르기 · 검사완료) ·
-**도장 경제**(검사 → 지급 → 상점 구매 → 3D 아바타 반영)
+**도장 경제**(검사 → 지급 → 상점 구매 → 3D 아바타 반영) ·
+**교사 승인제**(슈퍼관리자 컨펌) · **퀴즈**(객관식·단답형·서술형 + 이미지·유튜브 + AI 해설)
 
 ### 숙제 화면 구조 (2026-07-20 재설계)
 
@@ -101,23 +108,47 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 - 유저 문서는 `auth-context` 에서 `onSnapshot` 으로 구독한다. 한 번만 읽으면
   받은 도장과 착용한 아이템이 새로고침 전까지 안 보인다.
 
+### 역할과 승인 (2026-07-20)
+
+- **role 은 서버(`/api/role`)만 정한다.** 규칙에서 `role`·`pendingRole`·`classIds` 의
+  클라이언트 쓰기를 막았다. update 뿐 아니라 **create 도 막아야 한다** —
+  첫 로그인에 `role: 'teacher'` 로 문서를 만들어버리면 그만이기 때문이다.
+- 학생·학부모는 종전대로 즉시 부여(어차피 학생코드가 없으면 반에 못 들어간다).
+  **교사만 `pendingRole` 로 접수되고 슈퍼관리자가 `/admin/teachers` 에서 승인**해야 role 이 된다.
+- 교사 권한은 아직 **학교 단위가 아니라 전역**이다. 승인된 교사는 모든 학교의 명부를 본다.
+  학교별로 좁히려면 별도 작업이 필요하다.
+- `super_admin` 은 신청 대상이 아니다. Firestore 콘솔에서 직접 지정한다.
+
+### 퀴즈 (2026-07-20)
+
+유형 3종(객관식·단답형·서술형) + 자료 2종(이미지·유튜브) + AI 해설.
+
+- **정답은 절대 클라이언트로 내려가지 않는다.** 문항(`questions`)과 정답(`answerKeys`)을
+  다른 컬렉션에 나누고 `answerKeys` 는 교직원만 읽게 막았다. 문항 문서에 정답을 같이 넣으면
+  개발자도구로 그냥 보인다. **채점도 서버에서 한다** — 클라이언트 채점은 결국 정답을 받아야 한다.
+- 단답형은 공백·문장부호·전각을 정규화해 채점한다(`lib/quiz-utils.ts`).
+  "3 개", "3개.", "３개" 를 다르게 보면 아는 아이가 틀린 것으로 나온다.
+  허용 표기를 쉼표로 여러 개 받는다.
+- **서술형은 채점하지 않는다.** 초등학생 글을 기계가 맞다/틀리다 하면 안 된다. 교사가 읽는다.
+- AI 해설(`/api/quiz-explain`)은 **제출한 사람만** 부를 수 있다.
+  안 그러면 풀기 전에 해설을 열어 정답을 알아낸다.
+  한 번 만들면 문항에 캐시해 반 전체가 재사용한다 — 25명이 각자 부르면 같은 답을 25번 산다.
+  교사가 직접 쓴 해설이 언제나 우선. 모델은 `OPENAI_TEXT_MODEL`(기본 gpt-4o-mini).
+- 출제는 전부 검사한 뒤 배치 저장. 하나라도 잘못되면 통째로 거부해 반쪽 퀴즈를 남기지 않는다.
+- 유튜브는 전체 URL이 아니라 **id 만** 저장한다(공유·짧은 링크·임베드·Shorts·live 모두 파싱).
+- 점수는 아이에게 보여주지 않는다. 문항별 ⭕❌ 와 해설만 준다.
+
 ## 남은 일 (우선순위)
 
-0. **교사 역할 자기지정 구멍 (보안, 착수 전 우선 처리 권장)** —
-   `(auth)/join-request/page.tsx` 에서 가입자가 스스로 `role: 'teacher'` 를 써넣을 수 있고
-   승인 절차가 없다. 교직원이 되면 명부(아이들 이름·학생코드)·전 제출물 열람,
-   학교 데이터 수정, **도장 무한 발행**이 전부 열린다. 규칙에서 `role` 클라이언트 쓰기를 막고
-   승인 게이트(`pendingRole`)를 두어야 한다.
-1. **퀴즈** (#18) — 객관식·주관식·이미지. 점수 없이 푼 학생 목록만 순차 표시.
-2. **틀린그림 찾기** (#19) — 사진 업로드 → sharp 보정 → gpt-image-2 low로 5개 전후 변형 생성 →
+1. **틀린그림 찾기** (#19) — 사진 업로드 → sharp 보정 → gpt-image-2 low로 5개 전후 변형 생성 →
    가로/세로 비율에 따라 상하·좌우 배치 자동 → 교사가 정답 좌표 클릭 → 학생 풀이 →
    소요 시간 랭킹 → 댓글 → 모달형 제보 게시판.
-3. **유무료 정책** (#11) — 전시 주제 무료 1개 제한, 이후 유료.
+2. **유무료 정책** (#11) — 전시 주제 무료 1개 제한, 이후 유료.
    착수 전 결정 필요: 구독 단위(교사/학급/학교), 가격, 결제 수단(국내 PG).
-4. **다중접속** (#20) — **Firestore 금지**(25명 40분 수업에 약 $10). RTDB 사용 +
+3. **다중접속** (#20) — **Firestore 금지**(25명 40분 수업에 약 $10). RTDB 사용 +
    5Hz·움직일 때만·좌표 압축 3종 최적화하면 약 $0.22/회. 영속 데이터는 Firestore,
    휘발성 위치는 RTDB로 분리.
-5. **학습 연계 놀이** (#21) — 술래잡기 등. #20(다중접속) 완료가 전제.
+4. **학습 연계 놀이** (#21) — 술래잡기 등. #20(다중접속) 완료가 전제.
    퀴즈·숙제 보상이 게임 능력으로 이어지게. 좀비고 문법을 참고하되
    '감염·추격' 대신 '술래·보물찾기' 톤으로 순화.
 
@@ -126,3 +157,8 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 - 상점: 아이템이 8종뿐이고, 도장을 쓸 곳이 아바타 꾸미기 하나다
 - 조형물 작품: 실제 3D 모델이 아니라 회전하는 다면체
 - 3D 학교 외관에 학교별 `assets`(무지개/운동장 등) 아직 미반영
+- 퀴즈: 낸 뒤 수정이 안 된다(삭제 후 다시 내야 함). 서술형 답에 도장·코멘트를 달 수 없다
+  (숙제에는 있는 기능이라 아이가 반응을 못 받는다)
+- 교사 권한이 학교 단위가 아니라 전역이다
+- **브라우저에서 눈으로 확인한 화면이 없다.** 3D 상점 아이템(왕관·안경·풍선·반짝별),
+  퀴즈 출제·풀이 화면, 유튜브 임베드는 API·규칙만 검증했고 실제 렌더는 미확인
