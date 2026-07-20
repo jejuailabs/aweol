@@ -7,6 +7,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import { getFirestore, collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
+const SCHOOL = 'aewol-elementary';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const env = {};
 for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
@@ -60,7 +61,7 @@ let t = await tokenFor(STU_A);
 let r = await fetch(`${BASE}/api/student-code`, {
   method: 'PUT',
   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-  body: JSON.stringify({ classId: CLASS }),
+  body: JSON.stringify({ schoolId: SCHOOL, classId: CLASS }),
 });
 ok('학생의 코드 발급 차단', r.status === 403, `HTTP ${r.status}`);
 
@@ -69,7 +70,7 @@ t = await tokenFor(TEACHER);
 r = await fetch(`${BASE}/api/student-code`, {
   method: 'PUT',
   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-  body: JSON.stringify({ classId: CLASS }),
+  body: JSON.stringify({ schoolId: SCHOOL, classId: CLASS }),
 });
 ok('교사의 코드 발급 허용', r.ok, `HTTP ${r.status}`);
 
@@ -93,7 +94,7 @@ const redeem = async (uid, c) => {
   const res = await fetch(`${BASE}/api/student-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
-    body: JSON.stringify({ code: c }),
+    body: JSON.stringify({ schoolId: SCHOOL, code: c }),
   });
   return { status: res.status, json: await res.json() };
 };

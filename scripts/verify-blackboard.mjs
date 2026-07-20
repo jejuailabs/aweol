@@ -7,6 +7,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, collection, getDocs } from 'firebase/firestore';
 
+const SCHOOL = 'aewol-elementary';
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const env = {};
 for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
@@ -54,13 +55,13 @@ const post = (token, body) =>
 
 console.log('[칠판 쓰기 권한]');
 // 1) 비로그인
-let r = await post(null, { classId: '3-1', kind: 'stroke', points: [[0.1, 0.1]], color: '#fff', width: 5 });
+let r = await post(null, { schoolId: SCHOOL, classId: '3-1', kind: 'stroke', points: [[0.1, 0.1]], color: '#fff', width: 5 });
 ok('비로그인 쓰기 차단', r.status === 401, `HTTP ${r.status}`);
 
 // 2) 소속 학생 — 허용, 작성자 위조 시도
 const stuToken = await tokenFor(STU);
 r = await post(stuToken, {
-  classId: '3-1', kind: 'text', points: [[0.3, 0.5]], color: '#FFFFFF', width: 6,
+  schoolId: SCHOOL, classId: '3-1', kind: 'text', points: [[0.3, 0.5]], color: '#FFFFFF', width: 6,
   text: '검증용글',
   authorName: '교장선생님',   // 위조 시도
   authorUid: 'someone-else',
@@ -78,11 +79,11 @@ if (created.id) {
 
 // 3) 남의 반 학생 — 차단
 const outToken = await tokenFor(OUT);
-r = await post(outToken, { classId: '3-1', kind: 'stroke', points: [[0.2, 0.2]], color: '#fff', width: 5 });
+r = await post(outToken, { schoolId: SCHOOL, classId: '3-1', kind: 'stroke', points: [[0.2, 0.2]], color: '#fff', width: 5 });
 ok('다른 반 학생 쓰기 차단', r.status === 403, `HTTP ${r.status}`);
 
 // 4) 전체 지우기는 교직원만
-r = await fetch(`${BASE}/api/blackboard?classId=3-1`, {
+r = await fetch(`${BASE}/api/blackboard?schoolId=${SCHOOL}&classId=3-1`, {
   method: 'DELETE', headers: { Authorization: `Bearer ${stuToken}` },
 });
 ok('학생의 전체 지우기 차단', r.status === 403, `HTTP ${r.status}`);
