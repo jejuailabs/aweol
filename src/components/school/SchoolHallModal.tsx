@@ -37,16 +37,18 @@ interface AlbumItem {
  * 여기서 또 입력받으면 같은 값이 두 군데 생긴다.
  */
 export default function SchoolHallModal({
-  schoolId, schoolName, profile, emblemUrl, onClose,
+  schoolId, schoolName, profile, emblemUrl, initialTab = 'about', onClose,
 }: {
   schoolId: string;
   schoolName: string;
   profile?: SchoolProfile;
   emblemUrl?: string;
+  /** 로비에서 어느 게시판을 눌렀는지. 그 칸이 열린 채로 뜬다 */
+  initialTab?: Tab;
   onClose: () => void;
 }) {
   const { user, userDoc } = useAuth();
-  const [tab, setTab] = useState<Tab>('about');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [notices, setNotices] = useState<HallNotice[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [album, setAlbum] = useState<AlbumItem[]>([]);
