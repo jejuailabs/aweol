@@ -35,5 +35,19 @@ export async function GET() {
     modules['sharp'] = `실패: ${(e as Error).message.slice(0, 200)}`;
   }
 
+  // 500을 내는 세 경로가 공통으로 쓰는 래퍼를 직접 불러본다
+  try {
+    const mod = await import('@/lib/firebase-admin');
+    modules['@/lib/firebase-admin'] = 'import ok';
+    try {
+      mod.adminDb();
+      modules['adminDb()'] = 'ok';
+    } catch (e) {
+      modules['adminDb()'] = `실패: ${(e as Error).message.slice(0, 300)}`;
+    }
+  } catch (e) {
+    modules['@/lib/firebase-admin'] = `import 실패: ${(e as Error).message.slice(0, 300)}`;
+  }
+
   return NextResponse.json({ env, modules });
 }
