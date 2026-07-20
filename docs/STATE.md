@@ -1,6 +1,6 @@
 # 애월초 학급 전시실 — 작업 상태
 
-> 새 세션에서 이어서 작업할 때 이 문서만 읽으면 된다. 마지막 갱신: 학교별 3D 외관 완료 시점.
+> 새 세션에서 이어서 작업할 때 이 문서만 읽으면 된다. 마지막 갱신: 틀린그림 찾기 완료 시점.
 
 ## 무엇을 만들고 있나
 
@@ -27,6 +27,8 @@
    $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-shop.mjs
    $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-role.mjs
    $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-quiz.mjs
+   $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-school-scope.mjs
+   $env:BASE_URL="https://aweol.vercel.app"; node scripts/verify-spot.mjs
    ```
    푸시 직후 바로 돌리면 구버전이 응답한다. 2~3분 기다렸다가 검증한다.
 4. **Firestore는 중첩 배열을 저장 못 한다.** 좌표는 `[x,y,x,y,...]` 로 펴서 넣는다.
@@ -66,13 +68,14 @@
 /admin/logs                                        접근 기록 (슈퍼관리자 전용)
 /join-class                                        학생코드 입력
 API: /api/{school,school-image,student-code,blackboard,homework,enhance,
-          role,shop,quiz,quiz-explain}
+          role,shop,quiz,quiz-explain,spot-game,spot-generate}
 ```
 
-Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,homeworks,quizzes,blackboard}`
+Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,homeworks,quizzes,spotGames,blackboard}`
 - `studentCodes`, `blackboard`, `homeworks/*/submissions`, `quizzes/*` 하위,
   `users/*/{inventory,stampLedger}` 는 **클라이언트 쓰기 금지, 서버 전용**
-- `quizzes/*/answerKeys` 는 **교직원만 읽기** (학생이 읽으면 퀴즈가 성립하지 않는다)
+- `quizzes/*/answerKeys`, `spotGames/*/answerKey` 는 **교직원만 읽기**
+  (학생이 읽으면 퀴즈·놀이가 성립하지 않는다)
 - users 문서의 `role`·`pendingRole`·`classIds`·`stamps`·`avatarCustom` 은 클라이언트 쓰기 금지
 - `accessLogs` 는 슈퍼관리자만 읽기
 
@@ -86,7 +89,8 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 역할 테스트 모드(🧪) · 사운드 9종(Web Audio 합성) · 보안 규칙 + 검증 스크립트 ·
 **숙제 교사 현황판**(명부 기반 3색 그리드 · 콕 찌르기 · 검사완료) ·
 **도장 경제**(검사 → 지급 → 상점 구매 → 3D 아바타 반영) ·
-**교사 승인제**(슈퍼관리자 컨펌) · **퀴즈**(객관식·단답형·서술형 + 이미지·유튜브 + AI 해설)
+**교사 승인제**(슈퍼관리자 컨펌) · **퀴즈**(객관식·단답형·서술형 + 이미지·유튜브 + AI 해설) ·
+**틀린그림 찾기**(AI 변형 + 교사가 정답 찍기 + 서버 판정 + 순위표)
 
 ### 숙제 화면 구조 (2026-07-20 재설계)
 
@@ -169,17 +173,40 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 - 유튜브는 전체 URL이 아니라 **id 만** 저장한다(공유·짧은 링크·임베드·Shorts·live 모두 파싱).
 - 점수는 아이에게 보여주지 않는다. 문항별 ⭕❌ 와 해설만 준다.
 
+### 틀린그림 찾기 (2026-07-20)
+
+알림판 다섯 번째 칸. 사진 하나로 만들고, 아이는 다른 곳을 찾아 누른다.
+
+- **AI가 정확히 몇 군데를 바꿔줄지는 알 수 없다.** 그래서 `/api/spot-generate` 결과를
+  정답으로 삼지 않는다. 선생님이 두 그림을 보고 **직접 찍은 좌표만** 정답이다.
+- 정답 좌표는 `spotGames/*/answerKey` 에 따로 두고 교직원만 읽는다.
+  찍을 때마다 서버가 판정하고 맞은 자리만 돌려준다 — 좌표를 내려주면 1초 만에 끝난다.
+- **시간은 서버가 잰다.** 클라이언트가 보내는 초를 믿으면 순위표가 의미 없다.
+  끝낸 뒤에는 다시 시작할 수 없다(기록 갈아치우기 차단).
+- 찾을 개수(`spotCount`)는 공개한다. 몇 개 남았는지는 알아야 한다. 좌표만 숨긴다.
+- 세로로 긴 사진은 좌우로, 아니면 위아래로 배치한다(`layout`).
+  두 그림은 같은 크기·방향으로 맞춰 저장한다 — 안 그러면 좌표가 어긋난다.
+- 아직 없는 것: 제보 게시판, 댓글.
+
+### 이미지 로딩 (2026-07-20)
+
+- 작품은 업로드할 때 **썸네일(640px)을 따로 만들어** 함께 올린다(`lib/client-image.ts`).
+  전시실 액자는 썸네일, 원본은 눌러서 상세를 볼 때만 받는다.
+  이걸 안 하면 액자 12개짜리 방 하나가 22MB다(실측). 지금은 1.1MB.
+- 옛 작품은 `node scripts/backfill-thumbnails.mjs --apply` 로 따라잡는다(여러 번 돌려도 안전).
+- **Storage 주소 파싱은 `lib/storage-path.ts` 를 쓴다.** 직접 정규식을 쓰지 말 것 —
+  `firebasestorage.googleapis.com` 이 `storage.googleapis.com` 을 문자열로 포함해서,
+  순서를 잘못 잡으면 엉뚱한 경로가 나온다. 실제로 이 버그로 점검 스크립트가
+  멀쩡한 파일을 고아로 잡을 뻔했다.
+
 ## 남은 일 (우선순위)
 
-1. **틀린그림 찾기** (#19) — 사진 업로드 → sharp 보정 → gpt-image-2 low로 5개 전후 변형 생성 →
-   가로/세로 비율에 따라 상하·좌우 배치 자동 → 교사가 정답 좌표 클릭 → 학생 풀이 →
-   소요 시간 랭킹 → 댓글 → 모달형 제보 게시판.
-2. **유무료 정책** (#11) — 전시 주제 무료 1개 제한, 이후 유료.
+1. **유무료 정책** (#11) — 전시 주제 무료 1개 제한, 이후 유료.
    착수 전 결정 필요: 구독 단위(교사/학급/학교), 가격, 결제 수단(국내 PG).
-3. **다중접속** (#20) — **Firestore 금지**(25명 40분 수업에 약 $10). RTDB 사용 +
+2. **다중접속** (#20) — **Firestore 금지**(25명 40분 수업에 약 $10). RTDB 사용 +
    5Hz·움직일 때만·좌표 압축 3종 최적화하면 약 $0.22/회. 영속 데이터는 Firestore,
    휘발성 위치는 RTDB로 분리.
-4. **학습 연계 놀이** (#21) — 술래잡기 등. #20(다중접속) 완료가 전제.
+3. **학습 연계 놀이** (#21) — 술래잡기 등. #20(다중접속) 완료가 전제.
    퀴즈·숙제 보상이 게임 능력으로 이어지게. 좀비고 문법을 참고하되
    '감염·추격' 대신 '술래·보물찾기' 톤으로 순화.
 
@@ -188,8 +215,9 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 - 상점: 아이템이 8종뿐이고, 도장을 쓸 곳이 아바타 꾸미기 하나다
 - 조형물 작품: 실제 3D 모델이 아니라 회전하는 다면체
 - 3D 학교 외관: 이름·현판·색은 학교별로 반영됐지만 `assets`(무지개/운동장 등)는 아직 미반영
-- 퀴즈: 낸 뒤 수정이 안 된다(삭제 후 다시 내야 함). 서술형 답에 도장·코멘트를 달 수 없다
-  (숙제에는 있는 기능이라 아이가 반응을 못 받는다)
-- 교사 권한이 학교 단위가 아니라 전역이다
-- **브라우저에서 눈으로 확인한 화면이 없다.** 3D 상점 아이템(왕관·안경·풍선·반짝별),
-  퀴즈 출제·풀이 화면, 유튜브 임베드는 API·규칙만 검증했고 실제 렌더는 미확인
+- 틀린그림 찾기: 제보 게시판·댓글 미구현
+- `/admin` 학교 목록의 읽기 수 (위 규칙 5 참고)
+- **3D 화면은 눈으로 확인하지 못했다.** 프리뷰 브라우저에서 requestAnimationFrame 이
+  동작하지 않아 R3F 씬이 아예 마운트되지 않는다(앱 버그 아님, 환경 제약).
+  상점 아이템 착용 모습, 알림판 가림 처리, 전시실 2줄 배치·나가는 문,
+  학교별 외관, 알림판 5칸 배치는 **배포본에서 사람이 봐야 한다.**
