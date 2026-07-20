@@ -5,6 +5,9 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { PetKind } from '@/lib/firestore-schema';
+import {
+  BLOCK_SECONDS, BUMP_DIST, NEAR_DIST, encounterLine, type PetEncounter,
+} from '@/lib/school-pet';
 
 const PI = Math.PI;
 
@@ -36,6 +39,7 @@ export default function SchoolPet({
   needEmoji,
   home = [7, 0, 8],
   roam = 3.2,
+  avatarPos,
   onClick,
 }: {
   kind: PetKind;
@@ -46,6 +50,8 @@ export default function SchoolPet({
   home?: [number, number, number];
   /** 중심에서 얼마나 멀리까지 */
   roam?: number;
+  /** 아바타 위치. 주면 피하기도 하고 말도 건다 */
+  avatarPos?: React.MutableRefObject<THREE.Vector3>;
   onClick?: () => void;
 }) {
   const skin = SKINS[kind] ?? SKINS.dog;
@@ -58,9 +64,86 @@ export default function SchoolPet({
   const rest = useRef(1.2);
   const bob = useRef(0);
 
+  /** 아바타와 마주친 상태 */
+  const [say, setSay] = useState('');
+  const blockedFor = useRef(0);   // 앞이 막힌 채로 흐른 시간
+  const nearFor = useRef(0);      // 가까이 있은 시간
+  const grumble = useRef(0);      // 몇 번째 투덜거림인가
+  const sayUntil = useRef(0);     // 말풍선을 언제까지 띄우나
+  const lastBump = useRef(0);
+
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
+
+    const now = state.clock.elapsedTime;
+
+    /**
+     * 아바타와의 관계.
+     *
+     * 가만히 앞을 막고 있으면 잠깐 기다렸다가 **옆으로 돌아간다.**
+     * 말만 하고 계속 막혀 있으면 놀이가 아니라 답답한 일이 된다.
+     */
+    let avoid: { x: number; z: number } | null = null;
+    if (avatarPos) {
+      const ax = avatarPos.current.x - g.position.x;
+      const az = avatarPos.current.z - g.position.z;
+      const adist = Math.sqrt(ax * ax + az * az);
+
+      const talk = (kind: PetEncounter, turn: number, secs = 2.4) => {
+        if (now < sayUntil.current) return;
+        setSay(encounterLine(kind, turn));
+        sayUntil.current = now + secs;
+      };
+
+      if (adist < BUMP_DIST) {
+        // 부딪혔다 — 살짝 밀려난다
+        if (now - lastBump.current > 1.2) { talk('nudged', Math.floor(now) % 3); lastBump.current = now; }
+        const inv = 1 / Math.max(0.001, adist);
+        g.position.x -= ax * inv * delta * 1.4;
+        g.position.z -= az * inv * delta * 1.4;
+      }
+
+      if (adist < NEAR_DIST) {
+        nearFor.current += delta;
+        // 내가 가려는 쪽에 아바타가 서 있나 (앞을 막았나)
+        const tx = target.current.x - g.position.x;
+        const tz = target.current.y - g.position.z;
+        const tlen = Math.sqrt(tx * tx + tz * tz);
+        const facing = tlen > 0.01 ? (ax * tx + az * tz) / (adist * tlen) : 0;
+
+        if (facing > 0.5) {
+          blockedFor.current += delta;
+          if (blockedFor.current > BLOCK_SECONDS) {
+            talk('blocked', grumble.current);
+            grumble.current += 1;
+            blockedFor.current = 0;
+            // 옆으로 돌아간다. 아바타 방향의 수직으로 목표를 틀어준다.
+            const inv = 1 / Math.max(0.001, adist);
+            target.current.set(
+              g.position.x - az * inv * 2.4,
+              g.position.z + ax * inv * 2.4
+            );
+            rest.current = 0;
+          }
+          // 막힌 동안은 옆으로 비켜선다
+          const inv = 1 / Math.max(0.001, adist);
+          avoid = { x: -az * inv, z: ax * inv };
+        } else {
+          blockedFor.current = 0;
+        }
+
+        if (nearFor.current > 9) { talk('followed', Math.floor(now / 7) % 3); nearFor.current = 3; }
+        else if (nearFor.current < delta * 2) talk('greet', Math.floor(now / 5) % 3);
+      } else {
+        nearFor.current = 0;
+        blockedFor.current = 0;
+        // 멀어지면 투덜거림도 처음으로 (다시 만나면 새 마음)
+        if (adist > NEAR_DIST * 2.5) grumble.current = 0;
+      }
+    }
+
+    if (say && now > sayUntil.current) setSay('');
 
     const dx = target.current.x - g.position.x;
     const dz = target.current.y - g.position.z;
@@ -79,8 +162,11 @@ export default function SchoolPet({
       }
     } else {
       const speed = 1.1;
-      g.position.x += (dx / dist) * speed * delta;
-      g.position.z += (dz / dist) * speed * delta;
+      // avoid 가 있으면 옆걸음을 섞는다 — 정면으로 밀고 들어가지 않는다
+      const sx = avoid ? avoid.x * 0.9 : 0;
+      const sz = avoid ? avoid.z * 0.9 : 0;
+      g.position.x += ((dx / dist) + sx) * speed * delta;
+      g.position.z += ((dz / dist) + sz) * speed * delta;
 
       // 가는 방향을 본다
       const want = Math.atan2(dx, dz);
@@ -182,7 +268,22 @@ export default function SchoolPet({
       </mesh>
 
       {/* 이름표와 기분 — 가리키거나 뭔가 필요할 때만 띄운다 */}
-      {(hot || needEmoji) && (
+      {say && (
+        <Html position={[0, 1.28, 0]} center pointerEvents="none" zIndexRange={[7, 0]}>
+          <div
+            style={{
+              background: 'white', color: '#3A3226', fontWeight: 800, fontSize: '13px',
+              padding: '7px 14px', borderRadius: '14px', whiteSpace: 'nowrap',
+              fontFamily: 'Pretendard, sans-serif', border: '2px solid #E8D9BE',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.22)',
+            }}
+          >
+            {say}
+          </div>
+        </Html>
+      )}
+
+      {(hot || needEmoji) && !say && (
         <Html position={[0, 1.05, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
           <div
             style={{

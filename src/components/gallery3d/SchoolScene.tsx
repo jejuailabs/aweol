@@ -602,6 +602,8 @@ export default function SchoolScene({
             kind={pet.kind}
             name={pet.name}
             needEmoji={pet.needEmoji}
+            // 아바타 위치를 줘야 피하기도 하고 말도 건다
+            avatarPos={avatarPos}
             onClick={onPetClick}
           />
         )}

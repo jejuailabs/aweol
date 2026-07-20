@@ -93,3 +93,41 @@ export const CARE_LABEL = {
   water: { emoji: '💧', label: '물 주기', done: '시원해요!' },
   pet: { emoji: '🤚', label: '쓰다듬기', done: '기분이 좋아요~' },
 } as const;
+
+/**
+ * 아바타와 마주쳤을 때 하는 말.
+ *
+ * 여기도 AI 를 안 부른다. 거리와 시간만 보면 되는 일이라 요금이 0이고,
+ * 무엇보다 아이가 앞에 서 있는 것만으로 매번 모델을 부를 이유가 없다.
+ */
+export type PetEncounter = 'blocked' | 'nudged' | 'followed' | 'greet';
+
+const ENCOUNTER_LINES: Record<PetEncounter, string[]> = {
+  // 길을 막고 서 있을 때 — 점점 서운해한다
+  blocked: [
+    '저기... 지나갈게요!',
+    '잠시만 비켜주세요~',
+    '왜 자꾸 길을 막아요?',
+    '흥, 다른 길로 갈래요!',
+  ],
+  // 부딪혔을 때
+  nudged: ['앗! 깜짝이야', '어이쿠!', '살살 다녀요~'],
+  // 계속 따라다닐 때
+  followed: ['자꾸 따라오시네요?', '같이 산책할래요?', '어디까지 따라올 거예요?'],
+  // 그냥 가까이 왔을 때
+  greet: ['안녕!', '오늘도 왔네요!', '반가워요~'],
+};
+
+export function encounterLine(kind: PetEncounter, turn: number): string {
+  const list = ENCOUNTER_LINES[kind];
+  // blocked 는 순서대로 세져야 한다(점점 서운해지는 맛). 나머지는 돌려 쓴다.
+  if (kind === 'blocked') return list[Math.min(turn, list.length - 1)];
+  return list[turn % list.length];
+}
+
+/** 이 거리 안이면 '가까이 있다'고 본다 */
+export const NEAR_DIST = 1.6;
+/** 이 거리 안이면 부딪힌 것으로 본다 */
+export const BUMP_DIST = 0.75;
+/** 가만히 앞에 서 있으면 몇 초 뒤에 비켜달라고 하나 */
+export const BLOCK_SECONDS = 2.5;
