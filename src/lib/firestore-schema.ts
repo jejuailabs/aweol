@@ -145,7 +145,23 @@ export interface SubmissionDoc {
   /** 규칙에서 단일 조건으로 판정하려고 서버가 계산해 넣는 값 */
   publicToClass: boolean;
   teacherComment: string;
+  /** 선생님이 실제로 들여다보고 검사를 끝냈는지. 그리드의 3번째 색이 이 값이다. */
+  checked: boolean;
+  checkedAt: Timestamp | null;
   submittedAt: Timestamp;
+}
+
+/**
+ * 콕 찌르기. 미제출 학생에게 선생님이 보내는 가벼운 알림.
+ * 문서 ID = 학생 uid 라서 한 명당 하나만 유지되고, 여러 번 찌르면 count 만 올라간다.
+ * (반려 기능을 넣지 않기로 한 대신, 오프라인 수업과 섞여도 안전한 이 방식만 쓴다)
+ */
+export interface HomeworkNudgeDoc {
+  studentUid: string;
+  studentName: string;
+  count: number;
+  byName: string;
+  lastAt: Timestamp;
 }
 
 /** 교실 알림판 글 (알림장·급식·숙제·퀴즈). 작성은 교직원만. */

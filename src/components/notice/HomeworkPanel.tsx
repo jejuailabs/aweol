@@ -10,7 +10,9 @@ import { auth, db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
+import { nudgesPath } from '@/lib/paths';
 import DrawingPad from './DrawingPad';
+import HomeworkTeacherGrid from './HomeworkTeacherGrid';
 
 
 interface Homework {
@@ -65,6 +67,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
   const [drawBlob, setDrawBlob] = useState<Blob | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
+  const [myNudge, setMyNudge] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const open = list.find((h) => h.id === openId) || null;
@@ -90,18 +93,15 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     }, () => setList([]));
   }, [basePath]);
 
-  // 열린 숙제의 제출물 — 권한에 따라 볼 수 있는 범위가 다르다
+  // 열린 숙제의 제출물 (학생·학부모용). 교직원 화면은 HomeworkTeacherGrid 가 직접 구독한다.
   useEffect(() => {
-    if (!db || !openId) { setSubs([]); return; }
+    if (!db || !openId || isStaff) { setSubs([]); return; }
     const col = collection(db, basePath, openId, 'submissions');
-    const hw = list.find((h) => h.id === openId);
-    // 교직원은 전부, 학생은 공개된 것만 (본인 것은 아래에서 따로 합친다)
-    const q = isStaff ? col : query(col, where('publicToClass', '==', true));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(query(col, where('publicToClass', '==', true)), (snap) => {
       setSubs(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Submission, 'id'>) })));
     }, () => setSubs([]));
-    // 학생 본인 제출물은 공개 여부와 무관하게 보여야 한다
-    if (!isStaff && user) {
+    // 본인 제출물은 공개 여부와 무관하게 보여야 한다
+    if (user) {
       getDocs(query(col, where('studentUid', '==', user.uid)))
         .then((s) => {
           if (s.empty) return;
@@ -110,9 +110,18 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
         })
         .catch(() => {});
     }
-    void hw;
     return () => unsub();
-  }, [openId, basePath, isStaff, user, list]);
+  }, [openId, basePath, isStaff, user]);
+
+  // 선생님이 나를 콕 찔렀는지 (찔린 본인만 읽을 수 있다)
+  useEffect(() => {
+    if (!db || !openId || isStaff || !user) { setMyNudge(0); return; }
+    return onSnapshot(
+      doc(db, nudgesPath(schoolId, classId, openId), user.uid),
+      (snap) => setMyNudge(snap.exists() ? (snap.data().count ?? 0) : 0),
+      () => setMyNudge(0)
+    );
+  }, [openId, isStaff, user, schoolId, classId]);
 
   const createHomework = useCallback(async () => {
     if (!db || !user || !userDoc || !wTitle.trim()) return;
@@ -181,22 +190,8 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     setSubText(''); setSubFile(null); setSubPreview(''); setDrawBlob(null);
   }, [open, user, subText, subFile, drawBlob, schoolId, classId]);
 
-  const teacherAction = useCallback(
-    async (studentUid: string, patch: Record<string, unknown>) => {
-      if (!open) return;
-      const token = await auth?.currentUser?.getIdToken();
-      await fetch('/api/homework', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ schoolId, classId, homeworkId: open.id, studentUid, ...patch }),
-      });
-    },
-    [open, schoolId, classId]
-  );
-
   // ---------- 숙제 상세 ----------
   if (open) {
-    const held = subs.filter((s) => s.status === 'held');
     const shown = subs.filter((s) => s.status === 'approved');
     return (
       <div>
@@ -232,12 +227,32 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           )}
         </div>
 
+        {/* 교사 — 명부 기반 현황판 */}
+        {isStaff && (
+          <HomeworkTeacherGrid
+            schoolId={schoolId}
+            classId={classId}
+            homeworkId={open.id}
+            submitType={open.submitType}
+            visibility={open.visibility}
+          />
+        )}
+
         {/* 학생 제출 */}
         {!isStaff && user && (
           <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
             <div className="text-xs font-black mb-2" style={{ color: '#3A3226' }}>
               {mySub ? '📮 다시 제출하기' : '📮 내 숙제 제출하기'}
             </div>
+
+            {myNudge > 0 && !mySub && (
+              <div
+                className="rounded-xl px-3 py-2 mb-2.5 text-[12px] font-bold"
+                style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+              >
+                👉 선생님이 콕 찔렀어요! 숙제를 내볼까요?
+              </div>
+            )}
 
             {open.submitType === 'text' && (
               <textarea
@@ -317,51 +332,26 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           </div>
         )}
 
-        {/* 보류함 (교사) */}
-        {isStaff && held.length > 0 && (
-          <div className="rounded-2xl p-3.5 mb-3" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
-            <div className="text-xs font-bold mb-1.5" style={{ color: '#8A6D2F' }}>
-              ⏳ 확인이 필요한 제출물 {held.length}건
+        {/* 친구들 것 모아보기 (교사는 위 현황판에서 본다) */}
+        {!isStaff && (
+          <>
+            <div className="text-[11px] font-bold mb-2" style={{ color: '#8A7A5F' }}>
+              📋 친구들 숙제 {shown.length}건
             </div>
-            <div className="text-[10px] mb-2.5 leading-relaxed" style={{ color: '#A08A5B' }}>
-              AI가 걸러낸 것이라 오탐일 수 있어요. 직접 보시고 판단해 주세요.
-            </div>
-            {held.map((s) => (
-              <SubmissionCard
-                key={s.id}
-                sub={s}
-                isStaff
-                onComment={(c) => teacherAction(s.studentUid, { comment: c })}
-                onApprove={() => teacherAction(s.studentUid, { approve: true })}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* 패들렛형 모아보기 */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[11px] font-bold" style={{ color: '#8A7A5F' }}>
-            📋 제출물 {shown.length}건
-          </div>
-        </div>
-        {shown.length === 0 ? (
-          <div className="py-8 text-center text-[11px]" style={{ color: '#A89880' }}>
-            {open.visibility === 'teacher' && !isStaff
-              ? '선생님만 볼 수 있는 숙제예요'
-              : '아직 제출한 친구가 없어요'}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {shown.map((s) => (
-              <SubmissionCard
-                key={s.id}
-                sub={s}
-                isStaff={isStaff}
-                onComment={(c) => teacherAction(s.studentUid, { comment: c })}
-                onHide={() => teacherAction(s.studentUid, { hide: true })}
-              />
-            ))}
-          </div>
+            {shown.length === 0 ? (
+              <div className="py-8 text-center text-[11px]" style={{ color: '#A89880' }}>
+                {open.visibility === 'teacher'
+                  ? '선생님만 볼 수 있는 숙제예요'
+                  : '아직 제출한 친구가 없어요'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {shown.map((s) => (
+                  <SubmissionCard key={s.id} sub={s} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -489,19 +479,8 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
   );
 }
 
-// ---------- 제출물 카드 ----------
-function SubmissionCard({
-  sub, isStaff, onComment, onApprove, onHide,
-}: {
-  sub: Submission;
-  isStaff: boolean;
-  onComment: (c: string) => void;
-  onApprove?: () => void;
-  onHide?: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [cmt, setCmt] = useState(sub.teacherComment || '');
-
+// ---------- 제출물 카드 (학생이 친구들 것을 볼 때) ----------
+function SubmissionCard({ sub }: { sub: Submission }) {
   return (
     <div className="rounded-2xl p-2.5 mb-1.5" style={{ background: 'white', border: '1px solid #EFE3CB' }}>
       <div className="text-[11px] font-bold mb-1" style={{ color: '#3A3226' }}>{sub.studentName}</div>
@@ -517,63 +496,9 @@ function SubmissionCard({
           {sub.text}
         </div>
       )}
-      {sub.moderation?.flagged && (
-        <div className="text-[9px] mt-1" style={{ color: '#E8A33C' }}>
-          AI 표시: {sub.moderation.reason || '확인 필요'}
-        </div>
-      )}
-      {sub.teacherComment && !editing && (
+      {sub.teacherComment && (
         <div className="mt-1.5 rounded-lg px-2 py-1 text-[10px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
           👩‍🏫 {sub.teacherComment}
-        </div>
-      )}
-
-      {isStaff && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {editing ? (
-            <>
-              <input
-                value={cmt}
-                onChange={(e) => setCmt(e.target.value)}
-                placeholder="칭찬 한마디"
-                className="min-w-0 flex-1 rounded-lg px-2 py-1 text-[10px] outline-none"
-                style={{ background: '#F6F0E4', color: '#3A3226' }}
-              />
-              <button
-                onClick={() => { onComment(cmt); setEditing(false); }}
-                className="rounded-lg px-2 py-1 text-[10px] font-bold text-white"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                저장
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-lg px-2 py-1 text-[10px] font-bold"
-              style={{ background: '#F6F0E4', color: '#8A7A5F' }}
-            >
-              💬 코멘트
-            </button>
-          )}
-          {onApprove && (
-            <button
-              onClick={onApprove}
-              className="rounded-lg px-2 py-1 text-[10px] font-bold text-white"
-              style={{ background: '#3BAF9F' }}
-            >
-              공개하기
-            </button>
-          )}
-          {onHide && (
-            <button
-              onClick={onHide}
-              className="rounded-lg px-2 py-1 text-[10px] font-bold"
-              style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
-            >
-              내리기
-            </button>
-          )}
         </div>
       )}
     </div>

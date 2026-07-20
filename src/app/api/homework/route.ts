@@ -95,8 +95,14 @@ export async function POST(req: NextRequest) {
     // 규칙에서 단일 조건으로 판정하려고 서버가 계산해 둔다
     publicToClass: hw.visibility === 'class' && status === 'approved',
     teacherComment: '',
+    // 다시 제출하면 검사는 처음부터 다시 (선생님이 옛 내용을 보고 검사한 셈이 되면 안 된다)
+    checked: false,
+    checkedAt: null,
     submittedAt: FieldValue.serverTimestamp(),
   });
+
+  // 콕 찔린 뒤 제출했으면 찌르기 표시를 지운다
+  await hwRef.collection('nudges').doc(user.uid).delete().catch(() => {});
 
   await db.collection('accessLogs').add({
     uid: user.uid,
@@ -118,7 +124,7 @@ export async function POST(req: NextRequest) {
   });
 }
 
-/** 선생님: 코멘트 달기 / 보류 해제 / 비공개 전환 */
+/** 선생님: 코멘트 달기 / 보류 해제 / 비공개 전환 / 검사완료 / 콕 찌르기 */
 export async function PATCH(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
@@ -129,6 +135,7 @@ export async function PATCH(req: NextRequest) {
   let body: {
     schoolId?: string; classId?: string; homeworkId?: string; studentUid?: string;
     comment?: string; approve?: boolean; hide?: boolean;
+    check?: boolean; nudge?: boolean; studentName?: string;
   };
   try {
     body = await req.json();
@@ -148,7 +155,36 @@ export async function PATCH(req: NextRequest) {
     .collection('homeworks').doc(homeworkId);
   const hwSnap = await hwRef.get();
   if (!hwSnap.exists) return NextResponse.json({ error: '숙제를 찾을 수 없습니다' }, { status: 404 });
-  const hw = hwSnap.data() as { visibility: string };
+  const hw = hwSnap.data() as { visibility: string; title?: string };
+
+  // 콕 찌르기는 제출물이 없는 학생에게 보내는 것이라 submissions 를 건드리지 않는다
+  if (body.nudge === true) {
+    const nudgeRef = hwRef.collection('nudges').doc(studentUid);
+    await nudgeRef.set(
+      {
+        studentUid,
+        studentName: (body.studentName || '').slice(0, 50),
+        count: FieldValue.increment(1),
+        byName: user.displayName,
+        lastAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    await db.collection('accessLogs').add({
+      uid: user.uid,
+      displayName: user.displayName,
+      role: user.role,
+      action: '숙제 콕 찌르기',
+      classId,
+      detail: `${hw.title || homeworkId} → ${body.studentName || studentUid}`,
+      ip: getClientIp(req.headers),
+      userAgent: req.headers.get('user-agent') || 'unknown',
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    return NextResponse.json({ ok: true, nudged: true });
+  }
 
   const subRef = hwRef.collection('submissions').doc(studentUid);
   const patch: Record<string, unknown> = {};
@@ -164,8 +200,18 @@ export async function PATCH(req: NextRequest) {
     patch.status = 'held';
     patch.publicToClass = false;
   }
+  if (typeof body.check === 'boolean') {
+    patch.checked = body.check;
+    patch.checkedAt = body.check ? FieldValue.serverTimestamp() : null;
+  }
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: '변경할 내용이 없습니다' }, { status: 400 });
+  }
+
+  // 없는 제출물에 set(merge) 하면 유령 문서가 생겨 그리드 집계가 틀어진다
+  const subSnap = await subRef.get();
+  if (!subSnap.exists) {
+    return NextResponse.json({ error: '제출물을 찾을 수 없습니다' }, { status: 404 });
   }
 
   await subRef.set(patch, { merge: true });

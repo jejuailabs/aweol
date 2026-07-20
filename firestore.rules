@@ -110,6 +110,12 @@ service cloud.firestore {
                         || resource.data.publicToClass == true;
             allow write: if false;
           }
+
+          // 콕 찌르기 — 찔린 본인과 교직원만 본다. 친구가 누가 안 냈는지 훑어볼 수 없어야 한다.
+          match /nudges/{studentUid} {
+            allow read: if isStaff() || (isSignedIn() && request.auth.uid == studentUid);
+            allow write: if false;
+          }
         }
 
         // 칠판 낙서 — 읽기는 공개, 쓰기는 서버(Admin SDK)만.

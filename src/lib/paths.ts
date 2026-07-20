@@ -29,6 +29,12 @@ export const noticesPath = (schoolId: string, classId: string) =>
 export const homeworksPath = (schoolId: string, classId: string) =>
   `${classPath(schoolId, classId)}/homeworks`;
 
+export const submissionsPath = (schoolId: string, classId: string, homeworkId: string) =>
+  `${homeworksPath(schoolId, classId)}/${homeworkId}/submissions`;
+
+export const nudgesPath = (schoolId: string, classId: string, homeworkId: string) =>
+  `${homeworksPath(schoolId, classId)}/${homeworkId}/nudges`;
+
 export const blackboardPath = (schoolId: string, classId: string) =>
   `${classPath(schoolId, classId)}/blackboard`;
 
