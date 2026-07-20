@@ -132,9 +132,23 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
   첫 로그인에 `role: 'teacher'` 로 문서를 만들어버리면 그만이기 때문이다.
 - 학생·학부모는 종전대로 즉시 부여(어차피 학생코드가 없으면 반에 못 들어간다).
   **교사만 `pendingRole` 로 접수되고 슈퍼관리자가 `/admin/teachers` 에서 승인**해야 role 이 된다.
-- 교사 권한은 아직 **학교 단위가 아니라 전역**이다. 승인된 교사는 모든 학교의 명부를 본다.
-  학교별로 좁히려면 별도 작업이 필요하다.
+- **교사 권한은 소속 학교 안에서만 통한다.** 신청할 때 학교를 고르고(`pendingSchoolId`),
+  승인되면 `schoolIds` 에 그 학교만 들어간다. 규칙은 `isStaffOf(schoolId)` 로 판정하고
+  API 는 `isStaffOfSchool(user, schoolId)` 을 쓴다. 전역 `isStaff()` 는 학교를 특정할 수 없는
+  자리(collectionGroup)에서만 쓴다.
+- `users` 문서 읽기는 본인과 총관리자만이다. 교사에게 열면 남의 학교 아이·학부모까지 보인다.
 - `super_admin` 은 신청 대상이 아니다. Firestore 콘솔에서 직접 지정한다.
+
+### 학교별 3D 외관 (2026-07-20)
+
+건물 형태는 학교 공용이고, **이름·현판·색**만 학교별로 바뀐다.
+
+- 간판 문구는 반드시 학교 문서의 `name` 에서 온다. 예전엔 '애월초등학교' 가 박혀 있어
+  한라산에 들어가도 애월초로 보였다.
+- `lib/image-palette.ts` 가 대표 이미지에서 벽·지붕 색을 뽑는다. 못 뽑으면 기본 색.
+  **색 추출에는 버킷 CORS 가 필요하다** (canvas 가 오염되면 getImageData 가 던진다).
+- 대표 이미지는 업로드 시점에 가로 1024 / JPEG 로 줄인다(`lib/image-compress.ts`).
+  3D 학교 화면을 열 때마다 내려받는 파일이라 원본 PNG(1MB+)를 그대로 두면 egress 가 샌다.
 
 ### 퀴즈 (2026-07-20)
 
