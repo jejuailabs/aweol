@@ -5,6 +5,40 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom } from './walker';
+import { extractSchoolPalette, DEFAULT_PALETTE, type SchoolPalette } from '@/lib/image-palette';
+
+/**
+ * 현관 옆에 거는 학교 사진.
+ * 텍스처를 직접 로드한다 — 실패해도 액자만 비고 씬은 멀쩡해야 한다.
+ */
+function SchoolPhoto({ url }: { url: string }) {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(
+      url,
+      (t) => {
+        if (!alive) { t.dispose(); return; }
+        t.colorSpace = THREE.SRGBColorSpace;
+        setTexture(t);
+      },
+      undefined,
+      () => {}
+    );
+    return () => { alive = false; };
+  }, [url]);
+
+  if (!texture) return null;
+  return (
+    <mesh position={[0, 0, 0.08]}>
+      <planeGeometry args={[2.8, 2]} />
+      <meshStandardMaterial map={texture} roughness={0.8} />
+    </mesh>
+  );
+}
 
 // 나무 줄기와 화단 (아래 배치와 같은 좌표)
 const SCHOOL_OBSTACLES: Obstacle[] = [
@@ -185,9 +219,15 @@ function WindowPlate({
 function SchoolBuilding({
   classes,
   onClassSelect,
+  schoolName,
+  imageUrl,
+  palette,
 }: {
   classes: SchoolClassItem[];
   onClassSelect: (id: string) => void;
+  schoolName: string;
+  imageUrl: string;
+  palette: SchoolPalette;
 }) {
   const bodyW = 18;
   const bodyH = 6.5;
@@ -204,21 +244,21 @@ function SchoolBuilding({
       {/* 본관 */}
       <mesh position={[0, bodyH * 0.5, 0]} castShadow>
         <boxGeometry args={[bodyW, bodyH, bodyD]} />
-        <meshStandardMaterial color="#FFF3E0" roughness={0.7} />
+        <meshStandardMaterial color={palette.wall} roughness={0.7} />
       </mesh>
       {/* 지붕 */}
       <mesh position={[0, bodyH + 0.55, 0]}>
         <boxGeometry args={[bodyW + 1, 1.1, bodyD + 1]} />
-        <meshStandardMaterial color="#E8493C" roughness={0.6} />
+        <meshStandardMaterial color={palette.roof} roughness={0.6} />
       </mesh>
       {/* 중앙 현관탑 */}
       <mesh position={[0, 3.9, bodyD * 0.5 + 0.6]} castShadow>
         <boxGeometry args={[4.6, 7.8, 1.4]} />
-        <meshStandardMaterial color="#FFE8CC" roughness={0.7} />
+        <meshStandardMaterial color={palette.wallWarm} roughness={0.7} />
       </mesh>
       <mesh position={[0, 8.15, bodyD * 0.5 + 0.6]}>
         <boxGeometry args={[5.2, 0.9, 2]} />
-        <meshStandardMaterial color="#D63C2F" roughness={0.6} />
+        <meshStandardMaterial color={palette.roofDark} roughness={0.6} />
       </mesh>
       {/* 현관문 */}
       <mesh position={[0, 1.25, bodyD * 0.5 + 1.32]}>
@@ -264,7 +304,7 @@ function SchoolBuilding({
           </group>
         );
       })}
-      {/* 학교 간판 */}
+      {/* 학교 간판 — 이름은 반드시 실제 학교에서 온다 (예전엔 애월초로 박혀 있었다) */}
       <Html position={[0, 6.9, bodyD * 0.5 + 1.4]} transform scale={0.5} pointerEvents="none">
         <div
           style={{
@@ -274,9 +314,20 @@ function SchoolBuilding({
             boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
           }}
         >
-          🏫 애월초등학교
+          🏫 {schoolName}
         </div>
       </Html>
+
+      {/* 현관 옆 현판 — 학교를 만들 때 고른 그림을 걸어 학교마다 다르게 보이게 한다 */}
+      {imageUrl && (
+        <group position={[-4.4, 2.6, bodyD * 0.5 + 0.72]}>
+          <mesh castShadow>
+            <boxGeometry args={[3.1, 2.3, 0.14]} />
+            <meshStandardMaterial color="#B08860" roughness={0.6} />
+          </mesh>
+          <SchoolPhoto url={imageUrl} />
+        </group>
+      )}
     </group>
   );
 }
@@ -360,14 +411,26 @@ export default function SchoolScene({
   onClassSelect = () => {},
   avatarId,
   avatarCustom,
+  schoolName = '학교',
+  imageUrl = '',
 }: {
   classes?: SchoolClassItem[];
   onClassSelect?: (id: string) => void;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
+  schoolName?: string;
+  imageUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 11));
+
+  // 학교 그림에서 벽·지붕 색을 뽑는다. 못 뽑으면 기본 색 그대로.
+  const [palette, setPalette] = useState<SchoolPalette>(DEFAULT_PALETTE);
+  useEffect(() => {
+    let alive = true;
+    extractSchoolPalette(imageUrl).then((p) => { if (alive) setPalette(p); });
+    return () => { alive = false; };
+  }, [imageUrl]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -414,7 +477,13 @@ export default function SchoolScene({
         <directionalLight position={[10, 14, 8]} intensity={1.1} color="#FFF4DC" castShadow />
         <Ground />
         <Rainbow />
-        <SchoolBuilding classes={classes} onClassSelect={onClassSelect} />
+        <SchoolBuilding
+          classes={classes}
+          onClassSelect={onClassSelect}
+          schoolName={schoolName}
+          imageUrl={imageUrl}
+          palette={palette}
+        />
         <FlagPole />
         <Tree position={[-10.5, 0, -1]} scale={1.15} />
         <Tree position={[10.5, 0, -1.5]} scale={1.05} />

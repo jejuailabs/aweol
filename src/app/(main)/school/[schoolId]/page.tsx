@@ -22,6 +22,7 @@ export default function SchoolPage() {
   const schoolId = useParams().schoolId as string;
   const [classes, setClasses] = useState<(ClassDoc & { id: string })[]>([]);
   const [schoolName, setSchoolName] = useState('');
+  const [schoolImage, setSchoolImage] = useState('');
   const [showMascot, setShowMascot] = useState(true);
 
   useEffect(() => {
@@ -42,8 +43,11 @@ export default function SchoolPage() {
   useEffect(() => {
     if (!db) return;
     getDoc(doc(db, 'schools', schoolId))
-      .then((s: DocumentSnapshot) => setSchoolName(s.exists() ? (s.data()?.name as string) || '' : ''))
-      .catch(() => setSchoolName(''));
+      .then((s: DocumentSnapshot) => {
+        setSchoolName(s.exists() ? (s.data()?.name as string) || '' : '');
+        setSchoolImage(s.exists() ? (s.data()?.imageUrl as string) || '' : '');
+      })
+      .catch(() => { setSchoolName(''); setSchoolImage(''); });
   }, [schoolId]);
 
   const handleClassSelect = (classId: string) => {
@@ -58,7 +62,7 @@ export default function SchoolPage() {
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
-      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} />
+      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} schoolName={schoolName} imageUrl={schoolImage} />
 
       {/* 상단 로그인/프로필 메뉴 */}
       <div className="absolute top-4 right-4 z-40 flex items-center gap-2">

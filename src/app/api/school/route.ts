@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
+import { compressImage } from '@/lib/image-compress';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -58,28 +59,26 @@ export async function POST(req: NextRequest) {
   let imageUrl = '';
   const file = form.get('image');
   const dataUrl = String(form.get('imageDataUrl') || '');
+  // 형식·크기는 compressImage 가 정한다 (원본 contentType 은 쓰지 않는다)
   let buffer: Buffer | null = null;
-  let contentType = 'image/png';
 
   if (file && file instanceof Blob && file.size > 0) {
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: '이미지는 10MB 이하로 올려주세요' }, { status: 413 });
     }
     buffer = Buffer.from(await file.arrayBuffer());
-    contentType = file.type || 'image/png';
   } else if (dataUrl.startsWith('data:image/')) {
-    const [meta, b64] = dataUrl.split(',');
-    contentType = meta.slice(5, meta.indexOf(';')) || 'image/png';
-    buffer = Buffer.from(b64, 'base64');
+    buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
   }
 
   if (buffer) {
     try {
       const bucket = getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-      const ext = contentType.includes('jpeg') ? 'jpg' : 'png';
-      const path = `app-assets/schools/${schoolId}.${ext}`;
+      // 3D 학교 화면을 열 때마다 내려받는 이미지라 반드시 줄여서 올린다
+      const small = await compressImage(buffer);
+      const path = `app-assets/schools/${schoolId}.${small.ext}`;
       const gcsFile = bucket.file(path);
-      await gcsFile.save(buffer, { contentType, resumable: false });
+      await gcsFile.save(small.buffer, { contentType: small.contentType, resumable: false });
       await gcsFile.makePublic();
       imageUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
     } catch (e) {
@@ -204,29 +203,26 @@ export async function PATCH(req: NextRequest) {
   // ---- 대표 이미지 ----
   const file = form.get('image');
   const dataUrl = String(form.get('imageDataUrl') || '');
+  // 형식·크기는 compressImage 가 정한다 (원본 contentType 은 쓰지 않는다)
   let buffer: Buffer | null = null;
-  let contentType = 'image/png';
 
   if (file && file instanceof Blob && file.size > 0) {
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: '이미지는 10MB 이하로 올려주세요' }, { status: 413 });
     }
     buffer = Buffer.from(await file.arrayBuffer());
-    contentType = file.type || 'image/png';
   } else if (dataUrl.startsWith('data:image/')) {
-    const [meta, b64] = dataUrl.split(',');
-    contentType = meta.slice(5, meta.indexOf(';')) || 'image/png';
-    buffer = Buffer.from(b64, 'base64');
+    buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
   }
 
   if (buffer) {
     try {
       const bucket = getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-      const ext = contentType.includes('jpeg') ? 'jpg' : 'png';
+      const small = await compressImage(buffer);
       // 파일명에 시각을 붙인다. 같은 경로로 덮으면 CDN 캐시 때문에 옛 그림이 계속 보인다.
-      const path = `app-assets/schools/${schoolId}-${Date.now()}.${ext}`;
+      const path = `app-assets/schools/${schoolId}-${Date.now()}.${small.ext}`;
       const gcsFile = bucket.file(path);
-      await gcsFile.save(buffer, { contentType, resumable: false });
+      await gcsFile.save(small.buffer, { contentType: small.contentType, resumable: false });
       await gcsFile.makePublic();
       patch.imageUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
 
