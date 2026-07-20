@@ -37,12 +37,24 @@ service cloud.firestore {
     match /users/{uid} {
       // 본인 문서는 읽기/생성/수정 가능, 교사는 전체 열람 가능
       allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
-      allow create: if isSignedIn() && request.auth.uid == uid;
-      // 도장 잔액과 착용 아이템은 서버(/api/shop, /api/homework)만 바꾼다.
-      // 여기가 열려 있으면 자기 문서에 stamps: 9999 를 써넣고 상점을 털 수 있다.
-      // get(키, 기본값)을 쓰는 이유: 이 기능 이전에 만들어진 계정에는 stamps 필드가 없고,
+      // 첫 로그인에 만드는 문서. 여기서 role 을 못 막으면 승인 게이트를 우회해
+      // 처음부터 'teacher' 로 계정을 만들어버릴 수 있다.
+      allow create: if isSignedIn() && request.auth.uid == uid
+                    && request.resource.data.get('role', null) == null
+                    && request.resource.data.get('pendingRole', null) == null
+                    && request.resource.data.get('stamps', 0) == 0;
+      // 권한(role)·도장 잔액·착용 아이템은 서버(/api/role, /api/shop, /api/homework)만 바꾼다.
+      // role 이 열려 있으면 아무나 '선생님'을 써넣고 명부와 전 제출물을 열람할 수 있고,
+      // stamps 가 열려 있으면 자기 문서에 9999 를 써넣고 상점을 털 수 있다.
+      // get(키, 기본값)을 쓰는 이유: 이 기능들 이전에 만들어진 계정에는 해당 필드가 없고,
       // 없는 필드를 그냥 참조하면 규칙 평가가 실패해 아바타 선택·설정 저장까지 막힌다.
       allow update: if isSignedIn() && request.auth.uid == uid
+                    && request.resource.data.get('role', null)
+                       == resource.data.get('role', null)
+                    && request.resource.data.get('pendingRole', null)
+                       == resource.data.get('pendingRole', null)
+                    && request.resource.data.get('classIds', [])
+                       == resource.data.get('classIds', [])
                     && request.resource.data.get('stamps', 0)
                        == resource.data.get('stamps', 0)
                     && request.resource.data.get('avatarCustom', {})

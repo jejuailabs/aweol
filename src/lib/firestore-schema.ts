@@ -5,7 +5,10 @@ export type UserRole = 'super_admin' | 'teacher' | 'student' | 'parent';
 export interface UserDoc {
   displayName: string;
   photoURL: string;
+  /** 실제 권한. 서버(/api/role)만 정한다 — 클라이언트가 쓸 수 있으면 아무나 교사가 된다. */
   role: UserRole | null;
+  /** 승인 대기 중인 신청 역할. 교사는 슈퍼관리자가 승인해야 role 로 올라간다. */
+  pendingRole: UserRole | null;
   classIds: string[];
   children: { studentUid: string; classId: string; name: string }[];
   pendingClassRequest: string | null;

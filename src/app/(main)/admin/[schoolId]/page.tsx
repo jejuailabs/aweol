@@ -449,17 +449,30 @@ export default function AdminPage() {
           </div>
         </button>
         {actualRole === 'super_admin' && (
-          <button
-            onClick={() => router.push('/admin/logs')}
-            className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
-            style={{ background: 'var(--color-surface-soft)' }}
-          >
-            <div className="text-2xl mb-2">🔎</div>
-            <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>접근 기록</div>
-            <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
-              작성자·IP 확인 (도용 추적)
-            </div>
-          </button>
+          <>
+            <button
+              onClick={() => router.push('/admin/teachers')}
+              className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
+              style={{ background: 'var(--color-surface-soft)' }}
+            >
+              <div className="text-2xl mb-2">👩‍🏫</div>
+              <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>선생님 승인</div>
+              <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                교사 신청 확인 후 권한 부여
+              </div>
+            </button>
+            <button
+              onClick={() => router.push('/admin/logs')}
+              className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
+              style={{ background: 'var(--color-surface-soft)' }}
+            >
+              <div className="text-2xl mb-2">🔎</div>
+              <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>접근 기록</div>
+              <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                작성자·IP 확인 (도용 추적)
+              </div>
+            </button>
+          </>
         )}
       </div>
 
