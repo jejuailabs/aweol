@@ -1,0 +1,582 @@
+'use client';
+
+import { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc,
+  serverTimestamp, getDocs, where,
+} from 'firebase/firestore';
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
+import { canManageClass } from '@/lib/auth-helpers';
+import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
+import DrawingPad from './DrawingPad';
+
+const SCHOOL_ID = 'aewol-elementary';
+
+interface Homework {
+  id: string;
+  title: string;
+  description: string;
+  submitType: SubmitType;
+  visibility: HomeworkVisibility;
+  authorName: string;
+  createdAt: Date | null;
+}
+
+interface Submission {
+  id: string;
+  studentUid: string;
+  studentName: string;
+  type: SubmitType;
+  text: string;
+  imageUrl: string;
+  status: 'approved' | 'held';
+  moderation: { flagged: boolean; reason: string } | null;
+  teacherComment: string;
+}
+
+const TYPE_LABEL: Record<SubmitType, string> = {
+  text: '✍️ 글쓰기',
+  drawing: '🖌️ 손글씨·그리기',
+  image: '📷 사진 올리기',
+};
+
+export default function HomeworkPanel({ classId }: { classId: string }) {
+  const { user, userDoc, role } = useAuth();
+  const isStaff = canManageClass(role);
+  const basePath = `schools/${SCHOOL_ID}/classes/${classId}/homeworks`;
+
+  const [list, setList] = useState<Homework[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [subs, setSubs] = useState<Submission[]>([]);
+
+  // 출제
+  const [writing, setWriting] = useState(false);
+  const [wTitle, setWTitle] = useState('');
+  const [wDesc, setWDesc] = useState('');
+  const [wType, setWType] = useState<SubmitType>('text');
+  const [wVis, setWVis] = useState<HomeworkVisibility>('class');
+  const [saving, setSaving] = useState(false);
+
+  // 제출
+  const [subText, setSubText] = useState('');
+  const [subFile, setSubFile] = useState<File | null>(null);
+  const [subPreview, setSubPreview] = useState('');
+  const [drawBlob, setDrawBlob] = useState<Blob | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const open = list.find((h) => h.id === openId) || null;
+  const mySub = subs.find((s) => s.studentUid === user?.uid) || null;
+
+  useEffect(() => {
+    if (!db) return;
+    return onSnapshot(query(collection(db, basePath), orderBy('createdAt', 'desc')), (snap) => {
+      setList(
+        snap.docs.map((d) => {
+          const v = d.data();
+          return {
+            id: d.id,
+            title: v.title || '',
+            description: v.description || '',
+            submitType: v.submitType || 'text',
+            visibility: v.visibility || 'class',
+            authorName: v.authorName || '선생님',
+            createdAt: v.createdAt?.toDate?.() ?? null,
+          };
+        })
+      );
+    }, () => setList([]));
+  }, [basePath]);
+
+  // 열린 숙제의 제출물 — 권한에 따라 볼 수 있는 범위가 다르다
+  useEffect(() => {
+    if (!db || !openId) { setSubs([]); return; }
+    const col = collection(db, basePath, openId, 'submissions');
+    const hw = list.find((h) => h.id === openId);
+    // 교직원은 전부, 학생은 공개된 것만 (본인 것은 아래에서 따로 합친다)
+    const q = isStaff ? col : query(col, where('publicToClass', '==', true));
+    const unsub = onSnapshot(q, (snap) => {
+      setSubs(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Submission, 'id'>) })));
+    }, () => setSubs([]));
+    // 학생 본인 제출물은 공개 여부와 무관하게 보여야 한다
+    if (!isStaff && user) {
+      getDocs(query(col, where('studentUid', '==', user.uid)))
+        .then((s) => {
+          if (s.empty) return;
+          const mine = { id: s.docs[0].id, ...(s.docs[0].data() as Omit<Submission, 'id'>) };
+          setSubs((prev) => (prev.some((p) => p.id === mine.id) ? prev : [...prev, mine]));
+        })
+        .catch(() => {});
+    }
+    void hw;
+    return () => unsub();
+  }, [openId, basePath, isStaff, user, list]);
+
+  const createHomework = useCallback(async () => {
+    if (!db || !user || !userDoc || !wTitle.trim()) return;
+    setSaving(true);
+    await addDoc(collection(db, basePath), {
+      title: wTitle.trim(),
+      description: wDesc.trim(),
+      submitType: wType,
+      visibility: wVis,
+      dueDate: null,
+      authorUid: user.uid,
+      authorName: userDoc.displayName || '선생님',
+      createdAt: serverTimestamp(),
+    });
+    setWTitle(''); setWDesc(''); setWriting(false); setSaving(false);
+  }, [wTitle, wDesc, wType, wVis, user, userDoc, basePath]);
+
+  const removeHomework = useCallback(async (id: string) => {
+    if (!db) return;
+    const s = await getDocs(collection(db, basePath, id, 'submissions'));
+    await Promise.all(s.docs.map((d) => deleteDoc(d.ref)));
+    await deleteDoc(doc(db, basePath, id));
+    setOpenId(null);
+  }, [basePath]);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setSubFile(f);
+    setSubPreview(URL.createObjectURL(f));
+  };
+
+  const submit = useCallback(async () => {
+    if (!open || !user || !storage) return;
+    setSubmitting(true);
+    setSubmitMsg('');
+
+    let imageUrl = '';
+    const blob: Blob | null = open.submitType === 'drawing' ? drawBlob : subFile;
+    if (blob) {
+      const ext = open.submitType === 'drawing' ? 'png' : (subFile?.name.split('.').pop() || 'jpg');
+      const path = `homework/${user.uid}/${open.id}.${ext}`;
+      const r = sRef(storage, path);
+      await uploadBytes(r, blob);
+      imageUrl = await getDownloadURL(r);
+    }
+
+    const token = await auth?.currentUser?.getIdToken();
+    const res = await fetch('/api/homework', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ classId, homeworkId: open.id, text: subText.trim(), imageUrl }),
+    });
+    const json = await res.json();
+    setSubmitting(false);
+
+    if (!res.ok) {
+      setSubmitMsg(json.error || '제출에 실패했어요');
+      return;
+    }
+    setSubmitMsg(
+      json.held
+        ? '제출했어요! 확인이 필요한 부분이 있어 선생님이 먼저 살펴본 뒤 공개돼요.'
+        : '제출 완료! 잘했어요 🎉'
+    );
+    setSubText(''); setSubFile(null); setSubPreview(''); setDrawBlob(null);
+  }, [open, user, subText, subFile, drawBlob, classId]);
+
+  const teacherAction = useCallback(
+    async (studentUid: string, patch: Record<string, unknown>) => {
+      if (!open) return;
+      const token = await auth?.currentUser?.getIdToken();
+      await fetch('/api/homework', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ classId, homeworkId: open.id, studentUid, ...patch }),
+      });
+    },
+    [open, classId]
+  );
+
+  // ---------- 숙제 상세 ----------
+  if (open) {
+    const held = subs.filter((s) => s.status === 'held');
+    const shown = subs.filter((s) => s.status === 'approved');
+    return (
+      <div>
+        <button onClick={() => setOpenId(null)} className="text-[11px] font-bold mb-2.5" style={{ color: '#8A7A5F' }}>
+          ← 숙제 목록
+        </button>
+
+        <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-base font-black" style={{ color: '#3A3226' }}>{open.title}</div>
+            {isStaff && (
+              <button
+                onClick={() => removeHomework(open.id)}
+                className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold"
+                style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
+              >
+                삭제
+              </button>
+            )}
+          </div>
+          <div className="flex gap-1.5 mt-1.5 mb-2">
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: '#4A90D920', color: '#4A90D9' }}>
+              {TYPE_LABEL[open.submitType]}
+            </span>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
+              {open.visibility === 'class' ? '👀 친구들과 함께 보기' : '🔒 선생님만 보기'}
+            </span>
+          </div>
+          {open.description && (
+            <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
+              {open.description}
+            </div>
+          )}
+        </div>
+
+        {/* 학생 제출 */}
+        {!isStaff && user && (
+          <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
+            <div className="text-xs font-black mb-2" style={{ color: '#3A3226' }}>
+              {mySub ? '📮 다시 제출하기' : '📮 내 숙제 제출하기'}
+            </div>
+
+            {open.submitType === 'text' && (
+              <textarea
+                value={subText}
+                onChange={(e) => setSubText(e.target.value)}
+                rows={5}
+                placeholder="여기에 숙제를 써보세요"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none mb-2"
+                style={{ background: 'white', color: '#3A3226' }}
+              />
+            )}
+
+            {open.submitType === 'drawing' && (
+              <div className="mb-2">
+                <DrawingPad onChange={setDrawBlob} />
+              </div>
+            )}
+
+            {open.submitType === 'image' && (
+              <>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full aspect-[4/3] rounded-xl mb-2 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed overflow-hidden"
+                  style={{ borderColor: '#D8C9AC', background: 'white' }}
+                >
+                  {subPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={subPreview} alt="" className="w-full h-full object-contain" />
+                  ) : (
+                    <>
+                      <span className="text-3xl">📷</span>
+                      <span className="text-[11px]" style={{ color: '#A89880' }}>사진 고르기</span>
+                    </>
+                  )}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+              </>
+            )}
+
+            <button
+              onClick={submit}
+              disabled={submitting || (!subText.trim() && !subFile && !drawBlob)}
+              className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {submitting ? '제출 중...' : '제출하기'}
+            </button>
+
+            {submitMsg && (
+              <div className="text-[11px] mt-2 leading-relaxed" style={{ color: submitMsg.includes('실패') ? '#C0392B' : '#2E9E56' }}>
+                {submitMsg}
+              </div>
+            )}
+
+            {mySub && (
+              <div className="mt-3 pt-3" style={{ borderTop: '1px dashed #E6DCC8' }}>
+                <div className="text-[11px] font-bold mb-1" style={{ color: '#8A7A5F' }}>내 제출물</div>
+                {mySub.status === 'held' && (
+                  <div className="text-[11px] mb-1.5" style={{ color: '#E8A33C' }}>
+                    ⏳ 선생님 확인을 기다리는 중이에요
+                  </div>
+                )}
+                {mySub.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mySub.imageUrl} alt="" className="w-full rounded-lg mb-1" />
+                )}
+                {mySub.text && (
+                  <div className="text-[12px] whitespace-pre-wrap" style={{ color: '#54493A' }}>{mySub.text}</div>
+                )}
+                {mySub.teacherComment && (
+                  <div className="mt-2 rounded-xl px-3 py-2 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+                    👩‍🏫 {mySub.teacherComment}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 보류함 (교사) */}
+        {isStaff && held.length > 0 && (
+          <div className="rounded-2xl p-3.5 mb-3" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
+            <div className="text-xs font-bold mb-1.5" style={{ color: '#8A6D2F' }}>
+              ⏳ 확인이 필요한 제출물 {held.length}건
+            </div>
+            <div className="text-[10px] mb-2.5 leading-relaxed" style={{ color: '#A08A5B' }}>
+              AI가 걸러낸 것이라 오탐일 수 있어요. 직접 보시고 판단해 주세요.
+            </div>
+            {held.map((s) => (
+              <SubmissionCard
+                key={s.id}
+                sub={s}
+                isStaff
+                onComment={(c) => teacherAction(s.studentUid, { comment: c })}
+                onApprove={() => teacherAction(s.studentUid, { approve: true })}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* 패들렛형 모아보기 */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-bold" style={{ color: '#8A7A5F' }}>
+            📋 제출물 {shown.length}건
+          </div>
+        </div>
+        {shown.length === 0 ? (
+          <div className="py-8 text-center text-[11px]" style={{ color: '#A89880' }}>
+            {open.visibility === 'teacher' && !isStaff
+              ? '선생님만 볼 수 있는 숙제예요'
+              : '아직 제출한 친구가 없어요'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {shown.map((s) => (
+              <SubmissionCard
+                key={s.id}
+                sub={s}
+                isStaff={isStaff}
+                onComment={(c) => teacherAction(s.studentUid, { comment: c })}
+                onHide={() => teacherAction(s.studentUid, { hide: true })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------- 출제 폼 ----------
+  if (writing) {
+    return (
+      <div>
+        <div className="text-sm font-black mb-3" style={{ color: '#3A3226' }}>📝 숙제 내기</div>
+        <input
+          value={wTitle}
+          onChange={(e) => setWTitle(e.target.value)}
+          placeholder="숙제 제목 (예: 봄에 본 것 그리기)"
+          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none mb-2"
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#3A3226' }}
+        />
+        <textarea
+          value={wDesc}
+          onChange={(e) => setWDesc(e.target.value)}
+          rows={3}
+          placeholder="설명"
+          className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none mb-3"
+          style={{ background: 'rgba(255,255,255,0.9)', color: '#3A3226' }}
+        />
+
+        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>어떻게 제출하나요?</div>
+        <div className="flex flex-col gap-1.5 mb-3">
+          {(Object.keys(TYPE_LABEL) as SubmitType[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setWType(t)}
+              className="rounded-xl py-2.5 text-xs font-bold"
+              style={{
+                background: wType === t ? '#4A90D9' : 'rgba(255,255,255,0.85)',
+                color: wType === t ? 'white' : '#8A7A5F',
+              }}
+            >
+              {TYPE_LABEL[t]}
+            </button>
+          ))}
+        </div>
+
+        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>누가 볼 수 있나요?</div>
+        <div className="flex gap-1.5 mb-4">
+          {([
+            { v: 'class' as const, label: '👀 아이들과 함께 보기' },
+            { v: 'teacher' as const, label: '🔒 선생님만 보기' },
+          ]).map((o) => (
+            <button
+              key={o.v}
+              onClick={() => setWVis(o.v)}
+              className="flex-1 rounded-xl py-2.5 text-[11px] font-bold"
+              style={{
+                background: wVis === o.v ? 'var(--color-primary)' : 'rgba(255,255,255,0.85)',
+                color: wVis === o.v ? 'white' : '#8A7A5F',
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setWriting(false)}
+            className="flex-1 rounded-xl py-2.5 text-sm font-bold"
+            style={{ background: 'rgba(255,255,255,0.7)', color: '#8A7A5F' }}
+          >
+            취소
+          </button>
+          <button
+            onClick={createHomework}
+            disabled={!wTitle.trim() || saving}
+            className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
+            style={{ background: '#4A90D9' }}
+          >
+            {saving ? '내는 중...' : '숙제 내기'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- 숙제 목록 ----------
+  return (
+    <>
+      {isStaff && (
+        <button
+          onClick={() => setWriting(true)}
+          className="w-full rounded-2xl py-3 mb-3 text-xs font-bold border-2 border-dashed"
+          style={{ borderColor: '#4A90D980', color: '#4A90D9' }}
+        >
+          + 새 숙제 내기
+        </button>
+      )}
+      {list.length === 0 ? (
+        <div className="py-10 text-center">
+          <div className="text-4xl mb-2">📝</div>
+          <div className="text-xs" style={{ color: '#A89880' }}>아직 나온 숙제가 없어요</div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {list.map((h) => (
+            <button
+              key={h.id}
+              onClick={() => setOpenId(h.id)}
+              className="rounded-2xl p-3.5 text-left transition-transform hover:scale-[1.01]"
+              style={{ background: 'rgba(255,255,255,0.8)' }}
+            >
+              <div className="text-sm font-bold" style={{ color: '#3A3226' }}>{h.title}</div>
+              <div className="flex gap-1.5 mt-1">
+                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: '#4A90D920', color: '#4A90D9' }}>
+                  {TYPE_LABEL[h.submitType]}
+                </span>
+                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
+                  {h.visibility === 'class' ? '함께 보기' : '선생님만'}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ---------- 제출물 카드 ----------
+function SubmissionCard({
+  sub, isStaff, onComment, onApprove, onHide,
+}: {
+  sub: Submission;
+  isStaff: boolean;
+  onComment: (c: string) => void;
+  onApprove?: () => void;
+  onHide?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [cmt, setCmt] = useState(sub.teacherComment || '');
+
+  return (
+    <div className="rounded-2xl p-2.5 mb-1.5" style={{ background: 'white', border: '1px solid #EFE3CB' }}>
+      <div className="text-[11px] font-bold mb-1" style={{ color: '#3A3226' }}>{sub.studentName}</div>
+      {sub.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={sub.imageUrl} alt="" className="w-full rounded-lg mb-1" style={{ maxHeight: 160, objectFit: 'contain' }} />
+      )}
+      {sub.text && (
+        <div
+          className="text-[11px] leading-snug whitespace-pre-wrap"
+          style={{ color: '#54493A', display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        >
+          {sub.text}
+        </div>
+      )}
+      {sub.moderation?.flagged && (
+        <div className="text-[9px] mt-1" style={{ color: '#E8A33C' }}>
+          AI 표시: {sub.moderation.reason || '확인 필요'}
+        </div>
+      )}
+      {sub.teacherComment && !editing && (
+        <div className="mt-1.5 rounded-lg px-2 py-1 text-[10px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+          👩‍🏫 {sub.teacherComment}
+        </div>
+      )}
+
+      {isStaff && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {editing ? (
+            <>
+              <input
+                value={cmt}
+                onChange={(e) => setCmt(e.target.value)}
+                placeholder="칭찬 한마디"
+                className="min-w-0 flex-1 rounded-lg px-2 py-1 text-[10px] outline-none"
+                style={{ background: '#F6F0E4', color: '#3A3226' }}
+              />
+              <button
+                onClick={() => { onComment(cmt); setEditing(false); }}
+                className="rounded-lg px-2 py-1 text-[10px] font-bold text-white"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                저장
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-lg px-2 py-1 text-[10px] font-bold"
+              style={{ background: '#F6F0E4', color: '#8A7A5F' }}
+            >
+              💬 코멘트
+            </button>
+          )}
+          {onApprove && (
+            <button
+              onClick={onApprove}
+              className="rounded-lg px-2 py-1 text-[10px] font-bold text-white"
+              style={{ background: '#3BAF9F' }}
+            >
+              공개하기
+            </button>
+          )}
+          {onHide && (
+            <button
+              onClick={onHide}
+              className="rounded-lg px-2 py-1 text-[10px] font-bold"
+              style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
+            >
+              내리기
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

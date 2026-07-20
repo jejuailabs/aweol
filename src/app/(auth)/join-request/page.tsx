@@ -7,16 +7,10 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/firestore-schema';
 
-const GRADES = ['1', '2', '3', '4', '5', '6'];
-const CLASS_NUMS = [1, 2, 3, 4, 5, 6];
-
 export default function JoinRequestPage() {
   const { user, userDoc } = useAuth();
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const [step, setStep] = useState<'role' | 'student-class'>('role');
-  const [grade, setGrade] = useState<string | null>(null);
-  const [classNum, setClassNum] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,25 +31,15 @@ export default function JoinRequestPage() {
     { value: 'parent', label: '학부모', icon: '👨‍👩‍👧', desc: '아이 작품 관람, 감상평 쓰기' },
   ];
 
-  const handleRoleNext = () => {
-    if (!selectedRole) return;
-    if (selectedRole === 'student') {
-      setStep('student-class');
-    } else {
-      saveAndGo(selectedRole, []);
-    }
-  };
-
-  const handleStudentDone = () => {
-    if (!grade || !classNum) return;
-    saveAndGo('student', [`${grade}-${classNum}`]);
-  };
-
-  const saveAndGo = async (role: UserRole, classIds: string[]) => {
-    if (!user || !db) return;
+  /**
+   * 역할을 먼저 저장한 뒤 코드 화면으로 보낸다.
+   * (서버가 코드를 처리할 때 역할을 보고 학생/학부모 연결을 나누므로 순서가 중요하다)
+   */
+  const handleRoleNext = async () => {
+    if (!selectedRole || !user || !db) return;
     setLoading(true);
-    await updateDoc(doc(db, 'users', user.uid), { role, classIds });
-    router.replace('/avatar-select');
+    await updateDoc(doc(db, 'users', user.uid), { role: selectedRole, classIds: [] });
+    router.replace(selectedRole === 'teacher' ? '/avatar-select' : '/join-class');
   };
 
   return (
@@ -63,8 +47,7 @@ export default function JoinRequestPage() {
       className="flex min-h-screen flex-col items-center justify-center px-6"
       style={{ background: 'linear-gradient(180deg, var(--color-sky) 0%, #FFFFFF 100%)' }}
     >
-      {step === 'role' && (
-        <>
+      <>
           <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text-main)' }}>
             반가워요, {user.displayName}!
           </h1>
@@ -93,13 +76,14 @@ export default function JoinRequestPage() {
             ))}
           </div>
 
-          {selectedRole === 'parent' && (
+          {(selectedRole === 'student' || selectedRole === 'parent') && (
             <div
               className="mt-4 w-full max-w-[320px] rounded-xl px-4 py-3 text-[11px] leading-relaxed"
               style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
             >
-              💡 학부모님은 지금은 관람 위주로 이용할 수 있어요. 담임 선생님이 학생 명부를 등록하면
-              내 아이와 자동으로 연결됩니다.
+              🔑 다음 화면에서 선생님께 받은 <b>6자리 코드</b>를 넣으면
+              {selectedRole === 'parent' ? ' 자녀와 연결돼요.' : ' 우리 반으로 들어가요.'}
+              {' '}코드가 없어도 구경은 할 수 있어요.
             </div>
           )}
 
@@ -111,83 +95,7 @@ export default function JoinRequestPage() {
           >
             {loading ? '처리 중...' : '다음으로'}
           </button>
-        </>
-      )}
-
-      {step === 'student-class' && (
-        <>
-          <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text-main)' }}>
-            몇 학년 몇 반인가요? 🎒
-          </h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--color-text-sub)' }}>
-            우리 반을 알려주면 바로 들어갈 수 있어요
-          </p>
-
-          <div className="w-full max-w-[320px] mb-4">
-            <div className="text-xs font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>학년</div>
-            <div className="grid grid-cols-6 gap-2">
-              {GRADES.map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGrade(g)}
-                  className="rounded-xl py-2.5 text-sm font-bold transition-all"
-                  style={{
-                    background: grade === g ? 'var(--color-primary)' : 'rgba(255,255,255,0.85)',
-                    color: grade === g ? 'white' : 'var(--color-text-main)',
-                    transform: grade === g ? 'scale(1.08)' : 'scale(1)',
-                  }}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="w-full max-w-[320px] mb-8">
-            <div className="text-xs font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>반</div>
-            <div className="grid grid-cols-6 gap-2">
-              {CLASS_NUMS.map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setClassNum(n)}
-                  className="rounded-xl py-2.5 text-sm font-bold transition-all"
-                  style={{
-                    background: classNum === n ? 'var(--color-primary)' : 'rgba(255,255,255,0.85)',
-                    color: classNum === n ? 'white' : 'var(--color-text-main)',
-                    transform: classNum === n ? 'scale(1.08)' : 'scale(1)',
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {grade && classNum && (
-            <div className="mb-6 text-sm font-bold" style={{ color: 'var(--color-primary-dark)' }}>
-              ✨ {grade}학년 {classNum}반이군요!
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep('role')}
-              className="rounded-full px-6 py-3 font-bold shadow-md"
-              style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-sub)' }}
-            >
-              ← 이전
-            </button>
-            <button
-              onClick={handleStudentDone}
-              disabled={!grade || !classNum || loading}
-              className="rounded-full px-8 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              {loading ? '처리 중...' : '완료!'}
-            </button>
-          </div>
-        </>
-      )}
+      </>
     </div>
   );
 }

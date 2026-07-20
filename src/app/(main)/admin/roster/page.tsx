@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 
@@ -13,6 +13,8 @@ interface StudentRow {
   number: number;
   name: string;
   classId: string;
+  code?: string | null;
+  linkedUid?: string | null;
 }
 
 export default function RosterPage() {
@@ -35,6 +37,8 @@ export default function RosterPage() {
   const [saving, setSaving] = useState(false);
   const [editingNum, setEditingNum] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
+  const [issuing, setIssuing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const studentsCol = useCallback(() => {
     if (!db) return null;
@@ -86,12 +90,33 @@ export default function RosterPage() {
         collection(db, 'schools', SCHOOL_ID, 'classes', selectedClass, 'students')
       );
       const list = snap.docs
-        .map((d) => ({ number: d.data().number || 0, name: d.data().name || '', classId: selectedClass }))
+        .map((d) => ({
+          number: d.data().number || 0,
+          name: d.data().name || '',
+          classId: selectedClass,
+          code: d.data().code ?? null,
+          linkedUid: d.data().linkedUid ?? null,
+        }))
         .sort((a, b) => a.number - b.number);
       setStudents(list);
     }
     fetchStudents();
-  }, [selectedClass]);
+  }, [selectedClass, refreshKey]);
+
+  // 코드 발급은 서버를 거친다 (역인덱스를 클라이언트가 못 만지게 하려고)
+  const issueCodes = async (regenerate = false) => {
+    setIssuing(true);
+    const token = await auth?.currentUser?.getIdToken();
+    const res = await fetch('/api/student-code', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ classId: selectedClass, regenerate }),
+    });
+    const json = await res.json();
+    setIssuing(false);
+    setMessage(res.ok ? `학생코드 ${json.issued}개를 발급했습니다.` : json.error || '발급에 실패했습니다.');
+    setRefreshKey((k) => k + 1);
+  };
 
   // ---------- 수동: 한 명 추가 ----------
   const handleAddOne = async () => {
@@ -448,12 +473,46 @@ export default function RosterPage() {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-surface-soft)' }}>
+          {/* 학생코드 안내 + 발급 */}
+          <div className="px-4 py-3" style={{ background: '#EAF4FF', borderBottom: '1px solid var(--color-surface)' }}>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="text-xs font-bold" style={{ color: '#2E6DA4' }}>
+                🔑 학생코드 {students.filter((s) => s.code).length}/{students.length}
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => issueCodes(false)}
+                  disabled={issuing}
+                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                  style={{ background: '#4A90D9' }}
+                >
+                  {issuing ? '발급 중...' : '코드 발급'}
+                </button>
+                {students.some((s) => s.code) && (
+                  <button
+                    onClick={() => issueCodes(true)}
+                    disabled={issuing}
+                    className="rounded-lg px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+                    style={{ background: 'white', color: '#E8604C' }}
+                  >
+                    전체 재발급
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="text-[10px] leading-relaxed" style={{ color: '#5B8CB8' }}>
+              학생은 가입 절차 없이 이 코드만 입력하면 우리 반에 들어옵니다.
+              학부모가 같은 코드를 넣으면 자녀와 연결돼요. 재발급하면 이전 코드는 즉시 무효가 됩니다.
+            </div>
+          </div>
+
           <div
             className="flex px-4 py-2.5 text-[10px] font-bold"
             style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
           >
-            <div className="w-12">번호</div>
+            <div className="w-10">번호</div>
             <div className="flex-1">이름</div>
+            <div className="w-24">코드</div>
             <div className="w-16 text-right">관리</div>
           </div>
           {students.map((s) => (
@@ -462,7 +521,7 @@ export default function RosterPage() {
               className="flex items-center px-4 py-2.5 border-t text-sm"
               style={{ borderColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}
             >
-              <div className="w-12 text-xs font-bold" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="w-10 text-xs font-bold" style={{ color: 'var(--color-text-sub)' }}>
                 {s.number}
               </div>
               <div className="flex-1 min-w-0">
@@ -482,6 +541,21 @@ export default function RosterPage() {
                   />
                 ) : (
                   <span className="font-medium">{s.name}</span>
+                )}
+              </div>
+              <div className="w-24">
+                {s.code ? (
+                  <div className="flex items-center gap-1">
+                    <span
+                      className="rounded-md px-1.5 py-0.5 text-[11px] font-mono font-bold tracking-wider"
+                      style={{ background: '#EAF4FF', color: '#2E6DA4' }}
+                    >
+                      {s.code}
+                    </span>
+                    {s.linkedUid && <span title="계정 연결됨">✅</span>}
+                  </div>
+                ) : (
+                  <span className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>미발급</span>
                 )}
               </div>
               <div className="w-16 flex justify-end gap-1">

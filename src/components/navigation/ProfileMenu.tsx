@@ -102,10 +102,20 @@ export default function ProfileMenu() {
             )}
           </div>
 
+          {/* 학생·학부모는 코드로 우리 반과 연결한다 */}
+          {(shownRole === 'student' || shownRole === 'parent') && (
+            <button
+              onClick={() => { setOpen(false); router.push('/join-class'); }}
+              className="w-full px-4 py-3 text-left text-sm flex items-center gap-2.5"
+              style={{ color: 'var(--color-text-main)' }}
+            >
+              🔑 우리 반 코드 입력
+            </button>
+          )}
           <button
             onClick={() => { setOpen(false); router.push('/my-stand'); }}
             className="w-full px-4 py-3 text-left text-sm flex items-center gap-2.5"
-            style={{ color: 'var(--color-text-main)' }}
+            style={{ color: 'var(--color-text-main)', borderTop: '1px solid var(--color-surface-soft)' }}
           >
             ⭐ 내 스탠드
           </button>

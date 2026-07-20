@@ -57,6 +57,12 @@ service cloud.firestore {
         allow read, write: if isStaff();
       }
 
+      // 학생코드 역인덱스 — 읽기가 열리면 코드를 긁어 남의 반에 들어갈 수 있으므로
+      // 클라이언트는 전혀 접근할 수 없고 서버(Admin SDK)만 다룬다.
+      match /studentCodes/{code} {
+        allow read, write: if false;
+      }
+
       match /classes/{classId} {
         allow read: if true;
         allow write: if isStaff();
@@ -85,6 +91,21 @@ service cloud.firestore {
             allow update: if false;
             allow delete: if isStaff()
                           || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+          }
+        }
+
+        // 숙제 — 과제 자체(제목·설명)는 공개, 출제는 교직원만
+        match /homeworks/{hwId} {
+          allow read: if true;
+          allow write: if isStaff();
+
+          // 제출물은 서버(API)만 쓴다. AI 검수를 거치지 않고는 올라올 수 없게 한다.
+          // 읽기: 교직원 / 본인 / '아이들과 함께 보기'로 공개된 승인 제출물
+          match /submissions/{studentUid} {
+            allow read: if isStaff()
+                        || (isSignedIn() && request.auth.uid == studentUid)
+                        || resource.data.publicToClass == true;
+            allow write: if false;
           }
         }
 

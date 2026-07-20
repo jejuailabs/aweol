@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
 import { NoticeKind } from '@/lib/firestore-schema';
 import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
+import HomeworkPanel from './HomeworkPanel';
 
 const SCHOOL_ID = 'aewol-elementary';
 
