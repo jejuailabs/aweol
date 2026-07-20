@@ -125,7 +125,7 @@ export interface RosterUploadDoc {
   uploadedAt: Timestamp;
 }
 
-export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz';
+export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot';
 
 /** 학급 명부의 한 줄. 학생코드로 실제 계정(uid)과 연결된다. */
 export interface StudentRosterDoc {
@@ -268,6 +268,49 @@ export interface QuizSubmissionDoc {
   gradedCount: number;
   publicToClass: boolean;
   submittedAt: Timestamp;
+}
+
+// ---------- 틀린그림 찾기 ----------
+
+/** 두 그림을 위아래로 놓을지 좌우로 놓을지. 사진 비율에 따라 자동으로 정한다. */
+export type SpotLayout = 'vertical' | 'horizontal';
+
+export interface SpotGameDoc {
+  title: string;
+  /** 원본 사진 */
+  originalUrl: string;
+  /** AI가 만든 변형 사진 */
+  variantUrl: string;
+  layout: SpotLayout;
+  /** 찾아야 할 개수 (answerKey 를 못 읽는 학생에게도 알려줘야 한다) */
+  spotCount: number;
+  visibility: HomeworkVisibility;
+  authorUid: string;
+  authorName: string;
+  createdAt: Timestamp;
+}
+
+/**
+ * 정답 좌표. **학생은 절대 읽으면 안 된다** — 읽히면 게임이 성립하지 않는다.
+ * 퀴즈 정답지와 같은 이유로 따로 두고, 맞았는지 판정도 서버가 한다.
+ */
+export interface SpotAnswerKeyDoc {
+  /** 정규화 좌표(0~1)와 허용 반경 */
+  spots: { x: number; y: number; r: number }[];
+}
+
+/** 한 아이의 풀이. 문서 ID = 학생 uid */
+export interface SpotPlayDoc {
+  studentUid: string;
+  studentName: string;
+  /** 찾아낸 정답 인덱스 */
+  found: number[];
+  /** 헛짚은 횟수 (순위에 벌점으로 쓴다) */
+  misses: number;
+  /** 다 찾는 데 걸린 시간(초). 아직 진행 중이면 null */
+  seconds: number | null;
+  startedAt: Timestamp;
+  completedAt: Timestamp | null;
 }
 
 /** 교실 알림판 글 (알림장·급식·숙제·퀴즈). 작성은 교직원만. */

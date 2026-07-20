@@ -13,6 +13,7 @@ import { NoticeKind } from '@/lib/firestore-schema';
 import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
 import HomeworkPanel from './HomeworkPanel';
 import QuizPanel from './QuizPanel';
+import SpotPanel from './SpotPanel';
 
 
 export interface NoticePost {
@@ -194,6 +195,8 @@ export default function NoticeModal({
             <HomeworkPanel schoolId={schoolId} classId={classId} />
           ) : kind === 'quiz' ? (
             <QuizPanel schoolId={schoolId} classId={classId} />
+          ) : kind === 'spot' ? (
+            <SpotPanel schoolId={schoolId} classId={classId} />
           ) : openPost ? (
             <div>
               <button

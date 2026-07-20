@@ -419,7 +419,7 @@ function ClassroomLighting() {
 export default function ClassroomScene({
   classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom,
   boardItems = [],
-  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0 }, onOpenNotice = () => {},
+  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 }, onOpenNotice = () => {},
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));

@@ -206,6 +206,25 @@ service cloud.firestore {
           }
         }
 
+        // 틀린그림 찾기 — 그림은 공개, 정답 좌표는 절대 공개하지 않는다.
+        match /spotGames/{gameId} {
+          allow read: if true;
+          allow write: if false;   // 서버(API)만
+
+          // 정답 좌표. 학생이 읽으면 게임이 성립하지 않는다. 판정도 서버가 한다.
+          match /answerKey/{docId} {
+            allow read: if isStaffOf(schoolId);
+            allow write: if false;
+          }
+
+          // 풀이 기록 — 순위표를 함께 보여줘야 하므로 읽기는 공개.
+          // (기록에는 이름·시간만 들어가고 정답 좌표는 없다)
+          match /plays/{studentUid} {
+            allow read: if true;
+            allow write: if false;
+          }
+        }
+
         // 칠판 낙서 — 읽기는 공개, 쓰기는 서버(Admin SDK)만.
         // 클라이언트가 직접 쓰지 못하게 막아야 작성자 위조와 IP 누락을 방지할 수 있다.
         match /blackboard/{itemId} {

@@ -44,6 +44,12 @@ export const questionsPath = (schoolId: string, classId: string, quizId: string)
 export const quizSubmissionsPath = (schoolId: string, classId: string, quizId: string) =>
   `${quizzesPath(schoolId, classId)}/${quizId}/submissions`;
 
+export const spotGamesPath = (schoolId: string, classId: string) =>
+  `${classPath(schoolId, classId)}/spotGames`;
+
+export const spotPlaysPath = (schoolId: string, classId: string, gameId: string) =>
+  `${spotGamesPath(schoolId, classId)}/${gameId}/plays`;
+
 export const blackboardPath = (schoolId: string, classId: string) =>
   `${classPath(schoolId, classId)}/blackboard`;
 
