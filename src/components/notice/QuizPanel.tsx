@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
-import { quizzesPath } from '@/lib/paths';
-import { HomeworkVisibility } from '@/lib/firestore-schema';
-import QuizCompose from './QuizCompose';
+import { quizzesPath, questionsPath } from '@/lib/paths';
+import { HomeworkVisibility, QuestionType } from '@/lib/firestore-schema';
+import QuizCompose, { QuizEditSeed } from './QuizCompose';
 import QuizSolve from './QuizSolve';
 import QuizTeacherGrid from './QuizTeacherGrid';
 
@@ -27,7 +27,9 @@ export default function QuizPanel({ schoolId, classId }: { schoolId: string; cla
   const [list, setList] = useState<Quiz[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
+  const [editSeed, setEditSeed] = useState<QuizEditSeed | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!db) return;
@@ -53,6 +55,40 @@ export default function QuizPanel({ schoolId, classId }: { schoolId: string; cla
 
   const open = list.find((q) => q.id === openId) || null;
 
+  /**
+   * 수정하려면 문항과 **정답까지** 불러와야 한다.
+   * 정답지는 교직원만 읽을 수 있으므로 이 경로는 교사 화면에서만 돈다.
+   */
+  const startEdit = useCallback(async (q: Quiz) => {
+    if (!db) return;
+    const [qs, keys] = await Promise.all([
+      getDocs(query(collection(db, questionsPath(schoolId, classId, q.id)), orderBy('order'))),
+      getDocs(collection(db, quizzesPath(schoolId, classId), q.id, 'answerKeys')),
+    ]);
+    const keyById = new Map(keys.docs.map((d) => [d.id, d.data()]));
+    setEditSeed({
+      quizId: q.id,
+      title: q.title,
+      description: q.description,
+      visibility: q.visibility,
+      questions: qs.docs.map((d) => {
+        const v = d.data();
+        const k = keyById.get(d.id) || {};
+        return {
+          type: (v.type as QuestionType) || 'choice',
+          prompt: v.prompt || '',
+          media: v.media || 'none',
+          imageUrl: v.imageUrl || '',
+          youtubeId: v.youtubeId || '',
+          choices: v.choices || [],
+          explanation: v.explanation || '',
+          answerIndex: typeof k.answerIndex === 'number' ? k.answerIndex : null,
+          acceptable: (k.acceptable as string[]) || [],
+        };
+      }),
+    });
+  }, [schoolId, classId]);
+
   const remove = useCallback(async (quizId: string) => {
     setRemoving(true);
     try {
@@ -67,13 +103,14 @@ export default function QuizPanel({ schoolId, classId }: { schoolId: string; cla
     }
   }, [schoolId, classId]);
 
-  if (writing) {
+  if (writing || editSeed) {
     return (
       <QuizCompose
         schoolId={schoolId}
         classId={classId}
-        onDone={() => setWriting(false)}
-        onCancel={() => setWriting(false)}
+        edit={editSeed}
+        onDone={() => { setWriting(false); setEditSeed(null); }}
+        onCancel={() => { setWriting(false); setEditSeed(null); }}
       />
     );
   }
@@ -90,18 +127,51 @@ export default function QuizPanel({ schoolId, classId }: { schoolId: string; cla
             <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="text-base font-black" style={{ color: '#3A3226' }}>{open.title}</div>
-                <button
-                  onClick={() => remove(open.id)}
-                  disabled={removing}
-                  className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold disabled:opacity-40"
-                  style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
-                >
-                  삭제
-                </button>
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    onClick={() => startEdit(open)}
+                    className="rounded-full px-2.5 py-1 text-[10px] font-bold"
+                    style={{ background: '#7B4B9420', color: '#7B4B94' }}
+                  >
+                    고치기
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    disabled={removing}
+                    className="rounded-full px-2.5 py-1 text-[10px] font-bold disabled:opacity-40"
+                    style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
+                  >
+                    삭제
+                  </button>
+                </div>
               </div>
               <div className="text-[11px] mt-1" style={{ color: '#8A7A5F' }}>
                 문제 {open.questionCount}개 · {open.visibility === 'class' ? '함께 보기' : '선생님만'}
               </div>
+
+              {confirmDelete && (
+                <div className="mt-2.5 rounded-xl p-3" style={{ background: '#FFF1D6', border: '1px solid #F0D9A8' }}>
+                  <div className="text-[11px] font-bold mb-2" style={{ color: '#A6762A' }}>
+                    지우면 아이들이 낸 답안도 함께 사라져요. 정말 지울까요?
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="flex-1 rounded-lg py-1.5 text-[11px] font-bold"
+                      style={{ background: 'white', color: '#8A7A5F' }}
+                    >
+                      그만두기
+                    </button>
+                    <button
+                      onClick={() => { setConfirmDelete(false); remove(open.id); }}
+                      className="flex-1 rounded-lg py-1.5 text-[11px] font-bold text-white"
+                      style={{ background: '#E8604C' }}
+                    >
+                      지우기
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <QuizTeacherGrid schoolId={schoolId} classId={classId} quizId={open.id} />
           </>

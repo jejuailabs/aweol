@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 
@@ -17,6 +17,8 @@ interface Applicant {
   uid: string;
   displayName: string;
   photoURL: string;
+  schoolId: string;
+  schoolName: string;
 }
 
 export default function TeacherApprovalPage() {
@@ -25,6 +27,18 @@ export default function TeacherApprovalPage() {
   const [list, setList] = useState<Applicant[]>([]);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
+  const [schoolNames, setSchoolNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!db) return;
+    getDocs(collection(db, 'schools'))
+      .then((snap) => {
+        const m: Record<string, string> = {};
+        snap.docs.forEach((d) => { m[d.id] = d.data().name || d.id; });
+        setSchoolNames(m);
+      })
+      .catch(() => setSchoolNames({}));
+  }, []);
 
   useEffect(() => {
     // 역할 테스트 중이어도 실제 계정이 슈퍼관리자여야 한다
@@ -37,15 +51,20 @@ export default function TeacherApprovalPage() {
       query(collection(db, 'users'), where('pendingRole', '==', 'teacher')),
       (snap) =>
         setList(
-          snap.docs.map((d) => ({
-            uid: d.id,
-            displayName: d.data().displayName || '이름 없음',
-            photoURL: d.data().photoURL || '',
-          }))
+          snap.docs.map((d) => {
+            const sid = d.data().pendingSchoolId || '';
+            return {
+              uid: d.id,
+              displayName: d.data().displayName || '이름 없음',
+              photoURL: d.data().photoURL || '',
+              schoolId: sid,
+              schoolName: schoolNames[sid] || sid || '(학교 미지정)',
+            };
+          })
         ),
       () => setList([])
     );
-  }, [actualRole]);
+  }, [actualRole, schoolNames]);
 
   const decide = useCallback(async (uid: string, approve: boolean, name: string) => {
     setBusy(uid);
@@ -78,8 +97,8 @@ export default function TeacherApprovalPage() {
         👩‍🏫 선생님 승인
       </h1>
       <p className="text-xs mb-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-        승인하면 이 계정은 <b>모든 학교의 명부와 제출물</b>을 볼 수 있게 됩니다.
-        아는 분인지 확인하고 승인해 주세요.
+        승인하면 이 계정은 <b>신청한 학교</b>의 명부와 제출물을 볼 수 있게 됩니다.
+        아는 분인지, 그 학교 선생님이 맞는지 확인하고 승인해 주세요.
       </p>
 
       {list.length === 0 ? (
@@ -111,6 +130,9 @@ export default function TeacherApprovalPage() {
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
                   {a.displayName}
+                </div>
+                <div className="text-[11px] font-bold truncate" style={{ color: 'var(--color-primary)' }}>
+                  🏫 {a.schoolName}
                 </div>
                 <div className="text-[10px] truncate" style={{ color: 'var(--color-text-sub)' }}>
                   {a.uid}

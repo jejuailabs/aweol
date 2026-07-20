@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -14,10 +14,6 @@ export const maxDuration = 60;
  */
 
 const MODEL = process.env.OPENAI_TEXT_MODEL || 'gpt-4o-mini';
-
-function isStaff(role: string | null) {
-  return role === 'teacher' || role === 'super_admin';
-}
 
 async function generate(input: {
   prompt: string;
@@ -100,7 +96,7 @@ export async function POST(req: NextRequest) {
     .collection('quizzes').doc(quizId);
 
   // 풀기 전에 해설을 열어 정답을 알아내는 걸 막는다
-  if (!isStaff(user.role)) {
+  if (!isStaffOfSchool(user, schoolId)) {
     const mine = await quizRef.collection('submissions').doc(user.uid).get();
     if (!mine.exists) {
       return NextResponse.json({ error: '먼저 퀴즈를 풀어야 볼 수 있어요' }, { status: 403 });

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/firestore-schema';
 
@@ -12,6 +13,16 @@ export default function JoinRequestPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
+  const [schoolId, setSchoolId] = useState('');
+
+  // 교사는 소속 학교를 밝혀야 한다 — 권한이 그 학교 안에서만 통한다
+  useEffect(() => {
+    if (!db) return;
+    getDocs(collection(db, 'schools'))
+      .then((snap) => setSchools(snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }))))
+      .catch(() => setSchools([]));
+  }, []);
 
   const waiting = userDoc?.pendingRole === 'teacher';
 
@@ -72,7 +83,7 @@ export default function JoinRequestPage() {
       const res = await fetch('/api/role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ role: selectedRole }),
+        body: JSON.stringify({ role: selectedRole, schoolId }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -121,12 +132,38 @@ export default function JoinRequestPage() {
           </div>
 
           {selectedRole === 'teacher' && (
-            <div
-              className="mt-4 w-full max-w-[320px] rounded-xl px-4 py-3 text-[11px] leading-relaxed"
-              style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
-            >
-              ⏳ 선생님은 아이들 명부를 다루기 때문에 <b>총관리자 확인</b>을 거쳐요.
-              신청해두시면 승인된 뒤 바로 쓰실 수 있어요.
+            <div className="mt-4 w-full max-w-[320px]">
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                어느 학교 선생님이신가요?
+              </div>
+              <div className="flex flex-col gap-1.5 mb-3">
+                {schools.length === 0 ? (
+                  <div className="rounded-xl px-4 py-3 text-[11px]" style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}>
+                    아직 등록된 학교가 없어요. 총관리자에게 문의해 주세요.
+                  </div>
+                ) : (
+                  schools.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSchoolId(s.id)}
+                      className="rounded-xl px-4 py-2.5 text-[12px] font-bold text-left"
+                      style={{
+                        background: schoolId === s.id ? 'var(--color-primary)' : 'rgba(255,255,255,0.85)',
+                        color: schoolId === s.id ? 'white' : 'var(--color-text-sub)',
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                  ))
+                )}
+              </div>
+              <div
+                className="rounded-xl px-4 py-3 text-[11px] leading-relaxed"
+                style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
+              >
+                ⏳ 선생님은 아이들 명부를 다루기 때문에 <b>총관리자 확인</b>을 거쳐요.
+                권한은 <b>고른 학교 안에서만</b> 쓸 수 있어요.
+              </div>
             </div>
           )}
 
@@ -143,7 +180,7 @@ export default function JoinRequestPage() {
 
           <button
             onClick={handleRoleNext}
-            disabled={!selectedRole || loading}
+            disabled={!selectedRole || loading || (selectedRole === 'teacher' && !schoolId)}
             className="mt-8 rounded-full px-8 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
             style={{ background: 'var(--color-primary)' }}
           >

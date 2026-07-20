@@ -43,7 +43,7 @@ const STU_B = 'zz-sc-studentB';
 const PARENT = 'zz-sc-parent';
 
 // 준비: 교사/학생/학부모 계정 + 명부 한 줄
-await adb.collection('users').doc(TEACHER).set({ displayName: '코드검증교사', role: 'teacher', classIds: [], children: [] });
+await adb.collection('users').doc(TEACHER).set({ displayName: '코드검증교사', role: 'teacher', schoolIds: [SCHOOL], classIds: [], children: [] });
 await adb.collection('users').doc(STU_A).set({ displayName: '학생A', role: 'student', classIds: [], children: [] });
 await adb.collection('users').doc(STU_B).set({ displayName: '학생B', role: 'student', classIds: [], children: [] });
 await adb.collection('users').doc(PARENT).set({ displayName: '학부모', role: 'parent', classIds: [], children: [] });

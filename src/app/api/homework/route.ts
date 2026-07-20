@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
 const MAX_TEXT = 2000;
-
-function isStaff(role: string | null) {
-  return role === 'teacher' || role === 'super_admin';
-}
 
 /**
  * 제출물 1차 검수.
@@ -63,7 +59,7 @@ export async function POST(req: NextRequest) {
   if (!schoolId || !classId || !homeworkId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
 
   // 교직원이 아니면 자기 반 숙제만 제출 가능
-  if (!isStaff(user.role) && !user.classIds.includes(classId)) {
+  if (!isStaffOfSchool(user, schoolId) && !user.classIds.includes(classId)) {
     return NextResponse.json({ error: '이 반의 숙제가 아닙니다' }, { status: 403 });
   }
 
@@ -136,10 +132,6 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
-  if (!isStaff(user.role)) {
-    return NextResponse.json({ error: '선생님만 할 수 있습니다' }, { status: 403 });
-  }
-
   let body: {
     schoolId?: string; classId?: string; homeworkId?: string; studentUid?: string;
     comment?: string; approve?: boolean; hide?: boolean;
@@ -154,6 +146,10 @@ export async function PATCH(req: NextRequest) {
   const { schoolId, classId, homeworkId, studentUid } = body;
   if (!schoolId || !classId || !homeworkId || !studentUid) {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  }
+  // 이 학교 소속 교직원만. 승인된 교사라도 남의 학교는 건드릴 수 없다.
+  if (!isStaffOfSchool(user, schoolId)) {
+    return NextResponse.json({ error: '이 학교의 선생님이 아닙니다' }, { status: 403 });
   }
 
   const db = adminDb();

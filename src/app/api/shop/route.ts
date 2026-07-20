@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, verifyRequestUser, isStaffRole } from '@/lib/firebase-admin';
 import { getShopItem, isEquipSlot } from '@/lib/shop-catalog';
 
 export const runtime = 'nodejs';
@@ -12,10 +12,6 @@ export const maxDuration = 30;
  * 잔액과 인벤토리는 규칙에서 클라이언트 쓰기를 막아두었고, 여기서만 움직인다.
  * 가격도 요청 본문이 아니라 서버 카탈로그에서 읽는다 — 아니면 0원에 사갈 수 있다.
  */
-
-function isStaff(role: string | null) {
-  return role === 'teacher' || role === 'super_admin';
-}
 
 export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
@@ -35,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (body.action === 'buy') {
     const item = body.itemId ? getShopItem(body.itemId) : null;
     if (!item) return NextResponse.json({ error: '없는 물건이에요' }, { status: 404 });
-    if (item.staffOnly && !isStaff(user.role)) {
+    if (item.staffOnly && !isStaffRole(user.role)) {
       return NextResponse.json({ error: '선생님만 가질 수 있어요' }, { status: 403 });
     }
 

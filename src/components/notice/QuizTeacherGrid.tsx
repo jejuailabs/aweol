@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { studentsPath, questionsPath, quizSubmissionsPath } from '@/lib/paths';
+import { auth, db } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
+import { studentsPath, questionsPath, quizSubmissionsPath, inventoryPath } from '@/lib/paths';
 import { QuestionType } from '@/lib/firestore-schema';
+import { SHOP_ITEMS, ShopItem } from '@/lib/shop-catalog';
 
 /**
  * 교사용 퀴즈 현황판.
@@ -26,12 +28,18 @@ interface Answer {
   correct: boolean | null;
 }
 
+type Stamp = { itemId: string; emoji: string; label: string };
+
 interface Sub {
   studentUid: string;
   studentName: string;
   answers: Answer[];
   correctCount: number;
   gradedCount: number;
+  /** 문항 id → 선생님이 남긴 반응 */
+  feedback: Record<string, { comment?: string; stamp?: Stamp }>;
+  checked: boolean;
+  stamp: Stamp | null;
 }
 
 interface Question {
@@ -49,10 +57,59 @@ export default function QuizTeacherGrid({
   classId: string;
   quizId: string;
 }) {
+  const { user } = useAuth();
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [openUid, setOpenUid] = useState<string | null>(null);
+  const [myStamps, setMyStamps] = useState<ShopItem[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState('');
+  const [draftComment, setDraftComment] = useState<Record<string, string>>({});
+  const [pickedStamp, setPickedStamp] = useState('');
+
+  useEffect(() => {
+    if (!db || !user) { setMyStamps([]); return; }
+    return onSnapshot(
+      collection(db, inventoryPath(user.uid)),
+      (snap) => {
+        const ids = new Set(snap.docs.map((d) => d.id));
+        const owned = SHOP_ITEMS.filter((i) => i.category === 'stamp' && ids.has(i.id));
+        setMyStamps(owned);
+        setPickedStamp((p) => p || owned[0]?.id || '');
+      },
+      () => setMyStamps([])
+    );
+  }, [user]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(''), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const grade = useCallback(
+    async (studentUid: string, patch: Record<string, unknown>) => {
+      setBusy(true);
+      try {
+        const token = await auth?.currentUser?.getIdToken();
+        const res = await fetch('/api/quiz', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: 'grade', schoolId, classId, quizId, studentUid, ...patch }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          setToast(j.error || '처리하지 못했어요');
+          return false;
+        }
+        return true;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [schoolId, classId, quizId]
+  );
 
   useEffect(() => {
     if (!db) return;
@@ -80,6 +137,9 @@ export default function QuizTeacherGrid({
             answers: v.answers || [],
             correctCount: v.correctCount ?? 0,
             gradedCount: v.gradedCount ?? 0,
+            feedback: v.feedback || {},
+            checked: v.checked === true,
+            stamp: v.stamp ?? null,
           };
         })),
       () => setSubs([])
@@ -172,6 +232,15 @@ export default function QuizTeacherGrid({
         </div>
       )}
 
+      {toast && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-[60] rounded-full px-4 py-2 text-[12px] font-bold text-white"
+          style={{ background: 'rgba(58,50,38,0.92)' }}
+        >
+          {toast}
+        </div>
+      )}
+
       {/* 한 아이의 답안 */}
       {opened?.sub && (
         <div
@@ -196,7 +265,10 @@ export default function QuizTeacherGrid({
             </div>
 
             {questions.map((q, i) => {
-              const a = opened.sub!.answers.find((x) => x.questionId === q.id);
+              const sub = opened.sub!;
+              const a = sub.answers.find((x) => x.questionId === q.id);
+              const fb = sub.feedback[q.id] || {};
+              const key = `${sub.studentUid}:${q.id}`;
               return (
                 <div key={q.id} className="rounded-2xl p-3 mb-2" style={{ background: 'white' }}>
                   <div className="flex items-start justify-between gap-2 mb-1">
@@ -214,14 +286,110 @@ export default function QuizTeacherGrid({
                         : '고르지 않았어요'
                       : a?.text || '적지 않았어요'}
                   </div>
+
+                  {/* 채점이 안 되는 서술형은 선생님 말 한마디가 유일한 반응이다 */}
                   {q.type === 'essay' && (
-                    <div className="text-[9px] mt-1" style={{ color: '#A89880' }}>
-                      서술형 — 채점하지 않아요
+                    <div className="mt-2 pt-2" style={{ borderTop: '1px dashed #EFE3CB' }}>
+                      {fb.stamp && (
+                        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#2E8B57' }}>
+                          {fb.stamp.emoji} {fb.stamp.label}
+                        </div>
+                      )}
+                      <div className="flex gap-1.5">
+                        <input
+                          value={draftComment[key] ?? fb.comment ?? ''}
+                          onChange={(e) => setDraftComment((p) => ({ ...p, [key]: e.target.value }))}
+                          placeholder="한마디 남겨주세요"
+                          className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-[11px] outline-none"
+                          style={{ background: '#F6F0E4', color: '#3A3226' }}
+                        />
+                        <button
+                          onClick={async () => {
+                            const text = draftComment[key] ?? fb.comment ?? '';
+                            if (await grade(sub.studentUid, { questionId: q.id, comment: text })) {
+                              setToast('한마디 남겼어요');
+                            }
+                          }}
+                          disabled={busy}
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                          style={{ background: 'var(--color-primary)' }}
+                        >
+                          저장
+                        </button>
+                        {myStamps.length > 0 && (
+                          <button
+                            onClick={async () => {
+                              if (await grade(sub.studentUid, { questionId: q.id, stampId: pickedStamp })) {
+                                setToast('도장 찍었어요');
+                              }
+                            }}
+                            disabled={busy}
+                            className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40"
+                            style={{ background: '#F0E8F6', color: '#7B4B94' }}
+                          >
+                            도장
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {q.type !== 'essay' && fb.comment && (
+                    <div className="mt-1.5 rounded-lg px-2 py-1 text-[10px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+                      👩‍🏫 {fb.comment}
                     </div>
                   )}
                 </div>
               );
             })}
+
+            {/* 전체 검사완료 — 숙제와 같은 방식으로 도장 1개 */}
+            {myStamps.length > 0 && !opened.sub.checked && (
+              <>
+                <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  {myStamps.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setPickedStamp(s.id)}
+                      className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold"
+                      style={
+                        pickedStamp === s.id
+                          ? { background: 'var(--color-primary)', color: 'white' }
+                          : { background: 'white', color: '#8A7A5F' }
+                      }
+                    >
+                      <span className="text-sm">{s.emoji}</span>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {opened.sub.checked && opened.sub.stamp && (
+              <div className="rounded-xl px-3 py-2 mb-2 text-[12px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
+                {opened.sub.stamp.emoji} {opened.sub.stamp.label}
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                const next = !opened.sub!.checked;
+                if (await grade(opened.sub!.studentUid, { check: next, stampId: next ? pickedStamp : undefined })) {
+                  setToast(next ? `검사완료! ${opened.row.name}에게 도장 1개 🏅` : '검사완료를 취소했어요');
+                }
+              }}
+              disabled={busy}
+              className="w-full rounded-xl py-3 text-[13px] font-bold disabled:opacity-40"
+              style={
+                opened.sub.checked
+                  ? { background: '#E2F6E9', color: '#2E8B57', border: '1px solid #A0DCB7' }
+                  : { background: 'var(--color-primary)', color: 'white' }
+              }
+            >
+              {opened.sub.checked ? '✅ 검사완료 (눌러서 취소)' : '도장 찍고 검사완료'}
+            </button>
 
             <button
               onClick={() => setOpenUid(null)}

@@ -9,6 +9,13 @@ export interface UserDoc {
   role: UserRole | null;
   /** 승인 대기 중인 신청 역할. 교사는 슈퍼관리자가 승인해야 role 로 올라간다. */
   pendingRole: UserRole | null;
+  /** 교사 신청 시 고른 학교. 승인되면 schoolIds 로 옮겨간다. */
+  pendingSchoolId: string | null;
+  /**
+   * 교사가 소속된 학교. **교사 권한은 이 목록 안에서만 통한다.**
+   * 슈퍼관리자는 비어 있어도 전체를 넘나든다.
+   */
+  schoolIds: string[];
   classIds: string[];
   children: { studentUid: string; classId: string; name: string }[];
   pendingClassRequest: string | null;

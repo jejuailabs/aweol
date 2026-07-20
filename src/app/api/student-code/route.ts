@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
@@ -8,10 +8,6 @@ export const runtime = 'nodejs';
 // 0/O, 1/I/L 처럼 헷갈리는 글자는 뺀다 (초등학생이 손으로 받아 적는다)
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LEN = 6;
-
-function isStaff(role: string | null) {
-  return role === 'teacher' || role === 'super_admin';
-}
 
 function makeCode() {
   let s = '';
@@ -122,10 +118,6 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
-  if (!isStaff(user.role)) {
-    return NextResponse.json({ error: '선생님만 발급할 수 있습니다' }, { status: 403 });
-  }
-
   let body: { schoolId?: string; classId?: string; studentDocId?: string; regenerate?: boolean };
   try {
     body = await req.json();
@@ -134,6 +126,9 @@ export async function PUT(req: NextRequest) {
   }
   const { schoolId, classId } = body;
   if (!schoolId || !classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  if (!isStaffOfSchool(user, schoolId)) {
+    return NextResponse.json({ error: '이 학교의 선생님이 아닙니다' }, { status: 403 });
+  }
 
   const db = adminDb();
   const studentsRef = db

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
 
-  let body: { role?: string };
+  let body: { role?: string; schoolId?: string };
   try {
     body = await req.json();
   } catch {
@@ -47,11 +47,27 @@ export async function POST(req: NextRequest) {
   const ref = db.collection('users').doc(user.uid);
 
   if (SELF_SERVE.has(role)) {
-    await ref.set({ role, pendingRole: null, classIds: [] }, { merge: true });
+    await ref.set(
+      { role, pendingRole: null, pendingSchoolId: null, schoolIds: [], classIds: [] },
+      { merge: true }
+    );
     return NextResponse.json({ ok: true, role, pending: false });
   }
 
-  await ref.set({ role: null, pendingRole: role, classIds: [] }, { merge: true });
+  // 교사는 어느 학교인지 밝혀야 한다. 권한이 그 학교 안에서만 통하기 때문이다.
+  const schoolId = typeof body.schoolId === 'string' ? body.schoolId.trim() : '';
+  if (!schoolId) {
+    return NextResponse.json({ error: '학교를 골라주세요' }, { status: 400 });
+  }
+  const school = await db.collection('schools').doc(schoolId).get();
+  if (!school.exists) {
+    return NextResponse.json({ error: '없는 학교예요' }, { status: 404 });
+  }
+
+  await ref.set(
+    { role: null, pendingRole: role, pendingSchoolId: schoolId, schoolIds: [], classIds: [] },
+    { merge: true }
+  );
 
   await db.collection('accessLogs').add({
     uid: user.uid,
@@ -59,7 +75,7 @@ export async function POST(req: NextRequest) {
     role: null,
     action: '교사 신청',
     classId: null,
-    detail: user.displayName,
+    detail: `${user.displayName} → ${schoolId}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),
@@ -101,10 +117,16 @@ export async function PATCH(req: NextRequest) {
   }
 
   const granted = body.approve === true ? (target.pendingRole as string) : null;
+  const schoolId = (target.pendingSchoolId as string) || '';
+  if (granted && !schoolId) {
+    // 학교 없이 교사가 되면 예전처럼 전역 권한이 된다
+    return NextResponse.json({ error: '신청에 학교 정보가 없습니다' }, { status: 409 });
+  }
+
   await ref.set(
     granted
-      ? { role: granted, pendingRole: null }
-      : { pendingRole: null },
+      ? { role: granted, pendingRole: null, pendingSchoolId: null, schoolIds: [schoolId] }
+      : { pendingRole: null, pendingSchoolId: null },
     { merge: true }
   );
 
@@ -114,11 +136,11 @@ export async function PATCH(req: NextRequest) {
     role: user.role,
     action: granted ? '교사 승인' : '교사 거절',
     classId: null,
-    detail: `${target.displayName || uid}`,
+    detail: `${target.displayName || uid}${granted ? ` → ${schoolId}` : ''}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  return NextResponse.json({ ok: true, uid, role: granted });
+  return NextResponse.json({ ok: true, uid, role: granted, schoolId: granted ? schoolId : null });
 }

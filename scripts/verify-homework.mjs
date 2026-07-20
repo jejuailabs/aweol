@@ -44,7 +44,7 @@ const TEA = 'zz-hw-teacher';
 
 await adb.collection('users').doc(STU).set({ displayName: '숙제검증학생', role: 'student', classIds: [CLASS], children: [] });
 await adb.collection('users').doc(STU2).set({ displayName: '숙제검증학생2', role: 'student', classIds: [CLASS], children: [] });
-await adb.collection('users').doc(TEA).set({ displayName: '숙제검증교사', role: 'teacher', classIds: [CLASS], children: [] });
+await adb.collection('users').doc(TEA).set({ displayName: '숙제검증교사', role: 'teacher', schoolIds: [SCHOOL], classIds: [CLASS], children: [] });
 
 const hwRef = adb.doc(`schools/${SCHOOL}/classes/${CLASS}/homeworks/${HW}`);
 await hwRef.set({

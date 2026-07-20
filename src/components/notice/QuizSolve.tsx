@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { collection, doc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { questionsPath, quizSubmissionsPath } from '@/lib/paths';
@@ -18,6 +18,8 @@ interface Question {
   youtubeId: string;
   choices: string[];
 }
+
+type Stamp = { itemId: string; emoji: string; label: string };
 
 interface MyAnswer {
   questionId: string;
@@ -46,6 +48,8 @@ export default function QuizSolve({
   const [choice, setChoice] = useState<Record<string, number>>({});
   const [text, setText] = useState<Record<string, string>>({});
   const [mine, setMine] = useState<MyAnswer[] | null>(null);
+  const [feedback, setFeedback] = useState<Record<string, { comment?: string; stamp?: Stamp }>>({});
+  const [overallStamp, setOverallStamp] = useState<Stamp | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -77,12 +81,21 @@ export default function QuizSolve({
     );
   }, [schoolId, classId, quizId]);
 
-  // 이미 낸 적이 있으면 결과 화면으로
+  // 이미 낸 적이 있으면 결과 화면으로.
+  // 구독으로 두는 이유: 선생님이 나중에 남긴 한마디와 도장이 새로고침 없이 보여야 한다.
   useEffect(() => {
     if (!db || !user) { setMine(null); return; }
-    getDoc(doc(db, quizSubmissionsPath(schoolId, classId, quizId), user.uid))
-      .then((s) => setMine(s.exists() ? ((s.data().answers as MyAnswer[]) || []) : null))
-      .catch(() => setMine(null));
+    return onSnapshot(
+      doc(db, quizSubmissionsPath(schoolId, classId, quizId), user.uid),
+      (s) => {
+        if (!s.exists()) { setMine(null); return; }
+        const v = s.data();
+        setMine((v.answers as MyAnswer[]) || []);
+        setFeedback(v.feedback || {});
+        setOverallStamp(v.stamp ?? null);
+      },
+      () => setMine(null)
+    );
   }, [schoolId, classId, quizId, user]);
 
   const submit = useCallback(async () => {
@@ -168,6 +181,19 @@ export default function QuizSolve({
           </div>
         </div>
 
+        {overallStamp && (
+          <div
+            className="rounded-2xl px-3 py-3 mb-3 text-center"
+            style={{ background: '#E2F6E9', border: '1px solid #A0DCB7' }}
+          >
+            <div className="text-2xl leading-none mb-1">{overallStamp.emoji}</div>
+            <div className="text-[12px] font-bold" style={{ color: '#2E8B57' }}>{overallStamp.label}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: '#5FA87C' }}>
+              선생님이 도장을 찍어주셨어요 🏅
+            </div>
+          </div>
+        )}
+
         {questions.map((q, i) => {
           const a = byId.get(q.id);
           const isEssay = q.type === 'essay';
@@ -194,9 +220,20 @@ export default function QuizSolve({
                   내 답: {a?.text || '적지 않았어요'}
                 </div>
               )}
-              {isEssay && (
+              {isEssay && !feedback[q.id]?.comment && !feedback[q.id]?.stamp && (
                 <div className="text-[10px] mb-1" style={{ color: '#A89880' }}>
                   선생님이 읽고 답해주실 거예요
+                </div>
+              )}
+
+              {feedback[q.id]?.stamp && (
+                <div className="mt-1.5 text-[12px] font-bold" style={{ color: '#2E8B57' }}>
+                  {feedback[q.id].stamp!.emoji} {feedback[q.id].stamp!.label}
+                </div>
+              )}
+              {feedback[q.id]?.comment && (
+                <div className="mt-1.5 rounded-xl px-3 py-2 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+                  👩‍🏫 {feedback[q.id].comment}
                 </div>
               )}
 

@@ -51,7 +51,7 @@ const resetUsers = async () => {
     preferences: { theme: 'light' },
   });
   await teaRef.set({
-    displayName: '상점검증교사', role: 'teacher', classIds: [CLASS], children: [],
+    displayName: '상점검증교사', role: 'teacher', schoolIds: [SCHOOL], classIds: [CLASS], children: [],
     stamps: 0, avatarCustom: { hat: null, accessory: null }, avatarId: 'avatar_01',
     preferences: { theme: 'light' },
   });

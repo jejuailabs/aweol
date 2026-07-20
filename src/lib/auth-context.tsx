@@ -85,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             photoURL: firebaseUser.photoURL || '',
             role: null,
             pendingRole: null,
+            pendingSchoolId: null,
+            schoolIds: [],
             classIds: [],
             children: [],
             pendingClassRequest: null,

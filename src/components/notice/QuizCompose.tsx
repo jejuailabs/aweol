@@ -44,20 +44,59 @@ const newDraft = (): Draft => ({
   explanation: '',
 });
 
+/** 수정 모드로 열 때 넘겨주는 기존 퀴즈 */
+export interface QuizEditSeed {
+  quizId: string;
+  title: string;
+  description: string;
+  visibility: 'class' | 'teacher';
+  questions: {
+    type: QuestionType;
+    prompt: string;
+    media: 'none' | 'image' | 'youtube';
+    imageUrl: string;
+    youtubeId: string;
+    choices: string[];
+    explanation: string;
+    /** 정답지에서 읽어온 값 (교직원만 읽을 수 있다) */
+    answerIndex: number | null;
+    acceptable: string[];
+  }[];
+}
+
 export default function QuizCompose({
-  schoolId, classId, onDone, onCancel,
+  schoolId, classId, edit, onDone, onCancel,
 }: {
   schoolId: string;
   classId: string;
+  /** 있으면 수정 모드 */
+  edit?: QuizEditSeed | null;
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [desc, setDesc] = useState('');
-  const [vis, setVis] = useState<'class' | 'teacher'>('class');
-  const [drafts, setDrafts] = useState<Draft[]>([newDraft()]);
+  const [title, setTitle] = useState(edit?.title || '');
+  const [desc, setDesc] = useState(edit?.description || '');
+  const [vis, setVis] = useState<'class' | 'teacher'>(edit?.visibility || 'class');
+  const [drafts, setDrafts] = useState<Draft[]>(() =>
+    edit
+      ? edit.questions.map((q) => ({
+          ...newDraft(),
+          type: q.type,
+          prompt: q.prompt,
+          media: q.media,
+          imageUrl: q.imageUrl,
+          youtube: q.youtubeId,
+          choices: q.choices.length >= 2 ? q.choices : ['', ''],
+          answerIndex: q.answerIndex ?? 0,
+          acceptable: q.acceptable.join(', '),
+          explanation: q.explanation,
+        }))
+      : [newDraft()]
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // 이미 푼 아이가 있으면 서버가 되물어본다. 확인을 받으면 force 로 다시 보낸다.
+  const [confirmMsg, setConfirmMsg] = useState('');
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const patch = useCallback((key: number, p: Partial<Draft>) => {
@@ -79,15 +118,16 @@ export default function QuizCompose({
     }
   }, [patch]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (force = false) => {
     setSaving(true);
     setError('');
     try {
       const token = await auth?.currentUser?.getIdToken();
       const res = await fetch('/api/quiz', {
-        method: 'POST',
+        method: edit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          ...(edit ? { action: 'edit', quizId: edit.quizId, force } : {}),
           schoolId,
           classId,
           title,
@@ -110,12 +150,17 @@ export default function QuizCompose({
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(json.error || '내지 못했어요'); return; }
+      if (!res.ok) {
+        // 이미 푼 아이가 있으면 서버가 되물어본다
+        if (json.needsConfirm) setConfirmMsg(json.error || '');
+        else setError(json.error || '내지 못했어요');
+        return;
+      }
       onDone();
     } finally {
       setSaving(false);
     }
-  }, [schoolId, classId, title, desc, vis, drafts, onDone]);
+  }, [schoolId, classId, title, desc, vis, drafts, edit, onDone]);
 
   return (
     <div>
@@ -123,7 +168,9 @@ export default function QuizCompose({
         ← 퀴즈 목록
       </button>
 
-      <div className="text-sm font-black mb-3" style={{ color: '#3A3226' }}>🧩 퀴즈 내기</div>
+      <div className="text-sm font-black mb-3" style={{ color: '#3A3226' }}>
+        {edit ? '🧩 퀴즈 고치기' : '🧩 퀴즈 내기'}
+      </div>
 
       <input
         value={title}
@@ -384,6 +431,32 @@ export default function QuizCompose({
         <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
       )}
 
+      {confirmMsg && (
+        <div className="rounded-2xl p-3.5 mb-2" style={{ background: '#FFF1D6', border: '1px solid #F0D9A8' }}>
+          <div className="text-[12px] font-bold mb-1" style={{ color: '#A6762A' }}>{confirmMsg}</div>
+          <div className="text-[10px] leading-relaxed mb-2.5" style={{ color: '#A08A5B' }}>
+            바뀐 문제로 다시 풀게 하려면 그대로 진행하고, 답안을 지키려면 취소하세요.
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmMsg('')}
+              className="flex-1 rounded-xl py-2 text-[12px] font-bold"
+              style={{ background: 'white', color: '#8A7A5F' }}
+            >
+              그만두기
+            </button>
+            <button
+              onClick={() => { setConfirmMsg(''); save(true); }}
+              disabled={saving}
+              className="flex-1 rounded-xl py-2 text-[12px] font-bold text-white disabled:opacity-40"
+              style={{ background: '#E8604C' }}
+            >
+              답안 지우고 고치기
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <button
           onClick={onCancel}
@@ -393,12 +466,12 @@ export default function QuizCompose({
           취소
         </button>
         <button
-          onClick={save}
+          onClick={() => save()}
           disabled={saving || !title.trim()}
           className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
           style={{ background: '#7B4B94' }}
         >
-          {saving ? '내는 중...' : '퀴즈 내기'}
+          {saving ? '저장 중...' : edit ? '고치기' : '퀴즈 내기'}
         </button>
       </div>
     </div>

@@ -78,8 +78,32 @@ export async function verifyRequestUser(req: Request) {
       displayName: (data.displayName as string) || decoded.name || '이름 없음',
       role: (data.role as string) || null,
       classIds: (data.classIds as string[]) || [],
+      /** 교사가 소속된 학교. 교사 권한은 이 목록 안에서만 통한다. */
+      schoolIds: (data.schoolIds as string[]) || [],
     };
   } catch {
     return null;
   }
+}
+
+export type RequestUser = NonNullable<Awaited<ReturnType<typeof verifyRequestUser>>>;
+
+/**
+ * 이 학교의 교직원인가.
+ *
+ * 예전에는 role === 'teacher' 하나로 판정해서, 승인만 받으면 **모든 학교**의 명부와
+ * 제출물을 볼 수 있었다. 교사 권한은 반드시 소속 학교 안에서만 통해야 한다.
+ * 슈퍼관리자만 전체를 넘나든다.
+ */
+export function isStaffOfSchool(
+  user: { role: string | null; schoolIds: string[] },
+  schoolId: string
+): boolean {
+  if (user.role === 'super_admin') return true;
+  return user.role === 'teacher' && user.schoolIds.includes(schoolId);
+}
+
+/** 학교를 특정하지 않는 자리에서만 쓴다 (예: 도장 도안 구입) */
+export function isStaffRole(role: string | null): boolean {
+  return role === 'teacher' || role === 'super_admin';
 }

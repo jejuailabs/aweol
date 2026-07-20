@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
 const MAX_POINTS = 400;
 const MAX_TEXT = 60;
 const MAX_ITEMS = 400; // 칠판이 무한정 커지지 않도록
-
-function isStaff(role: string | null) {
-  return role === 'teacher' || role === 'super_admin';
-}
 
 /**
  * 칠판 낙서 쓰기.
@@ -47,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 학생은 자기 반 칠판에만 쓸 수 있다 (교직원은 모든 반)
-  if (!isStaff(user.role) && !user.classIds.includes(classId)) {
+  if (!isStaffOfSchool(user, schoolId) && !user.classIds.includes(classId)) {
     return NextResponse.json({ error: '이 반의 칠판에 쓸 수 없습니다' }, { status: 403 });
   }
 
@@ -118,14 +114,13 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
-  if (!isStaff(user.role)) {
-    return NextResponse.json({ error: '선생님만 전체 지우기를 할 수 있습니다' }, { status: 403 });
-  }
-
   const sp = new URL(req.url).searchParams;
   const schoolId = sp.get('schoolId');
   const classId = sp.get('classId');
   if (!schoolId || !classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  if (!isStaffOfSchool(user, schoolId)) {
+    return NextResponse.json({ error: '이 학교의 선생님이 아닙니다' }, { status: 403 });
+  }
 
   const db = adminDb();
   const boardRef = db
