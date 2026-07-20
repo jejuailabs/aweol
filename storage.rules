@@ -27,6 +27,15 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
+    // 퀴즈 문항에 붙이는 사진 — 출제자(교사) 본인 경로에만 업로드
+    match /quiz/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
     // 그 외 전부 차단
     match /{allPaths=**} {
       allow read, write: if false;

@@ -195,6 +195,74 @@ export interface HomeworkNudgeDoc {
   lastAt: Timestamp;
 }
 
+// ---------- 퀴즈 ----------
+
+/** choice: 객관식 / short: 단답형 주관식 / essay: 서술형 주관식 */
+export type QuestionType = 'choice' | 'short' | 'essay';
+/** 문항에 붙는 자료 */
+export type QuestionMedia = 'none' | 'image' | 'youtube';
+
+export interface QuizDoc {
+  title: string;
+  description: string;
+  visibility: HomeworkVisibility;
+  questionCount: number;
+  authorUid: string;
+  authorName: string;
+  createdAt: Timestamp;
+}
+
+/**
+ * 문항. **정답은 여기 두지 않는다.**
+ * 읽기가 공개라 정답을 같이 넣으면 개발자도구로 그냥 보인다. 정답은 QuizAnswerKeyDoc 에 따로 둔다.
+ */
+export interface QuestionDoc {
+  order: number;
+  type: QuestionType;
+  prompt: string;
+  media: QuestionMedia;
+  imageUrl: string;
+  /** 유튜브 영상 id (전체 URL이 아니라 id만 저장한다) */
+  youtubeId: string;
+  /** 객관식 보기. 다른 유형에서는 빈 배열 */
+  choices: string[];
+  /** 교사가 직접 적은 해설 (없으면 AI가 만든다) */
+  explanation: string;
+  /** AI가 만들어 캐시해 둔 해설. 한 번 만들면 반 전체가 같은 걸 본다. */
+  aiExplanation: string;
+}
+
+/** 정답. 교직원만 읽을 수 있고 쓰기는 서버 전용. 채점도 서버에서 한다. */
+export interface QuizAnswerKeyDoc {
+  /** 객관식 정답 보기 번호 (0부터) */
+  answerIndex: number | null;
+  /** 단답형에서 정답으로 인정할 표기들 */
+  acceptable: string[];
+  /** 서술형은 정답이 없다 (교사가 읽고 판단) */
+}
+
+/** 한 문항에 대한 학생의 답 */
+export interface QuizAnswer {
+  questionId: string;
+  type: QuestionType;
+  choiceIndex: number | null;
+  text: string;
+  /** 서술형은 채점하지 않으므로 null */
+  correct: boolean | null;
+}
+
+/** 제출물. 문서 ID = 학생 uid. 점수는 아이에게 보여주지 않는다. */
+export interface QuizSubmissionDoc {
+  studentUid: string;
+  studentName: string;
+  answers: QuizAnswer[];
+  /** 교사 화면 정렬·요약용. 서술형은 세지 않는다. */
+  correctCount: number;
+  gradedCount: number;
+  publicToClass: boolean;
+  submittedAt: Timestamp;
+}
+
 /** 교실 알림판 글 (알림장·급식·숙제·퀴즈). 작성은 교직원만. */
 export interface NoticeDoc {
   kind: NoticeKind;

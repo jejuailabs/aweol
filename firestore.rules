@@ -149,6 +149,33 @@ service cloud.firestore {
           }
         }
 
+        // 퀴즈 — 문제는 공개, 정답은 절대 공개하지 않는다.
+        match /quizzes/{quizId} {
+          allow read: if true;
+          allow write: if isStaff();
+
+          // 문항(지문·보기)만 공개. 정답 필드는 여기 두지 않는다 —
+          // 두는 순간 개발자도구로 그냥 보인다.
+          match /questions/{qId} {
+            allow read: if true;
+            allow write: if false;
+          }
+
+          // 정답. 학생이 읽으면 퀴즈가 성립하지 않는다. 채점은 서버가 한다.
+          match /answerKeys/{qId} {
+            allow read: if isStaff();
+            allow write: if false;
+          }
+
+          // 제출물 — 교직원 / 본인 / 공개된 것
+          match /submissions/{studentUid} {
+            allow read: if isStaff()
+                        || (isSignedIn() && request.auth.uid == studentUid)
+                        || resource.data.publicToClass == true;
+            allow write: if false;
+          }
+        }
+
         // 칠판 낙서 — 읽기는 공개, 쓰기는 서버(Admin SDK)만.
         // 클라이언트가 직접 쓰지 못하게 막아야 작성자 위조와 IP 누락을 방지할 수 있다.
         match /blackboard/{itemId} {

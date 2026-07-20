@@ -12,6 +12,7 @@ import { canManageClass } from '@/lib/auth-helpers';
 import { NoticeKind } from '@/lib/firestore-schema';
 import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
 import HomeworkPanel from './HomeworkPanel';
+import QuizPanel from './QuizPanel';
 
 
 export interface NoticePost {
@@ -191,6 +192,8 @@ export default function NoticeModal({
           {/* 숙제는 출제·제출·검사가 얽혀 있어 전용 패널이 담당한다 */}
           {kind === 'homework' ? (
             <HomeworkPanel schoolId={schoolId} classId={classId} />
+          ) : kind === 'quiz' ? (
+            <QuizPanel schoolId={schoolId} classId={classId} />
           ) : openPost ? (
             <div>
               <button

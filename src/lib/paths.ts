@@ -35,6 +35,15 @@ export const submissionsPath = (schoolId: string, classId: string, homeworkId: s
 export const nudgesPath = (schoolId: string, classId: string, homeworkId: string) =>
   `${homeworksPath(schoolId, classId)}/${homeworkId}/nudges`;
 
+export const quizzesPath = (schoolId: string, classId: string) =>
+  `${classPath(schoolId, classId)}/quizzes`;
+
+export const questionsPath = (schoolId: string, classId: string, quizId: string) =>
+  `${quizzesPath(schoolId, classId)}/${quizId}/questions`;
+
+export const quizSubmissionsPath = (schoolId: string, classId: string, quizId: string) =>
+  `${quizzesPath(schoolId, classId)}/${quizId}/submissions`;
+
 export const blackboardPath = (schoolId: string, classId: string) =>
   `${classPath(schoolId, classId)}/blackboard`;
 
