@@ -266,6 +266,23 @@ service cloud.firestore {
             allow write: if false;
           }
 
+          /**
+           * 열어본 기록 — 교직원과 본인만 본다.
+           * 누가 봤는지 아이들끼리 알 필요가 없다.
+           *
+           * **create 만 허용하고 update 를 막는다.** 열 때마다 덮어쓰면
+           * '처음 언제 봤나' 가 사라지고, 아이가 스무 번 열면 스무 번 쓴다.
+           */
+          match /reads/{studentUid} {
+            allow read: if isTeacherOf(schoolId, classId)
+                        || (isSignedIn() && request.auth.uid == studentUid);
+            allow create: if isSignedIn()
+                          && request.auth.uid == studentUid
+                          && request.resource.data.studentUid == studentUid;
+            allow update: if false;
+            allow delete: if isTeacherOf(schoolId, classId);
+          }
+
           // 콕 찌르기 — 찔린 본인과 교직원만 본다. 친구가 누가 안 냈는지 훑어볼 수 없어야 한다.
           match /nudges/{studentUid} {
             allow read: if isTeacherOf(schoolId, classId) || (isSignedIn() && request.auth.uid == studentUid);

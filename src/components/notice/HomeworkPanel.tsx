@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { updateDoc,
+import { setDoc, updateDoc,
   collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc,
   serverTimestamp, getDocs, where,
 } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { auth, db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
-import { nudgesPath } from '@/lib/paths';
+import { nudgesPath, readsPath } from '@/lib/paths';
 import DrawingPad from './DrawingPad';
 import HomeworkTeacherGrid from './HomeworkTeacherGrid';
 
@@ -150,6 +150,24 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     }
     return () => unsub();
   }, [openId, basePath, isStaff, user]);
+
+  /**
+   * 숙제를 열면 '봤다'고 한 번 남긴다.
+   *
+   * 선생님에게 '아직 안 냈다' 와 '아예 못 봤다' 는 다른 이야기다.
+   * 앞은 재촉할 일이고, 뒤는 알림이 안 닿았다는 뜻이라 연락 방법을 바꿔야 한다.
+   *
+   * **setDoc 이 아니라 실패해도 무시한다.** 이미 있으면 규칙이 막는데(update 금지),
+   * 그건 정상이다 — 이미 본 적이 있다는 뜻이니까.
+   * 교직원은 안 남긴다. 선생님이 자기 숙제를 연 건 셀 이유가 없다.
+   */
+  useEffect(() => {
+    if (!db || !openId || !user || isStaff) return;
+    setDoc(
+      doc(db, readsPath(schoolId, classId, openId), user.uid),
+      { studentUid: user.uid, readAt: serverTimestamp() }
+    ).catch(() => {});
+  }, [openId, user, isStaff, schoolId, classId]);
 
   // 선생님이 나를 콕 찔렀는지 (찔린 본인만 읽을 수 있다)
   useEffect(() => {

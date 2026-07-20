@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { studentsPath, submissionsPath, nudgesPath, inventoryPath } from '@/lib/paths';
+import { studentsPath, submissionsPath, nudgesPath, readsPath, inventoryPath } from '@/lib/paths';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
 import { SHOP_ITEMS, ShopItem } from '@/lib/shop-catalog';
 
@@ -40,11 +40,19 @@ interface Nudge {
   count: number;
 }
 
-type CellState = 'unlinked' | 'none' | 'submitted' | 'checked';
+/**
+ * `unread` 와 `none` 을 나눈 이유.
+ *
+ * '아직 안 냈다' 와 '아예 못 봤다' 는 선생님에게 전혀 다른 이야기다.
+ * 앞은 재촉할 일이고, 뒤는 알림이 안 닿았다는 뜻이라 연락 방법을 바꿔야 한다.
+ * 콕 찌르기는 '봤는데 안 낸' 아이에게 먼저 가는 게 맞다.
+ */
+type CellState = 'unlinked' | 'unread' | 'none' | 'submitted' | 'checked';
 
 const STATE_STYLE: Record<CellState, { bg: string; border: string; fg: string; label: string }> = {
   unlinked: { bg: '#FFFFFF', border: '#E0D3BB', fg: '#C0B197', label: '미연결' },
-  none: { bg: '#F4EEE2', border: '#E0D3BB', fg: '#9C8A6C', label: '미제출' },
+  unread: { bg: '#FBF1F0', border: '#EFC9C6', fg: '#B5645E', label: '안 봄' },
+  none: { bg: '#F4EEE2', border: '#E0D3BB', fg: '#9C8A6C', label: '봤는데 안 냄' },
   submitted: { bg: '#E4F0FC', border: '#A9CDF0', fg: '#2E6DA8', label: '제출' },
   checked: { bg: '#E2F6E9', border: '#A0DCB7', fg: '#2E8B57', label: '검사완료' },
 };
@@ -66,6 +74,8 @@ export default function HomeworkTeacherGrid({
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
   const [nudges, setNudges] = useState<Nudge[]>([]);
+  /** 숙제를 열어본 학생 uid */
+  const [readUids, setReadUids] = useState<Set<string>>(new Set());
   const [myStamps, setMyStamps] = useState<ShopItem[]>([]);
   const [openUid, setOpenUid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -154,20 +164,28 @@ export default function HomeworkTeacherGrid({
     return m;
   }, [nudges]);
 
+  // 열어본 기록 (문서 id = 학생 uid)
+  useEffect(() => {
+    if (!db) return;
+    return onSnapshot(
+      collection(db, readsPath(schoolId, classId, homeworkId)),
+      (snap) => setReadUids(new Set(snap.docs.map((d) => d.id))),
+      () => setReadUids(new Set())
+    );
+  }, [schoolId, classId, homeworkId]);
+
   const cells = useMemo(
     () =>
       roster.map((r) => {
         const sub = r.linkedUid ? subByUid.get(r.linkedUid) ?? null : null;
         const state: CellState = !r.linkedUid
           ? 'unlinked'
-          : !sub
-            ? 'none'
-            : sub.checked
-              ? 'checked'
-              : 'submitted';
+          : sub
+            ? (sub.checked ? 'checked' : 'submitted')
+            : (r.linkedUid && readUids.has(r.linkedUid) ? 'none' : 'unread');
         return { row: r, sub, state, nudged: r.linkedUid ? nudgeByUid.get(r.linkedUid) ?? 0 : 0 };
       }),
-    [roster, subByUid, nudgeByUid]
+    [roster, subByUid, nudgeByUid, readUids]
   );
 
   /** 명부에 없는 사람의 제출물(전학·교사 테스트 등)은 따로 보여준다 */
@@ -177,7 +195,7 @@ export default function HomeworkTeacherGrid({
   }, [subs, roster]);
 
   const counts = useMemo(() => {
-    const c = { unlinked: 0, none: 0, submitted: 0, checked: 0 };
+    const c = { unlinked: 0, unread: 0, none: 0, submitted: 0, checked: 0 };
     cells.forEach((x) => { c[x.state] += 1; });
     return c;
   }, [cells]);
@@ -206,7 +224,10 @@ export default function HomeworkTeacherGrid({
   );
 
   const nudgeAll = useCallback(async () => {
-    const targets = cells.filter((c) => c.state === 'none' && c.row.linkedUid);
+    // 안 낸 아이 전부 — 본 아이든 아직 못 본 아이든 아직 안 낸 건 같다
+    const targets = cells.filter(
+      (c) => (c.state === 'none' || c.state === 'unread') && c.row.linkedUid
+    );
     if (targets.length === 0) return;
     setBusy(true);
     for (const t of targets) {
@@ -242,7 +263,7 @@ export default function HomeworkTeacherGrid({
     <div>
       {/* 요약 */}
       <div className="flex gap-1.5 mb-2.5">
-        {(['none', 'submitted', 'checked'] as CellState[]).map((s) => (
+        {(['unread', 'none', 'submitted', 'checked'] as CellState[]).map((s) => (
           <div
             key={s}
             className="flex-1 rounded-xl py-2 text-center"
@@ -258,15 +279,23 @@ export default function HomeworkTeacherGrid({
         ))}
       </div>
 
-      {counts.none > 0 && (
-        <button
-          onClick={nudgeAll}
-          disabled={busy}
-          className="w-full rounded-xl py-2 mb-2.5 text-[11px] font-bold disabled:opacity-40"
-          style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
-        >
-          👉 미제출 {counts.none}명 모두 콕 찌르기
-        </button>
+      {counts.none + counts.unread > 0 && (
+        <>
+          <button
+            onClick={nudgeAll}
+            disabled={busy}
+            className="w-full rounded-xl py-2 mb-1.5 text-[11px] font-bold disabled:opacity-40"
+            style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+          >
+            👉 미제출 {counts.none + counts.unread}명 모두 콕 찌르기
+          </button>
+          {counts.unread > 0 && (
+            <div className="text-[10px] mb-2.5 leading-relaxed" style={{ color: '#B5645E' }}>
+              이 중 <b>{counts.unread}명</b>은 숙제를 아직 열어보지도 않았어요.
+              콕 찌르기가 안 닿고 있을 수 있으니 다른 방법으로도 알려주세요.
+            </div>
+          )}
+        </>
       )}
 
       {/* 명부 그리드 */}
@@ -298,7 +327,7 @@ export default function HomeworkTeacherGrid({
               {sub?.status === 'held' && (
                 <span className="absolute -top-1 -right-1 text-[11px]" title="AI 보류">⏳</span>
               )}
-              {state === 'none' && nudged > 0 && (
+              {(state === 'none' || state === 'unread') && nudged > 0 && (
                 <span className="absolute -top-1 -right-1 text-[11px]" title={`${nudged}번 찔렀어요`}>👉</span>
               )}
               {sub?.teacherComment && (

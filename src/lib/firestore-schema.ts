@@ -184,6 +184,21 @@ export interface ArchiveDoc {
   archivedAt: Timestamp;
 }
 
+/**
+ * 숙제를 열어본 기록.
+ *
+ * '아직 안 냈다' 와 '아예 못 봤다' 는 선생님에게 전혀 다른 이야기다.
+ * 앞은 재촉할 일이고 뒤는 알림이 안 닿았다는 뜻이라 연락 방법을 바꿔야 한다.
+ * 그래서 콕 찌르기 전에 이걸 본다.
+ *
+ * **한 번만 쓴다.** 열 때마다 쓰면 아이 하나가 스무 번 열어도 스무 번 쓴다.
+ * 규칙에서 create 만 허용하고 update 를 막아 처음 연 시각이 남게 한다.
+ */
+export interface HomeworkReadDoc {
+  studentUid: string;
+  readAt: Timestamp;
+}
+
 export interface GradeDoc {
   label: string;
   order: number;
