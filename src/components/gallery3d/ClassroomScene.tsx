@@ -8,6 +8,8 @@ import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetContr
 import Blackboard, { type BoardItem } from './Blackboard';
 import NoticeWall from './NoticeWall';
 import type { NoticeKind } from '@/lib/firestore-schema';
+import Peers from './Peers';
+import type { PeerLook } from '@/lib/presence';
 
 // 책상+의자 한 세트를 하나의 장애물로 본다 (Desks의 rows/cols와 같은 값을 써야 한다)
 const DESK_ROWS = [1.2, 3.2];
@@ -45,6 +47,10 @@ interface ClassroomSceneProps {
   /** 알림판에 걸 칸 (선생님이 고른 것). 안 주면 전부 */
   noticeTabs?: NoticeKind[];
   onOpenNotice?: (kind: NoticeKind) => void;
+  /** 같은 교실에 있는 친구들을 보여주려면 준다 */
+  schoolId?: string;
+  classId?: string;
+  me?: { uid: string; look: PeerLook } | null;
 }
 
 // --------------- 교실 구조 ---------------
@@ -450,9 +456,11 @@ export default function ClassroomScene({
   classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom, avatarTint,
   boardItems = [],
   noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 }, onOpenNotice = () => {}, noticeTabs,
+  schoolId, classId, me,
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
+  const avatarYaw = useRef(0);
   const [seated, setSeated] = useState(false);
 
   // 3D 안에서 앉으면 화면 위 버튼이 바뀌어야 한다
@@ -518,8 +526,20 @@ export default function ClassroomScene({
           avatarId={avatarId}
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
+          avatarYaw={avatarYaw}
           obstacles={CLASSROOM_OBSTACLES}
         />
+        {me && schoolId && classId && (
+          <Peers
+            schoolId={schoolId}
+            // 반마다 방이 따로다. 다른 반 아이가 우리 교실에 서 있으면 안 된다.
+            roomKey={`class-${classId}`}
+            uid={me.uid}
+            look={me.look}
+            avatarPos={avatarPos}
+            avatarYaw={avatarYaw}
+          />
+        )}
         <DustPuffs />
         <FollowCamera
           avatarPos={avatarPos}

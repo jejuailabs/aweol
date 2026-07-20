@@ -1,0 +1,31 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$schoolId": {
+        "$roomKey": {
+          ".read": "auth != null",
+
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+
+            "p": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "t": { ".validate": "newData.isNumber()" },
+
+            "m": {
+              "n": { ".validate": "newData.isString() && newData.val().length <= 20" },
+              "a": { ".validate": "newData.isString() && newData.val().length <= 20" },
+              "s": { ".validate": "newData.isString() && newData.val().length <= 9" },
+              "h": { ".validate": "newData.isString() && newData.val().length <= 9" },
+              "$other": { ".validate": false }
+            },
+
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}

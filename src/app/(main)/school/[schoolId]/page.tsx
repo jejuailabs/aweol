@@ -19,7 +19,7 @@ const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoysti
 
 
 export default function SchoolPage() {
-  const { userDoc, role } = useAuth();
+  const { user, userDoc, role } = useAuth();
   const router = useRouter();
   const schoolId = useParams().schoolId as string;
   const [classes, setClasses] = useState<(ClassDoc & { id: string })[]>([]);
@@ -79,6 +79,16 @@ export default function SchoolPage() {
     <div className="relative min-h-screen overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
       <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
+        schoolId={schoolId}
+        me={user && userDoc ? {
+          uid: user.uid,
+          look: {
+            name: userDoc.displayName || '친구',
+            avatarId: userDoc.avatarId ?? null,
+            shirt: userDoc.avatarTint?.shirt ?? null,
+            hair: userDoc.avatarTint?.hair ?? null,
+          },
+        } : null}
         pet={pet ? {
           kind: pet.kind,
           name: pet.name,

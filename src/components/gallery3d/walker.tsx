@@ -414,6 +414,7 @@ export function WalkerAvatar({
   avatarId,
   avatarCustom,
   avatarTint,
+  avatarYaw,
   obstacles = [],
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
@@ -424,6 +425,11 @@ export function WalkerAvatar({
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
+  /**
+   * 내가 보는 방향을 담아둘 곳.
+   * 친구들에게 위치와 함께 보내야 남들 화면에서도 같은 쪽을 보고 서 있다.
+   */
+  avatarYaw?: React.MutableRefObject<number>;
   obstacles?: Obstacle[];
 }) {
   const look = getAvatarLook(avatarId, avatarCustom, avatarTint);
@@ -481,6 +487,7 @@ export function WalkerAvatar({
       vel.current.z = 0;
       avatarPos.current.copy(g.position);
       avatarPos.current.y = 0;
+      if (avatarYaw) avatarYaw.current = g.rotation.y;
       return;
     }
 
@@ -569,6 +576,7 @@ export function WalkerAvatar({
 
     avatarPos.current.copy(groupRef.current.position);
     avatarPos.current.y = 0;
+    if (avatarYaw) avatarYaw.current = groupRef.current.rotation.y;
   });
 
   return (

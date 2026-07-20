@@ -29,7 +29,7 @@ export default function ClassRoomPage() {
   const params = useParams();
   const schoolId = params.schoolId as string;
   const classId = params.classId as string;
-  const { role, userDoc } = useAuth();
+  const { user, role, userDoc } = useAuth();
   const [activities, setActivities] = useState<ClassroomActivity[]>([]);
   const [fetched, setFetched] = useState(false);
   const [showList, setShowList] = useState(false);
@@ -228,6 +228,17 @@ export default function ClassRoomPage() {
     <div className="relative w-full h-screen overflow-hidden">
       {/* 3D 교실 */}
       <ClassroomScene
+        schoolId={schoolId}
+        classId={classId}
+        me={user && userDoc ? {
+          uid: user.uid,
+          look: {
+            name: userDoc.displayName || '친구',
+            avatarId: userDoc.avatarId ?? null,
+            shirt: userDoc.avatarTint?.shirt ?? null,
+            hair: userDoc.avatarTint?.hair ?? null,
+          },
+        } : null}
         classLabel={classId}
         activities={displayList}
         onActivitySelect={handleEnter}

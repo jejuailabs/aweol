@@ -8,6 +8,8 @@ import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetContr
 import { extractSchoolPalette, DEFAULT_PALETTE, type SchoolPalette } from '@/lib/image-palette';
 import SchoolPet from './SchoolPet';
 import type { PetKind } from '@/lib/firestore-schema';
+import Peers from './Peers';
+import type { PeerLook } from '@/lib/presence';
 
 /**
  * 현관 옆에 거는 학교 사진.
@@ -497,6 +499,8 @@ export default function SchoolScene({
   schoolName = '학교',
   emblemUrl,
   onEnterHall,
+  schoolId,
+  me,
   pet,
   onPetClick,
   imageUrl = '',
@@ -509,6 +513,9 @@ export default function SchoolScene({
   schoolName?: string;
   emblemUrl?: string;
   onEnterHall?: () => void;
+  schoolId: string;
+  /** 같이 있는 친구들을 보려면 준다. 로그인 안 했으면 없다. */
+  me?: { uid: string; look: PeerLook } | null;
   /** 학교 동물. 아직 안 들였으면 없다 */
   pet?: { kind: PetKind; name: string; needEmoji: string } | null;
   onPetClick?: () => void;
@@ -516,6 +523,7 @@ export default function SchoolScene({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 11));
+  const avatarYaw = useRef(0);
 
   // 학교 그림에서 벽·지붕 색을 뽑는다. 못 뽑으면 기본 색 그대로.
   const [palette, setPalette] = useState<SchoolPalette>(DEFAULT_PALETTE);
@@ -595,8 +603,19 @@ export default function SchoolScene({
           avatarId={avatarId}
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
+          avatarYaw={avatarYaw}
           obstacles={SCHOOL_OBSTACLES}
         />
+        {me && (
+          <Peers
+            schoolId={schoolId}
+            roomKey="school"
+            uid={me.uid}
+            look={me.look}
+            avatarPos={avatarPos}
+            avatarYaw={avatarYaw}
+          />
+        )}
         {pet && (
           <SchoolPet
             kind={pet.kind}
