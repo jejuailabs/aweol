@@ -7,6 +7,7 @@ import { canAccessAdmin } from '@/lib/auth-helpers';
 
 const baseItems = [
   { href: '/', label: '지도', icon: '🗺️' },
+  { href: '/village', label: '마을', icon: '🏘️' },
   { href: '/gallery', label: '갤러리', icon: '🖼️' },
   { href: '/my-stand', label: '내 스탠드', icon: '⭐' },
   { href: '/shop', label: '상점', icon: '🛒' },
