@@ -82,7 +82,7 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
 ## 완료된 것
 
 지도 메인(OSM 타일 직접 렌더, 마커, 입장 연출) · 다중 학교 구조 · 학교 생성(슈퍼관리자) ·
-3D 학교/교실/전시실 · 아바타 8종 + 걷기/충돌 · 카메라 360°+피치+핀치줌 ·
+3D 학교/교실/전시실 · 아바타 16종(옷·머리 색 선택) + 걷기/충돌 · 카메라 360°+피치+핀치줌 ·
 작품 전시/상세/좋아요/댓글 · 작품 업로드(교사 일괄 + AI 사진 보정) ·
 칠판 낙서(손글씨·텍스트·지우개, 작성자·IP 기록) · 알림판(알림장·급식) ·
 학생코드(명부↔계정 연결, 학부모 자녀 연결까지) · 관리자/교사 대시보드 ·
@@ -198,6 +198,20 @@ Firestore: `schools/{schoolId}/classes/{classId}/{students,activities,notices,ho
   `firebasestorage.googleapis.com` 이 `storage.googleapis.com` 을 문자열로 포함해서,
   순서를 잘못 잡으면 엉뚱한 경로가 나온다. 실제로 이 버그로 점검 스크립트가
   멀쩡한 파일을 고아로 잡을 뻔했다.
+
+### 아바타 (2026-07-20)
+
+프리셋 16종 + 옷·머리 색 고르기. 한 반 25명이 8종을 나눠 쓰면 계속 겹친다.
+
+- 색(`avatarTint`)은 **본인이 직접 쓴다.** 상점 아이템(`avatarCustom`)과 달리
+  대가를 치르고 얻는 게 아니라 취향 문제라, 서버를 거칠 이유가 없다.
+  대신 규칙에서 `avatarCustom` 은 계속 서버 전용으로 막아둔다.
+- 프리셋 목록이 **두 벌 있다**: 3D 실물은 `walker.tsx` 의 `AVATAR_LOOKS`,
+  선택 화면 미리보기는 `lib/avatar-presets.ts`. 나누는 이유는 walker 가 three 를
+  끌고 들어와서, 로그인 직후의 2D 선택 화면이 그걸 import 하면 three 전체가
+  그 번들에 딸려오기 때문이다. **한쪽 색을 고치면 다른 쪽도 고쳐야 한다.**
+- 색 목록(`SHIRT_COLORS`/`HAIR_COLORS`)만은 `lib/avatar-presets` 한 곳에 두고
+  walker 가 다시 내보낸다.
 
 ## 남은 일 (우선순위)
 
