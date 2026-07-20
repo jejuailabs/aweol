@@ -182,6 +182,10 @@ r = await apply({ role: 'teacher', schoolId: SCHOOL, grade: 9, classNumber: 1 })
 ok('없는 학년은 거부', r.status === 400, `HTTP ${r.status}`);
 
 r = await apply({ role: 'teacher', schoolId: SCHOOL, grade: 3, classNumber: 99 });
+ok('범위 밖 반은 거부', r.status === 400, `HTTP ${r.status}`);
+
+// 범위 안이지만 실제로 없는 반 (학교는 학년당 4반까지 만들어져 있다)
+r = await apply({ role: 'teacher', schoolId: SCHOOL, grade: 3, classNumber: 15 });
 ok('없는 반은 거부', r.status === 404, `HTTP ${r.status}`);
 
 r = await apply({ role: 'teacher', schoolId: SCHOOL, grade: 3, classNumber: 2 });
