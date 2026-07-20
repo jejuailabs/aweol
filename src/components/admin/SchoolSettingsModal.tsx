@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
+import SchoolProfileFields, { EMPTY_PROFILE } from './SchoolProfileFields';
+import type { SchoolProfile } from '@/lib/firestore-schema';
 
 /**
  * 학교 정보 수정.
@@ -17,6 +19,8 @@ export interface SchoolSettings {
   imageUrl: string;
   gradeCount: number;
   classPerGrade: number;
+  emblemUrl?: string;
+  profile?: SchoolProfile;
 }
 
 export default function SchoolSettingsModal({
@@ -39,6 +43,9 @@ export default function SchoolSettingsModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
+  const [profile, setProfile] = useState<SchoolProfile>(school.profile ?? EMPTY_PROFILE);
+  // 기존 교표 주소로 시작하고, 새로 만들면 dataURL 로 바뀐다
+  const [emblem, setEmblem] = useState(school.emblemUrl || '');
   const fileRef = useRef<HTMLInputElement>(null);
   const pressedBackdrop = useRef(false);
 
@@ -76,6 +83,9 @@ export default function SchoolSettingsModal({
       form.set('classPerGrade', String(classPerGrade));
       if (imageFile) form.set('image', imageFile);
       else if (generated) form.set('imageDataUrl', generated);
+      form.set('profile', JSON.stringify(profile));
+      // 바뀌지 않았으면 기존 주소 그대로라 보내지 않는다
+      if (emblem.startsWith('data:')) form.set('emblemDataUrl', emblem);
 
       const res = await fetch('/api/school', {
         method: 'PATCH',
@@ -89,7 +99,7 @@ export default function SchoolSettingsModal({
     } finally {
       setSaving(false);
     }
-  }, [school.id, name, tagline, gradeCount, classPerGrade, imageFile, generated, onSaved]);
+  }, [school.id, name, tagline, gradeCount, classPerGrade, imageFile, generated, profile, emblem, onSaved]);
 
   return (
     <div
@@ -187,6 +197,19 @@ export default function SchoolSettingsModal({
               setGenerated('');
               setPreview(URL.createObjectURL(f));
             }}
+          />
+        </div>
+
+        <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+          학교 상징 · 교표
+        </label>
+        <div className="mb-3">
+          <SchoolProfileFields
+            schoolName={name}
+            profile={profile}
+            onProfile={setProfile}
+            emblemPreview={emblem}
+            onEmblem={setEmblem}
           />
         </div>
 

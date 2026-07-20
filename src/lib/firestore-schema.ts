@@ -57,6 +57,29 @@ export interface StampLedgerDoc {
   createdAt: Timestamp;
 }
 
+/**
+ * 학교의 상징.
+ *
+ * `founded` 처럼 웹에서 확인되는 것과, `flower`/`tree`/`motto` 처럼
+ * **학교 홈페이지에만 있어서 AI가 못 찾는 것**이 섞여 있다.
+ * 후자는 학교가 직접 적는다 — 못 찾은 걸 그럴듯하게 지어내면
+ * 남의 학교 정보를 틀리게 박아두는 셈이다.
+ */
+export interface SchoolProfile {
+  /** 개교 연도 (예: '1923') */
+  founded: string;
+  /** 교훈 */
+  motto: string;
+  /** 교화 — 상징 꽃 */
+  flower: string;
+  /** 교목 — 상징 나무 */
+  tree: string;
+  /** 학교 특징 한두 줄 */
+  note: string;
+  /** AI가 참고한 주소. 사람이 눌러서 맞는지 확인하라고 남긴다 */
+  sources: string[];
+}
+
 export interface SchoolDoc {
   name: string;
   /** 지도에 마커를 찍을 좌표 */
@@ -71,6 +94,10 @@ export interface SchoolDoc {
   classPerGrade: number;
   /** 3D 학교 외관에 반영할 선택 요소 (예: 'rainbow', 'playground') */
   assets: string[];
+  /** 현관 위 동그란 자리에 거는 교표 (Storage). 없으면 시계가 그대로 보인다 */
+  emblemUrl?: string;
+  /** 학교 소개 — AI 조사 결과와 학교가 직접 적은 것이 섞여 있다 */
+  profile?: SchoolProfile;
   createdBy: string;
   isArchived: boolean;
   createdAt: Timestamp;

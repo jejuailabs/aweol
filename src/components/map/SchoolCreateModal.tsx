@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import { auth } from '@/lib/firebase';
 import { playSound } from '@/lib/sound';
+import SchoolProfileFields, { EMPTY_PROFILE } from '@/components/admin/SchoolProfileFields';
+import type { SchoolProfile } from '@/lib/firestore-schema';
 
 const ASSET_OPTIONS = [
   { key: 'rainbow', label: '🌈 무지개' },
@@ -28,6 +30,8 @@ export default function SchoolCreateModal({
   const [gradeCount, setGradeCount] = useState(6);
   const [classPerGrade, setClassPerGrade] = useState(4);
   const [assets, setAssets] = useState<string[]>(['trees', 'flowers']);
+  const [profile, setProfile] = useState<SchoolProfile>(EMPTY_PROFILE);
+  const [emblem, setEmblem] = useState('');
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
@@ -107,6 +111,8 @@ export default function SchoolCreateModal({
       form.append('gradeCount', String(gradeCount));
       form.append('classPerGrade', String(classPerGrade));
       form.append('assets', JSON.stringify(assets));
+      form.append('profile', JSON.stringify(profile));
+      if (emblem.startsWith('data:')) form.append('emblemDataUrl', emblem);
       if (imageFile) form.append('image', imageFile);
       else if (imagePreview.startsWith('data:')) form.append('imageDataUrl', imagePreview);
 
@@ -239,8 +245,19 @@ export default function SchoolCreateModal({
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
           </div>
 
+          {/* 학교 상징 */}
+          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>4. 학교 상징 · 교표</div>
+          <SchoolProfileFields
+            schoolName={name}
+            address={addressQuery}
+            profile={profile}
+            onProfile={setProfile}
+            emblemPreview={emblem}
+            onEmblem={setEmblem}
+          />
+
           {/* 학년·반 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>4. 학년 · 반</div>
+          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>5. 학년 · 반</div>
           <div className="flex gap-2 mb-1.5">
             {([
               { label: '학년 수', value: gradeCount, set: setGradeCount, max: 6 },
@@ -265,7 +282,7 @@ export default function SchoolCreateModal({
           </div>
 
           {/* 에셋 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>5. 학교에 넣을 것 (선택)</div>
+          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>6. 학교에 넣을 것 (선택)</div>
           <div className="flex flex-wrap gap-1.5 mb-4">
             {ASSET_OPTIONS.map((a) => {
               const on = assets.includes(a.key);

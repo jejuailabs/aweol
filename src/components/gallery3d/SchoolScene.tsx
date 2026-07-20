@@ -40,6 +40,39 @@ function SchoolPhoto({ url }: { url: string }) {
   );
 }
 
+/**
+ * 현관 위 동그란 자리에 거는 교표.
+ * 없으면 아무것도 그리지 않아 흰 원(시계)이 그대로 보인다.
+ */
+function SchoolEmblem({ url }: { url: string }) {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(
+      url,
+      (t) => {
+        if (!alive) { t.dispose(); return; }
+        t.colorSpace = THREE.SRGBColorSpace;
+        setTexture(t);
+      },
+      undefined,
+      () => {}
+    );
+    return () => { alive = false; };
+  }, [url]);
+
+  if (!texture) return null;
+  return (
+    <mesh position={[0, 0, 0.06]}>
+      <circleGeometry args={[0.58, 32]} />
+      <meshStandardMaterial map={texture} roughness={0.8} />
+    </mesh>
+  );
+}
+
 // 나무 줄기와 화단 (아래 배치와 같은 좌표)
 const SCHOOL_OBSTACLES: Obstacle[] = [
   { x: -10.5, z: -1, halfW: 0.4, halfD: 0.4 },
@@ -222,12 +255,14 @@ function SchoolBuilding({
   onClassSelect,
   schoolName,
   imageUrl,
+  emblemUrl,
   palette,
 }: {
   classes: SchoolClassItem[];
   onClassSelect: (id: string) => void;
   schoolName: string;
   imageUrl: string;
+  emblemUrl?: string;
   palette: SchoolPalette;
 }) {
   const bodyW = 18;
@@ -270,11 +305,14 @@ function SchoolBuilding({
         <planeGeometry args={[0.9, 1.9]} />
         <meshStandardMaterial color="#5B3A24" />
       </mesh>
-      {/* 현관 위 시계 */}
-      <mesh position={[0, 5.6, bodyD * 0.5 + 1.32]} rotation={[HALF_PI, 0, 0]}>
-        <cylinderGeometry args={[0.65, 0.65, 0.1, 24]} />
-        <meshStandardMaterial color="#FFFFFF" />
-      </mesh>
+      {/* 현관 위 동그란 자리 — 교표를 걸고, 없으면 흰 원으로 남는다 */}
+      <group position={[0, 5.6, bodyD * 0.5 + 1.32]}>
+        <mesh rotation={[HALF_PI, 0, 0]}>
+          <cylinderGeometry args={[0.65, 0.65, 0.1, 24]} />
+          <meshStandardMaterial color="#FFFFFF" />
+        </mesh>
+        {emblemUrl && <SchoolEmblem url={emblemUrl} />}
+      </group>
       {/* 창문 (반 배정된 창문에는 문패 부착) */}
       {windowSlots.map(([x, y], i) => {
         const cls = classes[i];
@@ -426,6 +464,7 @@ export default function SchoolScene({
   avatarCustom,
   avatarTint,
   schoolName = '학교',
+  emblemUrl,
   imageUrl = '',
 }: {
   classes?: SchoolClassItem[];
@@ -434,6 +473,7 @@ export default function SchoolScene({
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
   schoolName?: string;
+  emblemUrl?: string;
   imageUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -496,6 +536,7 @@ export default function SchoolScene({
           classes={classes}
           onClassSelect={onClassSelect}
           schoolName={schoolName}
+          emblemUrl={emblemUrl}
           imageUrl={imageUrl}
           palette={palette}
         />

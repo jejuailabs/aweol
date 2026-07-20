@@ -18,6 +18,43 @@ function slugify(name: string) {
   return ascii.length >= 3 ? ascii.slice(0, 40) : `school-${Date.now()}`;
 }
 
+/** 학교가 적어둔 상징. 못 찾은 항목은 빈 칸으로 남는다 (지어내지 않는다) */
+function readProfile(form: FormData) {
+  const empty = { founded: '', motto: '', flower: '', tree: '', note: '', sources: [] as string[] };
+  if (!form.has('profile')) return null;
+  try {
+    const raw = JSON.parse(String(form.get('profile') || '{}')) as Record<string, unknown>;
+    const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+    return {
+      ...empty,
+      founded: str(raw.founded, 4),
+      motto: str(raw.motto, 60),
+      flower: str(raw.flower, 20),
+      tree: str(raw.tree, 20),
+      note: str(raw.note, 200),
+      sources: Array.isArray(raw.sources)
+        ? raw.sources.filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 5)
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 교표를 Storage 에 올리고 주소를 돌려준다.
+ * 현관 위에 늘 떠 있는 그림이라 대표 이미지와 같이 반드시 줄여서 올린다.
+ */
+async function saveEmblem(schoolId: string, dataUrl: string) {
+  const bucket = getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+  const small = await compressImage(Buffer.from(dataUrl.split(',')[1], 'base64'));
+  const path = `app-assets/schools/${schoolId}-emblem-${Date.now()}.${small.ext}`;
+  const f = bucket.file(path);
+  await f.save(small.buffer, { contentType: small.contentType, resumable: false });
+  await f.makePublic();
+  return { url: `https://storage.googleapis.com/${bucket.name}/${path}`, path };
+}
+
 /** 새 학교 생성 — 슈퍼 관리자만 */
 export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
@@ -90,12 +127,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let emblemUrl = '';
+  const emblemData = String(form.get('emblemDataUrl') || '');
+  if (emblemData.startsWith('data:image/')) {
+    try {
+      emblemUrl = (await saveEmblem(schoolId, emblemData)).url;
+    } catch (e) {
+      return NextResponse.json(
+        { error: `교표 저장 실패: ${(e as Error).message.slice(0, 120)}` },
+        { status: 500 }
+      );
+    }
+  }
+
   await schoolRef.set({
     name,
     lat,
     lng,
     tagline,
     imageUrl,
+    emblemUrl,
+    profile: readProfile(form) ?? {
+      founded: '', motto: '', flower: '', tree: '', note: '', sources: [],
+    },
     gradeCount,
     classPerGrade,
     assets,
@@ -179,7 +233,7 @@ export async function PATCH(req: NextRequest) {
   const snap = await schoolRef.get();
   if (!snap.exists) return NextResponse.json({ error: '학교를 찾을 수 없습니다' }, { status: 404 });
   const cur = snap.data() as {
-    gradeCount?: number; classPerGrade?: number; name?: string; imageUrl?: string;
+    gradeCount?: number; classPerGrade?: number; name?: string; imageUrl?: string; emblemUrl?: string;
   };
 
   const patch: Record<string, unknown> = {};
@@ -242,6 +296,30 @@ export async function PATCH(req: NextRequest) {
       );
     }
   }
+
+  // ---- 교표 ----
+  const emblemData = String(form.get('emblemDataUrl') || '');
+  if (emblemData.startsWith('data:image/')) {
+    try {
+      const saved = await saveEmblem(schoolId, emblemData);
+      patch.emblemUrl = saved.url;
+      // 옛 교표는 지운다 — 안 지우면 바꿀 때마다 계속 쌓인다
+      const prev = storagePathFromUrl(cur.emblemUrl || '');
+      if (prev && prev.startsWith('app-assets/schools/') && prev !== saved.path) {
+        await getStorage()
+          .bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET)
+          .file(prev).delete().catch(() => {});
+      }
+    } catch (e) {
+      return NextResponse.json(
+        { error: `교표 저장 실패: ${(e as Error).message.slice(0, 120)}` },
+        { status: 500 }
+      );
+    }
+  }
+
+  const profile = readProfile(form);
+  if (profile) patch.profile = profile;
 
   // ---- 학년·반 늘리기 ----
   const curGrades = cur.gradeCount ?? 6;

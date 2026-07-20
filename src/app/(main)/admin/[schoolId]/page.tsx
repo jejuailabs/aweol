@@ -137,6 +137,8 @@ export default function AdminPage() {
           imageUrl: (v.imageUrl as string) || '',
           gradeCount: (v.gradeCount as number) ?? 6,
           classPerGrade: (v.classPerGrade as number) ?? 4,
+          emblemUrl: (v.emblemUrl as string) || '',
+          profile: (v.profile as SchoolSettings['profile']) ?? undefined,
         });
       })
       .catch(() => setSchool(null));
