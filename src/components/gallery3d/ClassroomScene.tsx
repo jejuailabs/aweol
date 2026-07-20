@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, sitAt, standUp, watchSeat, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
 import Blackboard, { type BoardItem } from './Blackboard';
 import NoticeWall from './NoticeWall';
 import type { NoticeKind } from '@/lib/firestore-schema';
@@ -338,6 +338,7 @@ function ActivityPoster({
 
 // --------------- 책상들 (캔디 컬러 의자) ---------------
 function Desks() {
+  const [hovered, setHovered] = useState<string | null>(null);
   const rows = DESK_ROWS;
   const cols = DESK_COLS;
   const chairColors = ['#E8493C', '#FFD93D', '#4FA8E8', '#8FD98A'];
@@ -360,15 +361,41 @@ function Desks() {
                   <meshStandardMaterial color="#8A8A8A" metalness={0.6} roughness={0.3} />
                 </mesh>
               ))}
-              {/* 의자 — 반마다 다른 캔디 컬러 */}
-              <mesh position={[0, 0.36, 0.5]} castShadow>
+              {/* 의자 — 반마다 다른 캔디 컬러. 누르면 아바타가 와서 앉는다 */}
+              <mesh
+                position={[0, 0.36, 0.5]}
+                castShadow
+                onClick={(e) => { e.stopPropagation(); sitAt(x, z + 0.5, PI); }}
+                onPointerOver={(e) => { e.stopPropagation(); setHovered(`${x},${z}`); document.body.style.cursor = 'pointer'; }}
+                onPointerOut={() => { setHovered(null); document.body.style.cursor = 'auto'; }}
+              >
                 <boxGeometry args={[0.42, 0.05, 0.4]} />
-                <meshStandardMaterial color={chairColor} roughness={0.55} />
+                <meshStandardMaterial
+                  color={chairColor}
+                  roughness={0.55}
+                  emissive={chairColor}
+                  emissiveIntensity={hovered === `${x},${z}` ? 0.45 : 0}
+                />
               </mesh>
               <mesh position={[0, 0.62, 0.68]}>
                 <boxGeometry args={[0.42, 0.5, 0.05]} />
                 <meshStandardMaterial color={chairColor} roughness={0.55} />
               </mesh>
+              {/* 앉으라는 표시 — 가리키기 전에는 안 띄운다 (8개가 다 떠 있으면 지저분하다) */}
+              {hovered === `${x},${z}` && (
+                <Html position={[0, 1.15, 0.5]} center pointerEvents="none" zIndexRange={[6, 0]}>
+                  <div
+                    style={{
+                      background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '12px',
+                      padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
+                      fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    여기 앉기
+                  </div>
+                </Html>
+              )}
             </group>
           );
         })
@@ -426,6 +453,13 @@ export default function ClassroomScene({
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
+  const [seated, setSeated] = useState(false);
+
+  // 3D 안에서 앉으면 화면 위 버튼이 바뀌어야 한다
+  useEffect(() => {
+    watchSeat(setSeated);
+    return () => { watchSeat(null); standUp(); };
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -495,6 +529,20 @@ export default function ClassroomScene({
           clamp={{ xMin: -6.6, xMax: 6.6, zMin: -5.6, zMax: 5.6, yMin: 1.2, yMax: 3.9 }}
         />
       </Canvas>
+
+      {seated && (
+        <button
+          onClick={() => standUp()}
+          style={{
+            position: 'absolute', left: '50%', bottom: '96px', transform: 'translateX(-50%)',
+            background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '14px',
+            padding: '10px 22px', borderRadius: '999px', border: '3px solid #EFE3CB',
+            boxShadow: '0 4px 0 #E3D5B8, 0 8px 18px rgba(0,0,0,0.2)', cursor: 'pointer',
+          }}
+        >
+          🧍 일어나기
+        </button>
+      )}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const PI = Math.PI;
+/** 앉았을 때 엉덩이 높이 — 교실 의자 상판(0.36)에 맞춘 값 */
+const SIT_HEIGHT = 0.3;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
@@ -37,6 +39,31 @@ export function setMovementLock(locked: boolean) {
   if (locked) { clearKeys(); joystickDir = { x: 0, z: 0 }; }
 }
 export const isMovementLocked = () => movementLocked;
+
+/**
+ * 앉은 자리. 의자를 누르면 여기에 좌표가 들어가고, 아바타가 그 자리로 미끄러져 앉는다.
+ * 이동 잠금과 따로 두는 이유: 잠금은 '못 움직임'이고 앉기는 '안 움직임'이라,
+ * 앉은 채로 방향키를 누르면 그냥 일어나서 걸어가야 자연스럽다.
+ */
+let seat: { x: number; z: number; yaw: number } | null = null;
+/** 앉고 일어설 때 화면 쪽(버튼 표시)에 알려준다 */
+let onSeatChange: ((seated: boolean) => void) | null = null;
+
+export function sitAt(x: number, z: number, yaw: number) {
+  seat = { x, z, yaw };
+  clearKeys();
+  joystickDir = { x: 0, z: 0 };
+  onSeatChange?.(true);
+}
+export function standUp() {
+  if (!seat) return;
+  seat = null;
+  onSeatChange?.(false);
+}
+export const isSitting = () => seat !== null;
+export function watchSeat(cb: ((seated: boolean) => void) | null) {
+  onSeatChange = cb;
+}
 
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
@@ -425,6 +452,38 @@ export function WalkerAvatar({
       dz += joystickDir.z;
     }
 
+    // 앉은 채로 움직이려 하면 알아서 일어난다. 일어나기 버튼을 못 찾아도 막히지 않게.
+    if (seat && (Math.abs(dx) > 0.1 || Math.abs(dz) > 0.1)) standUp();
+
+    if (seat) {
+      const g = groupRef.current;
+      const k = Math.min(1, delta * 8);
+      g.position.x += (seat.x - g.position.x) * k;
+      g.position.z += (seat.z - g.position.z) * k;
+      g.position.y += (SIT_HEIGHT * scale - g.position.y) * k;
+
+      let dyaw = seat.yaw - g.rotation.y;
+      while (dyaw > PI) dyaw -= PI * 2;
+      while (dyaw < -PI) dyaw += PI * 2;
+      g.rotation.y += dyaw * Math.min(1, delta * 8);
+
+      // 다리는 앞으로 접고 팔은 내린다
+      const bend = (r: React.RefObject<THREE.Mesh | THREE.Group | null>, target: number) => {
+        if (r.current) r.current.rotation.x += (target - r.current.rotation.x) * k;
+      };
+      bend(legLRef, -HALF_PI);
+      bend(legRRef, -HALF_PI);
+      bend(armLRef, 0);
+      bend(armRRef, 0);
+
+      g.scale.set(scale, scale, scale);
+      vel.current.x = 0;
+      vel.current.z = 0;
+      avatarPos.current.copy(g.position);
+      avatarPos.current.y = 0;
+      return;
+    }
+
     const inputLen = Math.sqrt(dx * dx + dz * dz);
     let tx = 0;
     let tz = 0;
@@ -450,15 +509,22 @@ export function WalkerAvatar({
     const curX = groupRef.current.position.x;
     const curZ = groupRef.current.position.z;
 
+    /**
+     * 이미 장애물 안에 서 있으면 잠시 통과시킨다.
+     * 의자에 앉으면 아바타가 책상 장애물 안으로 들어가는데, 이 예외가 없으면
+     * 일어난 뒤 모든 방향이 막혀서 영영 못 빠져나온다. (한 발짝만 나가면 다시 막힌다)
+     */
+    const stuck = isBlocked(curX, curZ, obstacles);
+
     const tryX = Math.max(bounds.xMin, Math.min(bounds.xMax, curX + vel.current.x * delta));
-    if (!isBlocked(tryX, curZ, obstacles)) {
+    if (stuck || !isBlocked(tryX, curZ, obstacles)) {
       groupRef.current.position.x = tryX;
     } else {
       vel.current.x = 0;
     }
 
     const tryZ = Math.max(bounds.zMin, Math.min(bounds.zMax, curZ + vel.current.z * delta));
-    if (!isBlocked(groupRef.current.position.x, tryZ, obstacles)) {
+    if (stuck || !isBlocked(groupRef.current.position.x, tryZ, obstacles)) {
       groupRef.current.position.z = tryZ;
     } else {
       vel.current.z = 0;
