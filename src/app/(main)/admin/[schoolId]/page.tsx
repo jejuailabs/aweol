@@ -93,7 +93,13 @@ export default function AdminPage() {
   const [newClassNum, setNewClassNum] = useState('');
   const [newMotto, setNewMotto] = useState('');
   const [creating, setCreating] = useState(false);
-  const [createErr, setCreateErr] = useState('');
+  /**
+   * 만들기 결과 안내.
+   *
+   * **'이미 있어요' 는 오류가 아니다.** 선생님이 잘못한 게 없고, 그냥 이미 있는 것뿐이다.
+   * 빨간 오류로 띄우면 뭘 잘못한 줄 안다. 그래서 종류를 나눠 색을 다르게 쓴다.
+   */
+  const [createMsg, setCreateMsg] = useState<{ kind: 'info' | 'error'; text: string; hint?: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [school, setSchool] = useState<SchoolSettings | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -124,11 +130,11 @@ export default function AdminPage() {
     const num = parseInt(newClassNum, 10);
     if (!user) return;
     if (!Number.isInteger(num) || num < 1 || num > 12) {
-      setCreateErr('반 번호는 1반부터 12반까지 숫자로 적어주세요');
+      setCreateMsg({ kind: 'error', text: '반 번호는 1반부터 12반까지 숫자로 적어주세요' });
       return;
     }
     setCreating(true);
-    setCreateErr('');
+    setCreateMsg(null);
     try {
       const token = await auth?.currentUser?.getIdToken();
       const res = await fetch('/api/class', {
@@ -143,7 +149,11 @@ export default function AdminPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setCreateErr(json.error || '반을 만들지 못했어요');
+        setCreateMsg(
+          json.code === 'ALREADY_EXISTS'
+            ? { kind: 'info', text: json.message, hint: json.hint }
+            : { kind: 'error', text: json.error || '반을 만들지 못했어요' }
+        );
         return;
       }
       setShowCreate(false);
@@ -151,7 +161,7 @@ export default function AdminPage() {
       setNewMotto('');
       setRefreshKey((k) => k + 1);
     } catch (e) {
-      setCreateErr((e as Error).message || '반을 만들지 못했어요');
+      setCreateMsg({ kind: 'error', text: (e as Error).message || '반을 만들지 못했어요' });
     } finally {
       // 성공하든 실패하든 반드시 푼다. 이게 없어서 버튼이 영영 멈춰 있었다.
       setCreating(false);
@@ -444,7 +454,7 @@ export default function AdminPage() {
           {isSuper ? '📚 학년·반 현황' : '📚 전시 내용 관리'}
         </h2>
         <button
-          onClick={() => { setCreateErr(''); setShowCreate(true); }}
+          onClick={() => { setCreateMsg(null); setShowCreate(true); }}
           className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md transition-transform hover:scale-105"
           style={{ background: 'var(--color-primary)' }}
         >
@@ -672,7 +682,7 @@ export default function AdminPage() {
                 min={1}
                 max={20}
                 value={newClassNum}
-                onChange={(e) => setNewClassNum(e.target.value)}
+                onChange={(e) => { setNewClassNum(e.target.value); setCreateMsg(null); }}
                 placeholder="예: 1"
                 className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                 style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
@@ -691,10 +701,10 @@ export default function AdminPage() {
 
             {isTaken && (
               <div
-                className="rounded-xl px-3 py-2 mb-3 text-[11px] font-bold"
-                style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+                className="rounded-xl px-3 py-2 mb-3 text-[11px]"
+                style={{ background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }}
               >
-                {newGrade}학년 {newClassNum}반은 이미 있어요. 다른 번호를 골라주세요.
+                <b>ℹ️ {newGrade}학년 {newClassNum}반은 이미 있어요.</b> 다른 번호를 골라주세요.
               </div>
             )}
 
@@ -710,9 +720,19 @@ export default function AdminPage() {
               />
             </div>
 
-            {createErr && (
-              <div className="text-[11px] font-bold mb-3 leading-relaxed" style={{ color: '#C0392B' }}>
-                {createErr}
+            {createMsg && (
+              <div
+                className="rounded-xl px-3 py-2.5 mb-3 text-[11px] leading-relaxed"
+                style={
+                  createMsg.kind === 'info'
+                    ? { background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }
+                    : { background: '#FDECEA', color: '#B02A37', border: '1px solid #F5C6C4' }
+                }
+              >
+                <div className="font-bold">
+                  {createMsg.kind === 'info' ? 'ℹ️ ' : '⚠️ '}{createMsg.text}
+                </div>
+                {createMsg.hint && <div className="mt-0.5 opacity-85">{createMsg.hint}</div>}
               </div>
             )}
 

@@ -62,19 +62,39 @@ export async function POST(req: NextRequest) {
   const existing = await classRef.get();
 
   if (existing.exists) {
-    const cur = existing.data() as { teacherName?: string; isArchived?: boolean };
+    const cur = existing.data() as { teacherName?: string; teacherUid?: string; isArchived?: boolean };
     /**
      * 있는 반은 절대 덮지 않는다. 남의 반을 '만들기'로 가로챌 수도 없다.
-     * 보관된 반이면 되살릴 수 있다고 알려준다 — 사라진 게 아니라 치워둔 것이다.
+     *
+     * **이건 잘못한 게 아니라 이미 있는 것뿐이다.** 그래서 오류 문구가 아니라
+     * 사실을 알려주고, 다음에 뭘 하면 되는지까지 적어 보낸다.
+     * 특히 담임이 비어 있는 반은 '만들기'가 아니라 담임 배정으로 가야 한다
+     * (총관리자 승인 경로에서 빈 반에 담임을 넣어준다).
      */
+    const where = `${grade}학년 ${classNumber}반`;
+    let message: string;
+    let hint = '';
+
+    if (cur.isArchived) {
+      message = `${where}은 이미 있어요. 지금은 기억창고에 보관 중이에요.`;
+      hint = '지난 해 반이라면 기억창고에서 볼 수 있어요.';
+    } else if (cur.teacherUid) {
+      message = `${where}은 이미 있어요. 담임은 ${cur.teacherName || '다른 선생님'}이에요.`;
+      hint = '다른 반 번호를 골라주세요.';
+    } else {
+      message = `${where}은 이미 있어요. 아직 담임이 없는 반이에요.`;
+      hint = '이 반을 맡으시려면 총관리자에게 담임 배정을 요청해 주세요.';
+    }
+
     return NextResponse.json(
       {
-        error: cur.isArchived
-          ? `${grade}학년 ${classNumber}반은 이미 있어요 (지금은 보관 중이에요).`
-          : `${grade}학년 ${classNumber}반은 이미 있어요${cur.teacherName ? ` — 담임: ${cur.teacherName}` : ''}.`,
+        // 화면이 '오류'가 아니라 '안내'로 보여주도록 코드를 함께 준다
         code: 'ALREADY_EXISTS',
+        message,
+        hint,
         classId,
         archived: cur.isArchived === true,
+        hasTeacher: !!cur.teacherUid,
       },
       { status: 409 }
     );
