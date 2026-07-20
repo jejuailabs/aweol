@@ -26,6 +26,8 @@ interface Sub {
   studentName: string;
   text: string;
   imageUrl: string;
+  videoUrl: string;
+  linkUrl: string;
   status: 'approved' | 'held';
   moderation: { flagged: boolean; reason: string } | null;
   teacherComment: string;
@@ -464,12 +466,33 @@ function StudentSheet({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={sub.imageUrl} alt="" className="w-full rounded-xl mb-2" style={{ maxHeight: 320, objectFit: 'contain' }} />
               )}
+              {sub.videoUrl && (
+                <video
+                  src={sub.videoUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="w-full rounded-xl mb-2"
+                  style={{ maxHeight: 320 }}
+                />
+              )}
+              {sub.linkUrl && (
+                <a
+                  href={sub.linkUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="block rounded-xl px-3 py-2 mb-2 text-[12px] font-bold break-all"
+                  style={{ background: '#EAF2FB', color: '#2F6DB5' }}
+                >
+                  🔗 {sub.linkUrl}
+                </a>
+              )}
               {sub.text && (
                 <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#3A3226' }}>
                   {sub.text}
                 </div>
               )}
-              {!sub.imageUrl && !sub.text && (
+              {!sub.imageUrl && !sub.videoUrl && !sub.linkUrl && !sub.text && (
                 <div className="text-[11px]" style={{ color: '#A89880' }}>
                   내용이 비어 있어요 ({submitType})
                 </div>

@@ -18,13 +18,23 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // 숙제 제출물 — 본인 경로에만 업로드. 공개 여부는 Firestore 제출 문서가 통제한다.
+    /**
+     * 숙제 제출물 — 본인 경로에만 업로드. 공개 여부는 Firestore 제출 문서가 통제한다.
+     *
+     * 영상은 사진과 상한이 다르다. 30초짜리도 한 반이면 450MB 라서
+     * 무료 5GB 를 숙제 11개면 다 쓴다(실측). 20MB 로 묶어 대략 30초 720p 까지만 받는다.
+     * 더 긴 영상은 유튜브에 올리고 주소를 내는 쪽(link)이 저장도 트래픽도 0이다.
+     */
     match /homework/{uid}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
                    && request.auth.uid == uid
-                   && request.resource.size < 10 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+                   && (
+                     (request.resource.contentType.matches('image/.*')
+                      && request.resource.size < 10 * 1024 * 1024)
+                     || (request.resource.contentType.matches('video/.*')
+                         && request.resource.size < 20 * 1024 * 1024)
+                   );
     }
 
     // 퀴즈 문항에 붙이는 사진 — 출제자(교사) 본인 경로에만 업로드

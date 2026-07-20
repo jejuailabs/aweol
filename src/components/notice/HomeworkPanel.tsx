@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import {
+import { updateDoc,
   collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc,
   serverTimestamp, getDocs, where,
 } from 'firebase/firestore';
@@ -20,6 +20,7 @@ interface Homework {
   title: string;
   description: string;
   submitType: SubmitType;
+  dueDate: string | null;
   visibility: HomeworkVisibility;
   authorName: string;
   createdAt: Date | null;
@@ -32,6 +33,8 @@ interface Submission {
   type: SubmitType;
   text: string;
   imageUrl: string;
+  videoUrl: string;
+  linkUrl: string;
   status: 'approved' | 'held';
   moderation: { flagged: boolean; reason: string } | null;
   teacherComment: string;
@@ -42,7 +45,36 @@ const TYPE_LABEL: Record<SubmitType, string> = {
   text: '✍️ 글쓰기',
   drawing: '🖌️ 손글씨·그리기',
   image: '📷 사진 올리기',
+  video: '🎬 동영상 올리기',
+  link: '🔗 영상 주소 내기',
 };
+
+/** 출제 화면에서 종류를 고를 때 옆에 붙는 설명 */
+const TYPE_HINT: Record<SubmitType, string> = {
+  text: '아이 화면에 글 쓰는 칸만 나와요',
+  drawing: '손으로 그리거나 쓰는 판만 나와요',
+  image: '사진 고르기 버튼만 나와요',
+  video: '20MB(30초쯤)까지 올릴 수 있어요',
+  link: '유튜브 주소를 붙여넣어요 (용량 안 들어요)',
+};
+
+/** 영상 파일 상한 — storage.rules 의 20MB 와 같은 값이어야 한다 */
+const VIDEO_MAX_MB = 20;
+
+/** 마감일이 지났나 (그날 자정까지는 살아 있다) */
+function isOverdue(due: string | null): boolean {
+  if (!due) return false;
+  const end = new Date(`${due}T23:59:59`);
+  return Date.now() > end.getTime();
+}
+
+/** 'YYYY-MM-DD' → '7월 21일 (화)' */
+function formatDue(due: string): string {
+  const d = new Date(`${due}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return due;
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
 
 export default function HomeworkPanel({ schoolId, classId }: { schoolId: string; classId: string }) {
   const { user, userDoc, role } = useAuth();
@@ -59,6 +91,9 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
   const [wDesc, setWDesc] = useState('');
   const [wType, setWType] = useState<SubmitType>('text');
   const [wVis, setWVis] = useState<HomeworkVisibility>('class');
+  const [wDue, setWDue] = useState('');
+  /** 수정 중인 숙제 id. null 이면 새로 내는 중 */
+  const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // 제출
@@ -68,6 +103,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
   const [drawBlob, setDrawBlob] = useState<Blob | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
+  const [subLink, setSubLink] = useState('');
   const [myNudge, setMyNudge] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -85,6 +121,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             title: v.title || '',
             description: v.description || '',
             submitType: v.submitType || 'text',
+            dueDate: (v.dueDate as string | null) ?? null,
             visibility: v.visibility || 'class',
             authorName: v.authorName || '선생님',
             createdAt: v.createdAt?.toDate?.() ?? null,
@@ -124,21 +161,45 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     );
   }, [openId, isStaff, user, schoolId, classId]);
 
-  const createHomework = useCallback(async () => {
+  const openWriter = useCallback((h?: Homework) => {
+    // 수정이면 원래 값을 채워 넣는다. 빈 폼이 뜨면 선생님이 처음부터 다시 쓴다.
+    setEditId(h?.id ?? null);
+    setWTitle(h?.title ?? '');
+    setWDesc(h?.description ?? '');
+    setWType(h?.submitType ?? 'text');
+    setWVis(h?.visibility ?? 'class');
+    setWDue(h?.dueDate ?? '');
+    setWriting(true);
+  }, []);
+
+  const saveHomework = useCallback(async () => {
     if (!db || !user || !userDoc || !wTitle.trim()) return;
     setSaving(true);
-    await addDoc(collection(db, basePath), {
+    const payload = {
       title: wTitle.trim(),
       description: wDesc.trim(),
       submitType: wType,
       visibility: wVis,
-      dueDate: null,
-      authorUid: user.uid,
-      authorName: userDoc.displayName || '선생님',
-      createdAt: serverTimestamp(),
-    });
-    setWTitle(''); setWDesc(''); setWriting(false); setSaving(false);
-  }, [wTitle, wDesc, wType, wVis, user, userDoc, basePath]);
+      dueDate: wDue || null,
+    };
+    if (editId) {
+      /**
+       * 제출 종류를 바꾸면 이미 낸 아이들의 제출물이 그 종류와 안 맞게 된다.
+       * 지우지는 않는다 — 아이가 한 걸 앱이 마음대로 없애면 안 된다.
+       * 대신 선생님에게 미리 알린다(아래 경고).
+       */
+      await updateDoc(doc(db, basePath, editId), payload);
+    } else {
+      await addDoc(collection(db, basePath), {
+        ...payload,
+        authorUid: user.uid,
+        authorName: userDoc.displayName || '선생님',
+        createdAt: serverTimestamp(),
+      });
+    }
+    setWTitle(''); setWDesc(''); setWDue(''); setEditId(null);
+    setWriting(false); setSaving(false);
+  }, [wTitle, wDesc, wType, wVis, wDue, editId, user, userDoc, basePath]);
 
   const removeHomework = useCallback(async (id: string) => {
     if (!db) return;
@@ -151,6 +212,19 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    /**
+     * 용량은 **고르는 순간** 알려준다.
+     * 올리다가 규칙에 막히면 아이 눈에는 한참 기다린 뒤 알 수 없는 오류만 뜬다.
+     */
+    if (f.type.startsWith('video/') && f.size > VIDEO_MAX_MB * 1024 * 1024) {
+      setSubmitMsg(
+        `동영상이 너무 커요 (${Math.round(f.size / 1024 / 1024)}MB). ` +
+        `${VIDEO_MAX_MB}MB까지 올릴 수 있어요. 더 짧게 찍거나 선생님께 여쭤보세요.`
+      );
+      e.target.value = '';
+      return;
+    }
+    setSubmitMsg('');
     setSubFile(f);
     setSubPreview(URL.createObjectURL(f));
   };
@@ -161,20 +235,34 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     setSubmitMsg('');
 
     let imageUrl = '';
+    let videoUrl = '';
+    const isVideo = open.submitType === 'video';
     const blob: Blob | null = open.submitType === 'drawing' ? drawBlob : subFile;
     if (blob) {
-      const ext = open.submitType === 'drawing' ? 'png' : (subFile?.name.split('.').pop() || 'jpg');
+      const ext = open.submitType === 'drawing' ? 'png' : (subFile?.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg'));
       const path = `homework/${user.uid}/${open.id}.${ext}`;
       const r = sRef(storage, path);
-      await uploadBytes(r, blob);
-      imageUrl = await getDownloadURL(r);
+      try {
+        await uploadBytes(r, blob);
+      } catch {
+        setSubmitting(false);
+        setSubmitMsg(isVideo
+          ? `동영상을 올리지 못했어요. ${VIDEO_MAX_MB}MB보다 크지 않은지 확인해 주세요.`
+          : '사진을 올리지 못했어요. 다시 해볼까요?');
+        return;
+      }
+      const url = await getDownloadURL(r);
+      if (isVideo) videoUrl = url; else imageUrl = url;
     }
 
     const token = await auth?.currentUser?.getIdToken();
     const res = await fetch('/api/homework', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ schoolId, classId, homeworkId: open.id, text: subText.trim(), imageUrl }),
+      body: JSON.stringify({
+        schoolId, classId, homeworkId: open.id,
+        text: subText.trim(), imageUrl, videoUrl, linkUrl: subLink.trim(),
+      }),
     });
     const json = await res.json();
     setSubmitting(false);
@@ -188,8 +276,8 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
         ? '제출했어요! 확인이 필요한 부분이 있어 선생님이 먼저 살펴본 뒤 공개돼요.'
         : '제출 완료! 잘했어요 🎉'
     );
-    setSubText(''); setSubFile(null); setSubPreview(''); setDrawBlob(null);
-  }, [open, user, subText, subFile, drawBlob, schoolId, classId]);
+    setSubText(''); setSubFile(null); setSubPreview(''); setDrawBlob(null); setSubLink('');
+  }, [open, user, subText, subFile, drawBlob, subLink, schoolId, classId]);
 
   // ---------- 숙제 상세 ----------
   if (open) {
@@ -220,7 +308,28 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
               {open.visibility === 'class' ? '👀 친구들과 함께 보기' : '🔒 선생님만 보기'}
             </span>
+            {open.dueDate && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={
+                  isOverdue(open.dueDate)
+                    ? { background: '#F8D7DA', color: '#B02A37' }
+                    : { background: '#E3F1E3', color: '#2E7D4F' }
+                }
+              >
+                {isOverdue(open.dueDate) ? '⏰ 기한 지남' : `📅 ${formatDue(open.dueDate)}까지`}
+              </span>
+            )}
           </div>
+          {isStaff && (
+            <button
+              onClick={() => openWriter(open)}
+              className="text-[11px] font-bold underline mb-1"
+              style={{ color: '#4A90D9' }}
+            >
+              숙제 고치기
+            </button>
+          )}
           {open.description && (
             <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
               {open.description}
@@ -272,6 +381,43 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
               </div>
             )}
 
+            {open.submitType === 'video' && (
+              <>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full aspect-[4/3] rounded-xl mb-2 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed overflow-hidden"
+                  style={{ borderColor: '#D8C9AC', background: 'white' }}
+                >
+                  {subPreview ? (
+                    <video src={subPreview} className="w-full h-full object-contain" controls playsInline />
+                  ) : (
+                    <>
+                      <span className="text-3xl">🎬</span>
+                      <span className="text-[11px]" style={{ color: '#A89880' }}>동영상 고르기</span>
+                      <span className="text-[10px]" style={{ color: '#C4B69C' }}>{VIDEO_MAX_MB}MB까지 (30초쯤)</span>
+                    </>
+                  )}
+                </button>
+                <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={handleFile} />
+              </>
+            )}
+
+            {open.submitType === 'link' && (
+              <div className="mb-2">
+                <input
+                  value={subLink}
+                  onChange={(e) => setSubLink(e.target.value)}
+                  placeholder="https://youtu.be/..."
+                  inputMode="url"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  style={{ background: 'white', color: '#3A3226' }}
+                />
+                <div className="text-[10px] mt-1" style={{ color: '#A89880' }}>
+                  유튜브에 영상을 올리고 주소를 붙여넣어 주세요.
+                </div>
+              </div>
+            )}
+
             {open.submitType === 'image' && (
               <>
                 <button
@@ -295,7 +441,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
 
             <button
               onClick={submit}
-              disabled={submitting || (!subText.trim() && !subFile && !drawBlob)}
+              disabled={submitting || (!subText.trim() && !subFile && !drawBlob && !subLink.trim())}
               className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
               style={{ background: 'var(--color-primary)' }}
             >
@@ -393,21 +539,66 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           style={{ background: 'rgba(255,255,255,0.9)', color: '#3A3226' }}
         />
 
-        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>어떻게 제출하나요?</div>
-        <div className="flex flex-col gap-1.5 mb-3">
+        <div className="text-[11px] font-bold mb-1" style={{ color: '#8A7A5F' }}>어떻게 제출하나요?</div>
+        <div className="text-[10px] mb-1.5" style={{ color: '#A89880' }}>
+          고른 것 하나만 아이 화면에 나와요. 헷갈릴 일이 없어요.
+        </div>
+        <div className="flex flex-col gap-1.5 mb-2">
           {(Object.keys(TYPE_LABEL) as SubmitType[]).map((t) => (
             <button
               key={t}
               onClick={() => setWType(t)}
-              className="rounded-xl py-2.5 text-xs font-bold"
+              className="rounded-xl px-3 py-2.5 text-left"
               style={{
                 background: wType === t ? '#4A90D9' : 'rgba(255,255,255,0.85)',
                 color: wType === t ? 'white' : '#8A7A5F',
               }}
             >
-              {TYPE_LABEL[t]}
+              <div className="text-xs font-bold">{TYPE_LABEL[t]}</div>
+              <div className="text-[10px] opacity-80">{TYPE_HINT[t]}</div>
             </button>
           ))}
+        </div>
+
+        {wType === 'video' && (
+          <div
+            className="rounded-xl px-3 py-2 mb-3 text-[10px] leading-relaxed"
+            style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+          >
+            영상 파일은 자리를 많이 차지해요. 30초짜리도 한 반이면 450MB쯤이라
+            숙제 열 개 남짓이면 무료 용량이 찹니다.
+            <b> 긴 영상은 &lsquo;영상 주소 내기&rsquo;가 좋아요</b> — 유튜브에 올리고 주소만 내면 용량이 안 들어요.
+          </div>
+        )}
+
+        {editId && (
+          <div
+            className="rounded-xl px-3 py-2 mb-3 text-[10px] leading-relaxed"
+            style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+          >
+            제출 종류를 바꿔도 이미 낸 아이들의 숙제는 지워지지 않아요.
+            대신 바뀐 종류와 안 맞을 수 있어요.
+          </div>
+        )}
+
+        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>언제까지 내나요? (안 정해도 돼요)</div>
+        <div className="flex gap-1.5 mb-3">
+          <input
+            type="date"
+            value={wDue}
+            onChange={(e) => setWDue(e.target.value)}
+            className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.85)', color: '#3A3226' }}
+          />
+          {wDue && (
+            <button
+              onClick={() => setWDue('')}
+              className="shrink-0 rounded-xl px-3 text-[11px] font-bold"
+              style={{ background: 'rgba(255,255,255,0.7)', color: '#8A7A5F' }}
+            >
+              지우기
+            </button>
+          )}
         </div>
 
         <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>누가 볼 수 있나요?</div>
@@ -432,19 +623,19 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
 
         <div className="flex gap-2">
           <button
-            onClick={() => setWriting(false)}
+            onClick={() => { setWriting(false); setEditId(null); }}
             className="flex-1 rounded-xl py-2.5 text-sm font-bold"
             style={{ background: 'rgba(255,255,255,0.7)', color: '#8A7A5F' }}
           >
             취소
           </button>
           <button
-            onClick={createHomework}
+            onClick={saveHomework}
             disabled={!wTitle.trim() || saving}
             className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
             style={{ background: '#4A90D9' }}
           >
-            {saving ? '내는 중...' : '숙제 내기'}
+            {saving ? '저장 중...' : editId ? '고치기' : '숙제 내기'}
           </button>
         </div>
       </div>
@@ -456,7 +647,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     <>
       {isStaff && (
         <button
-          onClick={() => setWriting(true)}
+          onClick={() => openWriter()}
           className="w-full rounded-2xl py-3 mb-3 text-xs font-bold border-2 border-dashed"
           style={{ borderColor: '#4A90D980', color: '#4A90D9' }}
         >
@@ -485,6 +676,19 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                 <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
                   {h.visibility === 'class' ? '함께 보기' : '선생님만'}
                 </span>
+                {/* 마감은 목록에서 바로 보여야 한다. 하나씩 열어보게 하면 놓친다. */}
+                {h.dueDate && (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[9px] font-bold"
+                    style={
+                      isOverdue(h.dueDate)
+                        ? { background: '#F8D7DA', color: '#B02A37' }
+                        : { background: '#E3F1E3', color: '#2E7D4F' }
+                    }
+                  >
+                    {isOverdue(h.dueDate) ? '기한 지남' : `${formatDue(h.dueDate)}까지`}
+                  </span>
+                )}
               </div>
             </button>
           ))}
@@ -502,6 +706,32 @@ function SubmissionCard({ sub }: { sub: Submission }) {
       {sub.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={sub.imageUrl} alt="" className="w-full rounded-lg mb-1" style={{ maxHeight: 160, objectFit: 'contain' }} />
+      )}
+      {sub.videoUrl && (
+        // preload="none" — 카드가 여러 개 뜨는 화면이라 미리 받으면 트래픽이 몇 배가 된다
+        <video
+          src={sub.videoUrl}
+          controls
+          playsInline
+          preload="none"
+          className="w-full rounded-lg mb-1"
+          style={{ maxHeight: 160 }}
+        />
+      )}
+      {sub.linkUrl && (
+        <a
+          href={sub.linkUrl}
+          target="_blank"
+          /**
+           * noreferrer 를 빼면 안 된다. 아이가 붙여넣은 주소라 어디로 갈지 모르는데,
+           * 그 사이트에 우리 페이지 주소를 넘겨줄 이유가 없다.
+           */
+          rel="noreferrer noopener"
+          className="block rounded-lg px-2 py-1.5 mb-1 text-[11px] font-bold truncate"
+          style={{ background: '#EAF2FB', color: '#2F6DB5' }}
+        >
+          🔗 영상 보러가기
+        </a>
       )}
       {sub.text && (
         <div

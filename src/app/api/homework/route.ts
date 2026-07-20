@@ -13,6 +13,26 @@ const MAX_TEXT = 2000;
  * 걸러지면 '거부'가 아니라 '보류'로 처리해 선생님이 최종 판단한다.
  * (초등학생 그림은 오탐이 잦아 자동 차단하면 아이가 상처받는다)
  */
+/**
+ * 붙여넣은 영상 주소를 검사한다.
+ *
+ * **`javascript:` 같은 주소를 그대로 두면 안 된다.** 아이가 낸 주소를 다른 아이 화면의
+ * 링크로 걸어주는 구조라, 걸러내지 않으면 반 전체가 누르는 함정이 된다.
+ * http/https 만 통과시킨다.
+ */
+function cleanLink(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  const t = raw.trim().slice(0, 500);
+  if (!t) return '';
+  try {
+    const u = new URL(t);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    return u.toString();
+  } catch {
+    return '';
+  }
+}
+
 async function moderate(text: string, imageUrl: string) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return { flagged: false, reason: '' };
@@ -48,7 +68,10 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
   if (!user.role) return NextResponse.json({ error: '역할이 지정되지 않았습니다' }, { status: 403 });
 
-  let body: { schoolId?: string; classId?: string; homeworkId?: string; text?: string; imageUrl?: string };
+  let body: {
+    schoolId?: string; classId?: string; homeworkId?: string;
+    text?: string; imageUrl?: string; videoUrl?: string; linkUrl?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -74,10 +97,20 @@ export async function POST(req: NextRequest) {
 
   const text = typeof body.text === 'string' ? body.text.trim().slice(0, MAX_TEXT) : '';
   const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl : '';
-  if (!text && !imageUrl) {
+  const videoUrl = typeof body.videoUrl === 'string' ? body.videoUrl : '';
+  const linkUrl = cleanLink(body.linkUrl);
+
+  if (typeof body.linkUrl === 'string' && body.linkUrl.trim() && !linkUrl) {
+    return NextResponse.json(
+      { error: '영상 주소가 올바르지 않아요. http 로 시작하는 주소를 붙여넣어 주세요.' },
+      { status: 400 }
+    );
+  }
+  if (!text && !imageUrl && !videoUrl && !linkUrl) {
     return NextResponse.json({ error: '제출할 내용이 없습니다' }, { status: 400 });
   }
 
+  // 영상은 검수를 못 한다(모델이 못 본다). 글과 사진만 본다.
   const mod = await moderate(text, imageUrl);
   const status = mod.flagged ? 'held' : 'approved';
 
@@ -92,6 +125,8 @@ export async function POST(req: NextRequest) {
     type: hw.submitType,
     text,
     imageUrl,
+    videoUrl,
+    linkUrl,
     status,
     moderation: mod,
     // 규칙에서 단일 조건으로 판정하려고 서버가 계산해 둔다

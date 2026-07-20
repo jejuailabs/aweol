@@ -240,7 +240,18 @@ export interface StudentCodeDoc {
   createdAt: Timestamp;
 }
 
-export type SubmitType = 'text' | 'drawing' | 'image';
+/**
+ * 숙제를 어떤 모양으로 내는가.
+ *
+ * 선생님이 하나를 고르면 아이 화면에는 **그 입력창 하나만** 나온다.
+ * 여러 개를 열어두면 아이가 뭘로 내야 하는지부터 헷갈린다.
+ *
+ * `video` 와 `link` 는 둘 다 영상이지만 값이 다르다:
+ * - `link` 는 유튜브 주소를 받는다. 저장도 트래픽도 0이다.
+ * - `video` 는 파일을 받는다. 30초짜리도 한 반이면 450MB 라서 용량 상한을 건다.
+ *   (무료 5GB 기준 숙제 11개면 꽉 찬다 — 실측 계산)
+ */
+export type SubmitType = 'text' | 'drawing' | 'image' | 'video' | 'link';
 /** class: 아이들과 함께 보기 / teacher: 선생님만 보기 */
 export type HomeworkVisibility = 'class' | 'teacher';
 
@@ -249,6 +260,7 @@ export interface HomeworkDoc {
   description: string;
   submitType: SubmitType;
   visibility: HomeworkVisibility;
+  /** 마감일 'YYYY-MM-DD'. 없으면 기한 없는 숙제 */
   dueDate: string | null;
   authorUid: string;
   authorName: string;
@@ -262,6 +274,10 @@ export interface SubmissionDoc {
   type: SubmitType;
   text: string;
   imageUrl: string;
+  /** 올린 영상 파일 (Storage) */
+  videoUrl: string;
+  /** 붙여넣은 영상 주소 (유튜브 등). 저장 용량을 안 쓰는 쪽 */
+  linkUrl: string;
   /** approved: 공개 가능 / held: AI가 걸러 선생님 확인 대기 */
   status: 'approved' | 'held';
   /** AI 1차 검수 결과 (거부가 아니라 보류 판단 근거) */
