@@ -150,14 +150,29 @@ r = await fetch(`${BASE}/api/spot-game`, {
 });
 ok('다른 반 틀린그림 출제 불가', r.status === 403, `HTTP ${r.status}`);
 
-console.log('\n[학교 정보 수정 — 총관리자만]');
+console.log('
+[학교 정보 수정 — 범위가 역할마다 다르다]');
+// 교사도 학교 상징·교표는 고칠 수 있다. 하지만 이름은 보내도 무시돼야 한다 —
+// 요청이 통과(200)하는 것과 그 필드가 실제로 바뀌는 것은 다른 문제다.
+const beforeName = (await adb.doc(`schools/${SCHOOL}`).get()).data()?.name;
 const form = new FormData();
 form.set('schoolId', SCHOOL);
 form.set('name', '교사가 바꾼 이름');
 r = await fetch(`${BASE}/api/school`, {
   method: 'PATCH', headers: { Authorization: `Bearer ${teaToken}` }, body: form,
 });
-ok('교사는 학교 이름을 못 바꿈', r.status === 403, `HTTP ${r.status}`);
+ok('이 학교 교사는 학교 정보 화면을 쓸 수 있음', r.ok, `HTTP ${r.status}`);
+const afterName = (await adb.doc(`schools/${SCHOOL}`).get()).data()?.name;
+ok('그래도 학교 이름은 안 바뀜', afterName === beforeName, `${beforeName} → ${afterName}`);
+
+// 남의 학교는 상징도 못 건드린다
+const otherForm = new FormData();
+otherForm.set('schoolId', 'zz-not-my-school');
+otherForm.set('profile', JSON.stringify({ motto: '남의 학교 교훈' }));
+r = await fetch(`${BASE}/api/school`, {
+  method: 'PATCH', headers: { Authorization: `Bearer ${teaToken}` }, body: otherForm,
+});
+ok('남의 학교 정보는 못 고침', r.status === 403, `HTTP ${r.status}`);
 
 console.log('\n[승인 시 담당 반 부여]');
 const APP = 'zz-cls-applicant';

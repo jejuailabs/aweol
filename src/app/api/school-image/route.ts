@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRequestUser } from '@/lib/firebase-admin';
+import { isStaffOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -15,18 +15,27 @@ const ASSET_WORDS: Record<string, string> = {
 export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
-  if (user.role !== 'super_admin') {
-    return NextResponse.json({ error: '총관리자만 사용할 수 있습니다' }, { status: 403 });
-  }
-
   const key = process.env.OPENAI_API_KEY;
   if (!key) return NextResponse.json({ error: '이미지 생성 키가 설정되지 않았습니다' }, { status: 500 });
 
-  let body: { name?: string; assets?: string[]; kind?: string; flower?: string; tree?: string };
+  let body: {
+    name?: string; assets?: string[]; kind?: string;
+    flower?: string; tree?: string; schoolId?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  }
+
+  /**
+   * 교표는 이 학교 선생님도 만들 수 있다 — 학교 상징이라 담임이 제일 잘 안다.
+   * 건물 그림(대표 이미지)은 학교 전체 외관이라 총관리자만.
+   */
+  const schoolId = (body.schoolId || '').trim();
+  const canEmblem = body.kind === 'emblem' && schoolId && isStaffOfSchool(user, schoolId);
+  if (user.role !== 'super_admin' && !canEmblem) {
+    return NextResponse.json({ error: '이 학교의 선생님만 사용할 수 있습니다' }, { status: 403 });
   }
 
   const name = (body.name || '').trim().slice(0, 40);

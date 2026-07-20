@@ -25,10 +25,17 @@ export interface SchoolSettings {
 
 export default function SchoolSettingsModal({
   school,
+  isSuper,
   onSaved,
   onClose,
 }: {
   school: SchoolSettings;
+  /**
+   * 총관리자인가.
+   * 아니면 학교 상징·교표만 보인다 — 이름·위치·학년/반은 담임 한 명이 바꾸면
+   * 학교 전체가 따라 바뀌고, 학년/반은 되돌릴 수도 없다. 서버도 같은 선을 긋는다.
+   */
+  isSuper: boolean;
   onSaved: () => void;
   onClose: () => void;
 }) {
@@ -131,6 +138,8 @@ export default function SchoolSettingsModal({
           </button>
         </div>
 
+        {isSuper && (
+        <>
         <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           학교 이름
         </label>
@@ -200,12 +209,16 @@ export default function SchoolSettingsModal({
           />
         </div>
 
+        </>
+        )}
+
         <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           학교 상징 · 교표
         </label>
         <div className="mb-3">
           <SchoolProfileFields
             schoolName={name}
+            schoolId={school.id}
             profile={profile}
             onProfile={setProfile}
             emblemPreview={emblem}
@@ -213,6 +226,8 @@ export default function SchoolSettingsModal({
           />
         </div>
 
+        {isSuper && (
+        <>
         <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           학년 · 반
         </label>
@@ -240,6 +255,15 @@ export default function SchoolSettingsModal({
           늘리면 없던 반만 새로 만들어요. <b>줄이는 건 막아뒀어요</b> — 그 반의 작품과 숙제가
           통째로 사라지기 때문이에요. 안 쓰는 반은 반별로 보관 처리해 주세요.
         </div>
+        </>
+        )}
+
+        {!isSuper && (
+          <div className="text-[10px] mb-4 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+            학교 이름·위치·학년/반 수는 총관리자만 바꿀 수 있어요.
+            학교 전체가 따라 바뀌는 것들이라서요.
+          </div>
+        )}
 
         {error && (
           <div className="text-[12px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>

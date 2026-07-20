@@ -19,6 +19,7 @@ export const EMPTY_PROFILE: SchoolProfile = {
  */
 export default function SchoolProfileFields({
   schoolName,
+  schoolId,
   address,
   profile,
   onProfile,
@@ -26,6 +27,8 @@ export default function SchoolProfileFields({
   onEmblem,
 }: {
   schoolName: string;
+  /** 이미 만들어진 학교면 준다. 이게 있어야 그 학교 선생님도 쓸 수 있다 */
+  schoolId?: string;
   address?: string;
   profile: SchoolProfile;
   onProfile: (p: SchoolProfile) => void;
@@ -50,7 +53,7 @@ export default function SchoolProfileFields({
       const res = await fetch('/api/school-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: schoolName.trim(), address }),
+        body: JSON.stringify({ name: schoolName.trim(), address, schoolId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || '조사 실패');
@@ -90,7 +93,7 @@ export default function SchoolProfileFields({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          kind: 'emblem', name: schoolName.trim(),
+          kind: 'emblem', name: schoolName.trim(), schoolId,
           flower: profile.flower, tree: profile.tree,
         }),
       });

@@ -313,6 +313,7 @@ export default function AdminPage() {
       {showSettings && school && (
         <SchoolSettingsModal
           school={school}
+          isSuper={isSuper}
           onSaved={() => setRefreshKey((k) => k + 1)}
           onClose={() => setShowSettings(false)}
         />

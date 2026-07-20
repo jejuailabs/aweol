@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRequestUser } from '@/lib/firebase-admin';
+import { isStaffOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 /**
- * 학교 조사 — 슈퍼 관리자만.
+ * 학교 조사 — 이 학교 선생님과 총관리자.
+ *
+ * 학교 만들기 화면에서는 아직 학교가 없으니 schoolId 가 없다.
+ * 그때는 총관리자만 부를 수 있다.
  *
  * **여기서 찾을 수 있는 것과 없는 것이 갈린다** (실측):
  * - 개교연도, 소재지, 공립/사립 → 부동산·학교정보 사이트에 있어서 잘 찾는다.
@@ -19,18 +22,20 @@ export const maxDuration = 120;
 export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
-  if (user.role !== 'super_admin') {
-    return NextResponse.json({ error: '총관리자만 사용할 수 있습니다' }, { status: 403 });
-  }
-
   const key = process.env.OPENAI_API_KEY;
   if (!key) return NextResponse.json({ error: 'AI 키가 설정되지 않았습니다' }, { status: 500 });
 
-  let body: { name?: string; address?: string };
+  let body: { name?: string; address?: string; schoolId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  }
+
+  const schoolId = (body.schoolId || '').trim();
+  const allowed = schoolId ? isStaffOfSchool(user, schoolId) : user.role === 'super_admin';
+  if (!allowed) {
+    return NextResponse.json({ error: '이 학교의 선생님만 사용할 수 있습니다' }, { status: 403 });
   }
 
   const name = (body.name || '').trim().slice(0, 60);

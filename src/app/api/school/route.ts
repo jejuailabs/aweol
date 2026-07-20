@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, isStaffOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
 import { compressImage } from '@/lib/image-compress';
 import { storagePathFromUrl } from '@/lib/storage-path';
 
@@ -203,9 +203,15 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * 학교 정보 수정 — 이 학교 교직원(과 총관리자).
+ * 학교 정보 수정.
  *
- * 이름·소개·대표 이미지는 언제든 고칠 수 있다.
+ * **고칠 수 있는 범위가 역할마다 다르다.**
+ * - 총관리자: 전부.
+ * - 이 학교 선생님: 학교 상징(교훈·교화·교목·자랑)과 교표만.
+ *   교화나 교표는 그 학교 선생님이 제일 잘 알고, 틀려도 다시 고치면 그만이다.
+ *   반면 학교 이름·위치·학년/반 수·대표 이미지는 담임 한 명이 바꾸면
+ *   그 학교 전체가 따라 바뀐다 — 학년/반 수는 되돌릴 수도 없다.
+ *
  * 학년/반 수는 **늘리기만** 한다. 줄이면 그 반의 작품·숙제·낙서가 통째로 사라지는데,
  * 학기 중에 실수 한 번으로 아이들 작품이 날아가면 되돌릴 방법이 없다.
  * 반을 없애야 하면 개별 반을 보관 처리(isArchived)한다.
@@ -223,9 +229,9 @@ export async function PATCH(req: NextRequest) {
 
   const schoolId = String(form.get('schoolId') || '').trim();
   if (!schoolId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
-  // 학교 이름·대표 이미지는 학교 공용이라 담임 한 명이 바꾸면 안 된다
-  if (user.role !== 'super_admin') {
-    return NextResponse.json({ error: '총관리자만 학교 정보를 바꿀 수 있습니다' }, { status: 403 });
+  const isSuper = user.role === 'super_admin';
+  if (!isSuper && !isStaffOfSchool(user, schoolId)) {
+    return NextResponse.json({ error: '이 학교의 선생님만 고칠 수 있습니다' }, { status: 403 });
   }
 
   const db = adminDb();
@@ -238,18 +244,19 @@ export async function PATCH(req: NextRequest) {
 
   const patch: Record<string, unknown> = {};
 
-  const name = String(form.get('name') || '').trim();
+  // ---- 여기부터 총관리자만: 학교 전체가 따라 바뀌는 것들 ----
+  const name = isSuper ? String(form.get('name') || '').trim() : '';
   if (name) patch.name = name.slice(0, 60);
-  if (form.has('tagline')) patch.tagline = String(form.get('tagline') || '').trim().slice(0, 60);
+  if (isSuper && form.has('tagline')) patch.tagline = String(form.get('tagline') || '').trim().slice(0, 60);
 
-  const lat = parseFloat(String(form.get('lat')));
-  const lng = parseFloat(String(form.get('lng')));
+  const lat = isSuper ? parseFloat(String(form.get('lat'))) : NaN;
+  const lng = isSuper ? parseFloat(String(form.get('lng'))) : NaN;
   if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
     patch.lat = lat;
     patch.lng = lng;
   }
 
-  if (form.has('assets')) {
+  if (isSuper && form.has('assets')) {
     try {
       const raw = JSON.parse(String(form.get('assets') || '[]'));
       if (Array.isArray(raw)) patch.assets = raw.filter((a) => typeof a === 'string').slice(0, 8);
@@ -262,12 +269,12 @@ export async function PATCH(req: NextRequest) {
   // 형식·크기는 compressImage 가 정한다 (원본 contentType 은 쓰지 않는다)
   let buffer: Buffer | null = null;
 
-  if (file && file instanceof Blob && file.size > 0) {
+  if (isSuper && file && file instanceof Blob && file.size > 0) {
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: '이미지는 10MB 이하로 올려주세요' }, { status: 413 });
     }
     buffer = Buffer.from(await file.arrayBuffer());
-  } else if (dataUrl.startsWith('data:image/')) {
+  } else if (isSuper && dataUrl.startsWith('data:image/')) {
     buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
   }
 
@@ -326,8 +333,8 @@ export async function PATCH(req: NextRequest) {
   const curPer = cur.classPerGrade ?? 4;
   let addedClasses = 0;
 
-  const wantGrades = parseInt(String(form.get('gradeCount')), 10);
-  const wantPer = parseInt(String(form.get('classPerGrade')), 10);
+  const wantGrades = isSuper ? parseInt(String(form.get('gradeCount')), 10) : NaN;
+  const wantPer = isSuper ? parseInt(String(form.get('classPerGrade')), 10) : NaN;
   const nextGrades = Number.isNaN(wantGrades) ? curGrades : Math.max(1, Math.min(6, wantGrades));
   const nextPer = Number.isNaN(wantPer) ? curPer : Math.max(1, Math.min(12, wantPer));
 
