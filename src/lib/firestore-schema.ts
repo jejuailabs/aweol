@@ -17,6 +17,20 @@ export interface UserDoc {
 
 export interface SchoolDoc {
   name: string;
+  /** 지도에 마커를 찍을 좌표 */
+  lat: number;
+  lng: number;
+  /** 학교 대표 이미지 (생성 또는 업로드 → Storage) */
+  imageUrl: string;
+  /** 지도 마커에 함께 보여줄 짧은 소개 */
+  tagline: string;
+  /** 개설할 학년 수와 학년당 반 수 (반 자동 생성에 쓴다) */
+  gradeCount: number;
+  classPerGrade: number;
+  /** 3D 학교 외관에 반영할 선택 요소 (예: 'rainbow', 'playground') */
+  assets: string[];
+  createdBy: string;
+  isArchived: boolean;
   createdAt: Timestamp;
 }
 

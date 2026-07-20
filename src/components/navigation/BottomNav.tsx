@@ -7,7 +7,7 @@ import { canAccessAdmin } from '@/lib/auth-helpers';
 
 // 상점은 도장 적립·구매 로직이 완성될 때까지 메뉴에서 감춘다 (/shop 페이지는 유지)
 const baseItems = [
-  { href: '/school', label: '학교', icon: '🏫' },
+  { href: '/', label: '지도', icon: '🗺️' },
   { href: '/gallery', label: '갤러리', icon: '🖼️' },
   { href: '/my-stand', label: '내 스탠드', icon: '⭐' },
   { href: '/settings', label: '설정', icon: '⚙️' },
@@ -17,8 +17,12 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { role } = useAuth();
 
+  // 관리는 학교 단위라, 지금 보고 있는 학교의 대시보드로 보낸다
+  const schoolId = pathname?.match(/^\/school\/([^/]+)/)?.[1];
+  const adminHref = schoolId ? `/admin/${schoolId}` : '/';
+
   const navItems = canAccessAdmin(role)
-    ? [...baseItems.slice(0, 2), { href: '/admin', label: '관리', icon: '📊' }, ...baseItems.slice(2)]
+    ? [...baseItems.slice(0, 2), { href: adminHref, label: '관리', icon: '📊' }, ...baseItems.slice(2)]
     : baseItems;
 
   return (

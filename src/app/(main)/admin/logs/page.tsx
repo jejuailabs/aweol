@@ -38,7 +38,7 @@ export default function AccessLogsPage() {
   useEffect(() => {
     // 역할 테스트 중이어도 실제 계정이 슈퍼 관리자여야 본다
     if (!loading && (!user || actualRole !== 'super_admin')) {
-      router.replace('/school');
+      router.replace('/');
       return;
     }
     async function fetchLogs() {
@@ -98,7 +98,7 @@ export default function AccessLogsPage() {
   return (
     <div className="px-4 pt-6 pb-24 mx-auto max-w-[860px]">
       <div className="flex items-center gap-3 mb-2">
-        <button onClick={() => router.push('/admin')} className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+        <button onClick={() => router.push('/')} className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
           ← 대시보드
         </button>
         <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-main)' }}>

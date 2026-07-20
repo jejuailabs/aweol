@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
+import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import Mascot from '@/components/mascot/Mascot';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
@@ -13,11 +14,11 @@ import ProfileMenu from '@/components/navigation/ProfileMenu';
 const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
-const SCHOOL_ID = 'aewol-elementary';
 
 export default function SchoolPage() {
   const { userDoc, role } = useAuth();
   const router = useRouter();
+  const schoolId = useParams().schoolId as string;
   const [classes, setClasses] = useState<(ClassDoc & { id: string })[]>([]);
   const [showMascot, setShowMascot] = useState(true);
 
@@ -25,7 +26,7 @@ export default function SchoolPage() {
     async function fetchClasses() {
       if (!db) return;
       const q = query(
-        collection(db, 'schools', SCHOOL_ID, 'classes'),
+        collection(db, 'schools', schoolId, 'classes'),
         where('isArchived', '==', false)
       );
       const snap = await getDocs(q);
@@ -37,7 +38,8 @@ export default function SchoolPage() {
   }, []);
 
   const handleClassSelect = (classId: string) => {
-    router.push(`/class/${classId}`);
+    playSound('enter');
+    router.push(`/school/${schoolId}/class/${classId}`);
   };
 
   const classButtons = classes.length > 0
@@ -57,7 +59,7 @@ export default function SchoolPage() {
       {/* 학생 — 우리 반 바로가기 */}
       {role === 'student' && userDoc?.classIds && userDoc.classIds.length > 0 && (
         <button
-          onClick={() => router.push(`/class/${userDoc.classIds[0]}/room`)}
+          onClick={() => router.push(`/school/${schoolId}/class/${userDoc.classIds[0]}/room`)}
           className="ac-btn ac-btn-green absolute left-4 bottom-24 z-30 px-5 py-2.5 text-sm"
         >
           🎒 우리 반({userDoc.classIds[0]}) 바로가기
@@ -76,7 +78,7 @@ export default function SchoolPage() {
           {userDoc.children.map((child) => (
             <button
               key={child.studentUid + child.classId}
-              onClick={() => router.push(`/class/${child.classId}/room`)}
+              onClick={() => router.push(`/school/${schoolId}/class/${child.classId}/room`)}
               className="flex items-center gap-2 rounded-full pl-3 pr-4 py-2 text-xs font-bold shadow-lg transition-transform hover:scale-105"
               style={{ background: 'rgba(255,255,255,0.92)', color: '#2B2B2B' }}
             >

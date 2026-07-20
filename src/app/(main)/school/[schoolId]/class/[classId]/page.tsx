@@ -6,7 +6,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 const CLASS_THEMES = [
   { from: '#FF9A8B', to: '#FF6A88', deco: '🎨' },
@@ -20,13 +19,14 @@ const CLASS_THEMES = [
 export default function ClassInfoPage() {
   const router = useRouter();
   const params = useParams();
+  const schoolId = params.schoolId as string;
   const classId = params.classId as string;
   const [classDoc, setClassDoc] = useState<ClassDoc | null>(null);
 
   useEffect(() => {
     async function fetchClass() {
       if (!db) return;
-      const snap = await getDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId));
+      const snap = await getDoc(doc(db, 'schools', schoolId, 'classes', classId));
       if (snap.exists()) {
         setClassDoc(snap.data() as ClassDoc);
       }
@@ -41,7 +41,7 @@ export default function ClassInfoPage() {
   const motto = classDoc?.motto || '함께 웃고, 함께 자라자';
 
   const handleEnter = () => {
-    router.push(`/class/${classId}/room`);
+    router.push(`/school/${schoolId}/class/${classId}/room`);
   };
 
   return (

@@ -8,11 +8,11 @@ import { ClassDoc, ActivityDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 export default function AdminClassPage() {
   const router = useRouter();
   const params = useParams();
+  const schoolId = params.schoolId as string;
   const classId = params.classId as string;
   const { user, role, loading } = useAuth();
 
@@ -27,13 +27,13 @@ export default function AdminClassPage() {
 
   useEffect(() => {
     if (!loading && (!user || !canAccessAdmin(role))) {
-      router.replace('/school');
+      router.replace('/');
       return;
     }
 
     async function fetchData() {
       if (!db) return;
-      const snap = await getDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId));
+      const snap = await getDoc(doc(db, 'schools', schoolId, 'classes', classId));
       if (snap.exists()) {
         const data = snap.data() as ClassDoc;
         setClassDoc(data);
@@ -41,7 +41,7 @@ export default function AdminClassPage() {
         setIntroText(data.introText);
       }
 
-      const actSnap = await getDocs(collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities'));
+      const actSnap = await getDocs(collection(db, 'schools', schoolId, 'classes', classId, 'activities'));
       const list = actSnap.docs
         .map((d) => ({ id: d.id, ...d.data() } as ActivityDoc & { id: string }))
         .sort((a, b) => a.order - b.order);
@@ -53,7 +53,7 @@ export default function AdminClassPage() {
 
   const handleSaveSettings = async () => {
     if (!db) return;
-    await updateDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId), {
+    await updateDoc(doc(db, 'schools', schoolId, 'classes', classId), {
       motto: motto.trim(),
       introText: introText.trim(),
     });
@@ -64,7 +64,7 @@ export default function AdminClassPage() {
   const handleAddActivity = async () => {
     if (!db || !newTitle.trim()) return;
     const order = activities.length + 1;
-    const ref = await addDoc(collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities'), {
+    const ref = await addDoc(collection(db, 'schools', schoolId, 'classes', classId, 'activities'), {
       title: newTitle.trim(),
       description: newDesc.trim(),
       thumbnailUrl: '',
@@ -92,7 +92,7 @@ export default function AdminClassPage() {
     <div className="px-4 pt-6 pb-24">
       <div className="flex items-center gap-3 mb-6">
         <button
-          onClick={() => router.push('/admin')}
+          onClick={() => router.push(`/admin/${schoolId}`)}
           className="text-xs"
           style={{ color: 'var(--color-text-sub)' }}
         >
@@ -219,7 +219,7 @@ export default function AdminClassPage() {
               </div>
             </div>
             <button
-              onClick={() => router.push(`/class/${classId}/activity/${act.id}`)}
+              onClick={() => router.push(`/school/${schoolId}/class/${classId}/activity/${act.id}`)}
               className="text-xs px-3 py-1 rounded-lg"
               style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
             >

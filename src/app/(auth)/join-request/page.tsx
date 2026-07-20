@@ -17,7 +17,7 @@ export default function JoinRequestPage() {
     if (!user) {
       router.replace('/login');
     } else if (userDoc?.role) {
-      router.replace('/school');
+      router.replace('/');
     }
   }, [user, userDoc, router]);
 

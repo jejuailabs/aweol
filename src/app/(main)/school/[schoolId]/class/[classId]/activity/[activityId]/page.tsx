@@ -14,7 +14,6 @@ import ArtworkUploadModal from '@/components/artwork/ArtworkUploadModal';
 const ExhibitRoom = dynamic(() => import('@/components/gallery3d/Gallery3DView'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
-const SCHOOL_ID = 'aewol-elementary';
 
 interface ArtworkData {
   id: string;
@@ -28,6 +27,7 @@ interface ArtworkData {
 export default function ActivityExhibitPage() {
   const router = useRouter();
   const params = useParams();
+  const schoolId = params.schoolId as string;
   const classId = params.classId as string;
   const activityId = params.activityId as string;
   const { role, userDoc } = useAuth();
@@ -38,7 +38,7 @@ export default function ActivityExhibitPage() {
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkData | null>(null);
   const [showUpload, setShowUpload] = useState(false);
 
-  const basePath = `schools/${SCHOOL_ID}/classes/${classId}/activities/${activityId}/artworks`;
+  const basePath = `schools/${schoolId}/classes/${classId}/activities/${activityId}/artworks`;
 
   const fetchArtworks = useCallback(async () => {
     if (!db) return;
@@ -68,7 +68,7 @@ export default function ActivityExhibitPage() {
   useEffect(() => {
     async function fetchData() {
       if (!db) return;
-      const actRef = doc(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities', activityId);
+      const actRef = doc(db, 'schools', schoolId, 'classes', classId, 'activities', activityId);
       const actSnap = await getDoc(actRef);
       if (actSnap.exists()) {
         setActivity(actSnap.data() as ActivityDoc);
@@ -90,7 +90,7 @@ export default function ActivityExhibitPage() {
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}
       <div className="absolute top-4 left-4 right-4 z-30 flex items-center gap-2">
         <button
-          onClick={() => router.push(`/class/${classId}/room`)}
+          onClick={() => router.push(`/school/${schoolId}/class/${classId}/room`)}
           className="ac-btn shrink-0 px-3.5 py-2 text-xs"
         >
           ← 교실로

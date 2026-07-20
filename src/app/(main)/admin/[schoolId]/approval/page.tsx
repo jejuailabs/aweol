@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
 import { canApproveArtwork } from '@/lib/auth-helpers';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 interface PendingArtwork {
   id: string;
@@ -21,6 +20,7 @@ interface PendingArtwork {
 
 export default function ApprovalPage() {
   const router = useRouter();
+  const schoolId = useParams().schoolId as string;
   const { user, role, loading } = useAuth();
   const [pending, setPending] = useState<PendingArtwork[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -29,22 +29,22 @@ export default function ApprovalPage() {
 
   useEffect(() => {
     if (!loading && (!user || !canApproveArtwork(role))) {
-      router.replace('/school');
+      router.replace('/');
       return;
     }
 
     async function fetch() {
       if (!db) return;
-      const classSnap = await getDocs(collection(db, 'schools', SCHOOL_ID, 'classes'));
+      const classSnap = await getDocs(collection(db, 'schools', schoolId, 'classes'));
       const items: PendingArtwork[] = [];
 
       for (const cls of classSnap.docs) {
         const activitiesSnap = await getDocs(
-          collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'activities')
+          collection(db, 'schools', schoolId, 'classes', cls.id, 'activities')
         );
         for (const act of activitiesSnap.docs) {
           const artSnap = await getDocs(
-            collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'activities', act.id, 'artworks')
+            collection(db, 'schools', schoolId, 'classes', cls.id, 'activities', act.id, 'artworks')
           );
           for (const art of artSnap.docs) {
             const data = art.data() as ArtworkDoc;
@@ -55,7 +55,7 @@ export default function ApprovalPage() {
                 activityId: act.id,
                 activityTitle: act.data().title || act.id,
                 data,
-                docPath: `schools/${SCHOOL_ID}/classes/${cls.id}/activities/${act.id}/artworks/${art.id}`,
+                docPath: `schools/${schoolId}/classes/${cls.id}/activities/${act.id}/artworks/${art.id}`,
               });
             }
           }
@@ -98,7 +98,7 @@ export default function ApprovalPage() {
     <div className="px-4 pt-6 pb-24">
       <div className="flex items-center gap-3 mb-6">
         <button
-          onClick={() => router.push('/admin')}
+          onClick={() => router.push(`/admin/${schoolId}`)}
           className="text-xs"
           style={{ color: 'var(--color-text-sub)' }}
         >

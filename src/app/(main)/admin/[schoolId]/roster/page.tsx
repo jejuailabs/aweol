@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 interface StudentRow {
   number: number;
@@ -19,6 +18,7 @@ interface StudentRow {
 
 export default function RosterPage() {
   const router = useRouter();
+  const schoolId = useParams().schoolId as string;
   const { user, role, loading } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedClass, setSelectedClass] = useState('3-1');
@@ -42,7 +42,7 @@ export default function RosterPage() {
 
   const studentsCol = useCallback(() => {
     if (!db) return null;
-    return collection(db, 'schools', SCHOOL_ID, 'classes', selectedClass, 'students');
+    return collection(db, 'schools', schoolId, 'classes', selectedClass, 'students');
   }, [selectedClass]);
 
   const nextNumber = students.length > 0 ? Math.max(...students.map((s) => s.number)) + 1 : 1;
@@ -61,14 +61,14 @@ export default function RosterPage() {
 
   useEffect(() => {
     if (!loading && (!user || !canAccessAdmin(role))) {
-      router.replace('/school');
+      router.replace('/');
       return;
     }
 
     async function fetchClasses() {
       if (!db) return;
       const snap = await getDocs(
-        query(collection(db, 'schools', SCHOOL_ID, 'classes'), where('isArchived', '==', false))
+        query(collection(db, 'schools', schoolId, 'classes'), where('isArchived', '==', false))
       );
       const list = snap.docs
         .map((d) => ({ id: d.id, label: `${d.data().grade}-${d.data().classNumber}반` }))
@@ -87,7 +87,7 @@ export default function RosterPage() {
     async function fetchStudents() {
       if (!db) return;
       const snap = await getDocs(
-        collection(db, 'schools', SCHOOL_ID, 'classes', selectedClass, 'students')
+        collection(db, 'schools', schoolId, 'classes', selectedClass, 'students')
       );
       const list = snap.docs
         .map((d) => ({
@@ -110,7 +110,7 @@ export default function RosterPage() {
     const res = await fetch('/api/student-code', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ classId: selectedClass, regenerate }),
+      body: JSON.stringify({ schoolId, classId: selectedClass, regenerate }),
     });
     const json = await res.json();
     setIssuing(false);
@@ -208,7 +208,7 @@ export default function RosterPage() {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<{ 번호?: number; 이름?: string; number?: number; name?: string }>(sheet);
 
-      const studentsRef = collection(db, 'schools', SCHOOL_ID, 'classes', selectedClass, 'students');
+      const studentsRef = collection(db, 'schools', schoolId, 'classes', selectedClass, 'students');
       const existingSnap = await getDocs(studentsRef);
 
       // 기존 문서를 지우지 않고 병합 저장한다.
@@ -232,7 +232,7 @@ export default function RosterPage() {
       setOrphanStudents(orphans);
 
       await setDoc(
-        doc(db, 'schools', SCHOOL_ID, 'rosterUploads', `${selectedClass}-${Date.now()}`),
+        doc(db, 'schools', schoolId, 'rosterUploads', `${selectedClass}-${Date.now()}`),
         {
           classId: selectedClass,
           uploadedBy: user.uid,
@@ -265,7 +265,7 @@ export default function RosterPage() {
     <div className="px-4 pt-6 pb-24 mx-auto max-w-[720px]">
       <div className="flex items-center gap-3 mb-6">
         <button
-          onClick={() => router.push('/admin')}
+          onClick={() => router.push(`/admin/${schoolId}`)}
           className="text-xs"
           style={{ color: 'var(--color-text-sub)' }}
         >

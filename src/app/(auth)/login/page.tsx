@@ -11,7 +11,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (loading) return;
     if (user && role) {
-      router.replace('/school');
+      router.replace('/');
     } else if (user && !role) {
       router.replace('/join-request');
     }

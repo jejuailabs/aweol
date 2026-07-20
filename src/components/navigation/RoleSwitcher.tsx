@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/firestore-schema';
 
-const SCHOOL_ID = 'aewol-elementary';
+import { LEGACY_SCHOOL_ID } from '@/lib/paths';
 
 const MODES: { role: UserRole; label: string; icon: string; desc: string; color: string }[] = [
   { role: 'teacher', label: '선생님', icon: '👩‍🏫', desc: '반 만들기·수업 등록·작품 승인', color: '#E8604C' },
@@ -21,13 +21,16 @@ export default function RoleSwitcher() {
   const [open, setOpen] = useState(false);
   const [classes, setClasses] = useState<{ id: string; label: string }[]>([]);
   const [classId, setClassId] = useState('');
+  const pathname = usePathname();
+  // 지금 보고 있는 학교 기준으로 반 목록을 불러온다
+  const schoolId = pathname?.match(/^\/school\/([^/]+)/)?.[1] || LEGACY_SCHOOL_ID;
 
   useEffect(() => {
     if (actualRole !== 'super_admin' || !db) return;
     (async () => {
       try {
         const snap = await getDocs(
-          query(collection(db!, 'schools', SCHOOL_ID, 'classes'), where('isArchived', '==', false))
+          query(collection(db!, 'schools', schoolId, 'classes'), where('isArchived', '==', false))
         );
         const list = snap.docs
           .map((d) => ({ id: d.id, label: `${d.data().grade}-${d.data().classNumber}반` }))
@@ -38,7 +41,7 @@ export default function RoleSwitcher() {
         setClasses([]);
       }
     })();
-  }, [actualRole, viewAs]);
+  }, [actualRole, viewAs, schoolId]);
 
   // 슈퍼 관리자에게만 보인다
   if (actualRole !== 'super_admin') return null;
@@ -47,13 +50,13 @@ export default function RoleSwitcher() {
     if (!classId && role !== 'teacher') return;
     setViewAs({ role, classId });
     setOpen(false);
-    router.push('/school');
+    router.push('/');
   };
 
   const exit = () => {
     setViewAs(null);
     setOpen(false);
-    router.push('/school');
+    router.push('/');
   };
 
   return (

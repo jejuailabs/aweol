@@ -29,7 +29,7 @@ export default function AvatarSelectPage() {
     if (!selected || !user || !db) return;
     setLoading(true);
     await updateDoc(doc(db, 'users', user.uid), { avatarId: selected });
-    router.replace('/school');
+    router.replace('/');
   };
 
   return (

@@ -4,7 +4,6 @@ import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 // 0/O, 1/I/L 처럼 헷갈리는 글자는 뺀다 (초등학생이 손으로 받아 적는다)
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -30,20 +29,22 @@ export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
 
-  let body: { code?: string };
+  let body: { schoolId?: string; code?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
 
+  const schoolId = body.schoolId || '';
+  if (!schoolId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   const code = (body.code || '').trim().toUpperCase();
   if (code.length !== CODE_LEN) {
     return NextResponse.json({ error: '코드는 6자리예요' }, { status: 400 });
   }
 
   const db = adminDb();
-  const codeRef = db.collection('schools').doc(SCHOOL_ID).collection('studentCodes').doc(code);
+  const codeRef = db.collection('schools').doc(schoolId).collection('studentCodes').doc(code);
   const codeSnap = await codeRef.get();
   if (!codeSnap.exists) {
     return NextResponse.json({ error: '없는 코드예요. 선생님께 다시 확인해 주세요' }, { status: 404 });
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   const info = codeSnap.data() as { classId: string; studentDocId: string; number: number; name: string };
 
   const rosterRef = db
-    .collection('schools').doc(SCHOOL_ID)
+    .collection('schools').doc(schoolId)
     .collection('classes').doc(info.classId)
     .collection('students').doc(info.studentDocId);
   const rosterSnap = await rosterRef.get();
@@ -125,21 +126,21 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: '선생님만 발급할 수 있습니다' }, { status: 403 });
   }
 
-  let body: { classId?: string; studentDocId?: string; regenerate?: boolean };
+  let body: { schoolId?: string; classId?: string; studentDocId?: string; regenerate?: boolean };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
-  const { classId } = body;
-  if (!classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  const { schoolId, classId } = body;
+  if (!schoolId || !classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
 
   const db = adminDb();
   const studentsRef = db
-    .collection('schools').doc(SCHOOL_ID)
+    .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('students');
-  const codesRef = db.collection('schools').doc(SCHOOL_ID).collection('studentCodes');
+  const codesRef = db.collection('schools').doc(schoolId).collection('studentCodes');
 
   const snap = body.studentDocId
     ? await studentsRef.where('__name__', '==', body.studentDocId).get()

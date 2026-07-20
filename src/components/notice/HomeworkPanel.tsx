@@ -12,7 +12,6 @@ import { canManageClass } from '@/lib/auth-helpers';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
 import DrawingPad from './DrawingPad';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 interface Homework {
   id: string;
@@ -42,10 +41,10 @@ const TYPE_LABEL: Record<SubmitType, string> = {
   image: '📷 사진 올리기',
 };
 
-export default function HomeworkPanel({ classId }: { classId: string }) {
+export default function HomeworkPanel({ schoolId, classId }: { schoolId: string; classId: string }) {
   const { user, userDoc, role } = useAuth();
   const isStaff = canManageClass(role);
-  const basePath = `schools/${SCHOOL_ID}/classes/${classId}/homeworks`;
+  const basePath = `schools/${schoolId}/classes/${classId}/homeworks`;
 
   const [list, setList] = useState<Homework[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -165,7 +164,7 @@ export default function HomeworkPanel({ classId }: { classId: string }) {
     const res = await fetch('/api/homework', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ classId, homeworkId: open.id, text: subText.trim(), imageUrl }),
+      body: JSON.stringify({ schoolId, classId, homeworkId: open.id, text: subText.trim(), imageUrl }),
     });
     const json = await res.json();
     setSubmitting(false);
@@ -180,7 +179,7 @@ export default function HomeworkPanel({ classId }: { classId: string }) {
         : '제출 완료! 잘했어요 🎉'
     );
     setSubText(''); setSubFile(null); setSubPreview(''); setDrawBlob(null);
-  }, [open, user, subText, subFile, drawBlob, classId]);
+  }, [open, user, subText, subFile, drawBlob, schoolId, classId]);
 
   const teacherAction = useCallback(
     async (studentUid: string, patch: Record<string, unknown>) => {
@@ -189,10 +188,10 @@ export default function HomeworkPanel({ classId }: { classId: string }) {
       await fetch('/api/homework', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ classId, homeworkId: open.id, studentUid, ...patch }),
+        body: JSON.stringify({ schoolId, classId, homeworkId: open.id, studentUid, ...patch }),
       });
     },
-    [open, classId]
+    [open, schoolId, classId]
   );
 
   // ---------- 숙제 상세 ----------

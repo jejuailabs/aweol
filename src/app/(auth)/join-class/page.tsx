@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { LEGACY_SCHOOL_ID } from '@/lib/paths';
 
 const LEN = 6;
 
@@ -35,7 +36,7 @@ export default function JoinClassPage() {
     const res = await fetch('/api/student-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ schoolId: LEGACY_SCHOOL_ID, code }),
     });
     const json = await res.json();
     setBusy(false);
@@ -63,7 +64,7 @@ export default function JoinClassPage() {
             {done.classId}반으로 들어갈 수 있어요
           </p>
           <button
-            onClick={() => router.replace(userDoc?.avatarId ? `/class/${done.classId}/room` : '/avatar-select')}
+            onClick={() => router.replace(userDoc?.avatarId ? `/school/${LEGACY_SCHOOL_ID}/class/${done.classId}/room` : '/avatar-select')}
             className="rounded-full px-8 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105"
             style={{ background: 'var(--color-primary)' }}
           >
@@ -121,7 +122,7 @@ export default function JoinClassPage() {
           </button>
 
           <button
-            onClick={() => router.replace('/school')}
+            onClick={() => router.replace('/')}
             className="mt-4 text-xs"
             style={{ color: 'var(--color-text-sub)' }}
           >

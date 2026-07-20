@@ -5,7 +5,6 @@ import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-const SCHOOL_ID = 'aewol-elementary';
 const MAX_TEXT = 2000;
 
 function isStaff(role: string | null) {
@@ -52,15 +51,15 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
   if (!user.role) return NextResponse.json({ error: '역할이 지정되지 않았습니다' }, { status: 403 });
 
-  let body: { classId?: string; homeworkId?: string; text?: string; imageUrl?: string };
+  let body: { schoolId?: string; classId?: string; homeworkId?: string; text?: string; imageUrl?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
 
-  const { classId, homeworkId } = body;
-  if (!classId || !homeworkId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  const { schoolId, classId, homeworkId } = body;
+  if (!schoolId || !classId || !homeworkId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
 
   // 교직원이 아니면 자기 반 숙제만 제출 가능
   if (!isStaff(user.role) && !user.classIds.includes(classId)) {
@@ -69,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   const db = adminDb();
   const hwRef = db
-    .collection('schools').doc(SCHOOL_ID)
+    .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('homeworks').doc(homeworkId);
   const hwSnap = await hwRef.get();
@@ -128,7 +127,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   let body: {
-    classId?: string; homeworkId?: string; studentUid?: string;
+    schoolId?: string; classId?: string; homeworkId?: string; studentUid?: string;
     comment?: string; approve?: boolean; hide?: boolean;
   };
   try {
@@ -137,14 +136,14 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
 
-  const { classId, homeworkId, studentUid } = body;
-  if (!classId || !homeworkId || !studentUid) {
+  const { schoolId, classId, homeworkId, studentUid } = body;
+  if (!schoolId || !classId || !homeworkId || !studentUid) {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
 
   const db = adminDb();
   const hwRef = db
-    .collection('schools').doc(SCHOOL_ID)
+    .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('homeworks').doc(homeworkId);
   const hwSnap = await hwRef.get();

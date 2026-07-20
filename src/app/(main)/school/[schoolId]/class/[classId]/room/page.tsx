@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { collection, getDocs, query, orderBy, doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { ActivityDoc } from '@/lib/firestore-schema';
+import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
 import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
@@ -18,7 +19,6 @@ const CHALK_COLORS = ['#FFFFFF', '#FFE86B', '#FF9EAF', '#8FE3FF', '#8FD98A'];
 const ClassroomScene = dynamic(() => import('@/components/gallery3d/ClassroomScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
-const SCHOOL_ID = 'aewol-elementary';
 
 const ACTIVITY_EMOJI = ['🎨', '🏺', '🖼️', '✏️', '📝', '✂️', '🌈', '🎭'];
 const ACTIVITY_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#F5A623', '#DDA0DD', '#5FA8D3', '#3EC46D'];
@@ -26,6 +26,7 @@ const ACTIVITY_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#F5A623', 
 export default function ClassRoomPage() {
   const router = useRouter();
   const params = useParams();
+  const schoolId = params.schoolId as string;
   const classId = params.classId as string;
   const { role, userDoc } = useAuth();
   const [activities, setActivities] = useState<ClassroomActivity[]>([]);
@@ -44,7 +45,7 @@ export default function ClassRoomPage() {
   useEffect(() => {
     if (!db) return;
     const q = query(
-      collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'notices'),
+      collection(db, 'schools', schoolId, 'classes', classId, 'notices'),
       orderBy('createdAt', 'desc')
     );
     return onSnapshot(q, (snap) => {
@@ -87,7 +88,7 @@ export default function ClassRoomPage() {
   useEffect(() => {
     if (!db) return;
     const q = query(
-      collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'blackboard'),
+      collection(db, 'schools', schoolId, 'classes', classId, 'blackboard'),
       orderBy('createdAt', 'asc')
     );
     return onSnapshot(q, (snap) => {
@@ -120,7 +121,7 @@ export default function ClassRoomPage() {
       await fetch('/api/blackboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ classId, ...payload }),
+        body: JSON.stringify({ schoolId, classId, ...payload }),
       });
     },
     [classId]
@@ -152,7 +153,7 @@ export default function ClassRoomPage() {
     setClearing(true);
     const token = await auth?.currentUser?.getIdToken();
     if (token) {
-      await fetch(`/api/blackboard?classId=${encodeURIComponent(classId)}`, {
+      await fetch(`/api/blackboard?schoolId=${encodeURIComponent(schoolId)}&classId=${encodeURIComponent(classId)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -164,7 +165,7 @@ export default function ClassRoomPage() {
     if (!db) { setFetched(true); return; }
     try {
       const q = query(
-        collection(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities'),
+        collection(db, 'schools', schoolId, 'classes', classId, 'activities'),
         orderBy('order', 'asc')
       );
       const snap = await getDocs(q);
@@ -195,7 +196,7 @@ export default function ClassRoomPage() {
     if (!db || !newTitle.trim()) return;
     setSaving(true);
     const actId = `act-${Date.now()}`;
-    await setDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId, 'activities', actId), {
+    await setDoc(doc(db, 'schools', schoolId, 'classes', classId, 'activities', actId), {
       title: newTitle.trim(),
       description: newDesc.trim(),
       date: serverTimestamp(),
@@ -215,7 +216,8 @@ export default function ClassRoomPage() {
   const isEmpty = fetched && activities.length === 0;
 
   const handleEnter = (activityId: string) => {
-    router.push(`/class/${classId}/activity/${activityId}`);
+    playSound('enter');
+    router.push(`/school/${schoolId}/class/${classId}/activity/${activityId}`);
   };
 
   return (
@@ -236,13 +238,13 @@ export default function ClassRoomPage() {
         onCommitStroke={handleCommitStroke}
         onRequestText={(p) => setTextPoint(p)}
         noticeCounts={noticeCounts}
-        onOpenNotice={(k) => setNoticeKind(k)}
+        onOpenNotice={(k) => { playSound('open'); setNoticeKind(k); }}
       />
 
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}
       <div className="absolute top-4 left-4 right-4 z-30 flex items-center gap-2">
         <button
-          onClick={() => router.push('/school')}
+          onClick={() => router.push(`/school/${schoolId}`)}
           className="ac-btn shrink-0 px-3.5 py-2 text-xs"
         >
           ← 학교로
@@ -407,6 +409,7 @@ export default function ClassRoomPage() {
       {/* 알림판 모달 */}
       {noticeKind && (
         <NoticeModal
+          schoolId={schoolId}
           classId={classId}
           posts={notices}
           initialKind={noticeKind}

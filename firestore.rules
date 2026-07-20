@@ -45,7 +45,10 @@ service cloud.firestore {
     // ---------- 학교/학년/학급 ----------
     match /schools/{schoolId} {
       allow read: if true;              // 전시는 공개
-      allow write: if isStaff();
+      // 학교 생성·삭제는 총관리자만 (지도에 아무나 학교를 올릴 수 없다).
+      // 교직원은 기존 학교의 정보만 손볼 수 있다.
+      allow create, delete: if isSignedIn() && userRole() == 'super_admin';
+      allow update: if isStaff();
 
       match /grades/{gradeId} {
         allow read: if true;

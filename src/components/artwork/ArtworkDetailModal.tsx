@@ -6,6 +6,7 @@ import {
   doc, setDoc, deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import { canWriteComment } from '@/lib/auth-helpers';
 import { CommentDoc } from '@/lib/firestore-schema';
@@ -82,6 +83,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
       await deleteDoc(likeRef);
     } else {
       await setDoc(likeRef, { createdAt: serverTimestamp() });
+      playSound('like');
     }
   };
 
@@ -97,6 +99,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
     });
     setNewComment('');
     setSending(false);
+    playSound('post');
   };
 
   return (

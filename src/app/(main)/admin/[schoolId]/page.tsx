@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 import { UserRole } from '@/lib/firestore-schema';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 interface ActivityStat {
   id: string;
@@ -43,6 +42,7 @@ const EMPTY_MEMBERS: MemberStat = { teachers: [], students: [], parents: [], pen
 
 export default function AdminPage() {
   const router = useRouter();
+  const schoolId = useParams().schoolId as string;
   const { user, userDoc, role, actualRole, loading } = useAuth();
   const [classes, setClasses] = useState<ClassStat[]>([]);
   const [members, setMembers] = useState<MemberStat>(EMPTY_MEMBERS);
@@ -63,8 +63,8 @@ export default function AdminPage() {
     if (!db || !user || !newGrade || !num || num < 1) return;
     setCreating(true);
     const classId = `${newGrade}-${num}`;
-    await setDoc(doc(db, 'schools', SCHOOL_ID, 'classes', classId), {
-      schoolId: SCHOOL_ID,
+    await setDoc(doc(db, 'schools', schoolId, 'classes', classId), {
+      schoolId: schoolId,
       grade: newGrade,
       classNumber: num,
       year: String(new Date().getFullYear()),
@@ -84,7 +84,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!loading && (!user || !canAccessAdmin(role))) {
-      router.replace('/school');
+      router.replace('/');
       return;
     }
 
@@ -93,15 +93,15 @@ export default function AdminPage() {
 
       // ---- 학급별 집계 ----
       const classSnap = await getDocs(
-        query(collection(db, 'schools', SCHOOL_ID, 'classes'), where('isArchived', '==', false))
+        query(collection(db, 'schools', schoolId, 'classes'), where('isArchived', '==', false))
       );
 
       const stats: ClassStat[] = [];
       for (const cls of classSnap.docs) {
         const data = cls.data();
         const [studentsSnap, activitiesSnap] = await Promise.all([
-          getDocs(collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'students')),
-          getDocs(collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'activities')),
+          getDocs(collection(db, 'schools', schoolId, 'classes', cls.id, 'students')),
+          getDocs(collection(db, 'schools', schoolId, 'classes', cls.id, 'activities')),
         ]);
 
         const activities: ActivityStat[] = [];
@@ -111,7 +111,7 @@ export default function AdminPage() {
 
         for (const act of activitiesSnap.docs) {
           const artSnap = await getDocs(
-            collection(db, 'schools', SCHOOL_ID, 'classes', cls.id, 'activities', act.id, 'artworks')
+            collection(db, 'schools', schoolId, 'classes', cls.id, 'activities', act.id, 'artworks')
           );
           let actPending = 0;
           artSnap.docs.forEach((d) => {
@@ -240,7 +240,7 @@ export default function AdminPage() {
         ].map((s) => (
           <button
             key={s.label}
-            onClick={() => s.link && router.push('/admin/approval')}
+            onClick={() => s.link && router.push(`/admin/${schoolId}/approval`)}
             className="rounded-2xl p-3.5 text-center transition-transform hover:scale-[1.02]"
             style={{ background: 'var(--color-surface-soft)', cursor: s.link ? 'pointer' : 'default' }}
           >
@@ -364,21 +364,21 @@ export default function AdminPage() {
                   <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--color-surface)' }}>
                     <div className="flex gap-2 my-3">
                       <button
-                        onClick={() => router.push(`/class/${cls.id}/room`)}
+                        onClick={() => router.push(`/school/${schoolId}/class/${cls.id}/room`)}
                         className="flex-1 rounded-xl py-2 text-[11px] font-bold"
                         style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                       >
                         🏫 교실 열기
                       </button>
                       <button
-                        onClick={() => router.push(`/admin/class/${cls.id}`)}
+                        onClick={() => router.push(`/admin/${schoolId}/class/${cls.id}`)}
                         className="flex-1 rounded-xl py-2 text-[11px] font-bold"
                         style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                       >
                         ⚙️ 학급 설정
                       </button>
                       <button
-                        onClick={() => router.push('/admin/roster')}
+                        onClick={() => router.push(`/admin/${schoolId}/roster`)}
                         className="flex-1 rounded-xl py-2 text-[11px] font-bold"
                         style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                       >
@@ -398,7 +398,7 @@ export default function AdminPage() {
                         {cls.activities.map((act) => (
                           <button
                             key={act.id}
-                            onClick={() => router.push(`/class/${cls.id}/activity/${act.id}`)}
+                            onClick={() => router.push(`/school/${schoolId}/class/${cls.id}/activity/${act.id}`)}
                             className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left"
                             style={{ background: 'var(--color-surface)' }}
                           >
@@ -427,7 +427,7 @@ export default function AdminPage() {
       </h2>
       <div className="grid grid-cols-2 gap-2.5">
         <button
-          onClick={() => router.push('/admin/approval')}
+          onClick={() => router.push(`/admin/${schoolId}/approval`)}
           className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
           style={{ background: totals.pending > 0 ? '#FFF3E0' : 'var(--color-surface-soft)' }}
         >
@@ -438,7 +438,7 @@ export default function AdminPage() {
           </div>
         </button>
         <button
-          onClick={() => router.push('/admin/roster')}
+          onClick={() => router.push(`/admin/${schoolId}/roster`)}
           className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
           style={{ background: 'var(--color-surface-soft)' }}
         >

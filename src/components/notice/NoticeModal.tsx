@@ -6,13 +6,13 @@ import {
   serverTimestamp, getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import { canManageClass } from '@/lib/auth-helpers';
 import { NoticeKind } from '@/lib/firestore-schema';
 import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
 import HomeworkPanel from './HomeworkPanel';
 
-const SCHOOL_ID = 'aewol-elementary';
 
 export interface NoticePost {
   id: string;
@@ -32,11 +32,13 @@ interface CommentRow {
 }
 
 export default function NoticeModal({
+  schoolId,
   classId,
   posts,
   initialKind,
   onClose,
 }: {
+  schoolId: string;
   classId: string;
   posts: NoticePost[];
   initialKind: NoticeKind;
@@ -61,7 +63,7 @@ export default function NoticeModal({
   const list = posts.filter((p) => p.kind === kind);
   const openPost = list.find((p) => p.id === openId) || null;
 
-  const basePath = `schools/${SCHOOL_ID}/classes/${classId}/notices`;
+  const basePath = `schools/${schoolId}/classes/${classId}/notices`;
 
   // 열린 글의 좋아요·댓글 구독
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function NoticeModal({
     if (!user) { window.location.href = '/login'; return; }
     const ref = doc(db, basePath, openId, 'likes', user.uid);
     if (liked) await deleteDoc(ref);
-    else await setDoc(ref, { createdAt: serverTimestamp() });
+    else { await setDoc(ref, { createdAt: serverTimestamp() }); playSound('like'); }
   }, [db, openId, user, liked, basePath]);
 
   const sendComment = useCallback(async () => {
@@ -98,6 +100,7 @@ export default function NoticeModal({
     });
     setNewComment('');
     setSending(false);
+    playSound('post');
   }, [db, openId, user, userDoc, role, newComment, basePath]);
 
   const createPost = useCallback(async () => {
@@ -113,6 +116,7 @@ export default function NoticeModal({
       createdAt: serverTimestamp(),
     });
     setWTitle(''); setWBody(''); setWriting(false); setSaving(false);
+    playSound('post');
   }, [db, user, userDoc, wTitle, wBody, kind, basePath]);
 
   const removePost = useCallback(async (id: string) => {
@@ -184,8 +188,10 @@ export default function NoticeModal({
 
         {/* 본문 */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {/* 글 상세 */}
-          {openPost ? (
+          {/* 숙제는 출제·제출·검사가 얽혀 있어 전용 패널이 담당한다 */}
+          {kind === 'homework' ? (
+            <HomeworkPanel schoolId={schoolId} classId={classId} />
+          ) : openPost ? (
             <div>
               <button
                 onClick={() => setOpenId(null)}

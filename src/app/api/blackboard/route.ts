@@ -4,7 +4,6 @@ import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
-const SCHOOL_ID = 'aewol-elementary';
 const MAX_POINTS = 400;
 const MAX_TEXT = 60;
 const MAX_ITEMS = 400; // 칠판이 무한정 커지지 않도록
@@ -28,6 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   let body: {
+    schoolId?: string;
     classId?: string;
     kind?: 'stroke' | 'text';
     points?: number[][];
@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
 
-  const { classId, kind } = body;
-  if (!classId || (kind !== 'stroke' && kind !== 'text')) {
+  const { schoolId, classId, kind } = body;
+  if (!schoolId || !classId || (kind !== 'stroke' && kind !== 'text')) {
     return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
   }
 
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
   const db = adminDb();
   const boardRef = db
-    .collection('schools').doc(SCHOOL_ID)
+    .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('blackboard');
 
@@ -122,12 +122,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: '선생님만 전체 지우기를 할 수 있습니다' }, { status: 403 });
   }
 
-  const classId = new URL(req.url).searchParams.get('classId');
-  if (!classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  const sp = new URL(req.url).searchParams;
+  const schoolId = sp.get('schoolId');
+  const classId = sp.get('classId');
+  if (!schoolId || !classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
 
   const db = adminDb();
   const boardRef = db
-    .collection('schools').doc(SCHOOL_ID)
+    .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('blackboard');
 

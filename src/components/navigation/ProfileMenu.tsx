@@ -57,7 +57,7 @@ export default function ProfileMenu() {
     await signOut();
     setOpen(false);
     setSigningOut(false);
-    router.push('/school');
+    router.push('/');
   };
 
   return (
