@@ -33,8 +33,8 @@ function SchoolPhoto({ url }: { url: string }) {
 
   if (!texture) return null;
   return (
-    <mesh position={[0, 0, 0.08]}>
-      <planeGeometry args={[2.8, 2]} />
+    <mesh position={[0, 0, 0.06]}>
+      <planeGeometry args={[2.66, 1.66]} />
       <meshStandardMaterial map={texture} roughness={0.8} />
     </mesh>
   );
@@ -318,11 +318,16 @@ function SchoolBuilding({
         </div>
       </Html>
 
-      {/* 현관 옆 현판 — 학교를 만들 때 고른 그림을 걸어 학교마다 다르게 보이게 한다 */}
+      {/*
+        현판은 **현관탑 정면**에 건다.
+        예전엔 본관 벽 x=-4.4 에 뒀는데, 그 자리는 창문 두 개(-5.4, -3.3) 사이라
+        벽에서 0.7 떠서 창문과 반 문패를 가렸다. 현관탑에는 창문이 없어 겹칠 게 없다.
+        (문 위 2.5 ~ 시계 아래 4.95 사이가 비어 있다)
+      */}
       {imageUrl && (
-        <group position={[-4.4, 2.6, bodyD * 0.5 + 0.72]}>
+        <group position={[0, 3.75, bodyD * 0.5 + 0.6 + 0.71]}>
           <mesh castShadow>
-            <boxGeometry args={[3.1, 2.3, 0.14]} />
+            <boxGeometry args={[2.9, 1.9, 0.1]} />
             <meshStandardMaterial color="#B08860" roughness={0.6} />
           </mesh>
           <SchoolPhoto url={imageUrl} />

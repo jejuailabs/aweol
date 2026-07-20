@@ -82,47 +82,56 @@ export async function extractSchoolPalette(url: string): Promise<SchoolPalette> 
     ctx.drawImage(img, 0, 0, N, N);
     const { data } = ctx.getImageData(0, 0, N, N);
 
-    // 색상(hue) 12칸으로 나눠 가장 많이 쓰인 '진한 색'을 지붕으로 삼는다
-    const bins = Array.from({ length: 12 }, () => ({ n: 0, h: 0, s: 0, l: 0 }));
-    let lightR = 0, lightG = 0, lightB = 0, lightN = 0;
+    /**
+     * 색상(hue)을 12칸으로 나눠 가장 넓게 쓰인 색을 고른다.
+     *
+     * **위쪽 35%는 아예 안 본다.** 거기는 거의 언제나 하늘이다.
+     * 하늘은 개수도 많고 채도도 높아서(실측: 개수 102, 채도점수 92 — 건물 주황보다 높다)
+     * 개수로 뽑아도 채도로 뽑아도 이겨버린다. 그러면 학교마다 똑같은 하늘색이 나와
+     * '학교별로 다르게' 라는 목적 자체가 사라진다. 잘라내는 게 가장 확실하다.
+     */
+    const SKY_CUT = Math.floor(N * 0.35);
+    const bins = Array.from({ length: 12 }, () => ({ n: 0, h: 0, s: 0 }));
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      if (data[i + 3] < 128) continue;
-      const { h, s, l } = rgbToHsl(r, g, b);
-
-      // 밝고 옅은 픽셀 → 벽 후보
-      if (l > 0.62 && s < 0.5) { lightR += r; lightG += g; lightB += b; lightN += 1; }
-
-      // 너무 어둡거나 옅은 건 지붕 후보에서 뺀다 (하늘·그림자에 끌려간다)
-      if (s < 0.35 || l < 0.22 || l > 0.82) continue;
-      const bin = bins[Math.min(11, Math.floor(h * 12))];
-      bin.n += 1; bin.h += h; bin.s += s; bin.l += l;
+    for (let py = SKY_CUT; py < N; py++) {
+      for (let px = 0; px < N; px++) {
+        const i = (py * N + px) * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        if (data[i + 3] < 128) continue;
+        const { h, s, l } = rgbToHsl(r, g, b);
+        // 너무 어둡거나 옅은 건 뺀다 (그림자·흰 벽)
+        if (s < 0.35 || l < 0.22 || l > 0.82) continue;
+        const bin = bins[Math.min(11, Math.floor(h * 12))];
+        bin.n += 1;
+        bin.h += h;
+        bin.s += s;
+      }
     }
 
     const top = bins.reduce((a, b) => (b.n > a.n ? b : a), bins[0]);
     if (top.n === 0) return DEFAULT_PALETTE;
 
     const h = top.h / top.n;
-    const s = Math.min(0.72, Math.max(0.42, top.s / top.n));
-    const l = Math.min(0.62, Math.max(0.42, top.l / top.n));
 
-    const [rr, rg, rb] = hslToRgb(h, s, l);
-    const [dr, dg, dbb] = hslToRgb(h, s, Math.max(0.3, l - 0.08));
+    /**
+     * 벽과 지붕을 **같은 색상에서** 뽑는다.
+     * 예전에는 벽을 '밝은 픽셀 평균'으로 따로 구했는데, 하늘·구름이 섞여
+     * 거의 무채색(#e7e2da)이 나왔다. 회색 건물에 황토 지붕이라 칙칙했다.
+     * 한 색상의 밝은 톤과 진한 톤으로 맞추면 학교마다 다르면서도 산뜻하다.
+     */
+    const s = Math.min(0.78, Math.max(0.55, top.s / top.n));
 
-    // 벽은 이미지의 밝은 톤을 쓰되, 너무 어두우면 아이 눈에 답답하니 끌어올린다
-    let wall = DEFAULT_PALETTE.wall;
-    let wallWarm = DEFAULT_PALETTE.wallWarm;
-    if (lightN > 0) {
-      const wr = lightR / lightN, wg = lightG / lightN, wb = lightB / lightN;
-      const wl = rgbToHsl(wr, wg, wb);
-      const [nr, ng, nb] = hslToRgb(wl.h, Math.min(0.3, wl.s), Math.max(0.88, wl.l));
-      wall = toHex(nr, ng, nb);
-      const [ar, ag, ab] = hslToRgb(wl.h, Math.min(0.36, wl.s + 0.06), Math.max(0.83, wl.l - 0.04));
-      wallWarm = toHex(ar, ag, ab);
-    }
+    const [wr, wg, wb] = hslToRgb(h, Math.min(0.34, s * 0.42), 0.93);
+    const [ar, ag, ab] = hslToRgb(h, Math.min(0.42, s * 0.5), 0.88);
+    const [rr, rg, rb] = hslToRgb(h, s, 0.54);
+    const [dr, dg, dbb] = hslToRgb(h, s, 0.45);
 
-    return { wall, wallWarm, roof: toHex(rr, rg, rb), roofDark: toHex(dr, dg, dbb) };
+    return {
+      wall: toHex(wr, wg, wb),
+      wallWarm: toHex(ar, ag, ab),
+      roof: toHex(rr, rg, rb),
+      roofDark: toHex(dr, dg, dbb),
+    };
   } catch {
     // canvas 가 오염되면(CORS) getImageData 가 던진다
     return DEFAULT_PALETTE;
