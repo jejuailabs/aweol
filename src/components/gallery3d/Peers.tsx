@@ -16,7 +16,7 @@ const PI = Math.PI;
  * 뚝뚝 끊겨 보인다. 마지막으로 받은 자리를 향해 부드럽게 따라가게 해서
  * 그 사이를 메운다(보간). 이게 5Hz 를 눈에 안 띄게 만드는 핵심이다.
  */
-function PeerAvatar({ peer }: { peer: Peer }) {
+function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
   const group = useRef<THREE.Group>(null);
   const look = getAvatarLook(peer.avatarId, null, { shirt: peer.shirt, hair: peer.hair });
   const bob = useRef(0);
@@ -80,6 +80,9 @@ function PeerAvatar({ peer }: { peer: Peer }) {
         </mesh>
       ))}
 
+      {/* 술래 표시 — 머리 위에 빨간 고리가 돈다 */}
+      {isIt && <ItRing />}
+
       {/* 이름표 — 누가 누군지 알아야 같이 노는 맛이 난다 */}
       <Html position={[0, 1.3, 0]} center pointerEvents="none" zIndexRange={[4, 0]}>
         <div
@@ -90,7 +93,7 @@ function PeerAvatar({ peer }: { peer: Peer }) {
             fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
           }}
         >
-          {peer.name}
+          {isIt ? `👹 ${peer.name}` : peer.name}
         </div>
       </Html>
     </group>
@@ -103,8 +106,24 @@ function PeerAvatar({ peer }: { peer: Peer }) {
  * 씬 안에 이것 하나만 넣으면 된다. 내 위치는 `avatarPos` 에서 읽어 알아서 보낸다 —
  * 씬마다 보내는 코드를 또 쓰면 초당 몇 번 보내는지가 화면마다 달라진다.
  */
+/** 술래 머리 위에서 도는 고리 */
+export function ItRing() {
+  const ring = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (!ring.current) return;
+    ring.current.rotation.z = state.clock.elapsedTime * 2.2;
+    ring.current.position.y = 1.15 + Math.sin(state.clock.elapsedTime * 3) * 0.05;
+  });
+  return (
+    <mesh ref={ring} position={[0, 1.15, 0]} rotation={[PI * 0.5, 0, 0]}>
+      <torusGeometry args={[0.26, 0.055, 8, 20]} />
+      <meshStandardMaterial color="#E8493C" emissive="#E8493C" emissiveIntensity={0.55} />
+    </mesh>
+  );
+}
+
 export default function Peers({
-  schoolId, roomKey, uid, look, avatarPos, avatarYaw,
+  schoolId, roomKey, uid, look, avatarPos, avatarYaw, itUid, onPeersChange,
 }: {
   schoolId: string;
   /** 공간 하나를 가리키는 값 — 'school' / 'class-3-1' / 'lobby' */
@@ -115,13 +134,23 @@ export default function Peers({
   avatarPos: React.MutableRefObject<THREE.Vector3>;
   /** 아바타가 보는 방향. 없으면 0 */
   avatarYaw?: React.MutableRefObject<number>;
+  /** 술래 uid — 그 사람 머리 위에 표시가 뜬다 */
+  itUid?: string | null;
+  /**
+   * 친구 목록이 바뀔 때 알려준다.
+   * 술래잡기처럼 남의 위치가 필요한 놀이가 쓴다 — 위치를 또 받아오지 않게.
+   */
+  onPeersChange?: (peers: Peer[]) => void;
 }) {
   const [peers, setPeers] = useState<Peer[]>([]);
   const handle = useRef<ReturnType<typeof joinRoom> | null>(null);
 
   useEffect(() => {
     if (!uid) return;
-    handle.current = joinRoom(schoolId, roomKey, uid, look, setPeers);
+    handle.current = joinRoom(schoolId, roomKey, uid, look, (list) => {
+      setPeers(list);
+      onPeersChange?.(list);
+    });
     return () => {
       handle.current?.leave();
       handle.current = null;
@@ -139,7 +168,7 @@ export default function Peers({
   return (
     <group>
       {peers.map((p) => (
-        <PeerAvatar key={p.uid} peer={p} />
+        <PeerAvatar key={p.uid} peer={p} isIt={itUid === p.uid} />
       ))}
     </group>
   );

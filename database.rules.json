@@ -3,6 +3,38 @@
     ".read": false,
     ".write": false,
 
+    "games": {
+      "$schoolId": {
+        "$roomKey": {
+          ".read": "auth != null",
+
+          "it": {
+            ".write": "auth != null && (!data.exists() || data.val() === auth.uid)",
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+
+          "state": {
+            ".write": "auth != null",
+            "status": { ".validate": "newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'done'" },
+            "endsAt": { ".validate": "newData.isNumber()" },
+            "startedBy": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "$other": { ".validate": false }
+          },
+
+          "scores": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              "n": { ".validate": "newData.isString() && newData.val().length <= 20" },
+              "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
+              "$other": { ".validate": false }
+            }
+          },
+
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "rooms": {
       "$schoolId": {
         "$roomKey": {

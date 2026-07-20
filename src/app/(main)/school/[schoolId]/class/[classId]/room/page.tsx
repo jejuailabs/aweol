@@ -227,6 +227,17 @@ export default function ClassRoomPage() {
   return (
     <div className="relative w-full h-screen overflow-hidden">
       {/* 3D 교실 */}
+      {/* 술래잡기 — 친구가 같이 있어야 재밌어서, 로그인한 사람에게만 보인다 */}
+      {user && (
+        <button
+          onClick={() => router.push(`/school/${schoolId}/class/${classId}/tag`)}
+          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+          style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+        >
+          👹 술래잡기
+        </button>
+      )}
+
       <ClassroomScene
         schoolId={schoolId}
         classId={classId}
