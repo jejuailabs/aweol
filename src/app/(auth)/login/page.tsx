@@ -1,21 +1,23 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
-export default function LoginPage() {
+function LoginInner() {
   const { user, role, loading, signInWithGoogle } = useAuth();
   const router = useRouter();
+  // 보던 화면으로 돌려보낸다. 한라산에서 로그인했는데 지도로 튕기면 길을 잃는다.
+  const back = useSearchParams().get('from') || '/';
 
   useEffect(() => {
     if (loading) return;
     if (user && role) {
-      router.replace('/');
+      router.replace(back);
     } else if (user && !role) {
-      router.replace('/join-request');
+      router.replace(`/join-request?from=${encodeURIComponent(back)}`);
     }
-  }, [user, role, loading, router]);
+  }, [user, role, loading, router, back]);
 
   if (loading) {
     return (
@@ -33,7 +35,7 @@ export default function LoginPage() {
       <div className="mb-8 text-center">
         <div className="text-6xl mb-4">🏫</div>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-main)' }}>
-          애월초 학급 전시실
+          우리 동네 전시 지도
         </h1>
         <p className="mt-2 text-sm" style={{ color: 'var(--color-text-sub)' }}>
           우리 반의 작품을 만나러 가요!
@@ -54,5 +56,14 @@ export default function LoginPage() {
         Google로 로그인
       </button>
     </div>
+  );
+}
+
+/** useSearchParams 는 Suspense 안에서만 쓸 수 있다 */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }

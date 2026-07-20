@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/firestore-schema';
 
@@ -21,6 +21,7 @@ const ROLE_COLOR: Record<UserRole, string> = {
 
 export default function ProfileMenu() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, userDoc, role, actualRole, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -42,7 +43,11 @@ export default function ProfileMenu() {
 
   if (!user) {
     return (
-      <button onClick={() => router.push('/login')} className="ac-btn px-4 py-2 text-xs">
+      <button
+        // 로그인 뒤 보던 화면으로 돌아오게 현재 경로를 넘긴다
+        onClick={() => router.push(`/login?from=${encodeURIComponent(pathname || '/')}`)}
+        className="ac-btn px-4 py-2 text-xs"
+      >
         🔑 로그인
       </button>
     );

@@ -246,33 +246,40 @@ function ArtworkImage({ url, width, height }: { url: string; width: number; heig
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
-    if (!url) return;
+    if (!url) { setTexture(null); return; }
+    let alive = true;
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = 'anonymous';
     loader.load(
       url,
       (tex) => {
+        if (!alive) { tex.dispose(); return; }
         tex.colorSpace = THREE.SRGBColorSpace;
         setTexture(tex);
       },
       undefined,
-      () => setTexture(null)
+      () => { if (alive) setTexture(null); }
     );
+    return () => { alive = false; };
   }, [url]);
-
-  if (!texture) {
-    return (
-      <mesh>
-        <planeGeometry args={[width, height]} />
-        <meshStandardMaterial color="#E8D5C4" />
-      </mesh>
-    );
-  }
 
   return (
     <mesh>
       <planeGeometry args={[width, height]} />
-      <meshStandardMaterial map={texture} />
+      {/*
+        key 가 반드시 있어야 한다.
+        예전에는 텍스처 유무로 <mesh> 를 각각 그렸는데, React 가 같은 자리의 mesh 를
+        재사용하는 바람에 **이미 만들어진 재질에 나중에 map 이 붙었다.**
+        three.js 는 그때 셰이더를 다시 컴파일하지 않아서 액자가 새까맣게 나온다.
+        (CORS 를 고치기 전에는 텍스처가 아예 안 와서 베이지 판이 보였고,
+         고치고 나니 이번엔 검은 판이 됐다 — 원인이 이것이었다)
+        key 를 바꿔 텍스처가 도착한 시점에 재질을 새로 만들게 한다.
+      */}
+      <meshStandardMaterial
+        key={texture ? 'with-map' : 'placeholder'}
+        map={texture ?? undefined}
+        color={texture ? '#FFFFFF' : '#E8D5C4'}
+      />
     </mesh>
   );
 }

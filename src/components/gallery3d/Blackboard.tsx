@@ -67,11 +67,14 @@ export default function Blackboard({ classLabel, items }: Props) {
       {/* 칠판면 */}
       <mesh position={[0, 0.04, 0.045]}>
         <planeGeometry args={[6.05, 1.85]} />
-        {texture ? (
-          <meshStandardMaterial map={texture} roughness={0.85} />
-        ) : (
-          <meshStandardMaterial color={BOARD_BG} roughness={0.85} />
-        )}
+        {/* key 없이 map 만 갈아끼우면 셰이더가 다시 컴파일되지 않아 까맣게 나온다
+            (전시실 액자에서 실제로 겪은 문제) */}
+        <meshStandardMaterial
+          key={texture ? 'with-map' : 'plain'}
+          map={texture ?? undefined}
+          color={texture ? '#FFFFFF' : BOARD_BG}
+          roughness={0.85}
+        />
       </mesh>
 
       {/* 분필 받침 */}

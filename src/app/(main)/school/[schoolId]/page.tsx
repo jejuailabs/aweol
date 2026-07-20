@@ -64,6 +64,18 @@ export default function SchoolPage() {
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
       <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} schoolName={schoolName} imageUrl={schoolImage} />
 
+      {/*
+        지도로 돌아가기 — 학교 화면에만 없었다.
+        하단 메뉴는 비로그인 관람객에게 안 보이므로, 없으면 지도로 나갈 방법이 아예 없다.
+        (교실은 '학교로', 전시실은 '교실로' 가 있는데 여기만 빠져 있었다)
+      */}
+      <button
+        onClick={() => router.push('/')}
+        className="ac-btn absolute top-4 left-4 z-40 px-3.5 py-2 text-xs"
+      >
+        ← 지도로
+      </button>
+
       {/* 상단 로그인/프로필 메뉴 */}
       <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
         <ShareButton title={`${schoolName || '학교'} 전시실`} text="우리 학교 작품 전시를 구경해보세요" />
