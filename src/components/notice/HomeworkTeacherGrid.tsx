@@ -103,6 +103,9 @@ export default function HomeworkTeacherGrid({
               studentUid: v.studentUid || d.id,
               studentName: v.studentName || '',
               text: v.text || '',
+              // 옛 제출물에는 이 칸이 없다. 빈 문자열로 채워야 화면이 안 깨진다.
+              videoUrl: v.videoUrl || '',
+              linkUrl: v.linkUrl || '',
               imageUrl: v.imageUrl || '',
               status: v.status === 'held' ? 'held' : 'approved',
               moderation: v.moderation ?? null,
