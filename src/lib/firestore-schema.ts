@@ -10,8 +10,32 @@ export interface UserDoc {
   children: { studentUid: string; classId: string; name: string }[];
   pendingClassRequest: string | null;
   avatarId: string | null;
+  /** 착용 중인 상점 아이템 id. 서버(/api/shop)만 바꾼다 — 보유하지 않은 걸 낄 수 없어야 한다. */
   avatarCustom: { hat: string | null; accessory: string | null };
+  /** 보유 도장 수. 서버만 바꾼다 — 클라이언트가 고칠 수 있으면 무한히 찍어낼 수 있다. */
+  stamps: number;
   preferences: { theme: 'light' | 'dark' };
+  createdAt: Timestamp;
+}
+
+/** 구매한 상점 아이템. 문서 ID = 아이템 id 라서 중복 구매가 구조적으로 막힌다. */
+export interface InventoryItemDoc {
+  itemId: string;
+  category: 'hat' | 'accessory' | 'stamp';
+  /** 살 때 실제로 낸 값 (나중에 가격이 바뀌어도 기록은 남는다) */
+  paid: number;
+  acquiredAt: Timestamp;
+}
+
+/** 도장 입출금 내역. "이 도장 어디서 받았지?" 에 답할 수 있어야 한다. */
+export interface StampLedgerDoc {
+  /** 양수는 지급, 음수는 사용 */
+  amount: number;
+  reason: string;
+  /** 지급 근거가 된 숙제/아이템 */
+  refId: string | null;
+  byName: string;
+  balanceAfter: number;
   createdAt: Timestamp;
 }
 
@@ -148,6 +172,10 @@ export interface SubmissionDoc {
   /** 선생님이 실제로 들여다보고 검사를 끝냈는지. 그리드의 3번째 색이 이 값이다. */
   checked: boolean;
   checkedAt: Timestamp | null;
+  /** 선생님이 찍어준 도장 도안 (상점의 stamp 카테고리 id) */
+  stamp: { itemId: string; emoji: string; label: string } | null;
+  /** 도장을 이미 지급했는지. 재검사해도 두 번 주지 않는다. */
+  awarded: boolean;
   submittedAt: Timestamp;
 }
 

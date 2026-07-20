@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserDoc, UserRole } from './firestore-schema';
 
@@ -68,14 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // 문서 구독을 계정 전환 때 정리하려고 따로 들고 있는다
+    let unsubDoc: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+      unsubDoc?.();
+      unsubDoc = null;
+
       if (firebaseUser && db) {
         const ref = doc(db, 'users', firebaseUser.uid);
         const snap = await getDoc(ref);
-        if (snap.exists()) {
-          setRealDoc(snap.data() as UserDoc);
-        } else {
+        if (!snap.exists()) {
           const newUser: UserDoc = {
             displayName: firebaseUser.displayName || '',
             photoURL: firebaseUser.photoURL || '',
@@ -85,19 +89,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             pendingClassRequest: null,
             avatarId: null,
             avatarCustom: { hat: null, accessory: null },
+            stamps: 0,
             preferences: { theme: 'light' },
             createdAt: serverTimestamp() as never,
           };
           await setDoc(ref, newUser);
-          setRealDoc(newUser);
         }
+        // 한 번만 읽으면 서버가 준 도장·착용 아이템이 새로고침 전까지 안 보인다
+        unsubDoc = onSnapshot(
+          ref,
+          (s) => {
+            if (s.exists()) setRealDoc(s.data() as UserDoc);
+            setLoading(false);
+          },
+          () => setLoading(false)
+        );
       } else {
         setRealDoc(null);
         setViewAs(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubDoc?.();
+      unsubscribe();
+    };
   }, [setViewAs]);
 
   const actualRole = realDoc?.role ?? null;

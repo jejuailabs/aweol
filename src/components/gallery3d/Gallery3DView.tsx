@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom } from './walker';
 
 // 벤치 2개 + 코너 화분 4개 (Room의 배치와 같은 값)
 const ROOM_OBSTACLES: Obstacle[] = [
@@ -28,6 +28,7 @@ interface ExhibitRoomProps {
   artworks: ArtworkData[];
   onArtworkClick: (artwork: ArtworkData) => void;
   avatarId?: string | null;
+  avatarCustom?: AvatarCustom | null;
 }
 
 const PI = Math.PI;
@@ -501,7 +502,7 @@ function GalleryLighting() {
   );
 }
 
-export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: ExhibitRoomProps) {
+export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatarCustom }: ExhibitRoomProps) {
   // 실제 승인된 작품만 전시한다 (가짜 작품으로 벽을 채우지 않음)
   const displayArtworks = artworks;
   const avatarPos = useRef(new THREE.Vector3(0, 0, 5));
@@ -632,6 +633,7 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId }: Exhi
           bounds={{ xMin: -7, xMax: 7, zMin: -7, zMax: 7 }}
           start={[0, 0, 5]}
           avatarId={avatarId}
+          avatarCustom={avatarCustom}
           obstacles={obstacles}
         />
         <DustPuffs />

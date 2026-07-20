@@ -5,11 +5,11 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 
-// 상점은 도장 적립·구매 로직이 완성될 때까지 메뉴에서 감춘다 (/shop 페이지는 유지)
 const baseItems = [
   { href: '/', label: '지도', icon: '🗺️' },
   { href: '/gallery', label: '갤러리', icon: '🖼️' },
   { href: '/my-stand', label: '내 스탠드', icon: '⭐' },
+  { href: '/shop', label: '상점', icon: '🛒' },
   { href: '/settings', label: '설정', icon: '⚙️' },
 ];
 

@@ -35,6 +35,7 @@ interface Submission {
   status: 'approved' | 'held';
   moderation: { flagged: boolean; reason: string } | null;
   teacherComment: string;
+  stamp: { itemId: string; emoji: string; label: string } | null;
 }
 
 const TYPE_LABEL: Record<SubmitType, string> = {
@@ -321,6 +322,20 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                 )}
                 {mySub.text && (
                   <div className="text-[12px] whitespace-pre-wrap" style={{ color: '#54493A' }}>{mySub.text}</div>
+                )}
+                {mySub.stamp && (
+                  <div
+                    className="mt-2 rounded-xl px-3 py-2.5 text-center"
+                    style={{ background: '#E2F6E9', border: '1px solid #A0DCB7' }}
+                  >
+                    <div className="text-2xl leading-none mb-1">{mySub.stamp.emoji}</div>
+                    <div className="text-[12px] font-bold" style={{ color: '#2E8B57' }}>
+                      {mySub.stamp.label}
+                    </div>
+                    <div className="text-[10px] mt-0.5" style={{ color: '#5FA87C' }}>
+                      선생님이 도장을 찍어주셨어요 🏅
+                    </div>
+                  </div>
                 )}
                 {mySub.teacherComment && (
                   <div className="mt-2 rounded-xl px-3 py-2 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>

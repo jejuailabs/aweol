@@ -182,9 +182,11 @@ export function DustPuffs() {
 // ================= 아바타 외형 프리셋 (avatar-select의 8종과 1:1 대응) =================
 
 type HairStyle = 'short' | 'long' | 'none';
-type HatKind = 'none' | 'beret' | 'cap' | 'ribbon' | 'antenna';
+type HatKind = 'none' | 'beret' | 'cap' | 'ribbon' | 'antenna' | 'crown';
 type EarKind = 'none' | 'cat' | 'dog';
 type HandItem = 'none' | 'brush' | 'palette' | 'magnifier';
+/** 상점에서 산 장식 (모자 칸과 별개) */
+type DecoKind = 'none' | 'glasses' | 'balloon' | 'star';
 
 interface AvatarLook {
   skin: string;
@@ -198,6 +200,7 @@ interface AvatarLook {
   ears: EarKind;
   earColor: string;
   item: HandItem;
+  deco: DecoKind;
   cheek: boolean;
   muzzle: boolean;
 }
@@ -214,6 +217,7 @@ const BASE_LOOK: AvatarLook = {
   ears: 'none',
   earColor: '#F0C48A',
   item: 'none',
+  deco: 'none',
   cheek: true,
   muzzle: false,
 };
@@ -237,8 +241,46 @@ export const AVATAR_LOOKS: Record<string, AvatarLook> = {
   avatar_08: { ...BASE_LOOK, skin: '#F0DCC0', hair: '#C89A6B', hairStyle: 'none', shirt: '#4FA8E8', pants: '#8A6A4A', ears: 'dog', earColor: '#C89A6B', muzzle: true },
 };
 
-export function getAvatarLook(avatarId?: string | null): AvatarLook {
-  return (avatarId && AVATAR_LOOKS[avatarId]) || AVATAR_LOOKS.avatar_01;
+/** 상점 아이템 id → 3D 파츠. 여기 없는 id 는 그려줄 게 없으니 무시한다. */
+const SHOP_HAT: Record<string, HatKind> = {
+  'hat-beret': 'beret',
+  'hat-cap': 'cap',
+  'hat-ribbon': 'ribbon',
+  'hat-crown': 'crown',
+};
+const SHOP_DECO: Record<string, DecoKind> = {
+  'acc-glasses': 'glasses',
+  'acc-balloon': 'balloon',
+  'acc-star': 'star',
+};
+const SHOP_ITEM: Record<string, HandItem> = {
+  'acc-brush': 'brush',
+};
+
+export interface AvatarCustom {
+  hat: string | null;
+  accessory: string | null;
+}
+
+/**
+ * 프리셋 8종 위에 상점에서 산 아이템을 덮어쓴다.
+ * 산 걸 껴도 안 보이면 아이 입장에서는 도장을 버린 셈이라, 이 경로가 끊기면 안 된다.
+ */
+export function getAvatarLook(avatarId?: string | null, custom?: AvatarCustom | null): AvatarLook {
+  const base = (avatarId && AVATAR_LOOKS[avatarId]) || AVATAR_LOOKS.avatar_01;
+  if (!custom) return base;
+
+  const look = { ...base };
+  if (custom.hat && SHOP_HAT[custom.hat]) {
+    look.hat = SHOP_HAT[custom.hat];
+    // 왕관은 금색이 아니면 왕관으로 안 보인다
+    if (look.hat === 'crown') look.hatColor = '#FFC93C';
+  }
+  if (custom.accessory) {
+    if (SHOP_DECO[custom.accessory]) look.deco = SHOP_DECO[custom.accessory];
+    if (SHOP_ITEM[custom.accessory]) look.item = SHOP_ITEM[custom.accessory];
+  }
+  return look;
 }
 
 // ================= 걸어다니는 아바타 (동숲 비율 + 모멘텀) =================
@@ -276,6 +318,7 @@ export function WalkerAvatar({
   maxSpeed = 4.2,
   scale = 1,
   avatarId,
+  avatarCustom,
   obstacles = [],
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
@@ -284,9 +327,10 @@ export function WalkerAvatar({
   maxSpeed?: number;
   scale?: number;
   avatarId?: string | null;
+  avatarCustom?: AvatarCustom | null;
   obstacles?: Obstacle[];
 }) {
-  const look = getAvatarLook(avatarId);
+  const look = getAvatarLook(avatarId, avatarCustom);
   const groupRef = useRef<THREE.Group>(null);
   const armLRef = useRef<THREE.Group>(null);
   const armRRef = useRef<THREE.Group>(null);
@@ -595,6 +639,73 @@ export function WalkerAvatar({
           </mesh>
         </group>
       )}
+      {/* 왕관 — 띠 + 뾰족한 봉우리 5개 + 보석 */}
+      {look.hat === 'crown' && (
+        <group position={[0, 1.3, 0]}>
+          <mesh>
+            <cylinderGeometry args={[0.235, 0.235, 0.08, 16, 1, true]} />
+            <meshStandardMaterial
+              color={look.hatColor}
+              metalness={0.75}
+              roughness={0.25}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          {[0, 1, 2, 3, 4].map((i) => {
+            const a = (i / 5) * PI * 2;
+            return (
+              <mesh key={`sp-${i}`} position={[Math.sin(a) * 0.2, 0.09, Math.cos(a) * 0.2]}>
+                <coneGeometry args={[0.055, 0.13, 4]} />
+                <meshStandardMaterial color={look.hatColor} metalness={0.75} roughness={0.25} />
+              </mesh>
+            );
+          })}
+          <mesh position={[0, 0.02, 0.235]}>
+            <octahedronGeometry args={[0.045, 0]} />
+            <meshStandardMaterial color="#E8493C" emissive="#E8493C" emissiveIntensity={0.35} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 상점 장식 */}
+      {look.deco === 'glasses' && (
+        <group position={[0, 1.05, 0.235]}>
+          {[-0.09, 0.09].map((x) => (
+            <mesh key={`lens-${x}`} position={[x, 0, 0]} rotation={[HALF_PI, 0, 0]}>
+              <torusGeometry args={[0.062, 0.014, 8, 16]} />
+              <meshStandardMaterial color="#3A3226" roughness={0.5} />
+            </mesh>
+          ))}
+          <mesh rotation={[0, 0, HALF_PI]}>
+            <cylinderGeometry args={[0.009, 0.009, 0.06, 6]} />
+            <meshStandardMaterial color="#3A3226" roughness={0.5} />
+          </mesh>
+        </group>
+      )}
+      {look.deco === 'star' && (
+        <mesh position={[0.19, 1.38, 0.08]} rotation={[0.3, 0.4, 0.3]}>
+          <octahedronGeometry args={[0.075, 0]} />
+          <meshStandardMaterial color="#FFD93D" emissive="#FFD93D" emissiveIntensity={0.7} />
+        </mesh>
+      )}
+      {look.deco === 'balloon' && (
+        <group position={[0.34, 1.02, 0]}>
+          {/* 실 — 손에서 위로 */}
+          <mesh position={[0, 0.3, 0]}>
+            <cylinderGeometry args={[0.005, 0.005, 0.6, 4]} />
+            <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.72, 0]} scale={[1, 1.2, 1]}>
+            <sphereGeometry args={[0.16, 14, 14]} />
+            <meshStandardMaterial color="#FF6B81" roughness={0.35} />
+          </mesh>
+          {/* 묶은 매듭 */}
+          <mesh position={[0, 0.585, 0]}>
+            <coneGeometry args={[0.03, 0.05, 6]} />
+            <meshStandardMaterial color="#FF6B81" roughness={0.35} />
+          </mesh>
+        </group>
+      )}
 
       {/* 동물 귀 */}
       {look.ears === 'cat' && (
@@ -685,8 +796,8 @@ export function WalkerAvatar({
         </>
       )}
 
-      {/* 별 장식 (모자·귀가 없을 때만) */}
-      {look.hat === 'none' && look.ears === 'none' && (
+      {/* 기본 별 장식 (모자·귀가 없고, 상점 장식도 안 낀 맨머리일 때만) */}
+      {look.hat === 'none' && look.ears === 'none' && look.deco === 'none' && (
         <mesh position={[0.18, 1.32, 0.12]} rotation={[0.3, 0.4, 0.3]}>
           <octahedronGeometry args={[0.05, 0]} />
           <meshStandardMaterial color="#FFD93D" emissive="#FFD93D" emissiveIntensity={0.35} />

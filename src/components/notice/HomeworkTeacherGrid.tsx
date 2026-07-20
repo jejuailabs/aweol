@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { studentsPath, submissionsPath, nudgesPath } from '@/lib/paths';
+import { useAuth } from '@/lib/auth-context';
+import { studentsPath, submissionsPath, nudgesPath, inventoryPath } from '@/lib/paths';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
+import { SHOP_ITEMS, ShopItem } from '@/lib/shop-catalog';
 
 /**
  * 교사용 숙제 현황판.
@@ -28,6 +30,7 @@ interface Sub {
   moderation: { flagged: boolean; reason: string } | null;
   teacherComment: string;
   checked: boolean;
+  stamp: { itemId: string; emoji: string; label: string } | null;
 }
 
 interface Nudge {
@@ -57,9 +60,11 @@ export default function HomeworkTeacherGrid({
   submitType: SubmitType;
   visibility: HomeworkVisibility;
 }) {
+  const { user } = useAuth();
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
   const [nudges, setNudges] = useState<Nudge[]>([]);
+  const [myStamps, setMyStamps] = useState<ShopItem[]>([]);
   const [openUid, setOpenUid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
@@ -101,6 +106,7 @@ export default function HomeworkTeacherGrid({
               moderation: v.moderation ?? null,
               teacherComment: v.teacherComment || '',
               checked: v.checked === true,
+              stamp: v.stamp ?? null,
             };
           })
         ),
@@ -117,6 +123,19 @@ export default function HomeworkTeacherGrid({
       () => setNudges([])
     );
   }, [schoolId, classId, homeworkId]);
+
+  // 선생님이 상점에서 챙겨둔 도장 도안
+  useEffect(() => {
+    if (!db || !user) { setMyStamps([]); return; }
+    return onSnapshot(
+      collection(db, inventoryPath(user.uid)),
+      (snap) => {
+        const ids = new Set(snap.docs.map((d) => d.id));
+        setMyStamps(SHOP_ITEMS.filter((i) => i.category === 'stamp' && ids.has(i.id)));
+      },
+      () => setMyStamps([])
+    );
+  }, [user]);
 
   const subByUid = useMemo(() => {
     const m = new Map<string, Sub>();
@@ -331,6 +350,7 @@ export default function HomeworkTeacherGrid({
           nudged={opened.nudged}
           submitType={submitType}
           busy={busy}
+          myStamps={myStamps}
           onClose={() => setOpenUid(null)}
           onNudge={async () => {
             if (await call(opened.row.linkedUid!, { nudge: true, studentName: opened.row.name })) {
@@ -340,9 +360,9 @@ export default function HomeworkTeacherGrid({
           onComment={async (c) => {
             if (await call(opened.row.linkedUid!, { comment: c })) setToast('코멘트를 남겼어요');
           }}
-          onCheck={async (v) => {
-            if (await call(opened.row.linkedUid!, { check: v })) {
-              setToast(v ? '검사완료!' : '검사완료를 취소했어요');
+          onCheck={async (v, stampId) => {
+            if (await call(opened.row.linkedUid!, { check: v, stampId })) {
+              setToast(v ? `검사완료! ${opened.row.name}에게 도장 1개 🏅` : '검사완료를 취소했어요');
             }
           }}
           onApprove={async () => {
@@ -356,7 +376,7 @@ export default function HomeworkTeacherGrid({
 
 // ---------- 학생 한 명 상세 ----------
 function StudentSheet({
-  name, number, state, sub, nudged, submitType, busy,
+  name, number, state, sub, nudged, submitType, busy, myStamps,
   onClose, onNudge, onComment, onCheck, onApprove,
 }: {
   name: string;
@@ -366,13 +386,15 @@ function StudentSheet({
   nudged: number;
   submitType: SubmitType;
   busy: boolean;
+  myStamps: ShopItem[];
   onClose: () => void;
   onNudge: () => void;
   onComment: (c: string) => void;
-  onCheck: (v: boolean) => void;
+  onCheck: (v: boolean, stampId?: string) => void;
   onApprove: () => void;
 }) {
   const [cmt, setCmt] = useState(sub?.teacherComment || '');
+  const [pickedStamp, setPickedStamp] = useState(sub?.stamp?.itemId || myStamps[0]?.id || '');
 
   return (
     <div
@@ -473,8 +495,44 @@ function StudentSheet({
               </button>
             </div>
 
+            {/* 도장 고르기 */}
+            {!sub.checked && (
+              myStamps.length > 0 ? (
+                <>
+                  <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {myStamps.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setPickedStamp(s.id)}
+                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold"
+                        style={
+                          pickedStamp === s.id
+                            ? { background: 'var(--color-primary)', color: 'white' }
+                            : { background: 'white', color: '#8A7A5F' }
+                        }
+                      >
+                        <span className="text-sm">{s.emoji}</span>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl px-3 py-2 mb-3 text-[10px] leading-relaxed" style={{ background: '#FFF6E5', color: '#A08A5B' }}>
+                  상점에서 도장을 받아오면 여기서 찍어줄 수 있어요. (지금은 전부 무료)
+                </div>
+              )
+            )}
+
+            {sub.checked && sub.stamp && (
+              <div className="rounded-xl px-3 py-2 mb-3 text-[12px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
+                {sub.stamp.emoji} {sub.stamp.label}
+              </div>
+            )}
+
             <button
-              onClick={() => onCheck(!sub.checked)}
+              onClick={() => onCheck(!sub.checked, pickedStamp || undefined)}
               disabled={busy}
               className="w-full rounded-xl py-3 text-[13px] font-bold disabled:opacity-40"
               style={
@@ -483,8 +541,13 @@ function StudentSheet({
                   : { background: 'var(--color-primary)', color: 'white' }
               }
             >
-              {sub.checked ? '✅ 검사완료 (눌러서 취소)' : '검사완료로 표시하기'}
+              {sub.checked ? '✅ 검사완료 (눌러서 취소)' : '도장 찍고 검사완료'}
             </button>
+            {!sub.checked && (
+              <div className="text-[10px] mt-1.5 text-center" style={{ color: '#A89880' }}>
+                검사완료하면 {name}에게 도장 1개가 쌓여요
+              </div>
+            )}
           </>
         )}
 

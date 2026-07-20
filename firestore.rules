@@ -38,8 +38,27 @@ service cloud.firestore {
       // 본인 문서는 읽기/생성/수정 가능, 교사는 전체 열람 가능
       allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
       allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if isSignedIn() && request.auth.uid == uid;
+      // 도장 잔액과 착용 아이템은 서버(/api/shop, /api/homework)만 바꾼다.
+      // 여기가 열려 있으면 자기 문서에 stamps: 9999 를 써넣고 상점을 털 수 있다.
+      // get(키, 기본값)을 쓰는 이유: 이 기능 이전에 만들어진 계정에는 stamps 필드가 없고,
+      // 없는 필드를 그냥 참조하면 규칙 평가가 실패해 아바타 선택·설정 저장까지 막힌다.
+      allow update: if isSignedIn() && request.auth.uid == uid
+                    && request.resource.data.get('stamps', 0)
+                       == resource.data.get('stamps', 0)
+                    && request.resource.data.get('avatarCustom', {})
+                       == resource.data.get('avatarCustom', {});
       allow delete: if false;
+
+      // 구매한 물건과 도장 내역 — 본인(과 교직원)만 보고, 쓰기는 서버만.
+      match /inventory/{itemId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
+        allow write: if false;
+      }
+
+      match /stampLedger/{entryId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
+        allow write: if false;
+      }
     }
 
     // ---------- 학교/학년/학급 ----------

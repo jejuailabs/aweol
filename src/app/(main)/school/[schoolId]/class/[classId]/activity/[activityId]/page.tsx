@@ -85,6 +85,7 @@ export default function ActivityExhibitPage() {
         artworks={artworks}
         onArtworkClick={(artwork) => setSelectedArtwork(artwork as ArtworkData)}
         avatarId={userDoc?.avatarId}
+        avatarCustom={userDoc?.avatarCustom}
       />
 
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}

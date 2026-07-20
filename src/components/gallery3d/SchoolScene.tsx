@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom } from './walker';
 
 // 나무 줄기와 화단 (아래 배치와 같은 좌표)
 const SCHOOL_OBSTACLES: Obstacle[] = [
@@ -359,10 +359,12 @@ export default function SchoolScene({
   classes = [],
   onClassSelect = () => {},
   avatarId,
+  avatarCustom,
 }: {
   classes?: SchoolClassItem[];
   onClassSelect?: (id: string) => void;
   avatarId?: string | null;
+  avatarCustom?: AvatarCustom | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 11));
@@ -427,6 +429,7 @@ export default function SchoolScene({
           start={[0, 0, 11]}
           maxSpeed={5}
           avatarId={avatarId}
+          avatarCustom={avatarCustom}
           obstacles={SCHOOL_OBSTACLES}
         />
         <DustPuffs />

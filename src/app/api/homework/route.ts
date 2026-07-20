@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, getClientIp, verifyRequestUser } from '@/lib/firebase-admin';
+import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -84,7 +85,12 @@ export async function POST(req: NextRequest) {
   const mod = await moderate(text, imageUrl);
   const status = mod.flagged ? 'held' : 'approved';
 
-  await hwRef.collection('submissions').doc(user.uid).set({
+  const subRef = hwRef.collection('submissions').doc(user.uid);
+  // 이 doc은 통째로 덮어쓰므로, 재제출해도 남아야 하는 값은 직접 들고 넘어간다.
+  // 특히 awarded 를 흘리면 제출→검사→재제출→재검사 로 도장을 무한히 캘 수 있다.
+  const prev = (await subRef.get()).data();
+
+  await subRef.set({
     studentUid: user.uid,
     studentName: user.displayName,
     type: hw.submitType,
@@ -98,6 +104,8 @@ export async function POST(req: NextRequest) {
     // 다시 제출하면 검사는 처음부터 다시 (선생님이 옛 내용을 보고 검사한 셈이 되면 안 된다)
     checked: false,
     checkedAt: null,
+    stamp: null,
+    awarded: prev?.awarded === true,
     submittedAt: FieldValue.serverTimestamp(),
   });
 
@@ -135,7 +143,7 @@ export async function PATCH(req: NextRequest) {
   let body: {
     schoolId?: string; classId?: string; homeworkId?: string; studentUid?: string;
     comment?: string; approve?: boolean; hide?: boolean;
-    check?: boolean; nudge?: boolean; studentName?: string;
+    check?: boolean; nudge?: boolean; studentName?: string; stampId?: string;
   };
   try {
     body = await req.json();
@@ -200,9 +208,28 @@ export async function PATCH(req: NextRequest) {
     patch.status = 'held';
     patch.publicToClass = false;
   }
+  // 도장 도안은 선생님이 실제로 가지고 있는 것만 찍을 수 있다
+  let stamp: { itemId: string; emoji: string; label: string } | null = null;
+  if (typeof body.stampId === 'string' && body.stampId) {
+    const item = getShopItem(body.stampId);
+    if (!item || item.category !== 'stamp') {
+      return NextResponse.json({ error: '없는 도장이에요' }, { status: 404 });
+    }
+    const owned = await db
+      .collection('users').doc(user.uid)
+      .collection('inventory').doc(item.id).get();
+    if (!owned.exists) {
+      return NextResponse.json({ error: '가지고 있지 않은 도장이에요' }, { status: 403 });
+    }
+    stamp = { itemId: item.id, emoji: item.emoji, label: item.label };
+  }
+
   if (typeof body.check === 'boolean') {
     patch.checked = body.check;
     patch.checkedAt = body.check ? FieldValue.serverTimestamp() : null;
+    // 검사를 취소해도 이미 준 도장은 회수하지 않는다. 받았다 뺏기면 아이가 상처받는다.
+    if (body.check && stamp) patch.stamp = stamp;
+    if (!body.check) patch.stamp = null;
   }
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: '변경할 내용이 없습니다' }, { status: 400 });
@@ -215,5 +242,33 @@ export async function PATCH(req: NextRequest) {
   }
 
   await subRef.set(patch, { merge: true });
-  return NextResponse.json({ ok: true });
+
+  // 검사완료 첫 순간에만 도장을 준다. 재검사·도장 교체로 두 번 주지 않는다.
+  let awarded = 0;
+  if (body.check === true && subSnap.data()?.awarded !== true) {
+    const studentRef = db.collection('users').doc(studentUid);
+    try {
+      await db.runTransaction(async (tx) => {
+        const s = await tx.get(studentRef);
+        if (!s.exists) throw new Error('NO_USER');
+        const after = ((s.data()?.stamps as number) ?? 0) + STAMP_PER_HOMEWORK;
+        tx.set(studentRef, { stamps: after }, { merge: true });
+        tx.set(studentRef.collection('stampLedger').doc(), {
+          amount: STAMP_PER_HOMEWORK,
+          reason: `숙제 검사 — ${hw.title || homeworkId}`,
+          refId: homeworkId,
+          byName: user.displayName,
+          balanceAfter: after,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        tx.set(subRef, { awarded: true }, { merge: true });
+      });
+      awarded = STAMP_PER_HOMEWORK;
+    } catch {
+      // 지급에 실패해도 검사완료 자체는 유지한다 (선생님 손을 다시 빌리지 않는다)
+      awarded = 0;
+    }
+  }
+
+  return NextResponse.json({ ok: true, awarded });
 }

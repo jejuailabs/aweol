@@ -230,6 +230,7 @@ export default function ClassRoomPage() {
         canManage={isTeacher}
         onAddActivity={() => setShowAdd(true)}
         avatarId={userDoc?.avatarId}
+        avatarCustom={userDoc?.avatarCustom}
         boardItems={boardItems}
         canDraw={canDraw && boardOpen}
         drawMode={drawMode}

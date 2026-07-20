@@ -38,6 +38,10 @@ export const nudgesPath = (schoolId: string, classId: string, homeworkId: string
 export const blackboardPath = (schoolId: string, classId: string) =>
   `${classPath(schoolId, classId)}/blackboard`;
 
+export const inventoryPath = (uid: string) => `users/${uid}/inventory`;
+
+export const stampLedgerPath = (uid: string) => `users/${uid}/stampLedger`;
+
 export const rosterUploadsPath = (schoolId: string) => `schools/${schoolId}/rosterUploads`;
 
 export const studentCodesPath = (schoolId: string) => `schools/${schoolId}/studentCodes`;
