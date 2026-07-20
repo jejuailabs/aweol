@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { collection, collectionGroup, getDocs, getDoc, query, where, doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 import { UserRole } from '@/lib/firestore-schema';
@@ -93,35 +93,70 @@ export default function AdminPage() {
   const [newClassNum, setNewClassNum] = useState('');
   const [newMotto, setNewMotto] = useState('');
   const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [school, setSchool] = useState<SchoolSettings | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   const isSuper = role === 'super_admin';
 
+  /**
+   * 고른 학년에 이미 있는 반 번호.
+   * 목록은 이미 읽어둔 것을 쓴다 — 이것 때문에 따로 더 읽지 않는다.
+   */
+  const takenInGrade = classes
+    .filter((c) => String(c.grade) === String(newGrade))
+    .map((c) => c.classNumber)
+    .sort((a, b) => a - b);
+  const isTaken = !!newClassNum && takenInGrade.includes(parseInt(newClassNum, 10));
+
+  /**
+   * 반 만들기는 서버(/api/class)가 한다.
+   *
+   * 예전에는 여기서 곧장 `setDoc` 을 했는데 두 가지가 잘못돼 있었다.
+   * - `setDoc` 은 있는 문서를 **덮어쓴다.** 이미 있는 반 번호를 넣으면 그 반의
+   *   담임·급훈·명단이 통째로 날아간다.
+   * - 있는 문서는 규칙이 update 로 보는데 update 는 담임만 허용이라, 남의 반 번호를
+   *   넣으면 권한 오류가 났다. 그런데 오류를 잡는 코드가 없어서 '만드는 중...' 에서
+   *   영영 멈춰 있었다.
+   */
   const handleCreateClass = useCallback(async () => {
     const num = parseInt(newClassNum, 10);
-    if (!db || !user || !newGrade || !num || num < 1) return;
+    if (!user) return;
+    if (!Number.isInteger(num) || num < 1 || num > 12) {
+      setCreateErr('반 번호는 1반부터 12반까지 숫자로 적어주세요');
+      return;
+    }
     setCreating(true);
-    const classId = `${newGrade}-${num}`;
-    await setDoc(doc(db, 'schools', schoolId, 'classes', classId), {
-      schoolId: schoolId,
-      grade: newGrade,
-      classNumber: num,
-      year: String(new Date().getFullYear()),
-      teacherUid: user.uid,
-      teacherName: userDoc?.displayName || '선생님',
-      motto: newMotto.trim() || '함께 웃고, 함께 자라자',
-      introText: '',
-      isArchived: false,
-      memberUids: [user.uid],
-    });
-    setCreating(false);
-    setShowCreate(false);
-    setNewClassNum('');
-    setNewMotto('');
-    setRefreshKey((k) => k + 1);
-  }, [newGrade, newClassNum, newMotto, user, userDoc]);
+    setCreateErr('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/class', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          schoolId,
+          grade: Number(newGrade),
+          classNumber: num,
+          motto: newMotto,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreateErr(json.error || '반을 만들지 못했어요');
+        return;
+      }
+      setShowCreate(false);
+      setNewClassNum('');
+      setNewMotto('');
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setCreateErr((e as Error).message || '반을 만들지 못했어요');
+    } finally {
+      // 성공하든 실패하든 반드시 푼다. 이게 없어서 버튼이 영영 멈춰 있었다.
+      setCreating(false);
+    }
+  }, [schoolId, newGrade, newClassNum, newMotto, user]);
 
   // 학교 문서 (제목과 설정 모달에 쓴다)
   useEffect(() => {
@@ -409,7 +444,7 @@ export default function AdminPage() {
           {isSuper ? '📚 학년·반 현황' : '📚 전시 내용 관리'}
         </h2>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => { setCreateErr(''); setShowCreate(true); }}
           className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md transition-transform hover:scale-105"
           style={{ background: 'var(--color-primary)' }}
         >
@@ -644,6 +679,25 @@ export default function AdminPage() {
               />
             </div>
 
+            {/*
+              이미 있는 반을 보여준다. 안 보여주면 3-4 를 적어놓고 만들기를 눌러본 뒤에야
+              '이미 있어요' 를 듣는다 — 적기 전에 알 수 있어야 한다.
+            */}
+            {takenInGrade.length > 0 && (
+              <div className="mb-3 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+                {newGrade}학년에 이미 있는 반: <b>{takenInGrade.join(', ')}반</b>
+              </div>
+            )}
+
+            {isTaken && (
+              <div
+                className="rounded-xl px-3 py-2 mb-3 text-[11px] font-bold"
+                style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+              >
+                {newGrade}학년 {newClassNum}반은 이미 있어요. 다른 번호를 골라주세요.
+              </div>
+            )}
+
             <div className="mb-5">
               <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>급훈 (선택)</div>
               <input
@@ -656,6 +710,12 @@ export default function AdminPage() {
               />
             </div>
 
+            {createErr && (
+              <div className="text-[11px] font-bold mb-3 leading-relaxed" style={{ color: '#C0392B' }}>
+                {createErr}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCreate(false)}
@@ -666,7 +726,7 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={handleCreateClass}
-                disabled={!newClassNum || creating}
+                disabled={!newClassNum || creating || isTaken}
                 className="flex-1 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50"
                 style={{ background: 'var(--color-primary)' }}
               >
