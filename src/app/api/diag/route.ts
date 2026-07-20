@@ -45,6 +45,15 @@ export async function GET() {
     } catch (e) {
       modules['adminDb()'] = `실패: ${(e as Error).message.slice(0, 300)}`;
     }
+    try {
+      // 가짜 토큰이므로 반드시 null 이 나와야 정상 (예외 없이 통과하는지가 핵심)
+      const r = await mod.verifyRequestUser(
+        new Request('https://x/', { headers: { authorization: 'Bearer not.a.real.token' } })
+      );
+      modules['verifyRequestUser()'] = r === null ? 'ok (가짜 토큰 거부)' : '이상: 통과됨';
+    } catch (e) {
+      modules['verifyRequestUser()'] = `실패: ${(e as Error).message.slice(0, 300)}`;
+    }
   } catch (e) {
     modules['@/lib/firebase-admin'] = `import 실패: ${(e as Error).message.slice(0, 300)}`;
   }

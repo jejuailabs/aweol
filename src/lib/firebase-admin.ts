@@ -1,9 +1,12 @@
-// 주의: 'server-only'를 여기서 import 하면 안 된다.
-// Route Handler는 react-server 조건으로 번들되지 않아 그 패키지가 로드 시점에 예외를 던지고,
-// 이 파일을 쓰는 API 경로가 전부 500이 된다. (이 파일은 서버 코드에서만 import 한다)
+// 주의 1: 'server-only'를 여기서 import 하면 안 된다.
+//   Route Handler는 react-server 조건으로 번들되지 않아 그 패키지가 로드 시점에 예외를 던진다.
+// 주의 2: 'firebase-admin/auth'를 import 하면 안 된다.
+//   firebase-admin@14 → jwks-rsa@4 → jose@6(ESM 전용) 체인이 서버리스에서
+//   require() of ES Module 로 터져 이 파일을 쓰는 API가 전부 500이 된다.
+//   토큰 검증은 아래에서 jose로 직접 한다. (firestore 쪽은 이 체인을 타지 않아 안전)
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 let app: App | null = null;
 
@@ -27,8 +30,29 @@ function getAdminApp(): App {
   return app;
 }
 
-export const adminAuth = () => getAuth(getAdminApp());
 export const adminDb = () => getFirestore(getAdminApp());
+
+/**
+ * Firebase ID 토큰 검증용 공개키.
+ * 구글이 키를 주기적으로 교체하므로 jose가 캐시·갱신을 알아서 처리한다.
+ */
+const JWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+);
+
+/** Firebase ID 토큰을 직접 검증해 uid를 돌려준다 (firebase-admin/auth 대체) */
+async function verifyIdToken(token: string) {
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || '';
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: `https://securetoken.google.com/${projectId}`,
+    audience: projectId,
+    algorithms: ['RS256'],
+  });
+  // Firebase는 sub 에 uid 를 담는다. 비어 있으면 신뢰할 수 없다.
+  const uid = typeof payload.sub === 'string' ? payload.sub : '';
+  if (!uid) throw new Error('토큰에 uid가 없습니다');
+  return { uid, name: typeof payload.name === 'string' ? payload.name : '' };
+}
 
 /**
  * 요청 헤더에서 클라이언트 IP를 뽑는다.
@@ -46,7 +70,7 @@ export async function verifyRequestUser(req: Request) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!token) return null;
   try {
-    const decoded = await adminAuth().verifyIdToken(token);
+    const decoded = await verifyIdToken(token);
     const snap = await adminDb().collection('users').doc(decoded.uid).get();
     const data = snap.data() || {};
     return {
