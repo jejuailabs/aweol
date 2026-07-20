@@ -170,6 +170,20 @@ service cloud.firestore {
         allow delete: if isStaffOf(schoolId);
       }
 
+      /**
+       * 달리기 기록 — 순위표라 모두가 읽는다.
+       * **쓰기는 서버만.** 시간을 서버가 재는데 클라이언트가 기록을 쓸 수 있으면
+       * 서버에서 재는 의미가 없다. (/api/track 이 admin 으로 쓴다)
+       */
+      match /trackRecords/{uid} {
+        allow read: if true;
+        allow write: if false;
+      }
+      // 달리는 중인 판. 시작 시각이 들어 있어서 아예 안 보여준다.
+      match /trackRuns/{uid} {
+        allow read, write: if false;
+      }
+
       match /grades/{gradeId} {
         allow read: if true;
         allow write: if isStaffOf(schoolId);

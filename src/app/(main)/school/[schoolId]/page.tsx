@@ -93,6 +93,17 @@ export default function SchoolPage() {
         onPetClick={() => setShowPet(true)}
       />
 
+      {/* 운동장으로 — 로그인해야 기록이 남으니 로그인한 사람에게만 보인다 */}
+      {userDoc && (
+        <button
+          onClick={() => router.push(`/school/${schoolId}/track`)}
+          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+          style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+        >
+          🏃 운동장 달리기
+        </button>
+      )}
+
       {showPet && pet && (
         <SchoolPetPanel
           schoolId={schoolId}
