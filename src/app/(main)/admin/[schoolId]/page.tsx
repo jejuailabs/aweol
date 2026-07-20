@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 import { UserRole } from '@/lib/firestore-schema';
+import SchoolSettingsModal, { type SchoolSettings } from '@/components/admin/SchoolSettingsModal';
 
 
 interface ActivityStat {
@@ -55,6 +56,8 @@ export default function AdminPage() {
   const [newMotto, setNewMotto] = useState('');
   const [creating, setCreating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [school, setSchool] = useState<SchoolSettings | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const isSuper = role === 'super_admin';
 
@@ -81,6 +84,25 @@ export default function AdminPage() {
     setNewMotto('');
     setRefreshKey((k) => k + 1);
   }, [newGrade, newClassNum, newMotto, user, userDoc]);
+
+  // 학교 문서 (제목과 설정 모달에 쓴다)
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, 'schools', schoolId))
+      .then((s) => {
+        if (!s.exists()) { setSchool(null); return; }
+        const v = s.data();
+        setSchool({
+          id: s.id,
+          name: (v.name as string) || s.id,
+          tagline: (v.tagline as string) || '',
+          imageUrl: (v.imageUrl as string) || '',
+          gradeCount: (v.gradeCount as number) ?? 6,
+          classPerGrade: (v.classPerGrade as number) ?? 4,
+        });
+      })
+      .catch(() => setSchool(null));
+  }, [schoolId, refreshKey]);
 
   useEffect(() => {
     if (!loading && (!user || !canAccessAdmin(role))) {
@@ -204,9 +226,30 @@ export default function AdminPage() {
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
         {isSuper ? '🏫 학교 관리자 대시보드' : '👩‍🏫 우리 반 관리'}
       </h1>
-      <p className="text-xs mb-5" style={{ color: 'var(--color-text-sub)' }}>
-        {isSuper ? '애월초등학교 전체 현황을 한눈에 봅니다' : '학생·학부모와 전시 내용을 관리합니다'}
-      </p>
+      <div className="flex items-center gap-2 mb-5">
+        <p className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+          {isSuper
+            ? `${school?.name || schoolId} 전체 현황을 한눈에 봅니다`
+            : '학생·학부모와 전시 내용을 관리합니다'}
+        </p>
+        {school && (
+          <button
+            onClick={() => setShowSettings(true)}
+            className="ml-auto shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold"
+            style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+          >
+            ⚙️ 학교 정보
+          </button>
+        )}
+      </div>
+
+      {showSettings && school && (
+        <SchoolSettingsModal
+          school={school}
+          onSaved={() => setRefreshKey((k) => k + 1)}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       {noOwnedClass && fetched && classes.length > 0 && (
         <div

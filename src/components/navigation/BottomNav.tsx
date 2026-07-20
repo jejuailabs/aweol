@@ -15,11 +15,20 @@ const baseItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { role } = useAuth();
+  const { role, actualRole, userDoc } = useAuth();
 
-  // 관리는 학교 단위라, 지금 보고 있는 학교의 대시보드로 보낸다
-  const schoolId = pathname?.match(/^\/school\/([^/]+)/)?.[1];
-  const adminHref = schoolId ? `/admin/${schoolId}` : '/';
+  // 관리는 학교 단위다. 보고 있는 학교가 있으면 그 학교로,
+  // 없으면 총관리자는 학교 목록으로 / 교사는 자기 학교로 보낸다.
+  // (예전에는 학교 밖에서 누르면 지도로 튕겨서 관리 화면에 갈 방법이 없었다)
+  const schoolId = pathname?.match(/^\/(?:school|admin)\/([^/]+)/)?.[1];
+  const mySchool = userDoc?.schoolIds?.[0];
+  const adminHref = schoolId
+    ? `/admin/${schoolId}`
+    : actualRole === 'super_admin'
+      ? '/admin'
+      : mySchool
+        ? `/admin/${mySchool}`
+        : '/admin';
 
   const navItems = canAccessAdmin(role)
     ? [...baseItems.slice(0, 2), { href: adminHref, label: '관리', icon: '📊' }, ...baseItems.slice(2)]
