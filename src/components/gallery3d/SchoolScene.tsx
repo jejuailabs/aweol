@@ -184,32 +184,33 @@ export interface SchoolClassItem {
 }
 
 // --------------- 창문 문패 (반 입구) ---------------
+/**
+ * 창문에 걸린 반 문패 = 교실 입구 버튼.
+ *
+ * 가만히 있으면 장식으로 읽혀서 아무도 누르지 않았다.
+ * 그래서 세 가지를 준다 — 살짝 떠오르는 움직임, 뒤로 퍼지는 파동,
+ * 그리고 앱의 다른 버튼과 같은 '눌리는 두께감'(globals.css 의 .class-plate).
+ * delay 를 문패마다 달리 줘서 다 같이 움직이지 않게 한다(한꺼번에 흔들리면 기계처럼 보인다).
+ */
 function WindowPlate({
   label,
   onClick,
+  delay = 0,
 }: {
   label: string;
   onClick: () => void;
+  delay?: number;
 }) {
-  const [hovered, setHovered] = useState(false);
   return (
     <Html position={[0, -1.18, 0.1]} transform scale={0.32} zIndexRange={[20, 0]}>
       <button
+        className="class-plate"
         onClick={onClick}
-        onPointerEnter={() => setHovered(true)}
-        onPointerLeave={() => setHovered(false)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
-          background: hovered ? '#FFE9B8' : '#FFF8E7',
-          border: '3px solid #B08860', borderRadius: '14px',
-          padding: '8px 20px', fontFamily: 'Pretendard, sans-serif',
-          fontWeight: 800, fontSize: '26px', color: '#5B4A3B', whiteSpace: 'nowrap',
-          boxShadow: hovered ? '0 8px 22px rgba(0,0,0,0.3)' : '0 4px 10px rgba(0,0,0,0.2)',
-          transform: hovered ? 'scale(1.12)' : 'scale(1)',
-          transition: 'all 0.16s ease', userSelect: 'none',
-        }}
+        aria-label={`${label} 교실 들어가기`}
+        style={{ animationDelay: `${delay}s` }}
       >
         🚪 {label}
+        <span className="plate-go">›</span>
       </button>
     </Html>
   );
@@ -300,7 +301,14 @@ function SchoolBuilding({
               <boxGeometry args={[1.28, 0.05, 0.02]} />
               <meshStandardMaterial color="#FFFFFF" />
             </mesh>
-            {cls && <WindowPlate label={cls.label} onClick={() => onClassSelect(cls.id)} />}
+            {cls && (
+              <WindowPlate
+                label={cls.label}
+                onClick={() => onClassSelect(cls.id)}
+                // 문패마다 시작 시점을 달리해 물결처럼 보이게 (다 같이 흔들리면 기계 같다)
+                delay={i * 0.18}
+              />
+            )}
           </group>
         );
       })}
