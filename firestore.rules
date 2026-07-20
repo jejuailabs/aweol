@@ -55,6 +55,13 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // ---------- 활동 (collectionGroup 조회용 — /admin 학교 목록) ----------
+    // 중첩 규칙은 collectionGroup 질의에 적용되지 않아 여기에 따로 열어준다.
+    // 활동은 아래 학교 경로에서도 이미 공개 읽기다.
+    match /{path=**}/activities/{activityId} {
+      allow read: if true;
+    }
+
     // ---------- 사용자 ----------
     match /users/{uid} {
       // 본인 문서와 총관리자만. 교사에게 열어주면 남의 학교 아이·학부모 정보까지 다 보인다.

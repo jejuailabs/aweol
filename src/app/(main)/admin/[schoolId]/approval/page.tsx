@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
@@ -33,34 +33,50 @@ export default function ApprovalPage() {
       return;
     }
 
+    /**
+     * 대기 중인 작품만 collectionGroup 으로 한 번에 가져온다.
+     *
+     * 예전에는 반 → 활동 → 작품을 3중으로 돌면서 전부 읽고 나서 pending 만 걸러냈다.
+     * 대기 작품이 0개여도 학교의 모든 작품을 읽는 구조라, 학교가 늘면
+     * 이 화면 한 번 여는 데 수만 건이 나갔다(무료 한도가 하루 5만 건이다).
+     * 지금은 실제로 대기 중인 문서 수만큼만 읽는다.
+     */
     async function fetch() {
       if (!db) return;
-      const classSnap = await getDocs(collection(db, 'schools', schoolId, 'classes'));
-      const items: PendingArtwork[] = [];
+      const snap = await getDocs(
+        query(collectionGroup(db, 'artworks'), where('status', '==', 'pending'))
+      );
 
-      for (const cls of classSnap.docs) {
-        const activitiesSnap = await getDocs(
-          collection(db, 'schools', schoolId, 'classes', cls.id, 'activities')
-        );
-        for (const act of activitiesSnap.docs) {
-          const artSnap = await getDocs(
-            collection(db, 'schools', schoolId, 'classes', cls.id, 'activities', act.id, 'artworks')
-          );
-          for (const art of artSnap.docs) {
-            const data = art.data() as ArtworkDoc;
-            if (data.status === 'pending') {
-              items.push({
-                id: art.id,
-                classId: cls.id,
-                activityId: act.id,
-                activityTitle: act.data().title || act.id,
-                data,
-                docPath: `schools/${schoolId}/classes/${cls.id}/activities/${act.id}/artworks/${art.id}`,
-              });
-            }
-          }
-        }
-      }
+      // collectionGroup 은 학교를 가릴 수 없으니 경로로 걸러낸다 (추가 읽기 없음)
+      const prefix = `schools/${schoolId}/classes/`;
+      const items: PendingArtwork[] = snap.docs
+        .filter((d) => d.ref.path.startsWith(prefix))
+        .map((d) => {
+          const seg = d.ref.path.split('/');
+          // schools/{s}/classes/{c}/activities/{a}/artworks/{id}
+          return {
+            id: d.id,
+            classId: seg[3],
+            activityId: seg[5],
+            activityTitle: seg[5],
+            data: d.data() as ArtworkDoc,
+            docPath: d.ref.path,
+          };
+        });
+
+      // 활동 제목은 걸린 작품에 해당하는 것만 따로 읽는다 (보통 한두 개)
+      const actPaths = [...new Set(items.map((i) => `${prefix}${i.classId}/activities/${i.activityId}`))];
+      const titles = new Map<string, string>();
+      await Promise.all(
+        actPaths.map(async (p) => {
+          const s = await getDoc(doc(db!, p));
+          if (s.exists()) titles.set(p, (s.data().title as string) || '');
+        })
+      );
+      items.forEach((i) => {
+        const t = titles.get(`${prefix}${i.classId}/activities/${i.activityId}`);
+        if (t) i.activityTitle = t;
+      });
 
       setPending(items);
       setFetching(false);

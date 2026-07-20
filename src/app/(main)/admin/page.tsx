@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 
@@ -41,21 +41,26 @@ export default function AdminHomePage() {
     (async () => {
       try {
         const snap = await getDocs(collection(db, 'schools'));
+
+        /**
+         * 활동 수는 collectionGroup 으로 **한 번에** 센다.
+         * 처음엔 학교마다 반을 돌고 반마다 활동을 읽었는데, 그러면 학교가 늘수록
+         * 조회가 학교×반으로 불어난다(50곳이면 이 화면 한 번에 수천 건).
+         * 지금은 학교 목록 1회 + 반 목록 학교당 1회 + 활동 전체 1회로 끝난다.
+         */
+        const allActs = await getDocs(collectionGroup(db, 'activities'));
+        const actsBySchool = new Map<string, number>();
+        allActs.docs.forEach((a) => {
+          // schools/{schoolId}/classes/{classId}/activities/{id}
+          const sid = a.ref.path.split('/')[1];
+          actsBySchool.set(sid, (actsBySchool.get(sid) ?? 0) + 1);
+        });
+
         const list = await Promise.all(
           snap.docs.map(async (d) => {
             const v = d.data();
             const classes = await getDocs(
               query(collection(db!, 'schools', d.id, 'classes'), where('isArchived', '==', false))
-            );
-            // 전시 중인 활동 수 — 학교 규모를 가늠하는 데 반 수보다 낫다
-            let activityCount = 0;
-            await Promise.all(
-              classes.docs.map(async (c) => {
-                const acts = await getDocs(
-                  collection(db!, 'schools', d.id, 'classes', c.id, 'activities')
-                );
-                activityCount += acts.size;
-              })
             );
             return {
               id: d.id,
@@ -63,7 +68,7 @@ export default function AdminHomePage() {
               tagline: (v.tagline as string) || '',
               imageUrl: (v.imageUrl as string) || '',
               classCount: classes.size,
-              activityCount,
+              activityCount: actsBySchool.get(d.id) ?? 0,
             };
           })
         );

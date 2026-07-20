@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { collection, getDocs, getDoc, query, where, doc, setDoc } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, getDoc, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
@@ -49,6 +49,44 @@ export default function AdminPage() {
   const [members, setMembers] = useState<MemberStat>(EMPTY_MEMBERS);
   const [fetched, setFetched] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  /**
+   * 반을 펼칠 때만 그 반의 작품을 읽는다.
+   * 대시보드를 열자마자 학교 전체 작품을 읽던 걸 여기로 미뤘다.
+   */
+  const loadClassArtworks = useCallback(async (classId: string) => {
+    if (!db) return;
+    const cls = classes.find((c) => c.id === classId);
+    if (!cls || cls.artworkCount >= 0) return; // 이미 읽었으면 건너뛴다
+
+    const acts = await Promise.all(
+      cls.activities.map(async (a) => {
+        const snap = await getDocs(
+          collection(db!, 'schools', schoolId, 'classes', classId, 'activities', a.id, 'artworks')
+        );
+        let approved = 0;
+        snap.docs.forEach((d) => { if (d.data().status === 'approved') approved += 1; });
+        return { id: a.id, total: snap.size, approved };
+      })
+    );
+
+    setClasses((prev) =>
+      prev.map((c) => {
+        if (c.id !== classId) return c;
+        const total = acts.reduce((s, a) => s + a.total, 0);
+        const approved = acts.reduce((s, a) => s + a.approved, 0);
+        return {
+          ...c,
+          artworkCount: total,
+          approvedCount: approved,
+          activities: c.activities.map((a) => ({
+            ...a,
+            artworkCount: acts.find((x) => x.id === a.id)?.total ?? 0,
+          })),
+        };
+      })
+    );
+  }, [classes, schoolId]);
 
   const [showCreate, setShowCreate] = useState(false);
   const [newGrade, setNewGrade] = useState('3');
@@ -118,6 +156,26 @@ export default function AdminPage() {
         query(collection(db, 'schools', schoolId, 'classes'), where('isArchived', '==', false))
       );
 
+      /**
+       * 승인 대기는 collectionGroup 으로 한 번에 센다.
+       * 예전에는 반 → 활동 → 작품을 전부 읽고 나서 상태별로 세었다. 대기가 0건이어도
+       * 학교의 모든 작품을 읽는 구조라 반이 늘수록 읽기가 급격히 불어났다.
+       * 작품 총계는 반을 펼칠 때만 읽는다 (아래 loadClassArtworks).
+       */
+      const pendingSnap = await getDocs(
+        query(collectionGroup(db, 'artworks'), where('status', '==', 'pending'))
+      );
+      const prefix = `schools/${schoolId}/classes/`;
+      const pendingByClass = new Map<string, number>();
+      const pendingByActivity = new Map<string, number>();
+      pendingSnap.docs.forEach((d) => {
+        if (!d.ref.path.startsWith(prefix)) return;
+        const seg = d.ref.path.split('/');
+        pendingByClass.set(seg[3], (pendingByClass.get(seg[3]) ?? 0) + 1);
+        const key = `${seg[3]}/${seg[5]}`;
+        pendingByActivity.set(key, (pendingByActivity.get(key) ?? 0) + 1);
+      });
+
       const stats: ClassStat[] = [];
       for (const cls of classSnap.docs) {
         const data = cls.data();
@@ -126,29 +184,15 @@ export default function AdminPage() {
           getDocs(collection(db, 'schools', schoolId, 'classes', cls.id, 'activities')),
         ]);
 
-        const activities: ActivityStat[] = [];
-        let artworkCount = 0;
-        let approvedCount = 0;
-        let pendingCount = 0;
-
-        for (const act of activitiesSnap.docs) {
-          const artSnap = await getDocs(
-            collection(db, 'schools', schoolId, 'classes', cls.id, 'activities', act.id, 'artworks')
-          );
-          let actPending = 0;
-          artSnap.docs.forEach((d) => {
-            const st = d.data().status;
-            if (st === 'approved') approvedCount += 1;
-            else if (st === 'pending') { pendingCount += 1; actPending += 1; }
-          });
-          artworkCount += artSnap.size;
-          activities.push({
-            id: act.id,
-            title: (act.data().title as string) || act.id,
-            artworkCount: artSnap.size,
-            pendingCount: actPending,
-          });
-        }
+        const pendingCount = pendingByClass.get(cls.id) ?? 0;
+        const activities: ActivityStat[] = activitiesSnap.docs.map((act) => ({
+          id: act.id,
+          title: (act.data().title as string) || act.id,
+          artworkCount: -1, // -1 = 아직 안 읽음 (펼칠 때 채운다)
+          pendingCount: pendingByActivity.get(`${cls.id}/${act.id}`) ?? 0,
+        }));
+        const artworkCount = -1;
+        const approvedCount = -1;
 
         stats.push({
           id: cls.id,
@@ -204,16 +248,18 @@ export default function AdminPage() {
   const noOwnedClass = !isSuper && myClasses.length === 0;
   const visibleClasses = isSuper ? classes : myClasses.length > 0 ? myClasses : classes;
 
+  // 작품 수(-1)는 아직 안 읽은 반이라 합계에서 뺀다
   const totals = visibleClasses.reduce(
     (acc, c) => ({
       students: acc.students + c.studentCount,
       activities: acc.activities + c.activityCount,
-      artworks: acc.artworks + c.artworkCount,
-      approved: acc.approved + c.approvedCount,
+      artworks: acc.artworks + Math.max(0, c.artworkCount),
+      approved: acc.approved + Math.max(0, c.approvedCount),
       pending: acc.pending + c.pendingCount,
     }),
     { students: 0, activities: 0, artworks: 0, approved: 0, pending: 0 }
   );
+  const artworksLoaded = visibleClasses.every((c) => c.artworkCount >= 0);
 
   // 학년별 그룹 (슈퍼 관리자용)
   const byGrade = visibleClasses.reduce<Record<string, ClassStat[]>>((acc, c) => {
@@ -370,7 +416,11 @@ export default function AdminPage() {
             {list.map((cls) => (
               <div key={cls.id} className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-surface-soft)' }}>
                 <button
-                  onClick={() => setExpanded(expanded === cls.id ? null : cls.id)}
+                  onClick={() => {
+                    const next = expanded === cls.id ? null : cls.id;
+                    setExpanded(next);
+                    if (next) loadClassArtworks(next);
+                  }}
                   className="w-full flex items-center justify-between p-4 text-left"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -385,7 +435,7 @@ export default function AdminPage() {
                         {cls.grade}학년 {cls.classNumber}반
                       </div>
                       <div className="text-[10px] truncate" style={{ color: 'var(--color-text-sub)' }}>
-                        담임 {cls.teacherName} · 학생 {cls.studentCount}명 · 전시실 {cls.activityCount}개 · 작품 {cls.artworkCount}점
+                        담임 {cls.teacherName} · 학생 {cls.studentCount}명 · 전시실 {cls.activityCount}개{cls.artworkCount >= 0 ? ` · 작품 ${cls.artworkCount}점` : ''}
                       </div>
                     </div>
                   </div>
@@ -449,7 +499,7 @@ export default function AdminPage() {
                               🖼️ {act.title}
                             </span>
                             <span className="text-[10px] shrink-0 ml-2" style={{ color: 'var(--color-text-sub)' }}>
-                              작품 {act.artworkCount}점
+                              {act.artworkCount >= 0 ? `작품 ${act.artworkCount}점` : '작품 …'}
                               {act.pendingCount > 0 && ` · 대기 ${act.pendingCount}`}
                             </span>
                           </button>
