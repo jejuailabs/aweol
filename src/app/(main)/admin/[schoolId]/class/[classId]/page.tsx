@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { ClassDoc, ActivityDoc, NoticeKind } from '@/lib/firestore-schema';
 import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
 import { useAuth } from '@/lib/auth-context';
@@ -26,6 +26,9 @@ export default function AdminClassPage() {
   const [savingTabs, setSavingTabs] = useState(false);
   const [tabMsg, setTabMsg] = useState('');
   const [showAddActivity, setShowAddActivity] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveMsg, setArchiveMsg] = useState('');
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
@@ -296,6 +299,71 @@ export default function AdminClassPage() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* 한 해 마무리 — 기억창고로 */}
+      <div className="rounded-3xl p-4 mb-4" style={{ background: 'var(--color-surface)' }}>
+        <div className="text-sm font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
+          📦 한 해 마무리
+        </div>
+        <div className="text-[11px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          이 반을 기억창고로 옮겨요. 작품·활동·숙제가 그대로 담기고,
+          졸업한 뒤에도 볼 수 있어요.
+          <b> 아이들이 만든 건 지워지지 않아요</b> — 활성 목록에서만 빠집니다.
+        </div>
+
+        {confirmArchive ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmArchive(false)}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold"
+              style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+            >
+              그만두기
+            </button>
+            <button
+              onClick={async () => {
+                setArchiving(true); setArchiveMsg('');
+                try {
+                  const token = await auth?.currentUser?.getIdToken();
+                  const res = await fetch('/api/archive', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ schoolId, classId }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json.error || '옮기지 못했어요');
+                  setArchiveMsg(
+                    `기억창고에 담았어요 — 작품 ${json.counts.artworks}개, 활동 ${json.counts.activities}개`
+                  );
+                  setConfirmArchive(false);
+                } catch (e) {
+                  setArchiveMsg((e as Error).message);
+                }
+                setArchiving(false);
+              }}
+              disabled={archiving}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
+              style={{ background: '#C9A87C' }}
+            >
+              {archiving ? '담는 중...' : '정말 옮기기'}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmArchive(true)}
+            className="w-full rounded-xl py-2.5 text-sm font-bold"
+            style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+          >
+            기억창고로 옮기기
+          </button>
+        )}
+
+        {archiveMsg && (
+          <div className="text-[11px] font-bold mt-2" style={{ color: 'var(--color-primary)' }}>
+            {archiveMsg}
+          </div>
+        )}
       </div>
 
       {/* 활동 추가 모달 */}

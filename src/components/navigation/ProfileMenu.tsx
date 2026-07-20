@@ -124,6 +124,16 @@ export default function ProfileMenu() {
           >
             ⭐ 내 스탠드
           </button>
+          {/* 교직원만 — 지나온 반들 */}
+          {(role === 'teacher' || role === 'super_admin') && (
+            <button
+              onClick={() => { setOpen(false); router.push('/portfolio'); }}
+              className="w-full px-4 py-3 text-left text-sm flex items-center gap-2.5"
+              style={{ color: 'var(--color-text-main)', borderTop: '1px solid var(--color-surface-soft)' }}
+            >
+              📚 나의 발자취
+            </button>
+          )}
           <button
             onClick={() => { setOpen(false); router.push('/avatar-select'); }}
             className="w-full px-4 py-3 text-left text-sm flex items-center gap-2.5"

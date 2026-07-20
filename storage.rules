@@ -55,6 +55,16 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
+    /**
+     * 기억창고 JSON — 한 해 한 반의 전체 내용이 파일 하나에 들어 있다.
+     * 읽기는 공개(졸업생도 봐야 한다), 쓰기는 서버(admin)만.
+     * Firestore 에 수백 건으로 두는 것보다 읽기 요금이 훨씬 싸다.
+     */
+    match /archives/{schoolId}/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // 그 외 전부 차단
     match /{allPaths=**} {
       allow read, write: if false;

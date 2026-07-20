@@ -93,6 +93,15 @@ export default function SchoolPage() {
         onPetClick={() => setShowPet(true)}
       />
 
+      {/* 기억창고 — 졸업생도 봐야 하니 로그인과 무관하게 보인다 */}
+      <button
+        onClick={() => router.push(`/school/${schoolId}/archive`)}
+        className="absolute right-4 top-[136px] z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+        style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+      >
+        📦 기억창고
+      </button>
+
       {/* 운동장으로 — 로그인해야 기록이 남으니 로그인한 사람에게만 보인다 */}
       {userDoc && (
         <button

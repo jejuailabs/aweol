@@ -153,6 +153,37 @@ export interface SchoolPetDoc {
   lastCarerName: string;
 }
 
+/**
+ * 기억창고 한 칸 — 한 해 한 반의 요약.
+ *
+ * **자세한 내용은 Firestore 에 두지 않는다.** 한 반의 작품·숙제·퀴즈·낙서를
+ * 그대로 남기면 졸업한 반이 늘어날수록 읽기 요금이 계속 붙는다.
+ * 그래서 전체는 Storage 에 JSON 한 덩어리로 넣고(`detailUrl`),
+ * Firestore 에는 목록에 보일 요약만 남긴다.
+ * 기억창고를 열면 문서 1건 + 파일 1개다 — 몇백 건이 아니라.
+ */
+export interface ArchiveDoc {
+  /** 학년도 (예: '2026') */
+  year: string;
+  classId: string;
+  grade: string;
+  classNumber: number;
+  teacherName: string;
+  /** 목록 카드에 쓸 대표 그림 (작품 썸네일 하나) */
+  coverUrl: string;
+  counts: {
+    students: number;
+    artworks: number;
+    homeworks: number;
+    quizzes: number;
+    activities: number;
+  };
+  /** 전체 내용이 담긴 JSON 파일 주소 (Storage) */
+  detailUrl: string;
+  archivedBy: string;
+  archivedAt: Timestamp;
+}
+
 export interface GradeDoc {
   label: string;
   order: number;
