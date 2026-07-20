@@ -1,4 +1,6 @@
-import 'server-only';
+// 주의: 'server-only'를 여기서 import 하면 안 된다.
+// Route Handler는 react-server 조건으로 번들되지 않아 그 패키지가 로드 시점에 예외를 던지고,
+// 이 파일을 쓰는 API 경로가 전부 500이 된다. (이 파일은 서버 코드에서만 import 한다)
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
