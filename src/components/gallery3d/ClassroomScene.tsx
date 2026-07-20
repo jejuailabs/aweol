@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
 import Blackboard, { type BoardItem } from './Blackboard';
 import NoticeWall from './NoticeWall';
 import type { NoticeKind } from '@/lib/firestore-schema';
@@ -37,6 +37,7 @@ interface ClassroomSceneProps {
   onAddActivity?: () => void;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
+  avatarTint?: AvatarTint | null;
   /** 칠판 낙서 */
   boardItems?: BoardItem[];
   /** 알림판 */
@@ -419,7 +420,7 @@ function ClassroomLighting() {
 
 // --------------- 메인 ---------------
 export default function ClassroomScene({
-  classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom,
+  classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom, avatarTint,
   boardItems = [],
   noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 }, onOpenNotice = () => {}, noticeTabs,
 }: ClassroomSceneProps) {
@@ -482,6 +483,7 @@ export default function ClassroomScene({
           maxSpeed={3.8}
           avatarId={avatarId}
           avatarCustom={avatarCustom}
+          avatarTint={avatarTint}
           obstacles={CLASSROOM_OBSTACLES}
         />
         <DustPuffs />

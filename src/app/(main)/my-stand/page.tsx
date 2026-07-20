@@ -6,11 +6,8 @@ import { collection, collectionGroup, getDocs, query, where } from 'firebase/fir
 import { db } from '@/lib/firebase';
 import { ArtworkDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
+import { AVATAR_PRESETS } from '@/lib/avatar-presets';
 
-const AVATAR_EMOJI: Record<string, string> = {
-  avatar_01: '👦', avatar_02: '👧', avatar_03: '🎨', avatar_04: '🖌️',
-  avatar_05: '🔍', avatar_06: '🤖', avatar_07: '🐱', avatar_08: '🐶',
-};
 
 interface BadgeDef {
   id: string;
@@ -93,7 +90,7 @@ export default function MyStandPage() {
     approved: myArtworks.filter((a) => a.status === 'approved').length,
   };
   const earnedBadges = BADGES.filter((b) => b.earned(stats));
-  const avatarEmoji = userDoc?.avatarId ? AVATAR_EMOJI[userDoc.avatarId] ?? '🙂' : '🙂';
+  const avatarEmoji = AVATAR_PRESETS.find((a) => a.id === userDoc?.avatarId)?.emoji ?? '🙂';
 
   return (
     <div className="px-4 pt-8 pb-24 mx-auto max-w-[960px]">

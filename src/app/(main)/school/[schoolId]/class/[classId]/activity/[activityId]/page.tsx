@@ -93,6 +93,7 @@ export default function ActivityExhibitPage() {
         onExit={() => router.push(`/school/${schoolId}/class/${classId}/room`)}
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}
+        avatarTint={userDoc?.avatarTint}
       />
 
       {/* 상단 HUD — 한 줄 플렉스 (겹침 방지) */}

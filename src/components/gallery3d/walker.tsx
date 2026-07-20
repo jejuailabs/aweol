@@ -208,7 +208,7 @@ export function DustPuffs() {
   );
 }
 
-// ================= 아바타 외형 프리셋 (avatar-select의 8종과 1:1 대응) =================
+// ================= 아바타 외형 프리셋 (lib/avatar-presets 의 16종과 1:1 대응) =================
 
 type HairStyle = 'short' | 'long' | 'none';
 type HatKind = 'none' | 'beret' | 'cap' | 'ribbon' | 'antenna' | 'crown';
@@ -268,7 +268,26 @@ export const AVATAR_LOOKS: Record<string, AvatarLook> = {
   avatar_07: { ...BASE_LOOK, skin: '#F5C77E', hair: '#E0A94F', hairStyle: 'none', shirt: '#FFD93D', pants: '#E8A33C', ears: 'cat', earColor: '#F5C77E', muzzle: true },
   // 강아지 — 처진 귀 + 주둥이
   avatar_08: { ...BASE_LOOK, skin: '#F0DCC0', hair: '#C89A6B', hairStyle: 'none', shirt: '#4FA8E8', pants: '#8A6A4A', ears: 'dog', earColor: '#C89A6B', muzzle: true },
+  // 곱슬머리 친구 — 짧은 머리에 진한 갈색
+  avatar_09: { ...BASE_LOOK, skin: '#C68642', hair: '#2B1B12', shirt: '#F5A623', pants: '#3E5C76' },
+  // 단발머리 친구
+  avatar_10: { ...BASE_LOOK, hairStyle: 'long', skin: '#F3D2A8', hair: '#1F1410', shirt: '#7ED6C4', pants: '#4A5D8A' },
+  // 야구모자 소녀 — 긴 머리 + 모자
+  avatar_11: { ...BASE_LOOK, hairStyle: 'long', hair: '#5A3418', shirt: '#FF8FB1', pants: '#6B4C9A', hat: 'cap', hatColor: '#FF6B81' },
+  // 리본 단발
+  avatar_12: { ...BASE_LOOK, skin: '#FFE0BD', hair: '#8A5A2B', shirt: '#9AD4F5', pants: '#3E7CB1', hat: 'ribbon', hatColor: '#FFD93D' },
+  // 토끼 — 긴 귀 대신 고양이 귀를 흰색으로 (파츠 재사용)
+  avatar_13: { ...BASE_LOOK, skin: '#FFF3E6', hair: '#EFE3D0', hairStyle: 'none', shirt: '#FFB7C5', pants: '#E890A8', ears: 'cat', earColor: '#FFF3E6', muzzle: true },
+  // 곰돌이
+  avatar_14: { ...BASE_LOOK, skin: '#B98A5E', hair: '#8A6038', hairStyle: 'none', shirt: '#6FBF73', pants: '#4A7A4E', ears: 'dog', earColor: '#8A6038', muzzle: true },
+  // 우주비행사 — 안테나 + 은빛
+  avatar_15: { ...BASE_LOOK, skin: '#FFE0BD', hair: '#3A2A1A', shirt: '#D7DEE8', pants: '#8792A3', hat: 'antenna', hatColor: '#5BC8F5' },
+  // 요리사 — 하양 상의
+  avatar_16: { ...BASE_LOOK, skin: '#F3D2A8', hair: '#4A2C18', shirt: '#FFFFFF', pants: '#C0392B', item: 'palette' },
 };
+
+// 색 목록은 아바타 선택 화면과 같은 것을 써야 한다 (lib/avatar-presets)
+export { SHIRT_COLORS, HAIR_COLORS } from '@/lib/avatar-presets';
 
 /** 상점 아이템 id → 3D 파츠. 여기 없는 id 는 그려줄 게 없으니 무시한다. */
 const SHOP_HAT: Record<string, HatKind> = {
@@ -291,15 +310,34 @@ export interface AvatarCustom {
   accessory: string | null;
 }
 
+/** 프리셋 위에 덧입히는 색 */
+export interface AvatarTint {
+  shirt?: string | null;
+  hair?: string | null;
+}
+
 /**
  * 프리셋 8종 위에 상점에서 산 아이템을 덮어쓴다.
  * 산 걸 껴도 안 보이면 아이 입장에서는 도장을 버린 셈이라, 이 경로가 끊기면 안 된다.
  */
-export function getAvatarLook(avatarId?: string | null, custom?: AvatarCustom | null): AvatarLook {
+export function getAvatarLook(
+  avatarId?: string | null,
+  custom?: AvatarCustom | null,
+  tint?: AvatarTint | null
+): AvatarLook {
   const base = (avatarId && AVATAR_LOOKS[avatarId]) || AVATAR_LOOKS.avatar_01;
-  if (!custom) return base;
+  if (!custom && !tint) return base;
 
   const look = { ...base };
+
+  // 색은 프리셋 위에 덧입힌다. 같은 캐릭터를 골라도 서로 구분되게.
+  if (tint?.shirt) look.shirt = tint.shirt;
+  if (tint?.hair) {
+    look.hair = tint.hair;
+    // 동물 캐릭터는 귀 색이 머리 색과 붙어 있어야 자연스럽다
+    if (look.ears !== 'none') look.earColor = tint.hair;
+  }
+  if (!custom) return look;
   if (custom.hat && SHOP_HAT[custom.hat]) {
     look.hat = SHOP_HAT[custom.hat];
     // 왕관은 금색이 아니면 왕관으로 안 보인다
@@ -348,6 +386,7 @@ export function WalkerAvatar({
   scale = 1,
   avatarId,
   avatarCustom,
+  avatarTint,
   obstacles = [],
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
@@ -357,9 +396,10 @@ export function WalkerAvatar({
   scale?: number;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
+  avatarTint?: AvatarTint | null;
   obstacles?: Obstacle[];
 }) {
-  const look = getAvatarLook(avatarId, avatarCustom);
+  const look = getAvatarLook(avatarId, avatarCustom, avatarTint);
   const groupRef = useRef<THREE.Group>(null);
   const armLRef = useRef<THREE.Group>(null);
   const armRRef = useRef<THREE.Group>(null);

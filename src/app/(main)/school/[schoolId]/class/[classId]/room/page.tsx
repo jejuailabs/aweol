@@ -235,6 +235,7 @@ export default function ClassRoomPage() {
         onAddActivity={() => setShowAdd(true)}
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}
+        avatarTint={userDoc?.avatarTint}
         boardItems={boardItems}
         noticeCounts={noticeCounts}
         noticeTabs={noticeTabs}

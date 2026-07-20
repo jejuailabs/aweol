@@ -28,6 +28,8 @@ export interface UserDoc {
   avatarId: string | null;
   /** 착용 중인 상점 아이템 id. 서버(/api/shop)만 바꾼다 — 보유하지 않은 걸 낄 수 없어야 한다. */
   avatarCustom: { hat: string | null; accessory: string | null };
+  /** 옷·머리 색 (프리셋 위에 덧입힌다). 사고파는 게 아니라 본인이 고른다. */
+  avatarTint?: { shirt: string | null; hair: string | null };
   /** 보유 도장 수. 서버만 바꾼다 — 클라이언트가 고칠 수 있으면 무한히 찍어낼 수 있다. */
   stamps: number;
   preferences: { theme: 'light' | 'dark' };
@@ -364,11 +366,16 @@ export interface AccessLogDoc {
 }
 
 export type AvatarId =
-  | 'avatar_01'
-  | 'avatar_02'
-  | 'avatar_03'
-  | 'avatar_04'
-  | 'avatar_05'
-  | 'avatar_06'
-  | 'avatar_07'
-  | 'avatar_08';
+  | 'avatar_01' | 'avatar_02' | 'avatar_03' | 'avatar_04'
+  | 'avatar_05' | 'avatar_06' | 'avatar_07' | 'avatar_08'
+  | 'avatar_09' | 'avatar_10' | 'avatar_11' | 'avatar_12'
+  | 'avatar_13' | 'avatar_14' | 'avatar_15' | 'avatar_16';
+
+/**
+ * 프리셋 위에 덧입히는 색. 같은 캐릭터를 골라도 서로 구분되게 한다.
+ * 상점 아이템(avatarCustom)과 달리 사고파는 게 아니라 취향이라 클라이언트가 직접 바꾼다.
+ */
+export interface AvatarTint {
+  shirt: string | null;
+  hair: string | null;
+}

@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom } from './walker';
+import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
 import { extractSchoolPalette, DEFAULT_PALETTE, type SchoolPalette } from '@/lib/image-palette';
 
 /**
@@ -424,6 +424,7 @@ export default function SchoolScene({
   onClassSelect = () => {},
   avatarId,
   avatarCustom,
+  avatarTint,
   schoolName = '학교',
   imageUrl = '',
 }: {
@@ -431,6 +432,7 @@ export default function SchoolScene({
   onClassSelect?: (id: string) => void;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
+  avatarTint?: AvatarTint | null;
   schoolName?: string;
   imageUrl?: string;
 }) {
@@ -512,6 +514,7 @@ export default function SchoolScene({
           maxSpeed={5}
           avatarId={avatarId}
           avatarCustom={avatarCustom}
+          avatarTint={avatarTint}
           obstacles={SCHOOL_OBSTACLES}
         />
         <DustPuffs />
