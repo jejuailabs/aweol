@@ -15,8 +15,7 @@ import type { NoticeKind } from '@/lib/firestore-schema';
 import NoticeModal, { type NoticePost } from '@/components/notice/NoticeModal';
 import { setMovementLock } from '@/components/gallery3d/walker';
 import ShareButton from '@/components/common/ShareButton';
-
-const CHALK_COLORS = ['#FFFFFF', '#FFE86B', '#FF9EAF', '#8FE3FF', '#8FD98A'];
+import BlackboardComposer, { type ComposerResult } from '@/components/gallery3d/BlackboardComposer';
 
 const ClassroomScene = dynamic(() => import('@/components/gallery3d/ClassroomScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -76,12 +75,6 @@ export default function ClassRoomPage() {
   // ---- 칠판 낙서 ----
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [boardOpen, setBoardOpen] = useState(false);
-  const [drawMode, setDrawMode] = useState<'pen' | 'eraser' | 'text'>('pen');
-  const [drawColor, setDrawColor] = useState(CHALK_COLORS[0]);
-  const [penWidth, setPenWidth] = useState(5);
-  const [textPoint, setTextPoint] = useState<number[] | null>(null);
-  const [textValue, setTextValue] = useState('');
-  const [clearing, setClearing] = useState(false);
 
   const isTeacherRole = canManageClass(role);
   // 교직원은 모든 반, 학생·학부모는 소속 반에서만 낙서 가능. 비로그인은 불가.
@@ -137,39 +130,26 @@ export default function ClassRoomPage() {
     [classId]
   );
 
-  const handleCommitStroke = useCallback(
-    (points: number[][], color: string, width: number) => {
-      // 좌표를 줄여서 전송량을 아낀다
-      const thinned = points.filter((_, i) => i % 2 === 0 || i === points.length - 1);
-      sendBoardItem({ kind: 'stroke', points: thinned, color, width });
+  /** 모달에서 확정한 낙서를 저장한다 (작성자·IP 는 서버가 기록) */
+  const handleComposerCommit = useCallback(
+    async (result: ComposerResult) => {
+      for (const st of result.strokes) {
+        // 좌표를 줄여서 전송량을 아낀다
+        const thinned = st.points.filter((_, i) => i % 2 === 0 || i === st.points.length - 1);
+        await sendBoardItem({ kind: 'stroke', points: thinned, color: st.color, width: st.width });
+      }
+      if (result.text) {
+        await sendBoardItem({
+          kind: 'text',
+          points: [result.text.point],
+          color: result.text.color,
+          width: result.text.width,
+          text: result.text.content,
+        });
+      }
     },
     [sendBoardItem]
   );
-
-  const handleSubmitText = useCallback(async () => {
-    if (!textPoint || !textValue.trim()) { setTextPoint(null); return; }
-    await sendBoardItem({
-      kind: 'text',
-      points: [textPoint],
-      color: drawColor,
-      width: penWidth,
-      text: textValue.trim(),
-    });
-    setTextValue('');
-    setTextPoint(null);
-  }, [textPoint, textValue, drawColor, penWidth, sendBoardItem]);
-
-  const handleClearBoard = useCallback(async () => {
-    setClearing(true);
-    const token = await auth?.currentUser?.getIdToken();
-    if (token) {
-      await fetch(`/api/blackboard?schoolId=${encodeURIComponent(schoolId)}&classId=${encodeURIComponent(classId)}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    }
-    setClearing(false);
-  }, [classId]);
 
   const fetchActivities = useCallback(async () => {
     if (!db) { setFetched(true); return; }
@@ -242,12 +222,6 @@ export default function ClassRoomPage() {
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}
         boardItems={boardItems}
-        canDraw={canDraw && boardOpen}
-        drawMode={drawMode}
-        drawColor={drawColor}
-        penWidth={penWidth}
-        onCommitStroke={handleCommitStroke}
-        onRequestText={(p) => setTextPoint(p)}
         noticeCounts={noticeCounts}
         onOpenNotice={(k) => { playSound('open'); setNoticeKind(k); }}
       />
@@ -282,131 +256,14 @@ export default function ClassRoomPage() {
         </button>
       </div>
 
-      {/* 칠판 낙서 도구 */}
+      {/* 칠판 편집 — 2D 모달에서 그리고 배치한 뒤 확정한다 */}
       {canDraw && boardOpen && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 w-[min(94vw,520px)]">
-          <div className="ac-bubble px-3 py-2.5 flex flex-wrap items-center justify-center gap-1.5">
-            {([
-              { key: 'pen', label: '✏️ 펜' },
-              { key: 'text', label: '🔤 글자' },
-              { key: 'eraser', label: '🧽 지우개' },
-            ] as const).map((m) => (
-              <button
-                key={m.key}
-                onClick={() => setDrawMode(m.key)}
-                className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                style={{
-                  background: drawMode === m.key ? 'var(--color-primary)' : 'rgba(255,255,255,0.7)',
-                  color: drawMode === m.key ? 'white' : '#8A7A5F',
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
-
-            <span className="mx-0.5 opacity-30">|</span>
-
-            {CHALK_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => { setDrawColor(c); if (drawMode === 'eraser') setDrawMode('pen'); }}
-                className="h-6 w-6 rounded-full transition-transform"
-                style={{
-                  background: c,
-                  border: drawColor === c && drawMode !== 'eraser' ? '3px solid #7A6A52' : '2px solid rgba(0,0,0,0.15)',
-                  transform: drawColor === c && drawMode !== 'eraser' ? 'scale(1.15)' : 'scale(1)',
-                }}
-                aria-label={`색상 ${c}`}
-              />
-            ))}
-
-            <span className="mx-0.5 opacity-30">|</span>
-
-            {[3, 5, 9, 16].map((w) => (
-              <button
-                key={w}
-                onClick={() => setPenWidth(w)}
-                className="flex h-6 w-6 items-center justify-center rounded-full"
-                style={{ background: penWidth === w ? 'var(--color-primary)' : 'rgba(255,255,255,0.7)' }}
-              >
-                <span
-                  className="rounded-full"
-                  style={{
-                    width: `${Math.min(w, 12)}px`, height: `${Math.min(w, 12)}px`,
-                    background: penWidth === w ? 'white' : '#8A7A5F',
-                  }}
-                />
-              </button>
-            ))}
-
-            {isTeacher && (
-              <>
-                <span className="mx-0.5 opacity-30">|</span>
-                <button
-                  onClick={handleClearBoard}
-                  disabled={clearing}
-                  className="rounded-full px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-50"
-                  style={{ background: '#E8604C' }}
-                >
-                  {clearing ? '지우는 중...' : '전체 지우기'}
-                </button>
-              </>
-            )}
-          </div>
-          <div className="ac-bubble mt-1.5 px-3 py-1.5 text-[10px] text-center">
-            칠판을 끌어서 그려요 · 낙서에는 이름이 함께 기록돼요 ✏️{userDoc?.displayName}
-          </div>
-        </div>
-      )}
-
-      {/* 텍스트 입력 */}
-      {textPoint && (
-        <div
-          className="absolute inset-0 z-40 flex items-center justify-center px-6"
-          style={{ background: 'rgba(15,23,42,0.45)' }}
-          onClick={() => setTextPoint(null)}
-        >
-          <div
-            className="modal-card w-full max-w-[340px] rounded-3xl p-5"
-            style={{ background: 'var(--color-surface)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
-              🔤 칠판에 글쓰기
-            </div>
-            <div className="text-[11px] mb-3" style={{ color: 'var(--color-text-sub)' }}>
-              작성자 이름({userDoc?.displayName})이 글자 옆에 함께 표시돼요
-            </div>
-            <input
-              type="text"
-              value={textValue}
-              maxLength={60}
-              autoFocus
-              onChange={(e) => setTextValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSubmitText(); }}
-              placeholder="칠판에 쓸 내용 (최대 60자)"
-              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none mb-3"
-              style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setTextPoint(null); setTextValue(''); }}
-                className="flex-1 rounded-xl py-2.5 text-sm font-bold"
-                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSubmitText}
-                disabled={!textValue.trim()}
-                className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                쓰기
-              </button>
-            </div>
-          </div>
-        </div>
+        <BlackboardComposer
+          items={boardItems}
+          authorName={userDoc?.displayName || '이름 없음'}
+          onCommit={handleComposerCommit}
+          onClose={() => setBoardOpen(false)}
+        />
       )}
 
       {/* 빈 교실 안내 */}

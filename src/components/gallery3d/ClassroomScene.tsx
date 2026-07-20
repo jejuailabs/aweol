@@ -39,12 +39,6 @@ interface ClassroomSceneProps {
   avatarCustom?: AvatarCustom | null;
   /** 칠판 낙서 */
   boardItems?: BoardItem[];
-  canDraw?: boolean;
-  drawMode?: 'pen' | 'eraser' | 'text';
-  drawColor?: string;
-  penWidth?: number;
-  onCommitStroke?: (points: number[][], color: string, width: number) => void;
-  onRequestText?: (point: number[]) => void;
   /** 알림판 */
   noticeCounts?: Record<NoticeKind, number>;
   onOpenNotice?: (kind: NoticeKind) => void;
@@ -424,8 +418,7 @@ function ClassroomLighting() {
 // --------------- 메인 ---------------
 export default function ClassroomScene({
   classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom,
-  boardItems = [], canDraw = false, drawMode = 'pen', drawColor = '#FFFFFF', penWidth = 5,
-  onCommitStroke = () => {}, onRequestText = () => {},
+  boardItems = [],
   noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0 }, onOpenNotice = () => {},
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -471,16 +464,7 @@ export default function ClassroomScene({
       >
         <ClassroomLighting />
         <RoomShell />
-        <Blackboard
-          classLabel={classLabel}
-          items={boardItems}
-          canDraw={canDraw}
-          drawMode={drawMode}
-          color={drawColor}
-          penWidth={penWidth}
-          onCommitStroke={onCommitStroke}
-          onRequestText={onRequestText}
-        />
+        <Blackboard classLabel={classLabel} items={boardItems} />
         <ActivityBoard
           activities={activities}
           onActivitySelect={onActivitySelect}

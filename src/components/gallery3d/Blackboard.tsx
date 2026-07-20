@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { ThreeEvent } from '@react-three/fiber';
+import { TEX_W, TEX_H, BOARD_BG, paintBoard } from '@/lib/blackboard-paint';
 
 export interface BoardItem {
   id: string;
@@ -15,32 +15,19 @@ export interface BoardItem {
   authorName: string;
 }
 
-const TEX_W = 1400;
-const TEX_H = 430;
-const BOARD_BG = '#2E5844';
-
 interface Props {
   classLabel: string;
   items: BoardItem[];
-  /** 낙서 가능 여부 (로그인 + 해당 반 소속이거나 교직원) */
-  canDraw: boolean;
-  drawMode: 'pen' | 'eraser' | 'text';
-  color: string;
-  penWidth: number;
-  onCommitStroke: (points: number[][], color: string, width: number) => void;
-  onRequestText: (point: number[]) => void;
 }
 
-export default function Blackboard({
-  classLabel,
-  items,
-  canDraw,
-  drawMode,
-  color,
-  penWidth,
-  onCommitStroke,
-  onRequestText,
-}: Props) {
+/**
+ * 교실 칠판 — **보여주기만 한다.**
+ *
+ * 예전에는 이 3D 면 위에 직접 그렸는데, 카메라가 조금만 돌아가도 선이 엉뚱한 자리에
+ * 그어지고 확정할 시점도 없었다. 지금은 편집을 BlackboardComposer(2D 모달)가 맡고,
+ * 여기는 저장된 낙서를 텍스처로 올리기만 한다.
+ */
+export default function Blackboard({ classLabel, items }: Props) {
   const canvas = useMemo(() => {
     if (typeof document === 'undefined') return null;
     const c = document.createElement('canvas');
@@ -56,125 +43,18 @@ export default function Blackboard({
     return t;
   }, [canvas]);
 
-  // 그리는 중인 획 (아직 서버에 안 보낸 것)
-  const draftRef = useRef<number[][]>([]);
-  const drawingRef = useRef(false);
-  const [, forceRedraw] = useState(0);
-
+  // three.js 텍스처는 needsUpdate 를 직접 올려야 갱신된다 (원본과 같은 구조 유지)
   const paint = useCallback(() => {
     if (!canvas || !texture) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    ctx.fillStyle = BOARD_BG;
-    ctx.fillRect(0, 0, TEX_W, TEX_H);
-
-    // 분필 자국 느낌의 옅은 얼룩
-    ctx.globalAlpha = 0.05;
-    ctx.fillStyle = '#FFFFFF';
-    for (let i = 0; i < 6; i++) {
-      ctx.fillRect(0, (i * TEX_H) / 6 + 8, TEX_W, 2);
-    }
-    ctx.globalAlpha = 1;
-
-    const drawStroke = (pts: number[][], c: string, w: number) => {
-      if (pts.length === 0) return;
-      ctx.strokeStyle = c;
-      ctx.lineWidth = w;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0] * TEX_W, pts[0][1] * TEX_H);
-      if (pts.length === 1) {
-        ctx.lineTo(pts[0][0] * TEX_W + 0.1, pts[0][1] * TEX_H);
-      } else {
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i][0] * TEX_W, pts[i][1] * TEX_H);
-        }
-      }
-      ctx.stroke();
-    };
-
-    items.forEach((it) => {
-      if (it.kind === 'stroke') {
-        drawStroke(it.points, it.color, it.width);
-      } else if (it.kind === 'text' && it.text) {
-        const [nx, ny] = it.points[0] || [0.5, 0.5];
-        const x = nx * TEX_W;
-        const y = ny * TEX_H;
-        ctx.fillStyle = it.color;
-        ctx.font = `bold ${it.width * 7}px Pretendard, sans-serif`;
-        ctx.textBaseline = 'middle';
-        ctx.fillText(it.text, x, y);
-        // 작성자를 글씨 옆에 작게 붙여 익명 글이 남지 않게 한다
-        const w = ctx.measureText(it.text).width;
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.font = `${it.width * 3.4}px Pretendard, sans-serif`;
-        ctx.fillText(` ✏️${it.authorName}`, x + w, y + it.width * 3);
-      }
-    });
-
-    // 그리는 중인 획을 즉시 보여준다 (서버 왕복을 기다리지 않음)
-    if (draftRef.current.length > 0) {
-      drawStroke(draftRef.current, drawMode === 'eraser' ? BOARD_BG : color, penWidth);
-    }
-
+    paintBoard(ctx, items, TEX_W, TEX_H);
     texture.needsUpdate = true;
-  }, [canvas, texture, items, color, penWidth, drawMode]);
+  }, [canvas, texture, items]);
 
   useEffect(() => {
     paint();
   }, [paint]);
-
-  const pushPoint = (e: ThreeEvent<PointerEvent>) => {
-    if (!e.uv) return;
-    // uv는 좌하단 원점이므로 y를 뒤집어 캔버스 좌표계에 맞춘다
-    draftRef.current.push([e.uv.x, 1 - e.uv.y]);
-  };
-
-  const handleDown = (e: ThreeEvent<PointerEvent>) => {
-    if (!canDraw || !e.uv) return;
-    e.stopPropagation();
-
-    if (drawMode === 'text') {
-      onRequestText([e.uv.x, 1 - e.uv.y]);
-      return;
-    }
-    drawingRef.current = true;
-    draftRef.current = [];
-    pushPoint(e);
-    paint();
-  };
-
-  const handleMove = (e: ThreeEvent<PointerEvent>) => {
-    if (!drawingRef.current || !canDraw) return;
-    e.stopPropagation();
-    pushPoint(e);
-    paint();
-  };
-
-  const finishStroke = () => {
-    if (!drawingRef.current) return;
-    drawingRef.current = false;
-    const pts = draftRef.current;
-    draftRef.current = [];
-    if (pts.length > 0) {
-      onCommitStroke(pts, drawMode === 'eraser' ? BOARD_BG : color, penWidth);
-    }
-    forceRedraw((n) => n + 1);
-  };
-
-  // 칠판 밖에서 손을 떼도 획이 마무리되도록
-  useEffect(() => {
-    const onUp = () => finishStroke();
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-    return () => {
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawMode, color, penWidth]);
 
   return (
     <group position={[0, 2.15, -5.93]}>
@@ -184,13 +64,8 @@ export default function Blackboard({
         <meshStandardMaterial color="#A97B4F" roughness={0.5} />
       </mesh>
 
-      {/* 칠판면 — 여기에 그린다 */}
-      <mesh
-        position={[0, 0.04, 0.045]}
-        onPointerDown={handleDown}
-        onPointerMove={handleMove}
-        onPointerUp={finishStroke}
-      >
+      {/* 칠판면 */}
+      <mesh position={[0, 0.04, 0.045]}>
         <planeGeometry args={[6.05, 1.85]} />
         {texture ? (
           <meshStandardMaterial map={texture} roughness={0.85} />
