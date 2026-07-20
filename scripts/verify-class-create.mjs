@@ -87,7 +87,9 @@ ok('이미 있으면 409', r.status === 409, `HTTP ${r.status}`);
 // 이건 '오류'가 아니라 '안내'다. 화면이 색을 나눌 수 있게 코드가 와야 한다.
 ok('안내 코드가 옴 (오류가 아님)', j409.code === 'ALREADY_EXISTS', String(j409.code));
 ok('error 가 아니라 message 로 옴', !j409.error && !!j409.message, JSON.stringify(j409).slice(0, 70));
-ok('담임 이름을 알려줌', String(j409.message || '').includes('최선생님'), String(j409.message).slice(0, 60));
+// 3-4 는 이름만 적혀 있고 계정 연결은 안 된 반이다. 그 사실을 그대로 알려줘야 한다.
+ok('적혀 있는 담임 이름을 알려줌', String(j409.message || '').includes('최선생님'), String(j409.message).slice(0, 70));
+ok('계정 연결이 안 됐다고 알려줌', String(j409.message || '').includes('연결'), String(j409.message).slice(0, 70));
 ok('다음에 뭘 할지 알려줌', !!j409.hint, String(j409.hint));
 const after = (await adb.doc(`schools/${SCHOOL}/classes/3-4`).get()).data();
 ok('3-4 담임이 그대로', after?.teacherName === before?.teacherName, `${before?.teacherName} → ${after?.teacherName}`);

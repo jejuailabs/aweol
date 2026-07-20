@@ -75,12 +75,20 @@ export async function POST(req: NextRequest) {
     let message: string;
     let hint = '';
 
+    /**
+     * 담임 상태가 세 갈래다. `teacherName` 은 적혀 있는데 `teacherUid` 가 빈 반이
+     * 실제로 있다(명부만 옮겨 적고 계정을 연결하지 않은 경우).
+     * 이때 '담임이 없어요' 라고만 하면, 화면에는 이름이 보이는데 없다고 하니 헷갈린다.
+     */
     if (cur.isArchived) {
       message = `${where}은 이미 있어요. 지금은 기억창고에 보관 중이에요.`;
       hint = '지난 해 반이라면 기억창고에서 볼 수 있어요.';
     } else if (cur.teacherUid) {
       message = `${where}은 이미 있어요. 담임은 ${cur.teacherName || '다른 선생님'}이에요.`;
       hint = '다른 반 번호를 골라주세요.';
+    } else if (cur.teacherName) {
+      message = `${where}은 이미 있어요. 담임으로 ${cur.teacherName}이 적혀 있는데 계정과 연결되어 있지 않아요.`;
+      hint = '이 반을 맡으시려면 총관리자에게 담임 배정을 요청해 주세요.';
     } else {
       message = `${where}은 이미 있어요. 아직 담임이 없는 반이에요.`;
       hint = '이 반을 맡으시려면 총관리자에게 담임 배정을 요청해 주세요.';
