@@ -27,6 +27,8 @@ export default function TrackPage() {
   const [result, setResult] = useState<{ ms: number; isBest: boolean; reason?: string } | null>(null);
   const [records, setRecords] = useState<Record[]>([]);
   const [err, setErr] = useState('');
+  /** 경기 번호 — 올리면 아바타가 출발선으로 돌아간다 */
+  const [runId, setRunId] = useState(0);
 
   /** 화면에 보여주는 시계. 진짜 기록은 서버가 잰다 — 이건 보기용이다. */
   const startedAt = useRef(0);
@@ -80,6 +82,8 @@ export default function TrackPage() {
       });
       if (!res.ok) throw new Error((await res.json()).error || '출발하지 못했어요');
       setCount(3);
+      // 세기 시작할 때 출발선으로. '출발!' 에 옮기면 갑자기 순간이동한다.
+      setRunId((n) => n + 1);
       setPhase('count');
     } catch (e) { setErr((e as Error).message); }
   };
@@ -120,6 +124,7 @@ export default function TrackPage() {
         avatarCustom={userDoc?.avatarCustom}
         avatarTint={userDoc?.avatarTint}
         running={phase === 'running'}
+        runId={runId}
         onLap={finish}
         onFoul={foul}
       />

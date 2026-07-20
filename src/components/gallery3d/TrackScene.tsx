@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -113,22 +113,26 @@ function TrackJudge({
 }
 
 export default function TrackScene({
-  avatarId, avatarCustom, avatarTint, running, onLap, onFoul,
+  avatarId, avatarCustom, avatarTint, running, runId, onLap, onFoul,
 }: {
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
   /** 달리는 중인가. 아니면 판정하지 않는다 (준비 화면에서 선을 밟아도 탈락이 아니다) */
   running: boolean;
+  /**
+   * 경기 번호. 바뀌면 아바타를 출발선으로 되돌린다.
+   *
+   * **'출발!' 이 아니라 카운트다운이 시작될 때 옮겨야 한다.** 달리기 시작할 때 옮기면
+   * 셋을 세는 동안 딴 데 서 있다가 갑자기 순간이동한다. 세는 동안 출발선에 서 있어야
+   * 아이가 어디서 시작하는지 보고 마음의 준비를 한다.
+   */
+  runId: number;
   onLap: () => void;
   onFoul: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(START_POS[0], 0, START_POS[2]));
-  const [key, setKey] = useState(0);
-
-  // 새 경기를 시작하면 아바타를 출발선으로 되돌린다 (컴포넌트를 다시 만든다)
-  useEffect(() => { if (running) setKey((k) => k + 1); }, [running]);
 
   useEffect(() => {
     resetControls(0, 7, 0.5);
@@ -151,7 +155,7 @@ export default function TrackScene({
         <TrackSurface />
 
         <WalkerAvatar
-          key={key}
+          key={runId}
           avatarPos={avatarPos}
           bounds={{ xMin: -30, xMax: 30, zMin: -22, zMax: 22 }}
           start={START_POS}
