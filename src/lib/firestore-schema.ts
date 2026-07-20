@@ -128,6 +128,31 @@ export interface SuggestionDoc {
   createdAt: Timestamp;
 }
 
+export type PetKind = 'dog' | 'cat' | 'rabbit';
+
+/**
+ * 학교에서 함께 키우는 동물. 학교당 한 마리 (schools 아래 pet/main).
+ *
+ * **배고픔·목마름을 따로 저장하지 않는다.** 마지막으로 먹인 시각만 두고,
+ * 화면에서 '지금으로부터 몇 시간 지났나'로 계산한다.
+ * 수치를 저장하면 시간마다 깎아줄 서버가 필요한데, 그건 학교 수만큼 도는 배치다.
+ * 시각 하나면 아무도 안 볼 때도 알아서 배가 고파진다.
+ */
+export interface SchoolPetDoc {
+  kind: PetKind;
+  name: string;
+  /** 마지막으로 먹이를 준 시각 */
+  fedAt: Timestamp;
+  /** 마지막으로 물을 준 시각 */
+  wateredAt: Timestamp;
+  /** 마지막으로 쓰다듬은 시각 */
+  pettedAt: Timestamp;
+  /** 누적 횟수 — 아이들이 얼마나 돌봤는지 보여주려고 센다 */
+  careCount: number;
+  /** 마지막으로 돌본 사람 이름 */
+  lastCarerName: string;
+}
+
 export interface GradeDoc {
   label: string;
   order: number;

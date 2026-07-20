@@ -151,6 +151,25 @@ service cloud.firestore {
                       || (isSignedIn() && resource.data.authorUid == request.auth.uid);
       }
 
+      /**
+       * 학교 동물 — 학교당 한 마리, 모두가 함께 돌본다.
+       *
+       * 돌보기(먹이·물·쓰다듬기)는 로그인한 사람이면 누구나. 대신 규칙이 두 가지를 잡는다.
+       * 1) 이름과 종류는 교직원만 정한다 — 아무나 바꾸면 매일 이름이 달라진다.
+       * 2) careCount 는 한 번에 1씩만 늘린다 — 안 막으면 9999를 써넣고 1등이 된다.
+       */
+      match /pet/{petId} {
+        allow read: if true;
+        allow create: if isStaffOf(schoolId);
+        // 교직원은 이름·종류를 포함해 전부 고칠 수 있다
+        allow update: if isStaffOf(schoolId)
+                      || (isSignedIn()
+                          && request.resource.data.kind == resource.data.kind
+                          && request.resource.data.name == resource.data.name
+                          && request.resource.data.careCount == resource.data.careCount + 1);
+        allow delete: if isStaffOf(schoolId);
+      }
+
       match /grades/{gradeId} {
         allow read: if true;
         allow write: if isStaffOf(schoolId);

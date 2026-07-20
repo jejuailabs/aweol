@@ -12,6 +12,8 @@ import ShareButton from '@/components/common/ShareButton';
 import Mascot from '@/components/mascot/Mascot';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
 import SchoolHallModal from '@/components/school/SchoolHallModal';
+import SchoolPetPanel, { loadPet, createPet, type PetState } from '@/components/school/SchoolPetPanel';
+import { PET_KINDS, petMood } from '@/lib/school-pet';
 
 const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -27,6 +29,13 @@ export default function SchoolPage() {
   const [schoolEmblem, setSchoolEmblem] = useState('');
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfile | undefined>();
   const [showHall, setShowHall] = useState(false);
+  const [pet, setPet] = useState<PetState | null>(null);
+  const [showPet, setShowPet] = useState(false);
+  const [adopting, setAdopting] = useState(false);
+
+  // 동물을 들이는 건 그 학교 교직원만. 아이마다 들이면 매일 동물이 바뀐다.
+  const isSchoolStaff = role === 'super_admin'
+    || (role === 'teacher' && (userDoc?.schoolIds ?? []).includes(schoolId));
   const [showMascot, setShowMascot] = useState(true);
 
   useEffect(() => {
@@ -42,6 +51,11 @@ export default function SchoolPage() {
       setClasses(list);
     }
     fetchClasses();
+  }, [schoolId]);
+
+  // 학교 동물은 한 번만 읽는다. 기분은 시각으로 계산하니 다시 안 읽어도 된다.
+  useEffect(() => {
+    loadPet(schoolId).then(setPet).catch(() => setPet(null));
   }, [schoolId]);
 
   useEffect(() => {
@@ -68,7 +82,56 @@ export default function SchoolPage() {
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
-      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => setShowHall(true)} />
+      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => setShowHall(true)}
+        pet={pet ? {
+          kind: pet.kind,
+          name: pet.name,
+          // 뭔가 필요할 때만 머리 위에 표시가 뜬다
+          needEmoji: petMood(pet.fedAt, pet.wateredAt, pet.pettedAt).need === 'none'
+            ? '' : '❗',
+        } : null}
+        onPetClick={() => setShowPet(true)}
+      />
+
+      {showPet && pet && (
+        <SchoolPetPanel
+          schoolId={schoolId}
+          pet={pet}
+          onChanged={setPet}
+          onClose={() => setShowPet(false)}
+        />
+      )}
+
+      {/*
+        아직 동물이 없으면 그 학교 선생님에게만 '들이기' 버튼을 보여준다.
+        아이에게 보여주면 저마다 다른 동물을 들여 매일 바뀐다.
+      */}
+      {!pet && isSchoolStaff && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-24 z-30 flex gap-1.5">
+          {adopting ? PET_KINDS.map((k) => (
+            <button
+              key={k.kind}
+              onClick={async () => {
+                await createPet(schoolId, k.kind, k.label);
+                setPet(await loadPet(schoolId));
+                setAdopting(false);
+              }}
+              className="rounded-full px-4 py-2.5 text-xs font-bold"
+              style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+            >
+              {k.emoji} {k.label}
+            </button>
+          )) : (
+            <button
+              onClick={() => setAdopting(true)}
+              className="rounded-full px-5 py-2.5 text-xs font-bold"
+              style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+            >
+              🐾 학교 동물 들이기
+            </button>
+          )}
+        </div>
+      )}
 
       {showHall && (
         <SchoolHallModal

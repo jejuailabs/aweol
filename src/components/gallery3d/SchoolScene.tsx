@@ -6,6 +6,8 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
 import { extractSchoolPalette, DEFAULT_PALETTE, type SchoolPalette } from '@/lib/image-palette';
+import SchoolPet from './SchoolPet';
+import type { PetKind } from '@/lib/firestore-schema';
 
 /**
  * 현관 옆에 거는 학교 사진.
@@ -495,6 +497,8 @@ export default function SchoolScene({
   schoolName = '학교',
   emblemUrl,
   onEnterHall,
+  pet,
+  onPetClick,
   imageUrl = '',
 }: {
   classes?: SchoolClassItem[];
@@ -505,6 +509,9 @@ export default function SchoolScene({
   schoolName?: string;
   emblemUrl?: string;
   onEnterHall?: () => void;
+  /** 학교 동물. 아직 안 들였으면 없다 */
+  pet?: { kind: PetKind; name: string; needEmoji: string } | null;
+  onPetClick?: () => void;
   imageUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -590,6 +597,14 @@ export default function SchoolScene({
           avatarTint={avatarTint}
           obstacles={SCHOOL_OBSTACLES}
         />
+        {pet && (
+          <SchoolPet
+            kind={pet.kind}
+            name={pet.name}
+            needEmoji={pet.needEmoji}
+            onClick={onPetClick}
+          />
+        )}
         <DustPuffs />
         <FollowCamera
           avatarPos={avatarPos}
