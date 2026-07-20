@@ -41,7 +41,10 @@ export async function POST(req: NextRequest) {
     `대한민국 초등학교 "${name}"${address ? ` (${address})` : ''} 를 웹에서 조사한다.`,
     '학교 공식 홈페이지, 학교알리미(schoolinfo.go.kr), 나무위키, 뉴스, 지역 소개 자료를 찾아본다.',
     '',
-    '아래 JSON 만 출력한다. 코드블록도 설명도 붙이지 않는다.',
+    '**검색을 여러 번 해도 된다.** 한 번 찾아보고 없다고 끝내지 말고,',
+    '학교 이름·지역명·"개교"·"교화"·"교목" 을 바꿔가며 여러 번 찾아봐라.',
+    '',
+    '찾아본 뒤 마지막에 아래 JSON 을 한 번만 출력한다.',
     '{"founded":"","motto":"","flower":"","tree":"","note":"","sources":[]}',
     '',
     '- founded: 개교 연도. 숫자 4자리만 (예: "1923").',
@@ -61,7 +64,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OPENAI_SEARCH_MODEL || 'gpt-4.1-mini',
+        model: process.env.OPENAI_SEARCH_MODEL || 'gpt-4.1',
         tools: [{ type: 'web_search' }],
         input: prompt,
       }),
@@ -81,8 +84,8 @@ export async function POST(req: NextRequest) {
       .map((c: { text?: string }) => c.text ?? '')
       .join('\n');
 
-    // 코드블록으로 감싸서 오는 경우가 잦다
-    const m = text.match(/\{[\s\S]*\}/);
+    // 서술 뒤에 JSON 이 붙어 오므로 **마지막** 중괄호 덩어리를 집는다
+    const m = text.match(/\{[^{}]*"sources"[\s\S]*?\}\s*\}?\s*$/) ?? text.match(/\{[\s\S]*\}/);
     if (!m) {
       return NextResponse.json({ error: '조사 결과를 읽지 못했어요. 직접 적어주세요.' }, { status: 502 });
     }
