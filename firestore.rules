@@ -125,6 +125,32 @@ service cloud.firestore {
       // 학교 이름·대표 이미지는 학교 공용이라 담임 한 명이 바꾸면 안 된다
       allow update: if isSuper();
 
+      /**
+       * 현관 공지 — 학교 전체가 읽고, 그 학교 교직원이 쓴다.
+       * 반 알림장(classes 아래 notices)과 다른 것이다. 이건 학교 단위.
+       */
+      match /hallNotices/{noticeId} {
+        allow read: if true;
+        allow write: if isStaffOf(schoolId);
+      }
+
+      /**
+       * 건의함 — **공개가 아니다.**
+       * 낸 본인과 그 학교 교직원만 읽는다. 전교생이 다 보는 게시판이면
+       * 아이가 정작 하고 싶은 말을 못 쓴다.
+       * 답변은 교직원만 달 수 있고, 본문은 낸 사람도 못 고친다(답변 뒤 말바꾸기 방지).
+       */
+      match /suggestions/{suggestionId} {
+        allow read: if isStaffOf(schoolId)
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+        allow create: if isSignedIn()
+                      && request.resource.data.authorUid == request.auth.uid
+                      && request.resource.data.get('reply', null) == null;
+        allow update: if isStaffOf(schoolId);
+        allow delete: if isStaffOf(schoolId)
+                      || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+      }
+
       match /grades/{gradeId} {
         allow read: if true;
         allow write: if isStaffOf(schoolId);

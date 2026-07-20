@@ -103,6 +103,31 @@ export interface SchoolDoc {
   createdAt: Timestamp;
 }
 
+/** 학교 현관에 붙는 공지 — 반 알림장과 달리 학교 전체가 본다 */
+export interface HallNoticeDoc {
+  title: string;
+  body: string;
+  authorUid: string;
+  authorName: string;
+  createdAt: Timestamp;
+}
+
+/**
+ * 건의함.
+ *
+ * **공개가 아니다.** 낸 사람과 그 학교 교직원만 본다.
+ * 전교생이 다 보는 게시판이면 아이가 하고 싶은 말을 못 쓴다.
+ */
+export interface SuggestionDoc {
+  body: string;
+  authorUid: string;
+  authorName: string;
+  /** 선생님 답변. 아직 없으면 null */
+  reply: string | null;
+  repliedBy: string | null;
+  createdAt: Timestamp;
+}
+
 export interface GradeDoc {
   label: string;
   order: number;

@@ -256,6 +256,7 @@ function SchoolBuilding({
   schoolName,
   imageUrl,
   emblemUrl,
+  onEnterHall,
   palette,
 }: {
   classes: SchoolClassItem[];
@@ -263,8 +264,10 @@ function SchoolBuilding({
   schoolName: string;
   imageUrl: string;
   emblemUrl?: string;
+  onEnterHall?: () => void;
   palette: SchoolPalette;
 }) {
+  const [doorHot, setDoorHot] = useState(false);
   const bodyW = 18;
   const bodyH = 6.5;
   const bodyD = 6;
@@ -296,15 +299,41 @@ function SchoolBuilding({
         <boxGeometry args={[5.2, 0.9, 2]} />
         <meshStandardMaterial color={palette.roofDark} roughness={0.6} />
       </mesh>
-      {/* 현관문 */}
-      <mesh position={[0, 1.25, bodyD * 0.5 + 1.32]}>
-        <boxGeometry args={[2.2, 2.5, 0.12]} />
-        <meshStandardMaterial color="#8A5A3B" roughness={0.5} />
-      </mesh>
-      <mesh position={[0, 1.25, bodyD * 0.5 + 1.39]}>
-        <planeGeometry args={[0.9, 1.9]} />
-        <meshStandardMaterial color="#5B3A24" />
-      </mesh>
+      {/* 현관문 — 누르면 '우리 학교' 창이 열린다 */}
+      <group
+        onClick={(e) => { e.stopPropagation(); onEnterHall?.(); }}
+        onPointerOver={(e) => { e.stopPropagation(); setDoorHot(true); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { setDoorHot(false); document.body.style.cursor = 'auto'; }}
+      >
+        <mesh position={[0, 1.25, bodyD * 0.5 + 1.32]}>
+          <boxGeometry args={[2.2, 2.5, 0.12]} />
+          <meshStandardMaterial
+            color="#8A5A3B"
+            roughness={0.5}
+            emissive="#E8A33C"
+            emissiveIntensity={doorHot ? 0.35 : 0}
+          />
+        </mesh>
+        <mesh position={[0, 1.25, bodyD * 0.5 + 1.39]}>
+          <planeGeometry args={[0.9, 1.9]} />
+          <meshStandardMaterial color="#5B3A24" />
+        </mesh>
+        {/* 눌러도 되는 곳이라는 표시. 가리켰을 때만 띄운다 */}
+        {doorHot && (
+          <Html position={[0, 2.85, bodyD * 0.5 + 1.4]} center pointerEvents="none" zIndexRange={[6, 0]}>
+            <div
+              style={{
+                background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '13px',
+                padding: '6px 14px', borderRadius: '999px', whiteSpace: 'nowrap',
+                fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
+                boxShadow: '0 3px 8px rgba(0,0,0,0.25)',
+              }}
+            >
+              🚪 우리 학교 들어가기
+            </div>
+          </Html>
+        )}
+      </group>
       {/* 현관 위 동그란 자리 — 교표를 걸고, 없으면 흰 원으로 남는다 */}
       <group position={[0, 5.6, bodyD * 0.5 + 1.32]}>
         <mesh rotation={[HALF_PI, 0, 0]}>
@@ -465,6 +494,7 @@ export default function SchoolScene({
   avatarTint,
   schoolName = '학교',
   emblemUrl,
+  onEnterHall,
   imageUrl = '',
 }: {
   classes?: SchoolClassItem[];
@@ -474,6 +504,7 @@ export default function SchoolScene({
   avatarTint?: AvatarTint | null;
   schoolName?: string;
   emblemUrl?: string;
+  onEnterHall?: () => void;
   imageUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -537,6 +568,7 @@ export default function SchoolScene({
           onClassSelect={onClassSelect}
           schoolName={schoolName}
           emblemUrl={emblemUrl}
+          onEnterHall={onEnterHall}
           imageUrl={imageUrl}
           palette={palette}
         />

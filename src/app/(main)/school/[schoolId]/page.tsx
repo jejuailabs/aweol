@@ -5,12 +5,13 @@ import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { collection, query, where, getDocs, getDoc, doc, type DocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { ClassDoc } from '@/lib/firestore-schema';
+import { ClassDoc, SchoolProfile } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import ShareButton from '@/components/common/ShareButton';
 import Mascot from '@/components/mascot/Mascot';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
+import SchoolHallModal from '@/components/school/SchoolHallModal';
 
 const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -24,6 +25,8 @@ export default function SchoolPage() {
   const [schoolName, setSchoolName] = useState('');
   const [schoolImage, setSchoolImage] = useState('');
   const [schoolEmblem, setSchoolEmblem] = useState('');
+  const [schoolProfile, setSchoolProfile] = useState<SchoolProfile | undefined>();
+  const [showHall, setShowHall] = useState(false);
   const [showMascot, setShowMascot] = useState(true);
 
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function SchoolPage() {
         setSchoolName(s.exists() ? (s.data()?.name as string) || '' : '');
         setSchoolImage(s.exists() ? (s.data()?.imageUrl as string) || '' : '');
         setSchoolEmblem(s.exists() ? (s.data()?.emblemUrl as string) || '' : '');
+        setSchoolProfile(s.exists() ? (s.data()?.profile as SchoolProfile | undefined) : undefined);
       })
       .catch(() => { setSchoolName(''); setSchoolImage(''); setSchoolEmblem(''); });
   }, [schoolId]);
@@ -64,7 +68,17 @@ export default function SchoolPage() {
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
-      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} />
+      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => setShowHall(true)} />
+
+      {showHall && (
+        <SchoolHallModal
+          schoolId={schoolId}
+          schoolName={schoolName || '우리 학교'}
+          profile={schoolProfile}
+          emblemUrl={schoolEmblem}
+          onClose={() => setShowHall(false)}
+        />
+      )}
 
       {/*
         지도로 돌아가기 — 학교 화면에만 없었다.

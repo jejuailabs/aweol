@@ -40,7 +40,7 @@ async function deployRuleset(fileName, releaseId) {
     source: { files: [{ name: fileName, content }] },
   });
   if (created.status !== 200) {
-    console.error(`✗ ${fileName} 룰셋 생성 실패:`, created.status, JSON.stringify(created.json).slice(0, 400));
+    console.error(`✗ ${fileName} 룰셋 생성 실패:`, created.status, JSON.stringify(created.json, null, 1));
     return false;
   }
   const rulesetName = created.json.name;
