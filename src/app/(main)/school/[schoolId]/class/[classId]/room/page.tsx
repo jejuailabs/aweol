@@ -72,7 +72,21 @@ export default function ClassRoomPage() {
     { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 } as Record<NoticeKind, number>
   );
 
+  // 알림판에 걸 칸은 반 설정에서 온다 (선생님이 고른 것)
+  useEffect(() => {
+    if (!db) return;
+    return onSnapshot(
+      doc(db, 'schools', schoolId, 'classes', classId),
+      (s) => {
+        const t = s.exists() ? (s.data().noticeTabs as NoticeKind[] | undefined) : undefined;
+        setNoticeTabs(Array.isArray(t) && t.length > 0 ? t : undefined);
+      },
+      () => setNoticeTabs(undefined)
+    );
+  }, [schoolId, classId]);
+
   // ---- 칠판 낙서 ----
+  const [noticeTabs, setNoticeTabs] = useState<NoticeKind[] | undefined>(undefined);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [boardOpen, setBoardOpen] = useState(false);
 
@@ -223,6 +237,7 @@ export default function ClassRoomPage() {
         avatarCustom={userDoc?.avatarCustom}
         boardItems={boardItems}
         noticeCounts={noticeCounts}
+        noticeTabs={noticeTabs}
         onOpenNotice={(k) => { playSound('open'); setNoticeKind(k); }}
       />
 

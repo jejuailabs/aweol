@@ -79,6 +79,8 @@ export interface GradeDoc {
   order: number;
 }
 
+export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot';
+
 export interface ClassDoc {
   schoolId: string;
   grade: string;
@@ -88,6 +90,11 @@ export interface ClassDoc {
   teacherName: string;
   motto: string;
   introText: string;
+  /**
+   * 알림판에 걸 칸. 없거나 비어 있으면 전부 보여준다(기존 반 호환).
+   * 안 쓰는 칸까지 걸어두면 아이들이 빈 칸을 눌러보고 실망한다.
+   */
+  noticeTabs?: NoticeKind[];
   isArchived: boolean;
   memberUids: string[];
 }
@@ -130,8 +137,6 @@ export interface RosterUploadDoc {
   rowCount: number;
   uploadedAt: Timestamp;
 }
-
-export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot';
 
 /** 학급 명부의 한 줄. 학생코드로 실제 계정(uid)과 연결된다. */
 export interface StudentRosterDoc {

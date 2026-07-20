@@ -19,10 +19,23 @@ export const NOTICE_TABS: { kind: NoticeKind; label: string; emoji: string; colo
 export default function NoticeWall({
   counts,
   onOpen,
+  tabs,
 }: {
   counts: Record<NoticeKind, number>;
   onOpen: (kind: NoticeKind) => void;
+  /** 걸어둘 칸. 안 주면 전부 (기존 반 호환) */
+  tabs?: NoticeKind[];
 }) {
+  /**
+   * 선생님이 고른 칸만 건다.
+   * 안 쓰는 칸까지 걸어두면 아이들이 빈 칸을 눌러보고 실망한다.
+   * 칸 수에 맞춰 간격을 다시 계산해야 판(7.2) 밖으로 넘치지 않는다.
+   */
+  const shown = tabs && tabs.length > 0
+    ? NOTICE_TABS.filter((t) => tabs.includes(t.kind))
+    : NOTICE_TABS;
+  const gap = Math.min(1.7, 6.8 / Math.max(1, shown.length));
+  const cardScale = Math.min(0.3, gap * 0.185);
   const [hovered, setHovered] = useState<NoticeKind | null>(null);
 
   return (
@@ -56,9 +69,9 @@ export default function NoticeWall({
         </div>
       </Html>
 
-      {/* 카테고리 5개 — 판 폭(7.2)에 맞춰 간격·크기를 잡았다 */}
-      {NOTICE_TABS.map((tab, i) => {
-        const x = -2.72 + i * 1.36;
+      {/* 걸린 칸 — 개수에 맞춰 간격·크기를 계산한다 */}
+      {shown.map((tab, i) => {
+        const x = (i - (shown.length - 1) / 2) * gap;
         const isHot = counts[tab.kind] > 0;
         return (
           <group key={tab.kind} position={[x, 0, 0.06]}>
@@ -67,7 +80,7 @@ export default function NoticeWall({
               <sphereGeometry args={[0.05, 10, 10]} />
               <meshStandardMaterial color={tab.color} metalness={0.3} roughness={0.4} />
             </mesh>
-            <Html position={[0, 0, 0.02]} transform occlude="blending" scale={0.25} zIndexRange={[10, 0]}>
+            <Html position={[0, 0, 0.02]} transform occlude="blending" scale={cardScale} zIndexRange={[10, 0]}>
               <button
                 onClick={() => onOpen(tab.kind)}
                 onPointerEnter={() => setHovered(tab.kind)}

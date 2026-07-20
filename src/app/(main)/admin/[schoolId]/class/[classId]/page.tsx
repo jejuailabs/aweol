@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { ClassDoc, ActivityDoc } from '@/lib/firestore-schema';
+import { ClassDoc, ActivityDoc, NoticeKind } from '@/lib/firestore-schema';
+import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 
@@ -21,6 +22,9 @@ export default function AdminClassPage() {
   const [editing, setEditing] = useState(false);
   const [motto, setMotto] = useState('');
   const [introText, setIntroText] = useState('');
+  const [noticeTabs, setNoticeTabs] = useState<NoticeKind[]>([]);
+  const [savingTabs, setSavingTabs] = useState(false);
+  const [tabMsg, setTabMsg] = useState('');
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -39,6 +43,12 @@ export default function AdminClassPage() {
         setClassDoc(data);
         setMotto(data.motto);
         setIntroText(data.introText);
+        // 설정한 적이 없으면 전부 켜진 상태로 시작한다 (지금 화면과 같게)
+        setNoticeTabs(
+          Array.isArray(data.noticeTabs) && data.noticeTabs.length > 0
+            ? data.noticeTabs
+            : NOTICE_TABS.map((t) => t.kind)
+        );
       }
 
       const actSnap = await getDocs(collection(db, 'schools', schoolId, 'classes', classId, 'activities'));
@@ -49,7 +59,7 @@ export default function AdminClassPage() {
     }
 
     if (!loading && user) fetchData();
-  }, [classId, user, role, loading, router]);
+  }, [schoolId, classId, user, role, loading, router]);
 
   const handleSaveSettings = async () => {
     if (!db) return;
@@ -60,6 +70,21 @@ export default function AdminClassPage() {
     setClassDoc((prev) => prev ? { ...prev, motto: motto.trim(), introText: introText.trim() } : prev);
     setEditing(false);
   };
+
+  /** 알림판에 걸 칸 저장. 하나도 안 걸면 아이가 들어와도 볼 게 없으니 막는다. */
+  const handleSaveTabs = useCallback(async (next: NoticeKind[]) => {
+    if (!db || next.length === 0) return;
+    setSavingTabs(true);
+    setTabMsg('');
+    try {
+      await updateDoc(doc(db, 'schools', schoolId, 'classes', classId), { noticeTabs: next });
+      setNoticeTabs(next);
+      setTabMsg('알림판을 바꿨어요');
+      setTimeout(() => setTabMsg(''), 2500);
+    } finally {
+      setSavingTabs(false);
+    }
+  }, [schoolId, classId]);
 
   const handleAddActivity = async () => {
     if (!db || !newTitle.trim()) return;
@@ -101,6 +126,50 @@ export default function AdminClassPage() {
         <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-main)' }}>
           {classDoc ? `${classDoc.grade}-${classDoc.classNumber}반 관리` : classId}
         </h1>
+      </div>
+
+      {/* 알림판에 걸 칸 고르기 */}
+      <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--color-surface-soft)' }}>
+        <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
+          📢 알림판에 걸 것
+        </h2>
+        <p className="text-[11px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          교실 알림판에 걸어둘 칸을 고르세요. 안 쓰는 칸을 걸어두면 아이들이
+          빈 칸을 눌러보고 실망해요. 나중에 언제든 다시 켤 수 있어요.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {NOTICE_TABS.map((t) => {
+            const on = noticeTabs.includes(t.kind);
+            const last = on && noticeTabs.length === 1;
+            return (
+              <button
+                key={t.kind}
+                disabled={savingTabs || last}
+                onClick={() =>
+                  handleSaveTabs(
+                    on ? noticeTabs.filter((k) => k !== t.kind) : [...noticeTabs, t.kind]
+                  )
+                }
+                title={last ? '적어도 하나는 걸어두어야 해요' : undefined}
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-bold disabled:opacity-60"
+                style={{
+                  background: on ? t.color : 'var(--color-surface)',
+                  color: on ? 'white' : 'var(--color-text-sub)',
+                  border: `2px solid ${on ? t.color : 'transparent'}`,
+                }}
+              >
+                <span>{t.emoji}</span>
+                {t.label}
+                <span style={{ opacity: 0.75 }}>{on ? '켬' : '끔'}</span>
+              </button>
+            );
+          })}
+        </div>
+        {tabMsg && (
+          <div className="text-[11px] font-bold mt-2" style={{ color: 'var(--color-primary)' }}>
+            {tabMsg}
+          </div>
+        )}
       </div>
 
       {/* 학급 설정 */}

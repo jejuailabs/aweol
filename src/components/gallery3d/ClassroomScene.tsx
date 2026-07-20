@@ -41,6 +41,8 @@ interface ClassroomSceneProps {
   boardItems?: BoardItem[];
   /** 알림판 */
   noticeCounts?: Record<NoticeKind, number>;
+  /** 알림판에 걸 칸 (선생님이 고른 것). 안 주면 전부 */
+  noticeTabs?: NoticeKind[];
   onOpenNotice?: (kind: NoticeKind) => void;
 }
 
@@ -419,7 +421,7 @@ function ClassroomLighting() {
 export default function ClassroomScene({
   classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom,
   boardItems = [],
-  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 }, onOpenNotice = () => {},
+  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 }, onOpenNotice = () => {}, noticeTabs,
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 3.5));
@@ -471,7 +473,7 @@ export default function ClassroomScene({
           canManage={canManage}
           onAddActivity={onAddActivity}
         />
-        <NoticeWall counts={noticeCounts} onOpen={onOpenNotice} />
+        <NoticeWall counts={noticeCounts} onOpen={onOpenNotice} tabs={noticeTabs} />
         <Desks />
         <WalkerAvatar
           avatarPos={avatarPos}
