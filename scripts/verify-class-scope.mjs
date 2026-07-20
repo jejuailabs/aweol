@@ -150,27 +150,42 @@ r = await fetch(`${BASE}/api/spot-game`, {
 });
 ok('다른 반 틀린그림 출제 불가', r.status === 403, `HTTP ${r.status}`);
 
-console.log('
-[학교 정보 수정 — 범위가 역할마다 다르다]');
-// 교사도 학교 상징·교표는 고칠 수 있다. 하지만 이름은 보내도 무시돼야 한다 —
-// 요청이 통과(200)하는 것과 그 필드가 실제로 바뀌는 것은 다른 문제다.
-const beforeName = (await adb.doc(`schools/${SCHOOL}`).get()).data()?.name;
+console.log('\n[학교 정보 수정 — 범위가 역할마다 다르다]');
+/**
+ * 이 검증은 학교 문서에 실제로 글씨를 쓴다. 그래서 **진짜 학교(애월초)가 아니라
+ * 일회용 학교**를 만들어 거기에 쓴다. 예전에 진짜 학교에 썼다가 '검증용 교훈'이
+ * 프로덕션에 그대로 남은 적이 있다 — 중간에 실패하면 되돌릴 기회조차 없다.
+ */
+const TMP_SCHOOL = 'zz-scope-school';
+await adb.doc(`schools/${TMP_SCHOOL}`).set({
+  name: '검증용학교', lat: 0, lng: 0, tagline: '', imageUrl: '', emblemUrl: '',
+  gradeCount: 1, classPerGrade: 1, assets: [], createdBy: SA, isArchived: true,
+});
+await adb.collection('users').doc(TEA).update({ schoolIds: [SCHOOL, TMP_SCHOOL] });
+// 담당 학교가 바뀌었으니 토큰을 다시 받는다
+const teaToken2 = await tokenFor(TEA);
+
 const form = new FormData();
-form.set('schoolId', SCHOOL);
+form.set('schoolId', TMP_SCHOOL);
 form.set('name', '교사가 바꾼 이름');
+// 화면이 실제로 보내는 모양. 상징은 통과하고 이름만 무시돼야 한다.
+form.set('profile', JSON.stringify({
+  founded: '1923', motto: '검증용 교훈', flower: '', tree: '', note: '', sources: [],
+}));
 r = await fetch(`${BASE}/api/school`, {
-  method: 'PATCH', headers: { Authorization: `Bearer ${teaToken}` }, body: form,
+  method: 'PATCH', headers: { Authorization: `Bearer ${teaToken2}` }, body: form,
 });
 ok('이 학교 교사는 학교 정보 화면을 쓸 수 있음', r.ok, `HTTP ${r.status}`);
-const afterName = (await adb.doc(`schools/${SCHOOL}`).get()).data()?.name;
-ok('그래도 학교 이름은 안 바뀜', afterName === beforeName, `${beforeName} → ${afterName}`);
+const after = (await adb.doc(`schools/${TMP_SCHOOL}`).get()).data();
+ok('그래도 학교 이름은 안 바뀜', after?.name === '검증용학교', String(after?.name));
+ok('교사가 보낸 학교 상징은 저장됨', after?.profile?.motto === '검증용 교훈', String(after?.profile?.motto));
 
 // 남의 학교는 상징도 못 건드린다
 const otherForm = new FormData();
 otherForm.set('schoolId', 'zz-not-my-school');
 otherForm.set('profile', JSON.stringify({ motto: '남의 학교 교훈' }));
 r = await fetch(`${BASE}/api/school`, {
-  method: 'PATCH', headers: { Authorization: `Bearer ${teaToken}` }, body: otherForm,
+  method: 'PATCH', headers: { Authorization: `Bearer ${teaToken2}` }, body: otherForm,
 });
 ok('남의 학교 정보는 못 고침', r.status === 403, `HTTP ${r.status}`);
 
@@ -219,6 +234,8 @@ ok('담임이 비어 있던 반에 배정됨',
   (await adb.doc(`schools/${SCHOOL}/classes/${OTHER}`).get()).data()?.teacherUid === APP);
 
 // 정리
+await adb.doc(`schools/${TMP_SCHOOL}`).delete().catch(() => {});
+
 if (madeQuiz.quizId) {
   const qr = adb.doc(`schools/${SCHOOL}/classes/${MINE}/quizzes/${madeQuiz.quizId}`);
   for (const c of ['questions', 'answerKeys', 'submissions']) {

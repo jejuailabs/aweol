@@ -71,10 +71,24 @@ let r = await post('/api/school-profile', null, { name: '애월초등학교' });
 ok('비로그인은 401', r.status === 401, `HTTP ${r.status}`);
 
 r = await post('/api/school-profile', teaToken, { name: '애월초등학교' });
-ok('교사는 403 (학교 정보는 총관리자만)', r.status === 403, `HTTP ${r.status}`);
+ok('schoolId 없이는 교사도 403 (학교 만들기는 총관리자만)', r.status === 403, `HTTP ${r.status}`);
+
+r = await post('/api/school-profile', teaToken, { name: 'x', schoolId: 'zz-not-my-school' });
+ok('남의 학교는 교사도 403', r.status === 403, `HTTP ${r.status}`);
 
 r = await post('/api/school-profile', saToken, {});
 ok('이름 없으면 400', r.status === 400, `HTTP ${r.status}`);
+
+console.log('\n[내 학교 — 교사도 됨]');
+r = await post('/api/school-profile', teaToken, {
+  name: '애월초등학교', schoolId: 'aewol-elementary',
+});
+ok('우리 학교는 교사도 조사 가능', r.ok, `HTTP ${r.status}`);
+
+r = await post('/api/school-image', teaToken, {
+  kind: 'emblem', name: '애월초등학교', schoolId: 'aewol-elementary', flower: '동백꽃',
+});
+ok('우리 학교 교표는 교사도 생성 가능', r.ok, `HTTP ${r.status}`);
 
 console.log('\n[조사 — 실제 웹 검색]');
 r = await post('/api/school-profile', saToken, { name: '제주 애월초등학교', address: '제주시 애월읍' });
@@ -97,7 +111,14 @@ if (r.ok) {
 
 console.log('\n[교표 생성]');
 r = await post('/api/school-image', teaToken, { kind: 'emblem', name: '애월초등학교' });
-ok('교사는 교표 생성 403', r.status === 403, `HTTP ${r.status}`);
+ok('schoolId 없는 교표 요청은 403', r.status === 403, `HTTP ${r.status}`);
+
+r = await post('/api/school-image', teaToken, { kind: 'emblem', name: 'x', schoolId: 'zz-not-my-school' });
+ok('남의 학교 교표는 403', r.status === 403, `HTTP ${r.status}`);
+
+// 건물 그림은 학교 전체 외관이라 교사가 만들 수 없다
+r = await post('/api/school-image', teaToken, { name: '애월초등학교', schoolId: 'aewol-elementary' });
+ok('교사는 건물 그림 생성 403', r.status === 403, `HTTP ${r.status}`);
 
 r = await post('/api/school-image', saToken, {
   kind: 'emblem', name: '애월초등학교', flower: '동백꽃', tree: '팽나무',
