@@ -7,6 +7,7 @@ import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { ArtworkDoc, ActivityDoc } from '@/lib/firestore-schema';
 import { useAuth } from '@/lib/auth-context';
+import ShareButton from '@/components/common/ShareButton';
 import { canUploadArtwork } from '@/lib/auth-helpers';
 import ArtworkDetailModal from '@/components/artwork/ArtworkDetailModal';
 import ArtworkUploadModal from '@/components/artwork/ArtworkUploadModal';
@@ -84,6 +85,7 @@ export default function ActivityExhibitPage() {
       <ExhibitRoom
         artworks={artworks}
         onArtworkClick={(artwork) => setSelectedArtwork(artwork as ArtworkData)}
+        onExit={() => router.push(`/school/${schoolId}/class/${classId}/room`)}
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}
       />
@@ -99,10 +101,13 @@ export default function ActivityExhibitPage() {
         <div className="ac-bubble hidden sm:block px-4 py-2 text-xs truncate">
           🖼️ {activity?.title || activityId}
         </div>
+        <div className="ml-auto shrink-0">
+          <ShareButton title={`🖼️ ${activity?.title || '작품 전시실'}`} text="아이들 작품을 3D 전시실에서 구경해보세요" />
+        </div>
         {canUploadArtwork(role) && (
           <button
             onClick={() => setShowUpload(true)}
-            className="ac-btn ac-btn-green ml-auto shrink-0 px-3.5 py-2 text-xs"
+            className="ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-xs"
           >
             + 작품 올리기
           </button>

@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { collection, getDocs, doc, setDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import ShareButton from '@/components/common/ShareButton';
 import { playSound } from '@/lib/sound';
 import type { MapSchool } from '@/components/map/SchoolMap';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
@@ -74,7 +75,8 @@ export default function MapHomePage() {
             학교를 눌러 전시를 보러 가요
           </div>
         </div>
-        <div className="ml-auto pointer-events-auto">
+        <div className="ml-auto pointer-events-auto flex items-center gap-2">
+          <ShareButton title="우리 동네 전시 지도" text="학교를 눌러 아이들 작품 전시를 보러 가요" />
           <ProfileMenu />
         </div>
       </div>

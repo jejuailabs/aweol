@@ -194,6 +194,9 @@ export default function SchoolMap({
           const p = project(s.lat, s.lng);
           if (p.x < -120 || p.x > size.w + 120 || p.y < -160 || p.y > size.h + 120) return null;
           const isHot = hovered === s.id;
+          // 멀리서 보면 카드가 서로 겹쳐 섬을 덮어버린다.
+          // 줌에 따라 핀 → 이름만 → 전체 카드로 단계를 올린다. (펼친 건 항상 전체)
+          const detail = isHot || view.zoom >= 12 ? 'full' : view.zoom >= 9 ? 'compact' : 'pin';
           return (
             <button
               key={s.id}
@@ -209,38 +212,69 @@ export default function SchoolMap({
                 zIndex: isHot ? 20 : 10,
               }}
             >
-              {/* 말풍선 카드 */}
-              <div
-                className="rounded-2xl px-3 py-2 flex items-center gap-2"
-                style={{
-                  background: '#FFF8E7',
-                  border: '3px solid #EFE3CB',
-                  boxShadow: isHot
-                    ? '0 6px 0 #E3D5B8, 0 14px 26px rgba(0,0,0,0.32)'
-                    : '0 4px 0 #E3D5B8, 0 8px 16px rgba(0,0,0,0.22)',
-                  minWidth: 132,
-                }}
-              >
+              {detail === 'pin' ? (
+                /* 멀리서 — 동그란 핀 하나 */
                 <div
-                  className="h-9 w-9 shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-                  style={{ background: '#8FD98A' }}
+                  className="rounded-full overflow-hidden flex items-center justify-center"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    background: '#FFF8E7',
+                    border: '3px solid #EFE3CB',
+                    boxShadow: '0 3px 0 #E3D5B8, 0 6px 12px rgba(0,0,0,0.25)',
+                  }}
                 >
                   {s.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-lg">🏫</span>
+                    <span className="text-sm">🏫</span>
                   )}
                 </div>
-                <div className="text-left min-w-0">
-                  <div className="text-[12px] font-black truncate" style={{ color: '#6B5B43' }}>
-                    {s.name}
+              ) : (
+                /* 말풍선 카드 */
+                <div
+                  className="rounded-2xl flex items-center gap-2"
+                  style={{
+                    background: '#FFF8E7',
+                    border: '3px solid #EFE3CB',
+                    boxShadow: isHot
+                      ? '0 6px 0 #E3D5B8, 0 14px 26px rgba(0,0,0,0.32)'
+                      : '0 4px 0 #E3D5B8, 0 8px 16px rgba(0,0,0,0.22)',
+                    minWidth: detail === 'full' ? 132 : 0,
+                    padding: detail === 'full' ? '8px 12px' : '5px 9px',
+                  }}
+                >
+                  <div
+                    className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+                    style={{
+                      background: '#8FD98A',
+                      width: detail === 'full' ? 36 : 24,
+                      height: detail === 'full' ? 36 : 24,
+                    }}
+                  >
+                    {s.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className={detail === 'full' ? 'text-lg' : 'text-xs'}>🏫</span>
+                    )}
                   </div>
-                  <div className="text-[9px]" style={{ color: '#A89880' }}>
-                    {s.classCount > 0 ? `${s.classCount}개 반 전시 중` : '준비 중'}
+                  <div className="text-left min-w-0">
+                    <div
+                      className="font-black truncate"
+                      style={{ color: '#6B5B43', fontSize: detail === 'full' ? 12 : 10 }}
+                    >
+                      {s.name}
+                    </div>
+                    {detail === 'full' && (
+                      <div className="text-[9px]" style={{ color: '#A89880' }}>
+                        {s.classCount > 0 ? `${s.classCount}개 반 전시 중` : '준비 중'}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
               {/* 핀 꼬리 */}
               <div
                 className="h-3 w-3 rotate-45 -mt-1.5"

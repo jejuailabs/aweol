@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, type DocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
+import ShareButton from '@/components/common/ShareButton';
 import Mascot from '@/components/mascot/Mascot';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
 
@@ -20,6 +21,7 @@ export default function SchoolPage() {
   const router = useRouter();
   const schoolId = useParams().schoolId as string;
   const [classes, setClasses] = useState<(ClassDoc & { id: string })[]>([]);
+  const [schoolName, setSchoolName] = useState('');
   const [showMascot, setShowMascot] = useState(true);
 
   useEffect(() => {
@@ -35,7 +37,14 @@ export default function SchoolPage() {
       setClasses(list);
     }
     fetchClasses();
-  }, []);
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, 'schools', schoolId))
+      .then((s: DocumentSnapshot) => setSchoolName(s.exists() ? (s.data()?.name as string) || '' : ''))
+      .catch(() => setSchoolName(''));
+  }, [schoolId]);
 
   const handleClassSelect = (classId: string) => {
     playSound('enter');
@@ -52,7 +61,8 @@ export default function SchoolPage() {
       <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} />
 
       {/* 상단 로그인/프로필 메뉴 */}
-      <div className="absolute top-4 right-4 z-40">
+      <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
+        <ShareButton title={`${schoolName || '학교'} 전시실`} text="우리 학교 작품 전시를 구경해보세요" />
         <ProfileMenu />
       </div>
 

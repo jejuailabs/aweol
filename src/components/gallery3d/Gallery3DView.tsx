@@ -29,6 +29,8 @@ interface ExhibitRoomProps {
   onArtworkClick: (artwork: ArtworkData) => void;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
+  /** 전시실에서 교실로 돌아가기 */
+  onExit?: () => void;
 }
 
 const PI = Math.PI;
@@ -502,7 +504,7 @@ function GalleryLighting() {
   );
 }
 
-export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatarCustom }: ExhibitRoomProps) {
+export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatarCustom, onExit }: ExhibitRoomProps) {
   // 실제 승인된 작품만 전시한다 (가짜 작품으로 벽을 채우지 않음)
   const displayArtworks = artworks;
   const avatarPos = useRef(new THREE.Vector3(0, 0, 5));
@@ -553,21 +555,37 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatar
   ];
 
   type WallPlacement = { artwork: ArtworkData; pos: [number, number, number]; rot: [number, number, number] };
-  const wallPlacements: WallPlacement[] = [];
 
-  flatArtworks.forEach((artwork, i) => {
-    const y = 2.5;
-    if (i < 4) {
-      const x = -4.5 + i * 3;
-      wallPlacements.push({ artwork, pos: [x, y, -7.95], rot: [0, 0, 0] });
-    } else if (i < 7) {
-      const z = -5 + (i - 4) * 4;
-      wallPlacements.push({ artwork, pos: [-7.95, y, z], rot: [0, HALF_PI, 0] });
-    } else {
-      const z = -5 + (i - 7) * 4;
-      wallPlacements.push({ artwork, pos: [7.95, y, z], rot: [0, NEG_HALF_PI, 0] });
+  /**
+   * 벽 자리 만들기.
+   *
+   * 한 줄만 쓰면 10점이 넘는 순간 좌표가 벽을 넘어가 작품이 겹쳐 버렸다.
+   * 작품이 많으면 위·아래 두 줄로 건다 — 실제 전시실도 그렇게 한다.
+   */
+  const ONE_ROW_CAPACITY = 10; // 뒷벽 4 + 좌 3 + 우 3
+  const rows = flatArtworks.length > ONE_ROW_CAPACITY ? 2 : 1;
+  const rowY = rows === 1 ? [2.5] : [3.35, 1.72];
+
+  const slots: { pos: [number, number, number]; rot: [number, number, number] }[] = [];
+  for (const y of rowY) {
+    // 뒷벽
+    for (let i = 0; i < 4; i++) {
+      slots.push({ pos: [-4.5 + i * 3, y, -7.95], rot: [0, 0, 0] });
     }
-  });
+    // 왼쪽 벽
+    for (let i = 0; i < 3; i++) {
+      slots.push({ pos: [-7.95, y, -5 + i * 4], rot: [0, HALF_PI, 0] });
+    }
+    // 오른쪽 벽
+    for (let i = 0; i < 3; i++) {
+      slots.push({ pos: [7.95, y, -5 + i * 4], rot: [0, NEG_HALF_PI, 0] });
+    }
+  }
+
+  // 자리보다 작품이 많으면 뒤쪽은 걸지 않는다. 겹쳐 거는 것보다 낫다.
+  const wallPlacements: WallPlacement[] = flatArtworks
+    .slice(0, slots.length)
+    .map((artwork, i) => ({ artwork, pos: slots[i].pos, rot: slots[i].rot }));
 
   return (
     <div
@@ -627,6 +645,37 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatar
             />
           );
         })}
+
+        {/* 나가는 문 — 상단 메뉴 말고 공간 안에서 돌아갈 수 있어야 게임처럼 읽힌다 */}
+        {onExit && (
+          <group position={[0, 0, 7.9]} rotation={[0, PI, 0]}>
+            <mesh position={[0, 1.15, 0]}>
+              <boxGeometry args={[1.9, 2.3, 0.12]} />
+              <meshStandardMaterial color="#5A3E28" roughness={0.8} />
+            </mesh>
+            <mesh position={[0, 1.15, 0.07]}>
+              <planeGeometry args={[1.6, 2.05]} />
+              <meshStandardMaterial color="#7A5638" roughness={0.85} />
+            </mesh>
+            <mesh position={[0.55, 1.1, 0.12]}>
+              <sphereGeometry args={[0.08, 12, 12]} />
+              <meshStandardMaterial color="#E8C86B" metalness={0.6} roughness={0.3} />
+            </mesh>
+            <Html position={[0, 2.75, 0.1]} transform occlude="blending" scale={0.34} zIndexRange={[10, 0]}>
+              <button
+                onClick={onExit}
+                style={{
+                  background: '#FFF8E7', border: '4px solid #EFE3CB', borderRadius: '999px',
+                  padding: '12px 28px', fontWeight: 800, fontSize: '26px', color: '#6B5B43',
+                  fontFamily: 'Pretendard, sans-serif', cursor: 'pointer', whiteSpace: 'nowrap',
+                  boxShadow: '0 5px 0 #E3D5B8, 0 10px 20px rgba(0,0,0,0.28)',
+                }}
+              >
+                🚪 교실로 돌아가기
+              </button>
+            </Html>
+          </group>
+        )}
 
         <WalkerAvatar
           avatarPos={avatarPos}

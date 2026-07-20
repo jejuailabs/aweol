@@ -14,6 +14,7 @@ import type { BoardItem } from '@/components/gallery3d/Blackboard';
 import type { NoticeKind } from '@/lib/firestore-schema';
 import NoticeModal, { type NoticePost } from '@/components/notice/NoticeModal';
 import { setMovementLock } from '@/components/gallery3d/walker';
+import ShareButton from '@/components/common/ShareButton';
 
 const CHALK_COLORS = ['#FFFFFF', '#FFE86B', '#FF9EAF', '#8FE3FF', '#8FD98A'];
 
@@ -262,17 +263,20 @@ export default function ClassRoomPage() {
         <div className="ac-bubble hidden sm:block px-4 py-2 text-xs truncate">
           📚 {classId} 교실
         </div>
+        <div className="ml-auto shrink-0">
+          <ShareButton title={`📚 ${classId} 교실`} text="우리 반 교실을 구경해보세요" />
+        </div>
         {canDraw && (
           <button
             onClick={() => setBoardOpen((v) => !v)}
-            className={`ac-btn ml-auto shrink-0 px-3.5 py-2 text-xs${boardOpen ? ' ac-btn-green' : ''}`}
+            className={`ac-btn shrink-0 px-3.5 py-2 text-xs${boardOpen ? ' ac-btn-green' : ''}`}
           >
             ✏️ 칠판
           </button>
         )}
         <button
           onClick={() => setShowList(true)}
-          className={`ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-xs${canDraw ? '' : ' ml-auto'}`}
+          className="ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-xs"
         >
           📋 활동
         </button>
