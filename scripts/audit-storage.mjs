@@ -23,6 +23,21 @@ initializeApp({
 const db = getFirestore();
 const bucket = getStorage().bucket(env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
 
+
+/**
+ * Storage 주소 → 버킷 내부 경로.
+ * 주의: firebasestorage.googleapis.com 이 storage.googleapis.com 을 문자열로 포함한다.
+ * 순서를 바꾸면 엉뚱한 경로가 나온다. (lib/storage-path.ts 와 같은 로직)
+ */
+function storagePathFromUrl(url) {
+  if (typeof url !== 'string' || !url) return '';
+  const fb = url.match(/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/([^?]+)/);
+  if (fb) return decodeURIComponent(fb[1]);
+  const gcs = url.match(/^https?:\/\/storage\.googleapis\.com\/[^/]+\/([^?]+)/);
+  if (gcs) return decodeURIComponent(gcs[1]);
+  return '';
+}
+
 const mb = (b) => (b / 1024 / 1024).toFixed(2) + 'MB';
 
 // ---------- Storage ----------
@@ -45,12 +60,8 @@ Object.entries(byPrefix)
 // ---------- 참조되지 않는 파일 ----------
 const referenced = new Set();
 const addUrl = (u) => {
-  if (typeof u !== 'string' || !u) return;
-  // storage.googleapis.com/<bucket>/<path>  또는  firebasestorage.../o/<encoded path>
-  let m = u.match(/storage\.googleapis\.com\/[^/]+\/(.+?)(\?|$)/);
-  if (m) { referenced.add(decodeURIComponent(m[1])); return; }
-  m = u.match(/\/o\/(.+?)(\?|$)/);
-  if (m) referenced.add(decodeURIComponent(m[1]));
+  const p = storagePathFromUrl(u);
+  if (p) referenced.add(p);
 };
 
 const schools = await db.collection('schools').get();

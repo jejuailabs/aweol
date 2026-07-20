@@ -3,6 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 import { compressImage } from '@/lib/image-compress';
+import { storagePathFromUrl } from '@/lib/storage-path';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -228,9 +229,7 @@ export async function PATCH(req: NextRequest) {
 
       // 옛 그림은 지운다. 안 지우면 이미지를 바꿀 때마다 1MB 남짓이 계속 쌓인다.
       // (파일명에 시각을 붙이는 이상 덮어쓰기로는 정리되지 않는다)
-      const prev = cur.imageUrl || '';
-      const m = prev.match(/storage\.googleapis\.com\/[^/]+\/(.+?)(\?|$)/);
-      const prevPath = m ? decodeURIComponent(m[1]) : '';
+      const prevPath = storagePathFromUrl(cur.imageUrl || '');
       // 학교가 직접 올린 것만 지운다 — 코드가 주소를 박아 쓰는 공용 이미지는 건드리지 않는다
       if (prevPath && prevPath.startsWith('app-assets/schools/') && prevPath !== path) {
         await bucket.file(prevPath).delete().catch(() => {});

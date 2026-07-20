@@ -21,6 +21,8 @@ interface ArtworkData {
   title: string;
   artistName: string;
   imageUrl: string;
+  /** 액자에 거는 작은 판. 없으면 원본을 쓴다(옛 작품) */
+  thumbnailUrl?: string;
   type: 'flat' | 'sculpture';
 }
 
@@ -337,7 +339,13 @@ function WallArtwork({
 
       {/* 작품 이미지 */}
       <group position={[0, 0, 0.07]} onClick={onClick}>
-        <ArtworkImage url={artwork.imageUrl} width={frameW - 0.1} height={frameH - 0.1} />
+        {/* 액자는 썸네일로 건다. 원본은 눌러서 상세를 볼 때만 받는다 —
+            액자 12개를 원본으로 채우면 방 하나가 20MB를 넘는다 */}
+        <ArtworkImage
+          url={artwork.thumbnailUrl || artwork.imageUrl}
+          width={frameW - 0.1}
+          height={frameH - 0.1}
+        />
       </group>
 
       {/* 근접 시 "!" 큐 + 동숲식 이름표 */}

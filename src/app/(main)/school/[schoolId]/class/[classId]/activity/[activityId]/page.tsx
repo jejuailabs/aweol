@@ -21,6 +21,8 @@ interface ArtworkData {
   title: string;
   artistName: string;
   imageUrl: string;
+  /** 액자용 작은 판 (옛 작품엔 없다) */
+  thumbnailUrl?: string;
   type: 'flat' | 'sculpture';
   artistComment?: string;
 }
@@ -55,6 +57,9 @@ export default function ActivityExhibitPage() {
             title: data.title,
             artistName: data.artistName,
             imageUrl: data.imageUrl,
+            // 원본과 같은 주소면 썸네일이 없는 옛 작품이다
+            thumbnailUrl:
+              data.thumbnailUrl && data.thumbnailUrl !== data.imageUrl ? data.thumbnailUrl : undefined,
             type: data.type,
             artistComment: data.artistComment,
           };

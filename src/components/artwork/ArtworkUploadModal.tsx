@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { resizeImage } from '@/lib/client-image';
 import { doc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
@@ -169,12 +170,29 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
       await uploadBytes(storageRef, uploadBlob);
       const imageUrl = await getDownloadURL(storageRef);
 
+      /**
+       * 전시실 액자용 작은 판을 따로 올린다.
+       * 액자 12개짜리 방이 원본으로만 뜨면 20MB가 넘어 집에서 한참 안 열린다.
+       * 만들지 못하면 원본 주소를 그대로 쓴다 — 썸네일 때문에 업로드가 막히면 안 된다.
+       */
+      let thumbnailUrl = imageUrl;
+      const thumb = await resizeImage(uploadBlob);
+      if (thumb) {
+        try {
+          const thumbRef = ref(storage, `artworks/${user.uid}/${artworkId}-thumb.jpg`);
+          await uploadBytes(thumbRef, thumb.blob);
+          thumbnailUrl = await getDownloadURL(thumbRef);
+        } catch {
+          thumbnailUrl = imageUrl;
+        }
+      }
+
       await setDoc(doc(db, collectionPath, artworkId), {
         title: it.title.trim(),
         artistName: it.artistName.trim(),
         artistUid: isTeacher ? '' : user.uid,
         imageUrl,
-        thumbnailUrl: imageUrl,
+        thumbnailUrl,
         type: it.type,
         artistComment: '',
         uploadedBy: user.uid,

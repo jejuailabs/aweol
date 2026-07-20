@@ -3,6 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
+import { storagePathFromUrl } from '@/lib/storage-path';
 import {
   isShortAnswerCorrect, parseYoutubeId,
   MAX_QUESTIONS, MAX_CHOICES, MAX_PROMPT, MAX_ANSWER_TEXT,
@@ -502,10 +503,8 @@ export async function DELETE(req: NextRequest) {
   const qSnap = await quizRef.collection('questions').get();
   await Promise.all(
     qSnap.docs.map(async (d) => {
-      const url = (d.data().imageUrl as string) || '';
-      const m = url.match(/storage\.googleapis\.com\/[^/]+\/(.+?)(\?|$)/);
-      if (!m) return;
-      const path = decodeURIComponent(m[1]);
+      const path = storagePathFromUrl((d.data().imageUrl as string) || '');
+      if (!path) return;
       // 퀴즈가 올린 것만 (공용 이미지는 건드리지 않는다)
       if (!path.startsWith('quiz/')) return;
       await getStorage()
