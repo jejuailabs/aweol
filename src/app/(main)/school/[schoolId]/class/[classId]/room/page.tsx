@@ -13,6 +13,7 @@ import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
 import type { BoardItem } from '@/components/gallery3d/Blackboard';
 import type { NoticeKind } from '@/lib/firestore-schema';
 import NoticeModal, { type NoticePost } from '@/components/notice/NoticeModal';
+import { setMovementLock } from '@/components/gallery3d/walker';
 
 const CHALK_COLORS = ['#FFFFFF', '#FFE86B', '#FF9EAF', '#8FE3FF', '#8FD98A'];
 
@@ -84,6 +85,14 @@ export default function ClassRoomPage() {
   const isTeacherRole = canManageClass(role);
   // 교직원은 모든 반, 학생·학부모는 소속 반에서만 낙서 가능. 비로그인은 불가.
   const canDraw = !!userDoc && (isTeacherRole || (userDoc.classIds || []).includes(classId));
+
+  // 칠판을 켠 동안에는 아바타를 세운다.
+  // 그리는 중에 화면이 돌아가면 선이 엉뚱한 자리에 그어져 낙서가 엉망이 된다.
+  const drawingNow = canDraw && boardOpen;
+  useEffect(() => {
+    setMovementLock(drawingNow);
+    return () => setMovementLock(false);
+  }, [drawingNow]);
 
   useEffect(() => {
     if (!db) return;

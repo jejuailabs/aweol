@@ -36,6 +36,8 @@ export default function SchoolCreateModal({
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  /** 배경을 '눌러서' 시작했는지 — 드래그로 닫히는 걸 막는다 */
+  const pressedBackdrop = useRef(false);
 
   /** 주소 → 좌표 (OpenStreetMap Nominatim, 키 불필요) */
   const searchAddress = async () => {
@@ -128,7 +130,20 @@ export default function SchoolCreateModal({
     <div
       className="modal-backdrop fixed inset-0 z-[70] flex items-center justify-center px-4 py-6"
       style={{ background: 'rgba(24,20,16,0.55)', backdropFilter: 'blur(8px)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      /**
+       * 바깥을 눌러서 닫되, **누르기 시작한 곳이 바깥일 때만** 닫는다.
+       * click 만 보면 모달 안에서 눌러 바깥에서 뗀 드래그도 공통 조상(=배경)에서
+       * click 이 터져 그대로 닫혔다. 주소 입력이나 이미지 생성 중에 살짝만 끌어도
+       * 만들던 게 통째로 날아갔다.
+       */
+      onPointerDown={(e) => { pressedBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        if (e.target !== e.currentTarget || !pressedBackdrop.current) return;
+        pressedBackdrop.current = false;
+        // 만드는 중에 실수로 닫으면 생성한 이미지가 사라진다
+        if (generating || saving) return;
+        onClose();
+      }}
     >
       <div
         className="modal-card w-full max-w-[460px] rounded-[28px] overflow-hidden flex flex-col"

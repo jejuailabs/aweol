@@ -12,13 +12,42 @@ const NEG_HALF_PI = -PI * 0.5;
 
 // 키 입력 (e.code 기반 — 한글 자판에서도 WASD 동작)
 export const keyState: Record<string, boolean> = {};
+
+const clearKeys = () => { Object.keys(keyState).forEach((k) => { keyState[k] = false; }); };
+
+/**
+ * 글자를 입력하는 중인가.
+ * 이게 없으면 댓글·퀴즈 답·칠판 글씨를 칠 때마다 'w','a','s','d' 가 이동으로 먹혀
+ * 화면이 제멋대로 돌아간다.
+ */
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  const tag = el.tagName.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable === true;
+}
+
+/**
+ * 이동 잠금. 칠판에 그리는 동안처럼 아바타가 움직이면 안 되는 순간에 건다.
+ * (그리는 중에 화면이 돌아가면 선이 엉뚱한 데 그어진다)
+ */
+let movementLocked = false;
+export function setMovementLock(locked: boolean) {
+  movementLocked = locked;
+  if (locked) { clearKeys(); joystickDir = { x: 0, z: 0 }; }
+}
+export const isMovementLocked = () => movementLocked;
+
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
+    if (isTyping(e.target)) return;
     keyState[e.code] = true;
     if (e.code.startsWith('Arrow')) e.preventDefault();
   });
   window.addEventListener('keyup', (e) => { keyState[e.code] = false; });
-  window.addEventListener('blur', () => { Object.keys(keyState).forEach((k) => { keyState[k] = false; }); });
+  window.addEventListener('blur', clearKeys);
+  // 입력창으로 포커스가 옮겨가면 누르고 있던 키가 눌린 채로 남는다
+  window.addEventListener('focusin', (e) => { if (isTyping(e.target)) clearKeys(); });
 }
 
 // 모바일 조이스틱
@@ -346,13 +375,15 @@ export function WalkerAvatar({
 
     let dx = 0;
     let dz = 0;
-    if (keyState['KeyW'] || keyState['ArrowUp']) dz = -1;
-    if (keyState['KeyS'] || keyState['ArrowDown']) dz = 1;
-    if (keyState['KeyA'] || keyState['ArrowLeft']) dx = -1;
-    if (keyState['KeyD'] || keyState['ArrowRight']) dx = 1;
+    if (!movementLocked) {
+      if (keyState['KeyW'] || keyState['ArrowUp']) dz = -1;
+      if (keyState['KeyS'] || keyState['ArrowDown']) dz = 1;
+      if (keyState['KeyA'] || keyState['ArrowLeft']) dx = -1;
+      if (keyState['KeyD'] || keyState['ArrowRight']) dx = 1;
 
-    dx += joystickDir.x;
-    dz += joystickDir.z;
+      dx += joystickDir.x;
+      dz += joystickDir.z;
+    }
 
     const inputLen = Math.sqrt(dx * dx + dz * dz);
     let tx = 0;

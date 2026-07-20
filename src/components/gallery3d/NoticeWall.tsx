@@ -38,7 +38,11 @@ export default function NoticeWall({
       </mesh>
 
       {/* 팻말 */}
-      <Html position={[0, 1.62, 0.05]} transform scale={0.36} pointerEvents="none" zIndexRange={[5, 0]}>
+      {/*
+        occlude 를 빼면 안 된다. Html transform 은 3D 위에 얹히는 DOM 이라
+        깊이 판정을 하지 않아서, 아바타가 알림판 앞에 서 있어도 카드가 머리 위에 그려진다.
+      */}
+      <Html position={[0, 1.62, 0.05]} transform occlude="blending" scale={0.36} pointerEvents="none" zIndexRange={[5, 0]}>
         <div
           style={{
             background: '#FFF8E7', color: '#7A6A52', fontWeight: 800, fontSize: '28px',
@@ -62,7 +66,7 @@ export default function NoticeWall({
               <sphereGeometry args={[0.05, 10, 10]} />
               <meshStandardMaterial color={tab.color} metalness={0.3} roughness={0.4} />
             </mesh>
-            <Html position={[0, 0, 0.02]} transform scale={0.3} zIndexRange={[10, 0]}>
+            <Html position={[0, 0, 0.02]} transform occlude="blending" scale={0.3} zIndexRange={[10, 0]}>
               <button
                 onClick={() => onOpen(tab.kind)}
                 onPointerEnter={() => setHovered(tab.kind)}

@@ -107,9 +107,12 @@ export default function SchoolMap({
 
   // ---------- 조작 ----------
   const onPointerDown = (e: React.PointerEvent) => {
+    // 마커(버튼) 위에서 시작한 눌림은 지도를 끌지 않는다.
+    // 다만 moved 는 여기서 반드시 초기화해야 한다 — 아래 early return 뒤에 두면
+    // 지도를 한 번 끈 뒤로 moved 가 true 로 남아 마커 클릭이 영영 무시된다.
+    moved.current = false;
     if ((e.target as HTMLElement).closest('button')) return;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    moved.current = false;
     if (pointers.current.size === 1) {
       drag.current = { x: e.clientX, y: e.clientY, lat: view.lat, lng: view.lng };
     } else if (pointers.current.size === 2) {
