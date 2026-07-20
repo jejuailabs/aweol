@@ -177,7 +177,9 @@ export async function PATCH(req: NextRequest) {
   const schoolRef = db.collection('schools').doc(schoolId);
   const snap = await schoolRef.get();
   if (!snap.exists) return NextResponse.json({ error: '학교를 찾을 수 없습니다' }, { status: 404 });
-  const cur = snap.data() as { gradeCount?: number; classPerGrade?: number; name?: string };
+  const cur = snap.data() as {
+    gradeCount?: number; classPerGrade?: number; name?: string; imageUrl?: string;
+  };
 
   const patch: Record<string, unknown> = {};
 
@@ -227,6 +229,16 @@ export async function PATCH(req: NextRequest) {
       await gcsFile.save(buffer, { contentType, resumable: false });
       await gcsFile.makePublic();
       patch.imageUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
+
+      // 옛 그림은 지운다. 안 지우면 이미지를 바꿀 때마다 1MB 남짓이 계속 쌓인다.
+      // (파일명에 시각을 붙이는 이상 덮어쓰기로는 정리되지 않는다)
+      const prev = cur.imageUrl || '';
+      const m = prev.match(/storage\.googleapis\.com\/[^/]+\/(.+?)(\?|$)/);
+      const prevPath = m ? decodeURIComponent(m[1]) : '';
+      // 학교가 직접 올린 것만 지운다 — 코드가 주소를 박아 쓰는 공용 이미지는 건드리지 않는다
+      if (prevPath && prevPath.startsWith('app-assets/schools/') && prevPath !== path) {
+        await bucket.file(prevPath).delete().catch(() => {});
+      }
     } catch (e) {
       return NextResponse.json(
         { error: `이미지 저장 실패: ${(e as Error).message.slice(0, 120)}` },

@@ -32,6 +32,14 @@
 4. **Firestore는 중첩 배열을 저장 못 한다.** 좌표는 `[x,y,x,y,...]` 로 펴서 넣는다.
 5. **이미지 생성 모델명은 임의로 바꾸지 말 것.** `gpt-image-2`, quality `low`.
    생성 이미지는 항상 Firebase Storage에 올리고 배포물에 포함하지 않는다.
+   - `public/` 은 비어 있어야 한다. 여기 넣은 건 전부 Vercel 배포 용량이 된다.
+   - **dataURL(base64)을 Firestore 문서에 저장하지 말 것.** 읽을 때마다 그 용량을 다시 낸다.
+     이미지는 Storage에 올리고 문서에는 URL만 넣는다.
+   - 이미지를 **교체**하는 경로에서는 옛 파일을 지운다. 안 지우면 바꿀 때마다 쌓인다.
+     문서를 지우는 경로에서도 딸린 이미지를 함께 지운다.
+   - 점검: `node scripts/audit-storage.mjs` (사용량·고아 파일·문서 속 base64).
+     `--clean` 으로 고아 파일 회수. **`app-assets/schools/` 를 제외한 `app-assets/*` 는
+     코드가 주소를 박아 쓰는 파일**(`lib/image-urls.ts`)이라 고아로 잡으면 안 된다.
 6. **경로 문자열을 직접 조립하지 말 것.** `lib/paths.ts` 헬퍼를 쓴다.
 7. 규칙 변경 후에는 `node scripts/deploy-firebase-rules.mjs` 로 배포한다.
    (Firebase CLI 계정에는 이 프로젝트 권한이 없어 서비스 계정으로 직접 배포하는 스크립트다)

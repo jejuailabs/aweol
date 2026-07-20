@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool } from '@/lib/firebase-admin';
 import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
 import {
@@ -496,6 +497,24 @@ export async function DELETE(req: NextRequest) {
     .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('quizzes').doc(quizId);
+
+  // 문항에 붙은 사진도 함께 지운다. 문서만 지우면 Storage 에 그림만 남아 요금이 샌다.
+  const qSnap = await quizRef.collection('questions').get();
+  await Promise.all(
+    qSnap.docs.map(async (d) => {
+      const url = (d.data().imageUrl as string) || '';
+      const m = url.match(/storage\.googleapis\.com\/[^/]+\/(.+?)(\?|$)/);
+      if (!m) return;
+      const path = decodeURIComponent(m[1]);
+      // 퀴즈가 올린 것만 (공용 이미지는 건드리지 않는다)
+      if (!path.startsWith('quiz/')) return;
+      await getStorage()
+        .bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET)
+        .file(path)
+        .delete()
+        .catch(() => {});
+    })
+  );
 
   for (const sub of ['questions', 'answerKeys', 'submissions']) {
     const snap = await quizRef.collection(sub).get();
