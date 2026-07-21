@@ -42,6 +42,8 @@ export default function SchoolPage() {
   const schoolId = useParams().schoolId as string;
   const [classes, setClasses] = useState<(ClassDoc & { id: string })[]>([]);
   const [schoolName, setSchoolName] = useState('');
+  /** 'gallery' 면 문패 대신 배너를 걸고, 눌렀을 때 교실을 건너뛴다 */
+  const [kind, setKind] = useState<'school' | 'gallery'>('school');
   const [schoolImage, setSchoolImage] = useState('');
   const [schoolEmblem, setSchoolEmblem] = useState('');
   const [pet, setPet] = useState<PetState | null>(null);
@@ -85,13 +87,23 @@ export default function SchoolPage() {
         setSchoolName(s.exists() ? (s.data()?.name as string) || '' : '');
         setSchoolImage(s.exists() ? (s.data()?.imageUrl as string) || '' : '');
         setSchoolEmblem(s.exists() ? (s.data()?.emblemUrl as string) || '' : '');
+        // 없으면 학교. 기존 학교 문서는 손댈 필요가 없다.
+        setKind(s.exists() && s.data()?.kind === 'gallery' ? 'gallery' : 'school');
       })
-      .catch(() => { setSchoolName(''); setSchoolImage(''); setSchoolEmblem(''); });
+      .catch(() => { setSchoolName(''); setSchoolImage(''); setSchoolEmblem(''); setKind('school'); });
   }, [schoolId]);
 
   const handleClassSelect = (classId: string) => {
     playSound('enter');
-    router.push(`/school/${schoolId}/class/${classId}`);
+    /*
+      전시관에는 교실이 없다. 배너를 누르면 전시 목록으로 바로 간다.
+      경로와 데이터는 학교와 똑같다 — 거쳐 가는 화면만 다르다.
+    */
+    router.push(
+      kind === 'gallery'
+        ? `/school/${schoolId}/class/${classId}/exhibits`
+        : `/school/${schoolId}/class/${classId}`
+    );
   };
 
   /**
@@ -100,8 +112,18 @@ export default function SchoolPage() {
    */
   const myClasses = myClassIds(userDoc);
 
+  /**
+   * 문패·배너에 적을 이름.
+   *
+   * 전시관은 `displayName`(전시 주제)을 쓴다. 없으면 학교와 같은 '3-1'.
+   * 학년·반 번호는 그대로 둔다 — 경로도 규칙도 그걸 쓴다.
+   */
   const classButtons = classes.length > 0
-    ? classes.map((cls) => ({ id: cls.id, label: `${cls.grade}-${cls.classNumber}` }))
+    ? classes.map((cls) => ({
+        id: cls.id,
+        label: (cls as ClassDoc & { displayName?: string }).displayName?.trim()
+          || `${cls.grade}-${cls.classNumber}`,
+      }))
     : ['3-1', '3-2', '3-3', '3-4'].map((label) => ({ id: label, label }));
 
   return (
@@ -110,7 +132,7 @@ export default function SchoolPage() {
         3D 학교 전경 — 창문 문패 클릭으로 반 입장.
         운동장 문은 게임 고르는 곳으로 간다. 곧장 달리기가 뜨면 양궁을 못 찾는다.
       */}
-      <SchoolScene classes={classButtons} myClasses={myClasses} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
+      <SchoolScene classes={classButtons} myClasses={myClasses} kind={kind} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
         onEnterArchive={() => router.push(`/school/${schoolId}/archive`)}
         onEnterTrack={() => router.push(`/school/${schoolId}/playground`)}
         schoolId={schoolId}

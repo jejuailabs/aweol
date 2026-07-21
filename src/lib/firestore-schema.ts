@@ -82,6 +82,17 @@ export interface SchoolProfile {
 
 export interface SchoolDoc {
   name: string;
+  /**
+   * 학교인가 전시관인가.
+   *
+   * **구조는 똑같다.** 전시관도 반(class)을 그대로 쓴다 — 그냥 나이스에 없는
+   * 학교일 뿐이고, '반' 자리에 전시 주제가 들어간다.
+   * 다른 건 보이는 것뿐이다: 창문 문패 대신 건물에 걸린 **큰 배너**,
+   * 그리고 눌렀을 때 교실이 아니라 전시실로 바로 간다.
+   *
+   * 없으면 'school'. 기존 학교는 손댈 필요가 없다.
+   */
+  kind?: 'school' | 'gallery';
   /** 지도에 마커를 찍을 좌표 */
   lat: number;
   lng: number;
@@ -224,6 +235,16 @@ export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot' | 'gam
  * 한 반이 한 해 동안 스테이지를 쌓아간다. 나중에 복습 게임이 지난 스테이지에서
  * 문제를 꺼내 쓴다 — 그래서 지우지 말고 쌓이게 둔다.
  */
+/**
+ * 반 — 전시관에서는 '전시 주제' 다.
+ *
+ * `displayName` 이 있으면 '3-1' 대신 그 이름을 보여준다.
+ * 학년·반 번호는 그대로 둔다(경로도 규칙도 그걸 쓴다).
+ */
+export interface ClassDisplay {
+  displayName?: string;
+}
+
 export interface StageDoc {
   /** 몇 번째 스테이지인가 (1부터) */
   order: number;

@@ -256,6 +256,73 @@ export interface SchoolClassItem {
   label: string;
 }
 
+/**
+ * 전시 배너 — 전시관에서 창문 문패를 대신한다.
+ *
+ * 미술관 건물에 세로로 길게 걸린 천 같은 것. 작은 문패로는 전시 주제가
+ * 안 읽히고, 무엇보다 '학교의 반' 처럼 보인다.
+ * 눌러도 교실이 아니라 **전시실로 바로** 간다.
+ */
+function ExhibitBanner({
+  label, onClick, delay = 0, x, y,
+}: {
+  label: string;
+  onClick: () => void;
+  delay?: number;
+  x: number;
+  y: number;
+}) {
+  const [hot, setHot] = useState(false);
+  const { pressed, press } = useDoorPress(onClick);
+
+  return (
+    <group position={[x, y, 0]}>
+      {/* 천 — 살짝 앞으로 나와 벽에서 뜬다 */}
+      <mesh
+        position={[0, 0, 0.12]}
+        onClick={press}
+        onPointerOver={(e) => { e.stopPropagation(); setHot(true); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { setHot(false); document.body.style.cursor = 'auto'; }}
+      >
+        <planeGeometry args={[2.1, 5.4]} />
+        <meshStandardMaterial
+          color={pressed ? '#F2D9A8' : hot ? '#F7EBD3' : '#FBF7EE'}
+          roughness={0.9}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* 위아래 봉 */}
+      {([2.75, -2.75]).map((dy) => (
+        <mesh key={dy} position={[0, dy, 0.14]} rotation={[0, 0, HALF_PI]}>
+          <cylinderGeometry args={[0.07, 0.07, 2.3, 8]} />
+          <meshStandardMaterial color="#8A6038" roughness={0.7} />
+        </mesh>
+      ))}
+
+      {/* 주제 — 세로로 길게 */}
+      <Html position={[0, 0, 0.2]} transform scale={0.3} zIndexRange={[18, 0]} pointerEvents="none">
+        <div
+          style={{
+            width: '150px', textAlign: 'center', fontFamily: 'Pretendard, sans-serif',
+            fontWeight: 900, fontSize: '26px', lineHeight: 1.25, color: '#5B4A3B',
+            userSelect: 'none', wordBreak: 'keep-all',
+          }}
+        >
+          {label}
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#A6762A', marginTop: '10px' }}>
+            {pressed ? '들어가는 중...' : '전시 보러 가기 ›'}
+          </div>
+        </div>
+      </Html>
+
+      {/* 흔들리는 느낌 — 정지한 천은 판자처럼 보인다 */}
+      <Html position={[0, 3.1, 0.2]} center pointerEvents="none" zIndexRange={[6, 0]}>
+        <div style={{ fontSize: '15px', animationDelay: `${delay}s` }} className="float-slow">🎨</div>
+      </Html>
+    </group>
+  );
+}
+
 // --------------- 창문 문패 (반 입구) ---------------
 /**
  * 창문에 걸린 반 문패 = 교실 입구 버튼.
@@ -302,6 +369,7 @@ function SchoolBuilding({
   onEnterHall,
   palette,
   myClasses,
+  kind,
 }: {
   classes: SchoolClassItem[];
   onClassSelect: (id: string) => void;
@@ -312,6 +380,8 @@ function SchoolBuilding({
   palette: SchoolPalette;
   /** 내 반 id 들. 문패를 금색으로 띄운다. */
   myClasses: string[];
+  /** 'gallery' 면 창문 문패 대신 전시 배너를 건다 */
+  kind: 'school' | 'gallery';
 }) {
   const [doorHot, setDoorHot] = useState(false);
   const hallDoor = useDoorPress(onEnterHall);
@@ -415,7 +485,7 @@ function SchoolBuilding({
               <boxGeometry args={[1.28, 0.05, 0.02]} />
               <meshStandardMaterial color="#FFFFFF" />
             </mesh>
-            {cls && (
+            {cls && kind === 'school' && (
               <WindowPlate
                 label={cls.label}
                 onClick={() => onClassSelect(cls.id)}
@@ -427,6 +497,27 @@ function SchoolBuilding({
           </group>
         );
       })}
+      {/*
+        전시 배너 — 전시관일 때만. 창문 슬롯과 달리 앞면에 고르게 편다.
+        네 개까지만 건다. 더 걸면 서로 겹쳐서 읽히지 않는다.
+      */}
+      {kind === 'gallery' && classes.slice(0, 4).map((cls, i, arr) => {
+        const span = bodyW * 0.72;
+        const gapX = arr.length > 1 ? span / (arr.length - 1) : 0;
+        const x = arr.length > 1 ? -span / 2 + gapX * i : 0;
+        return (
+          <group key={cls.id} position={[0, 0, bodyD * 0.5 + 0.06]}>
+            <ExhibitBanner
+              label={cls.label}
+              onClick={() => onClassSelect(cls.id)}
+              delay={i * 0.35}
+              x={x}
+              y={3.5}
+            />
+          </group>
+        );
+      })}
+
       {/* 학교 간판 — 이름은 반드시 실제 학교에서 온다 (예전엔 애월초로 박혀 있었다) */}
       {/*
         `zIndexRange` 를 빼먹으면 drei 가 z-index 16777271 을 준다.
@@ -655,7 +746,10 @@ export default function SchoolScene({
   onPetClick,
   imageUrl = '',
   myClasses = [],
+  kind = 'school',
 }: {
+  /** 'gallery' 면 문패 대신 배너를 걸고, 눌렀을 때 전시실로 바로 간다 */
+  kind?: 'school' | 'gallery';
   classes?: SchoolClassItem[];
   /** 내 반 id 들 — `myClassIds(userDoc)` 로 만든다. 문패가 금색이 된다. */
   myClasses?: string[];
@@ -744,6 +838,7 @@ export default function SchoolScene({
           imageUrl={imageUrl}
           palette={palette}
           myClasses={myClasses}
+          kind={kind}
         />
         <FlagPole />
         <Tree position={[-10.5, 0, -1]} scale={1.15} />
