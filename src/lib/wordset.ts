@@ -142,3 +142,57 @@ export function matchScore(pairCount: number, flips: number): number {
   const ratio = best / Math.max(flips, best);
   return Math.round(ratio * 100);
 }
+
+/** 판을 되짚어 본 결과 */
+export interface MatchRun {
+  ok: boolean;
+  /** 왜 안 되는지 (ok 가 false 일 때만) */
+  reason?: string;
+  flips: number;
+  score: number;
+}
+
+/**
+ * 아이가 뒤집은 **순서를 그대로 되짚어** 채점한다.
+ *
+ * 랭킹에 올리려면 점수를 서버가 내야 하는데, 짝맞추기는 달리기·양궁처럼
+ * '언제' 만으로는 안 된다. 대신 **무엇을 어떤 순서로 뒤집었는지**를 받으면
+ * 판을 다시 만들어 그대로 따라가 볼 수 있다 — 거짓 순서는 도중에 막힌다.
+ *
+ * `order` 는 카드 자리 번호를 뒤집은 차례대로 늘어놓은 것이다.
+ * 두 장씩 끊어 읽으며 확인한다.
+ */
+export function scoreMatchRun(
+  pairs: WordPair[],
+  seed: number,
+  order: unknown,
+  count = 6
+): MatchRun {
+  const deck = buildMatchDeck(pairs, seed, count);
+  const pairCount = new Set(deck.map((c) => c.pairId)).size;
+  const bad = (reason: string): MatchRun => ({ ok: false, reason, flips: 0, score: 0 });
+
+  if (pairCount === 0) return bad('빈 판');
+  if (!Array.isArray(order)) return bad('순서가 없어요');
+  // 아무리 못해도 이보다 많이 뒤집지는 않는다. 끝없이 긴 입력을 막는다.
+  if (order.length > pairCount * 40) return bad('너무 많이 뒤집었어요');
+  if (order.length % 2 !== 0) return bad('짝이 안 맞는 순서예요');
+
+  const matched = new Set<number>();
+  for (let i = 0; i < order.length; i += 2) {
+    const a = order[i];
+    const b = order[i + 1];
+    if (!Number.isInteger(a) || !Number.isInteger(b)) return bad('자리 번호가 아니에요');
+    const x = a as number;
+    const y = b as number;
+    if (x < 0 || y < 0 || x >= deck.length || y >= deck.length) return bad('없는 자리예요');
+    // 같은 카드를 두 번 뒤집을 수는 없다
+    if (x === y) return bad('같은 카드를 두 번 뒤집었어요');
+    // 이미 맞힌 쌍은 덮여 있다
+    if (matched.has(deck[x].pairId) || matched.has(deck[y].pairId)) return bad('이미 맞힌 카드예요');
+    if (isMatch(deck[x], deck[y])) matched.add(deck[x].pairId);
+  }
+
+  if (matched.size !== pairCount) return bad('아직 다 맞히지 못했어요');
+  return { ok: true, flips: order.length, score: matchScore(pairCount, order.length) };
+}

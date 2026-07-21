@@ -7,7 +7,7 @@ import {
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { isTeacherOfClass } from '@/lib/auth-helpers';
-import { stagePlaysPath, stagesPath } from '@/lib/paths';
+import { stagesPath } from '@/lib/paths';
 import { MAX_PAIRS, parsePairs, type WordPair } from '@/lib/wordset';
 import { extractText, isSupported } from '@/lib/doc-text';
 import MatchGame from './MatchGame';
@@ -151,20 +151,24 @@ export default function StagePanel({ schoolId, classId }: { schoolId: string; cl
     }
   };
 
-  /** 아이가 한 판 끝냈다. 기록은 남기되, 실패해도 게임을 막지는 않는다. */
-  const record = async (stage: Stage, r: { flips: number; score: number }) => {
-    if (!db || !user || !userDoc) return;
+  /**
+   * 아이가 한 판 끝냈다.
+   *
+   * **점수를 보내지 않는다.** 뒤집은 순서만 보내고 서버가 되짚어 점수를 낸다 —
+   * 학교 랭킹에 오르는 값이라 클라이언트가 정하면 아무 숫자나 적을 수 있다.
+   * 기록이 안 남아도 아이가 논 건 논 것이므로 게임을 막지는 않는다.
+   */
+  const record = async (stage: Stage, r: { order: number[] }) => {
+    if (!user) return;
     try {
-      await addDoc(collection(db, stagePlaysPath(schoolId, classId, stage.id)), {
-        studentUid: user.uid,
-        studentName: userDoc.displayName || '친구',
-        game: 'match',
-        flips: r.flips,
-        score: r.score,
-        playedAt: serverTimestamp(),
+      const token = await auth?.currentUser?.getIdToken();
+      await fetch('/api/stage-play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ schoolId, classId, stageId: stage.id, order: r.order }),
       });
     } catch {
-      // 기록이 안 남아도 아이가 논 건 논 것이다. 조용히 넘어간다.
+      // 조용히 넘어간다
     }
   };
 

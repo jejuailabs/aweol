@@ -1,4 +1,4 @@
-import { parsePairs, buildMatchDeck, shuffle, isMatch, matchScore, MAX_PAIRS }
+import { parsePairs, buildMatchDeck, shuffle, isMatch, matchScore, scoreMatchRun, MAX_PAIRS }
   from '../src/lib/wordset.ts';
 let f=0; const ok=(n,c)=>{console.log((c?'✓':'✗')+' '+n); if(!c)f++;};
 
@@ -89,5 +89,57 @@ ok('많이 뒤집을수록 낮다', matchScore(6,24)<matchScore(6,16));
 ok('아무리 틀려도 0 아래로 안 간다', matchScore(6,1000)>=0);
 ok('최소보다 적게 뒤집어도 100 넘지 않는다', matchScore(6,4)===100);
 ok('쌍이 없으면 0', matchScore(0,10)===0);
+
+
+console.log('--- 서버가 되짚어 채점하기 (랭킹에 올리려면 필요) ---');
+const P6 = PAIRS.slice(0, 6);
+const SEED = 31;
+const deck6 = buildMatchDeck(P6, SEED, 6);
+
+/** 한 번도 안 틀린 순서 만들기 — 짝끼리 이어서 뒤집는다 */
+const perfect = [];
+{
+  const used = new Set();
+  for (let i = 0; i < deck6.length; i++) {
+    if (used.has(i)) continue;
+    const j = deck6.findIndex((c, k) => k !== i && !used.has(k) && isMatch(deck6[i], c));
+    perfect.push(i, j);
+    used.add(i); used.add(j);
+  }
+}
+{
+  const r = scoreMatchRun(P6, SEED, perfect);
+  ok('한 번도 안 틀린 순서는 통과', r.ok);
+  ok(`뒤집은 횟수가 12 (${r.flips})`, r.flips === 12);
+  ok(`만점 (${r.score})`, r.score === 100);
+
+  const wrong = deck6.findIndex((c, k) => k !== perfect[0] && !isMatch(deck6[perfect[0]], c));
+  const withMiss = [perfect[0], wrong, ...perfect];
+  const r2 = scoreMatchRun(P6, SEED, withMiss);
+  ok('틀렸다가 다시 맞혀도 통과', r2.ok);
+  ok(`틀린 만큼 횟수가 는다 (${r2.flips})`, r2.flips === 14);
+  ok('그래서 점수가 낮아진다', r2.score < r.score);
+}
+
+console.log('--- 거짓 순서는 막힌다 ---');
+{
+  const bad = (o) => scoreMatchRun(P6, SEED, o);
+  ok('덜 맞히고 냈으면 거부', !bad([perfect[0], perfect[1]]).ok);
+  ok('빈 순서는 거부', !bad([]).ok);
+  ok('홀수 개는 거부', !bad([0, 1, 2]).ok);
+  ok('같은 카드를 두 번 뒤집으면 거부', !bad([0, 0]).ok);
+  ok('없는 자리는 거부', !bad([0, 999]).ok);
+  ok('음수 자리는 거부', !bad([-1, 0]).ok);
+  ok('숫자가 아니면 거부', !bad(['0', '1']).ok);
+  ok('배열이 아니면 거부', !bad('조작').ok);
+  ok('null 이어도 안 터진다', !bad(null).ok);
+  ok('끝없이 긴 입력은 거부', !bad(Array(1000).fill(0)).ok);
+  ok('빈 낱말 묶음은 거부', !scoreMatchRun([], 1, [0, 1]).ok);
+  ok('이미 맞힌 쌍을 또 내면 거부',
+     !bad([perfect[0], perfect[1], perfect[0], perfect[1]]).ok);
+  // 만점보다 좋은 척은 불가능하다 — 12장을 다 맞히려면 최소 12번이다
+  ok('12번 미만으로 다 맞힐 수는 없다',
+     !bad(perfect.slice(0, 10)).ok);
+}
 
 console.log(`\n실패 ${f}건`); process.exit(f?1:0);

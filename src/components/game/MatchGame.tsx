@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { playSound } from '@/lib/sound';
 import { buildMatchDeck, isMatch, matchScore, type MatchCard, type WordPair } from '@/lib/wordset';
 
@@ -22,7 +22,8 @@ export default function MatchGame({
   pairs: WordPair[];
   /** 판 배치를 정하는 수. 같은 값이면 같은 배치다(새로고침으로 쉬운 판을 못 고른다). */
   seed: number;
-  onDone: (r: { flips: number; score: number }) => void;
+  /** 뒤집은 **순서**를 넘긴다 — 서버가 이걸 되짚어 점수를 낸다 */
+  onDone: (r: { order: number[] }) => void;
   onExit: () => void;
 }) {
   const deck = useMemo(() => buildMatchDeck(pairs, seed, PAIRS_PER_ROUND), [pairs, seed]);
@@ -33,6 +34,8 @@ export default function MatchGame({
   /** 이미 맞힌 쌍 */
   const [found, setFound] = useState<number[]>([]);
   const [flips, setFlips] = useState(0);
+  /** 뒤집은 자리 번호를 차례대로. 점수는 서버가 이걸로 낸다. */
+  const order = useRef<number[]>([]);
   /** 도로 덮는 중에는 못 누른다 — 연타하면 세 장이 뒤집힌다 */
   const [locked, setLocked] = useState(false);
   const [done, setDone] = useState(false);
@@ -43,8 +46,8 @@ export default function MatchGame({
     if (!cleared || done) return;
     setDone(true);
     playSound('success');
-    onDone({ flips, score: matchScore(pairCount, flips) });
-  }, [cleared, done, flips, pairCount, onDone]);
+    onDone({ order: order.current });
+  }, [cleared, done, onDone]);
 
   const flip = useCallback((i: number) => {
     if (locked || done) return;
@@ -53,6 +56,7 @@ export default function MatchGame({
 
     const next = [...open, i];
     setOpen(next);
+    order.current = [...order.current, i];
     setFlips((n) => n + 1);
     playSound('open');
 

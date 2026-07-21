@@ -210,6 +210,15 @@ service cloud.firestore {
       }
 
       /**
+       * 짝맞추기 최고 점수 — 순위표라 읽기는 공개, 쓰기는 서버만.
+       * 서버가 뒤집은 순서를 되짚어 점수를 낸다(/api/stage-play).
+       */
+      match /matchRecords/{uid} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      /**
        * 양궁 최고 기록 — 순위표라 읽기는 공개, 쓰기는 서버만.
        * 점수는 서버가 씨앗으로 다시 계산해서 낸다(/api/archery).
        */
@@ -359,12 +368,14 @@ service cloud.firestore {
           allow read: if isSignedIn();
           allow write: if isTeacherOf(schoolId, classId);
 
-          // 아이가 한 판 한 기록 — 본인 것만 쓴다
+          /*
+            아이가 한 판 한 기록.
+            점수가 학교 랭킹에 오르므로 **서버만 쓴다**(/api/stage-play).
+            전에는 본인이 직접 썼는데, 그러면 아무 점수나 적어 보낼 수 있다.
+          */
           match /plays/{playId} {
             allow read: if isSignedIn();
-            allow create: if isSignedIn()
-                          && request.resource.data.studentUid == request.auth.uid;
-            allow update, delete: if isTeacherOf(schoolId, classId);
+            allow write: if false;
           }
         }
 

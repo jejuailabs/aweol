@@ -30,7 +30,7 @@ export default function PlaygroundPage() {
     (async () => {
       const out: Record<string, string> = {};
       // 게임이 몇 개뿐이라 하나씩 읽어도 싸다. 늘어나면 한 번에 모으는 걸로 바꾼다.
-      for (const g of PLAYGROUND_GAMES) {
+      for (const g of PLAYGROUND_GAMES.filter((x) => !x.hideOnPlayground)) {
         if (!g.recordCol || !g.formatBest) continue;
         try {
           const snap = await getDoc(doc(db!, `schools/${schoolId}/${g.recordCol}/${user.uid}`));
@@ -63,7 +63,7 @@ export default function PlaygroundPage() {
       </p>
 
       <div className="flex flex-col gap-3">
-        {PLAYGROUND_GAMES.map((g) => (
+        {PLAYGROUND_GAMES.filter((g) => !g.hideOnPlayground).map((g) => (
           <button
             key={g.key}
             onClick={() => { playSound('tap'); router.push(`/school/${schoolId}/${g.path}`); }}
@@ -109,6 +109,14 @@ export default function PlaygroundPage() {
           </button>
         ))}
       </div>
+
+      <button
+        onClick={() => router.push(`/school/${schoolId}/ranking`)}
+        className="w-full mt-4 rounded-2xl py-3 text-[15px] font-bold"
+        style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+      >
+        🏆 우리 학교 기록 보기
+      </button>
 
       {!user && (
         <p className="text-[13px] text-center mt-5" style={{ color: 'var(--color-text-sub)' }}>
