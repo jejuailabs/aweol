@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TARGET_R, aimAt, type ShotSetup } from '@/lib/archery';
 
@@ -15,20 +15,28 @@ import { TARGET_R, aimAt, type ShotSetup } from '@/lib/archery';
 
 const PI = Math.PI;
 
-/** 과녁까지 거리(3D 단위). 멀어 보여야 활 쏘는 맛이 난다. */
-const RANGE = 34;
+/**
+ * 과녁까지 거리(3D 단위).
+ *
+ * 처음에 34 로 뒀더니 휴대폰에서 과녁이 점처럼 작았다. 멀어 보이는 것보다
+ * **과녁이 읽히는 게** 먼저다 — 어디를 맞혔는지 안 보이면 게임이 아니다.
+ */
+const RANGE = 21;
 /** 과녁 반지름(3D 단위) — 계산 단위(TARGET_R)와 나눠 둔다 */
-const R3 = 3.2;
+const R3 = 3.0;
 const K = R3 / TARGET_R;
 
 /** 과녁 — 10점부터 1점까지. 큰 고리부터 그려야 작은 게 위에 남는다. */
+/** 과녁 중심 높이 — 카메라가 여기를 본다 */
+const TARGET_Y = 3.2;
+
 function Target({ hits }: { hits: { x: number; y: number }[] }) {
   const rings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   return (
-    <group position={[0, 3.4, -RANGE]}>
+    <group position={[0, TARGET_Y, -RANGE]}>
       {/* 받침대 */}
-      <mesh position={[0, -3.4, -0.1]}>
-        <boxGeometry args={[0.35, 3.4, 0.35]} />
+      <mesh position={[0, -TARGET_Y, -0.1]}>
+        <boxGeometry args={[0.35, TARGET_Y, 0.35]} />
         <meshStandardMaterial color="#8A5A3B" roughness={0.9} />
       </mesh>
 
@@ -80,7 +88,7 @@ function Bow({ setup, startedAt, shooting }: {
     const p = aimAt(setup, performance.now() - startedAt);
     // 조준점이 움직이는 만큼 활이 흔들린다. 화면 앞쪽이라 조금만 움직여도 크게 보인다.
     g.current.position.x = p.x * K * 0.42;
-    g.current.position.y = 1.15 - p.y * K * 0.42;
+    g.current.position.y = 1.9 - p.y * K * 0.42;
     if (string.current) {
       // 쏜 직후에는 시위가 앞으로 튕긴다
       string.current.position.z = shooting ? 0.06 : -0.34;
@@ -88,7 +96,7 @@ function Bow({ setup, startedAt, shooting }: {
   });
 
   return (
-    <group ref={g} position={[0, 1.15, -1.6]}>
+    <group ref={g} position={[0, 1.9, 3.6]}>
       {/* 활채 */}
       <mesh rotation={[0, 0, 0]}>
         <torusGeometry args={[0.62, 0.045, 8, 24, PI * 1.15]} />
@@ -108,6 +116,23 @@ function Bow({ setup, startedAt, shooting }: {
       )}
     </group>
   );
+}
+
+/**
+ * 카메라를 과녁 쪽으로 **명시적으로** 돌린다.
+ *
+ * `<Canvas camera>` 는 자리만 정하고 방향은 안 정한다(기본은 -Z 를 향해 수평).
+ * 그래서 과녁이 화면 밖으로 밀려 **잔디만 보였다.** 자리를 조금만 옮겨도
+ * 다시 틀어지므로, 여기서 한 번 과녁을 바라보게 맞춘다.
+ */
+function AimCamera() {
+  const { camera } = useThree();
+  useEffect(() => {
+    camera.position.set(0, 2.6, 7.2);
+    camera.lookAt(0, TARGET_Y, -RANGE);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+  return null;
 }
 
 /**
@@ -156,33 +181,55 @@ export default function ArcheryScene({
   flight: { x: number; y: number } | null;
   hits: { x: number; y: number }[];
 }) {
-  const from = useMemo(() => new THREE.Vector3(0, 1.15, -1.6), []);
+  const from = useMemo(() => new THREE.Vector3(0, 1.9, 3.6), []);
   const to = useMemo(
-    () => (flight ? new THREE.Vector3(flight.x * K, 3.4 - flight.y * K, -RANGE) : new THREE.Vector3()),
+    () => (flight ? new THREE.Vector3(flight.x * K, TARGET_Y - flight.y * K, -RANGE) : new THREE.Vector3()),
     [flight]
   );
   return (
-    <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', borderRadius: 20, overflow: 'hidden' }}>
+    <div className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        camera={{ position: [0, 1.9, 2.6], fov: 42, near: 0.1, far: 200 }}
+        shadows
+        camera={{ fov: 46, near: 0.1, far: 300 }}
         dpr={[1, 2]}
-        style={{ background: 'linear-gradient(#BFE8F5, #E8F6D9)' }}
+        style={{ position: 'absolute', inset: 0, background: 'linear-gradient(#BFE8F5, #DDF0FB)' }}
       >
+        <AimCamera />
         <ambientLight intensity={0.85} />
-        <directionalLight position={[6, 12, 4]} intensity={1} color="#FFF4DC" />
+        <directionalLight position={[8, 16, 6]} intensity={1.05} color="#FFF4DC" castShadow />
 
-        {/* 잔디 */}
-        <mesh rotation={[-PI * 0.5, 0, 0]} position={[0, 0, -RANGE * 0.5]}>
-          <planeGeometry args={[40, RANGE + 20]} />
+        {/* 잔디 — 지평선까지 넉넉히 */}
+        <mesh rotation={[-PI * 0.5, 0, 0]} position={[0, 0, -RANGE]} receiveShadow>
+          <planeGeometry args={[120, 200]} />
           <meshStandardMaterial color="#8FD98A" roughness={0.95} />
         </mesh>
 
+        {/* 사대(발판) — 내가 선 자리 */}
+        <mesh rotation={[-PI * 0.5, 0, 0]} position={[0, 0.02, 4]}>
+          <planeGeometry args={[6, 3]} />
+          <meshStandardMaterial color="#D9C9A8" roughness={0.95} />
+        </mesh>
+
         {/* 거리 표시 — 멀다는 게 느껴져야 한다 */}
-        {[10, 20, 30].map((d) => (
-          <mesh key={d} rotation={[-PI * 0.5, 0, 0]} position={[0, 0.01, -d]}>
-            <planeGeometry args={[9, 0.12]} />
+        {[7, 14].map((d) => (
+          <mesh key={d} rotation={[-PI * 0.5, 0, 0]} position={[0, 0.01, -d + 3]}>
+            <planeGeometry args={[10, 0.14]} />
             <meshStandardMaterial color="#FBF7EE" />
           </mesh>
+        ))}
+
+        {/* 멀리 나무 몇 그루 — 허허벌판이면 거리감이 안 산다 */}
+        {([[-14, -30], [15, -34], [-22, -12], [21, -16]] as const).map(([x, z]) => (
+          <group key={`${x},${z}`} position={[x, 0, z]}>
+            <mesh position={[0, 1.1, 0]} castShadow>
+              <cylinderGeometry args={[0.24, 0.32, 2.2, 8]} />
+              <meshStandardMaterial color="#8A5A3B" />
+            </mesh>
+            <mesh position={[0, 3, 0]} castShadow>
+              <sphereGeometry args={[1.6, 12, 12]} />
+              <meshStandardMaterial color="#5FA85C" roughness={0.95} />
+            </mesh>
+          </group>
         ))}
 
         <Target hits={hits} />

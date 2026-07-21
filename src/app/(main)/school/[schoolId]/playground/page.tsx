@@ -1,12 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import { PLAYGROUND_GAMES } from '@/lib/playground-games';
+
+/**
+ * 뒤에 깔리는 운동장.
+ *
+ * 흰 종이에 카드만 두 장 있으면 '운동장에 들어왔다' 는 느낌이 안 난다.
+ * 트랙을 흐리게 깔아 여기가 어디인지 보이게 한다 — 고르는 건 앞의 카드다.
+ */
+const TrackScene = dynamic(() => import('@/components/gallery3d/TrackScene'), { ssr: false });
 
 /**
  * 운동장 — 무엇을 하고 놀지 고르는 곳.
@@ -47,7 +56,22 @@ export default function PlaygroundPage() {
   }, [schoolId, user]);
 
   return (
-    <div className="px-4 pt-6 pb-28 mx-auto max-w-[520px]">
+    <div className="relative min-h-dvh overflow-hidden">
+      {/*
+        운동장을 흐리게 깔아둔다. 고르는 동안 배경이 움직이면 어지러우니
+        `running={false}` 로 세워두고, 눌리지도 않게 막는다.
+      */}
+      <div
+        className="absolute inset-0"
+        style={{ filter: 'blur(7px) saturate(1.05)', pointerEvents: 'none', transform: 'scale(1.06)' }}
+        aria-hidden
+      >
+        <TrackScene running={false} runId={0} onLap={() => {}} onFoul={() => {}} />
+      </div>
+      {/* 글자가 읽히게 살짝 덮는다 */}
+      <div className="absolute inset-0" style={{ background: 'rgba(255,250,240,0.55)' }} aria-hidden />
+
+      <div className="relative z-10 px-4 pt-6 pb-28 mx-auto max-w-[520px]">
       <button
         onClick={() => router.push(`/school/${schoolId}`)}
         className="ac-btn px-3.5 py-2 text-sm mb-4"
@@ -55,10 +79,10 @@ export default function PlaygroundPage() {
         ← 학교로
       </button>
 
-      <h1 className="text-xl font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
+      <h1 className="text-2xl font-black mb-1" style={{ color: '#3A3226' }}>
         🏟️ 운동장
       </h1>
-      <p className="text-[14px] mb-5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-[15px] mb-5 leading-relaxed font-bold" style={{ color: '#8A7A5F' }}>
         무엇을 하고 놀까요?
       </p>
 
@@ -67,23 +91,25 @@ export default function PlaygroundPage() {
           <button
             key={g.key}
             onClick={() => { playSound('tap'); router.push(`/school/${schoolId}/${g.path}`); }}
-            className="w-full rounded-3xl p-4 text-left transition-transform active:scale-[0.98]"
+            className="w-full rounded-[28px] overflow-hidden text-left transition-transform active:scale-[0.97]"
             style={{
-              background: 'var(--color-surface)',
-              border: '3px solid var(--color-surface-soft)',
-              boxShadow: '0 5px 0 var(--color-surface-soft)',
+              background: 'rgba(255,255,255,0.96)',
+              border: `4px solid ${g.color}`,
+              boxShadow: `0 7px 0 ${g.color}`,
             }}
           >
-            <div className="flex items-center gap-3">
-              <div
-                className="h-14 w-14 shrink-0 rounded-2xl flex items-center justify-center text-[28px]"
-                style={{ background: g.color }}
-              >
-                {g.emoji}
-              </div>
+            {/* 색 띠 — 카드마다 다른 색이라 멀리서도 구별된다 */}
+            <div
+              className="flex items-center justify-center"
+              style={{ background: g.color, height: 74 }}
+            >
+              <span style={{ fontSize: 44, lineHeight: 1 }}>{g.emoji}</span>
+            </div>
+
+            <div className="flex items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[17px] font-black" style={{ color: 'var(--color-text-main)' }}>
+                  <span className="text-[19px] font-black" style={{ color: '#3A3226' }}>
                     {g.label}
                   </span>
                   {/* 어떤 힘이 늘어나는지 — 선생님이 고를 때 본다 */}
@@ -104,7 +130,7 @@ export default function PlaygroundPage() {
                   </div>
                 )}
               </div>
-              <span className="text-[20px] shrink-0" style={{ color: 'var(--color-text-sub)' }}>›</span>
+              <span className="text-[22px] shrink-0" style={{ color: g.color }}>›</span>
             </div>
           </button>
         ))}
@@ -112,17 +138,18 @@ export default function PlaygroundPage() {
 
       <button
         onClick={() => router.push(`/school/${schoolId}/ranking`)}
-        className="w-full mt-4 rounded-2xl py-3 text-[15px] font-bold"
-        style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+        className="w-full mt-4 rounded-2xl py-3.5 text-[15px] font-bold"
+        style={{ background: 'rgba(255,255,255,0.9)', color: '#8A7A5F', border: '2px solid #EFE3CB' }}
       >
         🏆 우리 학교 기록 보기
       </button>
 
       {!user && (
-        <p className="text-[13px] text-center mt-5" style={{ color: 'var(--color-text-sub)' }}>
+        <p className="text-[13px] text-center mt-5 font-bold" style={{ color: '#8A7A5F' }}>
           로그인하면 기록이 남아요
         </p>
       )}
+      </div>
     </div>
   );
 }

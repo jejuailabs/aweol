@@ -145,118 +145,118 @@ export default function ArcheryPage() {
   const wind = setup?.wind ?? 0;
 
   return (
-    <div className="px-4 pt-6 pb-28 mx-auto max-w-[520px]">
+    /*
+      달리기와 같은 짜임 — **경기장이 화면을 가득 채우고** 조작·기록은 그 위에 얹는다.
+      전에는 3D 를 작은 네모 안에 넣었더니 운동장이 아니라 그림 한 장처럼 보였다.
+    */
+    <div className="relative min-h-dvh overflow-hidden">
+      <ArcheryScene
+        setup={phase === 'aiming' ? setup : null}
+        startedAt={startedAt}
+        shooting={!!flight}
+        flight={flight}
+        hits={hits}
+      />
+
+      {/* 나가기 */}
       <button
         onClick={() => router.push(`/school/${schoolId}/playground`)}
-        className="ac-btn px-3.5 py-2 text-sm mb-3"
+        className="ac-btn pos-top-safe absolute left-4 z-30 px-3.5 py-2 text-sm"
       >
         ← 운동장으로
       </button>
 
-      <h1 className="text-lg font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
-        🏹 양궁
-      </h1>
-      <p className="text-[13px] mb-4 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-        조준점이 흔들려요. 가운데에 왔을 때 쏘세요. 화살은 바람에 밀리니까
-        <b> 바람 반대쪽</b>에서 쏘면 가운데로 가요.
-      </p>
-
-      {/* 경기장 — 화살이 꽂히는 자리는 계산이 준 값 그대로다 */}
-      <div className="mb-3">
-        <ArcheryScene
-          setup={phase === 'aiming' ? setup : null}
-          startedAt={startedAt}
-          shooting={!!flight}
-          flight={flight}
-          hits={hits}
-        />
-      </div>
-
+      {/* 겨누는 중 — 몇 번째 화살인지와 바람 */}
       {phase === 'aiming' && (
-        <>
-          <div className="flex items-center justify-between mb-2 text-[14px] font-bold" style={{ color: 'var(--color-text-sub)' }}>
-            <span>화살 {shotIdx + 1} / {SHOTS}</span>
-            {/* 바람을 화살표로 — 숫자보다 방향이 먼저 읽힌다 */}
-            <span>
-              바람 {wind > 0 ? '→' : '←'} {Math.abs(wind).toFixed(0)}
-            </span>
-          </div>
+        <div
+          className="pos-top-safe absolute right-4 z-30 rounded-full px-4 py-2 text-[14px] font-black"
+          style={{ background: 'rgba(255,248,231,0.95)', color: '#6B5B43' }}
+        >
+          화살 {shotIdx + 1}/{SHOTS} · 바람 {wind > 0 ? '→' : '←'} {Math.abs(wind).toFixed(0)}
+        </div>
+      )}
+
+      {/* 아래쪽 — 쏘기 / 시작 / 결과 */}
+      <div className="pos-above-nav absolute left-4 right-4 z-30 mx-auto max-w-[420px]">
+        {phase === 'aiming' && (
           <button
             onClick={shoot}
             disabled={!!flight}
             className="w-full rounded-2xl py-5 text-[18px] font-black text-white active:scale-95 transition-transform disabled:opacity-50"
-            style={{ background: 'var(--color-primary)' }}
+            style={{ background: 'var(--color-primary)', boxShadow: '0 6px 0 rgba(0,0,0,0.18)' }}
           >
             {flight ? '화살이 날아가는 중...' : '🏹 쏘기'}
           </button>
-        </>
-      )}
+        )}
 
-      {(phase === 'ready' || phase === 'done') && (
-        <button
-          onClick={start}
-          className="w-full rounded-2xl py-4 text-[16px] font-black text-white"
-          style={{ background: 'var(--color-primary)' }}
-        >
-          {phase === 'done' ? '한 번 더' : '시작하기'}
-        </button>
-      )}
-
-      {phase === 'sending' && (
-        <div className="text-center text-[14px] font-bold py-4" style={{ color: 'var(--color-text-sub)' }}>
-          점수를 매기는 중...
-        </div>
-      )}
-
-      {err && (
-        <div className="rounded-xl px-3 py-2.5 mt-3 text-[13px] font-bold" style={{ background: '#FDECEA', color: '#B02A37' }}>
-          ⚠️ {err}
-        </div>
-      )}
-
-      {result && (
-        <div className="rounded-2xl p-4 mt-3 text-center" style={{ background: '#E2F6E9', border: '1px solid #A0DCB7' }}>
-          <div className="text-[20px] font-black" style={{ color: '#2E8B57' }}>
-            {result.total} / {PERFECT}점
+        {phase === 'sending' && (
+          <div
+            className="rounded-2xl py-4 text-center text-[15px] font-bold"
+            style={{ background: 'rgba(255,248,231,0.95)', color: '#6B5B43' }}
+          >
+            점수를 매기는 중...
           </div>
-          <div className="text-[13px] mt-1" style={{ color: '#5FA87C' }}>
-            {result.shots.join(' · ')}
-          </div>
-          <div className="text-[13px] mt-1.5 font-bold" style={{ color: '#2E8B57' }}>
-            내 최고 기록 {result.best}점
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* 순위표 */}
-      {board.length > 0 && (
-        <div className="mt-5">
-          <div className="text-[14px] font-black mb-2" style={{ color: 'var(--color-text-main)' }}>
-            🏆 우리 학교 최고 기록
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {board.map((b, i) => (
-              <div
-                key={`${b.name}-${i}`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2"
-                style={{ background: 'var(--color-surface)' }}
-              >
-                <span className="text-[14px] font-black w-5" style={{ color: '#A6762A' }}>{i + 1}</span>
-                <span className="flex-1 min-w-0 truncate text-[14px]" style={{ color: 'var(--color-text-main)' }}>
-                  {b.name}
-                </span>
-                <span className="text-[14px] font-bold" style={{ color: 'var(--color-text-sub)' }}>{b.total}점</span>
+        {(phase === 'ready' || phase === 'done') && (
+          <div
+            className="rounded-3xl p-4"
+            style={{ background: 'rgba(255,250,240,0.96)', border: '3px solid rgba(255,255,255,0.7)' }}
+          >
+            {result ? (
+              <>
+                <div className="text-[20px] font-black text-center" style={{ color: '#2E8B57' }}>
+                  {result.total} / {PERFECT}점
+                </div>
+                <div className="text-[13px] text-center mt-0.5" style={{ color: '#5FA87C' }}>
+                  {result.shots.join(' · ')} · 내 최고 {result.best}점
+                </div>
+              </>
+            ) : (
+              <div className="text-[13px] mb-2 leading-relaxed" style={{ color: '#8A7A5F' }}>
+                조준점이 흔들려요. 가운데에 왔을 때 쏘세요.
+                화살은 바람에 밀리니까 <b>바람 반대쪽</b>에서 쏘면 가운데로 가요.
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
 
-      {!user && (
-        <p className="text-[13px] text-center mt-4" style={{ color: 'var(--color-text-sub)' }}>
-          로그인하면 기록이 남아요
-        </p>
-      )}
+            <button
+              onClick={start}
+              className="w-full mt-2 rounded-2xl py-4 text-[16px] font-black text-white"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {phase === 'done' ? '한 번 더' : '시작하기'}
+            </button>
+
+            {board.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[13px] font-black mb-1.5" style={{ color: '#3A3226' }}>
+                  🏆 우리 학교 기록
+                </div>
+                <div className="flex flex-col gap-1">
+                  {board.slice(0, 3).map((b, i) => (
+                    <div key={`${b.name}-${i}`} className="flex items-center gap-2 text-[13px]">
+                      <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                      <span className="flex-1 min-w-0 truncate" style={{ color: '#3A3226' }}>{b.name}</span>
+                      <span className="font-bold" style={{ color: '#8A7A5F' }}>{b.total}점</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {err && (
+              <div className="rounded-xl px-3 py-2 mt-2 text-[13px] font-bold" style={{ background: '#FDECEA', color: '#B02A37' }}>
+                ⚠️ {err}
+              </div>
+            )}
+            {!user && (
+              <p className="text-[12px] text-center mt-2" style={{ color: '#A89880' }}>
+                로그인하면 기록이 남아요
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
