@@ -25,6 +25,8 @@ interface ArtworkData {
   thumbnailUrl?: string;
   type: 'flat' | 'sculpture';
   artistComment?: string;
+  /** 영상 작품이면 유튜브 번호 */
+  videoId?: string | null;
 }
 
 export default function ActivityExhibitPage() {
@@ -62,6 +64,7 @@ export default function ActivityExhibitPage() {
               data.thumbnailUrl && data.thumbnailUrl !== data.imageUrl ? data.thumbnailUrl : undefined,
             type: data.type,
             artistComment: data.artistComment,
+            videoId: data.videoId ?? null,
           };
         });
       setArtworks(list);

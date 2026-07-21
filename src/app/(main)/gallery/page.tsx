@@ -130,6 +130,7 @@ export default function GalleryPage() {
               imageUrl: selected.imageUrl,
               type: selected.type,
               artistComment: selected.artistComment,
+              videoId: selected.videoId ?? null,
             }}
             collectionPath={selected.path.split('/').slice(0, -1).join('/')}
             onClose={() => setSelected(null)}

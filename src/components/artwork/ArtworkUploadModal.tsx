@@ -6,7 +6,8 @@ import { resizeImage } from '@/lib/client-image';
 import { doc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { canManageClass } from '@/lib/auth-helpers';
+import { isTeacherOfClass } from '@/lib/auth-helpers';
+import { youtubeId, youtubeThumb } from '@/lib/youtube';
 
 interface Props {
   collectionPath: string;
@@ -35,13 +36,24 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
   const [bulkTitle, setBulkTitle] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-
-  const isTeacher = canManageClass(role);
+  /** '사진' 과 '영상' 중 하나. 영상은 유튜브 주소만 받는다(우리가 저장하지 않는다). */
+  const [mode, setMode] = useState<'photo' | 'video'>('photo');
+  const [vUrl, setVUrl] = useState('');
+  const [vTitle, setVTitle] = useState('');
+  const [vArtist, setVArtist] = useState('');
+  const [vErr, setVErr] = useState('');
+  const vid = youtubeId(vUrl);
 
   // collectionPath: schools/{schoolId}/classes/{classId}/activities/{activityId}/artworks
   const pathParts = collectionPath.split('/');
   const schoolId = pathParts[1];
   const classId = pathParts[3];
+
+  /**
+   * **이 반** 담임인가. 여기서 갈리는 게 명부·일괄도구만이 아니라
+   * **바로 전시(승인 건너뛰기)** 라서 반을 반드시 봐야 한다.
+   */
+  const isTeacher = isTeacherOfClass(role, userDoc?.classIds, classId);
 
   // 교사용: 학급 명부를 불러와 이름 자동완성에 쓴다 (타이핑 대신 선택)
   useEffect(() => {
@@ -211,6 +223,42 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
     onClose();
   };
 
+  /**
+   * 영상 작품 걸기.
+   *
+   * 액자에 걸 그림은 유튜브 썸네일 주소를 그대로 쓴다 — **Storage 를 안 쓴다.**
+   * 그래서 영상 작품은 아무리 많이 올려도 저장 요금이 늘지 않는다.
+   */
+  const submitVideo = async () => {
+    if (!db || !user || !vid || !vTitle.trim() || !vArtist.trim()) return;
+    setUploading(true); setVErr('');
+    try {
+      const artworkId = `art-${Date.now()}`;
+      const thumb = youtubeThumb(vid);
+      await setDoc(doc(db, collectionPath, artworkId), {
+        title: vTitle.trim(),
+        artistName: vArtist.trim(),
+        artistUid: isTeacher ? '' : user.uid,
+        imageUrl: thumb,
+        thumbnailUrl: thumb,
+        videoId: vid,
+        type: 'flat',
+        artistComment: '',
+        uploadedBy: user.uid,
+        uploadedByRole: isTeacher ? 'teacher' : role === 'parent' ? 'parent' : 'student',
+        uploadedAt: serverTimestamp(),
+        status: isTeacher ? 'approved' : 'pending',
+        rejectionReason: null,
+      });
+      onUploaded();
+      onClose();
+    } catch {
+      setVErr('작품을 올리지 못했어요. 내 반이 맞는지 확인하고 다시 해주세요.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div
       className="absolute inset-0 z-50 flex items-end sm:items-center justify-center"
@@ -227,7 +275,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
 
         <div className="flex items-center justify-between px-5 pt-2 pb-3 sm:pt-5">
           <h3 className="text-lg font-bold" style={{ color: 'var(--color-text-main)' }}>
-            🖼️ 작품 올리기 {items.length > 0 && <span className="text-sm">({items.length}점)</span>}
+            🖼️ 작품 올리기 {mode === 'photo' && items.length > 0 && <span className="text-sm">({items.length}점)</span>}
           </h3>
           <button
             onClick={onClose}
@@ -240,8 +288,99 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-4">
-          {/* 사진 선택 */}
-          {items.length === 0 ? (
+          {/* 사진이냐 영상이냐 — 사진을 이미 고른 뒤에는 못 바꾼다(고른 게 날아가니까) */}
+          {items.length === 0 && (
+            <div className="flex gap-2 mb-4">
+              {([['photo', '📷', '사진'], ['video', '▶️', '영상']] as const).map(([m, emoji, label]) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className="flex-1 rounded-2xl py-3 text-[15px] font-black transition-transform active:scale-95"
+                  style={
+                    mode === m
+                      ? { background: 'var(--color-primary)', color: 'white' }
+                      : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }
+                  }
+                >
+                  {emoji} {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === 'video' ? (
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-[14px] font-bold block mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                  유튜브 주소
+                </label>
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={vUrl}
+                  onChange={(e) => setVUrl(e.target.value)}
+                  placeholder="https://youtu.be/..."
+                  className="w-full rounded-xl px-3.5 py-3 text-[15px] outline-none"
+                  style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+                />
+                {/* 붙여넣자마자 맞는지 보여준다 — 다 채우고 나서 틀렸다고 하면 늦다 */}
+                {vUrl.trim() && !vid && (
+                  <p className="text-[13px] font-bold mt-1.5" style={{ color: '#C0392B' }}>
+                    유튜브 주소가 아니에요. 유튜브에서 &apos;공유&apos; 를 눌러 복사한 주소를 넣어주세요.
+                  </p>
+                )}
+              </div>
+
+              {vid && (
+                <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-surface-soft)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={youtubeThumb(vid)} alt="" className="w-full aspect-video object-cover" />
+                  <div className="px-3 py-2 text-[13px] font-bold" style={{ color: 'var(--color-text-sub)' }}>
+                    ✅ 이 영상이 맞나요?
+                  </div>
+                </div>
+              )}
+
+              <input
+                type="text"
+                value={vTitle}
+                onChange={(e) => setVTitle(e.target.value)}
+                placeholder="작품명"
+                className="w-full rounded-xl px-3.5 py-3 text-[15px] outline-none"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+              />
+              <input
+                type="text"
+                list={roster.length > 0 ? 'video-roster' : undefined}
+                value={vArtist}
+                onChange={(e) => setVArtist(e.target.value)}
+                placeholder="만든 사람 이름"
+                className="w-full rounded-xl px-3.5 py-3 text-[15px] outline-none"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+              />
+              {roster.length > 0 && (
+                <datalist id="video-roster">
+                  {roster.map((n) => <option key={n} value={n} />)}
+                </datalist>
+              )}
+
+              {vErr && (
+                <div className="text-[14px] font-bold" style={{ color: '#C0392B' }}>⚠️ {vErr}</div>
+              )}
+
+              <button
+                onClick={submitVideo}
+                disabled={uploading || !vid || !vTitle.trim() || !vArtist.trim()}
+                className="w-full rounded-xl py-3.5 text-[15px] font-bold text-white disabled:opacity-40"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {uploading ? '거는 중...' : isTeacher ? '바로 전시하기' : '제출하기'}
+              </button>
+              <p className="text-[13px] text-center" style={{ color: 'var(--color-text-sub)' }}>
+                {isTeacher ? '선생님이 올린 작품은 바로 전시실에 걸려요' : '선생님 승인 후 전시실에 전시됩니다'}
+              </p>
+            </div>
+          ) : items.length === 0 ? (
             <button
               onClick={() => fileRef.current?.click()}
               className="w-full aspect-[4/3] rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-dashed"
@@ -416,8 +555,8 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
           />
         </div>
 
-        {/* 제출 */}
-        {items.length > 0 && (
+        {/* 제출 — 사진만. 영상은 위에 자기 버튼이 있다. */}
+        {mode === 'photo' && items.length > 0 && (
           <div className="px-5 pb-5 pt-2" style={{ borderTop: '1px solid var(--color-surface-soft)' }}>
             {!canSubmit && !uploading && (
               <p className="text-[12px] text-center mb-2" style={{ color: 'var(--color-text-sub)' }}>

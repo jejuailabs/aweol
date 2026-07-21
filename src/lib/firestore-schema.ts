@@ -244,6 +244,11 @@ export interface ArtworkDoc {
   artistUid: string;
   imageUrl: string;
   thumbnailUrl: string;
+  /**
+   * 영상 작품이면 유튜브 번호. 사진 작품에는 없다(예전 작품에도 없다).
+   * 있을 때 imageUrl/thumbnailUrl 은 유튜브 썸네일 주소다 — 우리 Storage 가 아니다.
+   */
+  videoId?: string | null;
   type: 'flat' | 'sculpture';
   artistComment: string;
   uploadedBy: string;

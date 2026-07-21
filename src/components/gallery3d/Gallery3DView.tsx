@@ -24,6 +24,8 @@ interface ArtworkData {
   /** 액자에 거는 작은 판. 없으면 원본을 쓴다(옛 작품) */
   thumbnailUrl?: string;
   type: 'flat' | 'sculpture';
+  /** 영상 작품이면 유튜브 번호. 액자에 ▶ 를 얹는 데 쓴다. */
+  videoId?: string | null;
 }
 
 interface ExhibitRoomProps {
@@ -354,6 +356,25 @@ function WallArtwork({
           width={frameW - 0.1}
           height={frameH - 0.1}
         />
+
+        {/*
+          영상 작품 표시.
+          썸네일만 걸면 사진 작품과 구별이 안 돼서 아이가 눌러보기 전까지 모른다.
+          액자 한가운데에 재생 단추를 얹어 **누르기 전에** 알려준다.
+        */}
+        {artwork.videoId && (
+          <group position={[0, 0, 0.03]}>
+            <mesh>
+              <circleGeometry args={[Math.min(frameW, frameH) * 0.17, 24]} />
+              <meshBasicMaterial color="#1A1A1A" transparent opacity={0.72} />
+            </mesh>
+            {/* 삼각형 — 원의 첫 꼭짓점이 +X 라 그대로 두면 오른쪽을 본다(우리가 원하는 방향) */}
+            <mesh position={[Math.min(frameW, frameH) * 0.02, 0, 0.001]}>
+              <circleGeometry args={[Math.min(frameW, frameH) * 0.085, 3]} />
+              <meshBasicMaterial color="#FFFFFF" />
+            </mesh>
+          </group>
+        )}
       </group>
 
       {/* 근접 시 "!" 큐 + 동숲식 이름표 */}

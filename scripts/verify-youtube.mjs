@@ -1,0 +1,18 @@
+import { youtubeId } from '../src/lib/youtube.ts';
+let f=0; const ok=(n,c)=>{console.log((c?'✓':'✗')+' '+n); if(!c)f++;};
+const ID='dQw4w9WgXcQ';
+ok('watch', youtubeId(`https://www.youtube.com/watch?v=${ID}`)===ID);
+ok('watch + 뒤에 다른 값', youtubeId(`https://www.youtube.com/watch?v=${ID}&t=42s`)===ID);
+ok('watch + 앞에 다른 값', youtubeId(`https://www.youtube.com/watch?app=desktop&v=${ID}`)===ID);
+ok('youtu.be 공유주소', youtubeId(`https://youtu.be/${ID}?si=AbCdEf`)===ID);
+ok('embed', youtubeId(`https://www.youtube.com/embed/${ID}`)===ID);
+ok('shorts', youtubeId(`https://www.youtube.com/shorts/${ID}`)===ID);
+ok('live', youtubeId(`https://www.youtube.com/live/${ID}`)===ID);
+ok('m. 모바일', youtubeId(`https://m.youtube.com/watch?v=${ID}`)===ID);
+ok('번호만', youtubeId(ID)===ID);
+ok('앞뒤 공백', youtubeId(`  https://youtu.be/${ID}  `)===ID);
+ok('빈 값 → null', youtubeId('')===null);
+ok('엉뚱한 주소 → null', youtubeId('https://naver.com')===null);
+ok('유튜브 아닌 곳의 v= → null', youtubeId('https://evil.com/watch?v=dQw4w9WgXcQ')===null);
+ok('번호가 짧으면 → null', youtubeId('https://youtu.be/abc')===null);
+console.log(`\n실패 ${f}건`); process.exit(f?1:0);

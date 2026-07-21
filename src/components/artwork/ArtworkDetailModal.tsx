@@ -10,6 +10,7 @@ import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import { canWriteComment } from '@/lib/auth-helpers';
 import { CommentDoc } from '@/lib/firestore-schema';
+import { youtubeEmbed } from '@/lib/youtube';
 
 interface ArtworkData {
   id: string;
@@ -18,6 +19,8 @@ interface ArtworkData {
   imageUrl: string;
   type: 'flat' | 'sculpture';
   artistComment?: string;
+  /** 영상 작품이면 유튜브 번호. 사진 작품이면 없다. */
+  videoId?: string | null;
 }
 
 interface Props {
@@ -38,6 +41,8 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
   const [comments, setComments] = useState<(CommentDoc & { id: string })[]>([]);
   const [likeUids, setLikeUids] = useState<string[]>([]);
   const [showComments, setShowComments] = useState(false);
+  /** 크게 보기 — 액자를 벗고 화면 가득. 선생님들이 작아서 안 보인다고 하셨다. */
+  const [zoom, setZoom] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
@@ -125,7 +130,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
         className="modal-card absolute inset-0 flex flex-col items-center justify-center px-5 pb-8 pt-10 overflow-y-auto"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        <div className="flex flex-col items-center max-w-[560px] w-full my-auto">
+        <div className="flex flex-col items-center max-w-[720px] w-full my-auto">
           {/* 액자 */}
           <div className="relative w-full" style={{ filter: 'drop-shadow(0 22px 44px rgba(0,0,0,0.55))' }}>
             <div
@@ -137,11 +142,29 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
                 <div className="p-3 sm:p-4" style={{ background: '#F7F2E8' }}>
                   <div
                     className="flex items-center justify-center overflow-hidden"
-                    style={{ background: '#FFFDF8', minHeight: '180px', maxHeight: '52vh', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.12)' }}
+                    style={{ background: '#FFFDF8', minHeight: '180px', maxHeight: '62vh', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.12)' }}
                   >
-                    {artwork.imageUrl ? (
+                    {artwork.videoId ? (
+                      /*
+                        영상은 16:9 를 지켜야 위아래로 검은 띠가 안 생긴다.
+                        `aspect-video` 로 높이를 폭에 맡긴다.
+                      */
+                      <iframe
+                        src={youtubeEmbed(artwork.videoId)}
+                        title={artwork.title}
+                        className="w-full aspect-video"
+                        style={{ border: 0 }}
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                        allowFullScreen
+                      />
+                    ) : artwork.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={artwork.imageUrl} alt={artwork.title} className="max-h-[52vh] w-full object-contain" />
+                      <img
+                        src={artwork.imageUrl}
+                        alt={artwork.title}
+                        onClick={() => setZoom(true)}
+                        className="max-h-[62vh] w-full object-contain cursor-zoom-in"
+                      />
                     ) : (
                       <div
                         className="flex w-full flex-col items-center justify-center gap-2.5 py-12"
@@ -178,6 +201,16 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
               <span>{artwork.type === 'sculpture' ? '조형 작품' : '회화 · 글'}</span>
             </div>
           </div>
+
+          {!artwork.videoId && artwork.imageUrl && (
+            <button
+              onClick={() => setZoom(true)}
+              className="mt-3 rounded-full px-5 py-2.5 text-[14px] font-bold transition-transform hover:scale-105"
+              style={{ background: 'rgba(255,255,255,0.16)', color: '#F2EAdd', border: '1px solid rgba(255,255,255,0.28)' }}
+            >
+              🔍 크게 보기
+            </button>
+          )}
 
           {/* 작가의 말 */}
           {artwork.artistComment && (
@@ -345,6 +378,36 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 크게 보기 — 액자도 명패도 없이 그림만. 아무 데나 누르면 닫힌다. */}
+      {zoom && (
+        <div
+          className="fixed inset-0 z-[95] flex items-center justify-center p-3 cursor-zoom-out"
+          style={{ background: 'rgba(12,10,8,0.96)' }}
+          onClick={() => setZoom(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={artwork.imageUrl}
+            alt={artwork.title}
+            /*
+              `max-h-full` 만 두면 원본이 작을 때 원본 크기에서 멈춰서
+              액자 안(폭에 맞춰 늘어남)보다 **오히려 작아진다.**
+              그래서 화면을 채우게 하고 비율만 지킨다 — 저화질은 좀 흐려지지만
+              '크게 보기' 를 눌렀는데 작아지는 것보다는 낫다.
+            */
+            className="h-full w-full object-contain"
+            style={{ borderRadius: '6px' }}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); setZoom(false); }}
+            className="absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full text-lg"
+            style={{ background: 'rgba(255,255,255,0.16)', color: '#EDE6DC', border: '1px solid rgba(255,255,255,0.24)' }}
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
