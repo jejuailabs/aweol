@@ -640,6 +640,38 @@ curl -s <배포주소> | grep -o '<meta name="viewport"[^>]*>'
 **곁들여:** `auth-helpers.ts` 의 타입 수입은 `import type` 이어야 한다.
 값으로 들여오면 `node --experimental-strip-types` 검증이 없는 파일을 찾다 터진다.
 
+### 선생님이 만드는 도장 (2026-07-21)
+
+상점 도장은 이모지라 어느 반이든 똑같이 생겼다. 선생님이 자기 그림을 올리면
+아이가 '우리 선생님이 찍어준 것' 으로 느낀다.
+
+- **160px 로 줄여서 올린다.** 도장은 화면에서 24px 로 보이므로 원본을 두면
+  Storage 요금만 나간다(줄이면 10KB 안쪽). `src/lib/custom-stamps.ts`
+- **지워도 이미 찍어준 것은 남는다.** 찍는 순간 그림 주소를 제출물로 복사하고,
+  Storage 파일은 **일부러 안 지운다** — 지우면 이미 받은 도장이 깨진 그림이 된다.
+- **도장 해석은 `src/lib/server-stamps.ts` 한 군데.** 숙제와 퀴즈 두 곳에서
+  찍는데 각자 판단하면 '숙제엔 되는데 퀴즈엔 안 되는' 상태가 된다.
+  자기 하위 컬렉션만 뒤지므로 남의 도장 id 를 보내도 못 찾는다.
+- 검증: `BASE_URL=https://aweol.vercel.app node scripts/verify-custom-stamp.mjs`
+
+**숙제 API 의 메서드:** 제출은 `POST`, 선생님의 검사·도장은 **`PATCH`**.
+(`PUT` 을 보내면 405 다 — 한 번 헤맸다)
+
+### 슈퍼어드민은 원래 숙제를 낼 수 있었다 (2026-07-21)
+
+서버는 이미 받아준다(`isStaffOfSchool` 통과). 못 하는 게 아니라 화면에서
+**'역할 바꾸기 → 학생'** 으로 가는 길을 몰랐던 것이다. 숙제 패널에 안내를 넣었다.
+배포본에서 확인: 200 · 저장됨 · 내용 그대로 · 남의 반 아이는 403.
+`scripts/verify-superadmin-submit.mjs`
+
+**만들기 전에 되는지부터 본다** — 이번엔 새 코드가 필요 없었다.
+
+### 규칙 배포는 CLI 가 아니라 스크립트 (2026-07-21)
+
+`npx firebase deploy --only firestore:rules` 는 이 계정에 `serviceusage` 권한이
+없어 **403** 이다. `node scripts/deploy-firebase-rules.mjs` 를 쓴다
+(firestore.rules 와 storage.rules 를 같이 올린다).
+
 ## 남은 일 (우선순위)
 
 1. **유무료 정책** (#11) — 전시 주제 무료 1개 제한, 이후 유료.
