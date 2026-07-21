@@ -261,3 +261,16 @@ body {
 .pad-bottom-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* 내 반 문패 — 남의 반과 **한눈에** 달라야 한다.
+   금색 바탕에 금색 테두리, 그리고 파동을 더 진하게. */
+.class-plate-mine {
+  background: linear-gradient(180deg, #FFF3CE 0%, #FFE08A 100%) !important;
+  border-color: #E0A83C !important;
+  box-shadow: 0 5px 0 #C98A22, 0 8px 18px rgba(201, 138, 34, 0.35) !important;
+  color: #6B4A12 !important;
+}
+.class-plate-mine::before {
+  border-color: #FFB53D !important;
+  border-width: 4px !important;
+}

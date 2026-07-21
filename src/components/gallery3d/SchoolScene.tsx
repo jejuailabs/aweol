@@ -236,20 +236,23 @@ function WindowPlate({
   label,
   onClick,
   delay = 0,
+  mine = false,
 }: {
   label: string;
   onClick: () => void;
   delay?: number;
+  /** 내 반(아이는 자기 반, 선생님은 맡은 반, 학부모는 자녀 반) */
+  mine?: boolean;
 }) {
   return (
     <Html position={[0, -1.18, 0.1]} transform scale={0.32} zIndexRange={[20, 0]}>
       <button
-        className="class-plate"
+        className={mine ? 'class-plate class-plate-mine' : 'class-plate'}
         onClick={onClick}
-        aria-label={`${label} 교실 들어가기`}
+        aria-label={mine ? `우리 반 ${label} 교실 들어가기` : `${label} 교실 들어가기`}
         style={{ animationDelay: `${delay}s` }}
       >
-        🚪 {label}
+        {mine ? '⭐' : '🚪'} {label}
         <span className="plate-go">›</span>
       </button>
     </Html>
@@ -265,6 +268,7 @@ function SchoolBuilding({
   emblemUrl,
   onEnterHall,
   palette,
+  myClasses,
 }: {
   classes: SchoolClassItem[];
   onClassSelect: (id: string) => void;
@@ -273,6 +277,8 @@ function SchoolBuilding({
   emblemUrl?: string;
   onEnterHall?: () => void;
   palette: SchoolPalette;
+  /** 내 반 id 들. 문패를 금색으로 띄운다. */
+  myClasses: string[];
 }) {
   const [doorHot, setDoorHot] = useState(false);
   const bodyW = 18;
@@ -381,6 +387,7 @@ function SchoolBuilding({
                 onClick={() => onClassSelect(cls.id)}
                 // 문패마다 시작 시점을 달리해 물결처럼 보이게 (다 같이 흔들리면 기계 같다)
                 delay={i * 0.18}
+                mine={myClasses.includes(cls.id)}
               />
             )}
           </group>
@@ -610,8 +617,11 @@ export default function SchoolScene({
   pet,
   onPetClick,
   imageUrl = '',
+  myClasses = [],
 }: {
   classes?: SchoolClassItem[];
+  /** 내 반 id 들 — `myClassIds(userDoc)` 로 만든다. 문패가 금색이 된다. */
+  myClasses?: string[];
   onClassSelect?: (id: string) => void;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
@@ -696,6 +706,7 @@ export default function SchoolScene({
           onEnterHall={onEnterHall}
           imageUrl={imageUrl}
           palette={palette}
+          myClasses={myClasses}
         />
         <FlagPole />
         <Tree position={[-10.5, 0, -1]} scale={1.15} />

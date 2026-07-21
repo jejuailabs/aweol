@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
+import { myClassIds } from '@/lib/auth-helpers';
 import ShareButton from '@/components/common/ShareButton';
 import Mascot from '@/components/mascot/Mascot';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
@@ -71,6 +72,12 @@ export default function SchoolPage() {
     router.push(`/school/${schoolId}/class/${classId}`);
   };
 
+  /**
+   * 내 반 — 아이는 자기 반, 선생님은 맡은 반, 학부모는 자녀 반.
+   * 창문 문패를 금색으로 띄워서 **찾지 않아도 눈에 들어오게** 한다.
+   */
+  const myClasses = myClassIds(userDoc);
+
   const classButtons = classes.length > 0
     ? classes.map((cls) => ({ id: cls.id, label: `${cls.grade}-${cls.classNumber}` }))
     : ['3-1', '3-2', '3-3', '3-4'].map((label) => ({ id: label, label }));
@@ -78,7 +85,7 @@ export default function SchoolPage() {
   return (
     <div className="relative min-h-dvh overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
-      <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
+      <SchoolScene classes={classButtons} myClasses={myClasses} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
         onEnterArchive={() => router.push(`/school/${schoolId}/archive`)}
         onEnterTrack={() => router.push(`/school/${schoolId}/track`)}
         schoolId={schoolId}

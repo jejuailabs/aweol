@@ -8,7 +8,7 @@ import { auth, db } from '@/lib/firebase';
 import { ActivityDoc } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
-import { canManageClass } from '@/lib/auth-helpers';
+import { isTeacherOfClass } from '@/lib/auth-helpers';
 import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
 import type { BoardItem } from '@/components/gallery3d/Blackboard';
 import type { NoticeKind } from '@/lib/firestore-schema';
@@ -91,15 +91,17 @@ export default function ClassRoomPage() {
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [boardOpen, setBoardOpen] = useState(false);
 
-  const isTeacherRole = canManageClass(role);
   /**
    * **이 반**의 담임인가. 규칙(isTeacherOf)과 같은 조건이어야 한다.
    * '선생님이면 다 보이게' 두면 남의 반에서 버튼을 눌러보고 거부당한다.
    */
-  const myClass = role === 'super_admin'
-    || (isTeacherRole && (userDoc?.classIds ?? []).includes(classId));
-  // 교직원은 모든 반, 학생·학부모는 소속 반에서만 낙서 가능. 비로그인은 불가.
-  const canDraw = !!userDoc && (isTeacherRole || (userDoc.classIds || []).includes(classId));
+  const myClass = isTeacherOfClass(role, userDoc?.classIds, classId);
+  /**
+   * 칠판에 그릴 수 있는 사람 — **이 반 사람**이면 된다(아이든 담임이든).
+   * 예전에는 '선생님이면 아무 반이나' 였다. 남의 반 칠판에 그릴 수 있는 것처럼
+   * 보이다가 규칙에 막혔다.
+   */
+  const canDraw = !!userDoc && (myClass || (userDoc.classIds || []).includes(classId));
 
   // 칠판을 켠 동안에는 아바타를 세운다.
   // 그리는 중에 화면이 돌아가면 선이 엉뚱한 자리에 그어져 낙서가 엉망이 된다.
@@ -315,6 +317,18 @@ export default function ClassRoomPage() {
         >
           📋 활동
         </button>
+        {/*
+          담임만 보인다. 지금까지는 교실에서 명부·활동을 고치려면 하단 '관리' 로
+          나갔다가 학교·반을 다시 골라 들어와야 했다.
+        */}
+        {myClass && (
+          <button
+            onClick={() => router.push(`/admin/${schoolId}/class/${classId}`)}
+            className="ac-btn shrink-0 px-3.5 py-2 text-sm"
+          >
+            🛠️ <span className="hidden sm:inline">우리 반 </span>관리
+          </button>
+        )}
       </div>
 
       {/* 칠판 편집 — 2D 모달에서 그리고 배치한 뒤 확정한다 */}
