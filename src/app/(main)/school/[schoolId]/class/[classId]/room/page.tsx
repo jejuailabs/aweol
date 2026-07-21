@@ -37,6 +37,7 @@ export default function ClassRoomPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addErr, setAddErr] = useState('');
   const [hasRealData, setHasRealData] = useState(false);
 
   // ---- 알림판 ----
@@ -91,6 +92,12 @@ export default function ClassRoomPage() {
   const [boardOpen, setBoardOpen] = useState(false);
 
   const isTeacherRole = canManageClass(role);
+  /**
+   * **이 반**의 담임인가. 규칙(isTeacherOf)과 같은 조건이어야 한다.
+   * '선생님이면 다 보이게' 두면 남의 반에서 버튼을 눌러보고 거부당한다.
+   */
+  const myClass = role === 'super_admin'
+    || (isTeacherRole && (userDoc?.classIds ?? []).includes(classId));
   // 교직원은 모든 반, 학생·학부모는 소속 반에서만 낙서 가능. 비로그인은 불가.
   const canDraw = !!userDoc && (isTeacherRole || (userDoc.classIds || []).includes(classId));
 
@@ -199,22 +206,38 @@ export default function ClassRoomPage() {
   const handleAddActivity = useCallback(async () => {
     if (!db || !newTitle.trim()) return;
     setSaving(true);
+    setAddErr('');
     const actId = `act-${Date.now()}`;
-    await setDoc(doc(db, 'schools', schoolId, 'classes', classId, 'activities', actId), {
-      title: newTitle.trim(),
-      description: newDesc.trim(),
-      date: serverTimestamp(),
-      thumbnailUrl: '',
-      order: activities.length,
-    });
-    setSaving(false);
-    setShowAdd(false);
-    setNewTitle('');
-    setNewDesc('');
-    fetchActivities();
-  }, [newTitle, newDesc, classId, activities.length, fetchActivities]);
+    try {
+      await setDoc(doc(db, 'schools', schoolId, 'classes', classId, 'activities', actId), {
+        title: newTitle.trim(),
+        description: newDesc.trim(),
+        date: serverTimestamp(),
+        thumbnailUrl: '',
+        order: activities.length,
+      });
+      setShowAdd(false);
+      setNewTitle('');
+      setNewDesc('');
+      fetchActivities();
+    } catch {
+      /**
+       * 여기 오는 건 거의 '내 반이 아니다' 다.
+       * 규칙은 담임(`classIds` 에 이 반이 있는 사람)만 쓰게 하는데,
+       * 예전에는 오류를 잡지 않아 '만드는 중...' 에서 영영 멈춰 있었다.
+       */
+      setAddErr(
+        myClass
+          ? '활동을 만들지 못했어요. 잠시 뒤 다시 해주세요.'
+          : '내가 맡은 반이 아니라 활동을 만들 수 없어요. 총관리자에게 담임 배정을 요청해 주세요.'
+      );
+    } finally {
+      // 성공하든 실패하든 반드시 푼다
+      setSaving(false);
+    }
+  }, [newTitle, newDesc, schoolId, classId, activities.length, fetchActivities, myClass]);
 
-  const isTeacher = isTeacherRole;
+  const isTeacher = myClass;
   // 항상 실데이터만 표시 — 가짜 활동은 클릭하면 빈 전시실로 가므로 쓰지 않는다
   const displayList = activities;
   const isEmpty = fetched && activities.length === 0;
@@ -425,6 +448,22 @@ export default function ClassRoomPage() {
               />
             </div>
 
+            {!myClass && (
+              <div
+                className="rounded-xl px-3 py-2.5 mb-3 text-[12px] leading-relaxed"
+                style={{ background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }}
+              >
+                ℹ️ 내가 맡은 반이 아니에요. 활동은 그 반 담임 선생님만 만들 수 있어요.
+              </div>
+            )}
+            {addErr && (
+              <div
+                className="rounded-xl px-3 py-2.5 mb-3 text-[12px] font-bold leading-relaxed"
+                style={{ background: '#FDECEA', color: '#B02A37', border: '1px solid #F5C6C4' }}
+              >
+                ⚠️ {addErr}
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAdd(false)}
@@ -435,7 +474,7 @@ export default function ClassRoomPage() {
               </button>
               <button
                 onClick={handleAddActivity}
-                disabled={!newTitle.trim() || saving}
+                disabled={!newTitle.trim() || saving || !myClass}
                 className="flex-1 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50"
                 style={{ background: 'var(--color-primary)' }}
               >

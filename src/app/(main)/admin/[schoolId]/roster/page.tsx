@@ -19,7 +19,7 @@ interface StudentRow {
 export default function RosterPage() {
   const router = useRouter();
   const schoolId = useParams().schoolId as string;
-  const { user, role, loading } = useAuth();
+  const { user, userDoc, role, loading } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedClass, setSelectedClass] = useState('3-1');
   const [classes, setClasses] = useState<{ id: string; label: string }[]>([]);
@@ -70,8 +70,18 @@ export default function RosterPage() {
       const snap = await getDocs(
         query(collection(db, 'schools', schoolId, 'classes'), where('isArchived', '==', false))
       );
+      /**
+       * **담임은 자기 반만 본다.**
+       *
+       * 규칙(isTeacherOf)은 이미 남의 반 명부를 막고 있었는데, 화면이 전체 반을
+       * 탭으로 늘어놓아서 눌러보면 오류가 나는 상태였다. 명부는 아이들 개인정보라
+       * 목록에 보이는 것 자체가 맞지 않는다.
+       * 총관리자만 전체를 본다.
+       */
+      const mine = userDoc?.classIds ?? [];
       const list = snap.docs
         .map((d) => ({ id: d.id, label: `${d.data().grade}-${d.data().classNumber}반` }))
+        .filter((c) => role === 'super_admin' || mine.includes(c.id))
         .sort((a, b) => a.id.localeCompare(b.id));
       setClasses(list);
       if (list.length > 0 && !list.some((c) => c.id === selectedClass)) {
@@ -81,7 +91,7 @@ export default function RosterPage() {
 
     if (!loading && user) fetchClasses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role, loading, router]);
+  }, [user, userDoc, role, loading, router]);
 
   useEffect(() => {
     async function fetchStudents() {
@@ -278,6 +288,15 @@ export default function RosterPage() {
 
       {/* 반 선택 */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
+        {classes.length === 0 && (
+          <div
+            className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed"
+            style={{ background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }}
+          >
+            ℹ️ 아직 맡은 반이 없어요. 총관리자에게 담임 배정을 요청하면
+            여기에서 우리 반 명부를 관리할 수 있어요.
+          </div>
+        )}
         {classes.map((cls) => (
           <button
             key={cls.id}
