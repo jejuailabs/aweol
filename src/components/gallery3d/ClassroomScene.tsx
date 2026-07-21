@@ -455,7 +455,7 @@ function ClassroomLighting() {
 export default function ClassroomScene({
   classLabel, activities, onActivitySelect, canManage, onAddActivity, avatarId, avatarCustom, avatarTint,
   boardItems = [],
-  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 }, onOpenNotice = () => {}, noticeTabs,
+  noticeCounts = { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0, game: 0 }, onOpenNotice = () => {}, noticeTabs,
   schoolId, classId, me,
 }: ClassroomSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);

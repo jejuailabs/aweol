@@ -334,6 +334,26 @@ service cloud.firestore {
         }
 
         // 틀린그림 찾기 — 그림은 공개, 정답 좌표는 절대 공개하지 않는다.
+        /**
+         * 게임 스테이지 — 그날 배운 낱말 묶음.
+         *
+         * 읽기는 로그인한 사람이면 된다(아이가 놀아야 한다).
+         * 쓰기는 이 반 담임만.
+         * 낱말 쌍은 게임의 재료라 숨길 정답이 따로 없다 — 퀴즈와 다르다.
+         */
+        match /stages/{stageId} {
+          allow read: if isSignedIn();
+          allow write: if isTeacherOf(schoolId, classId);
+
+          // 아이가 한 판 한 기록 — 본인 것만 쓴다
+          match /plays/{playId} {
+            allow read: if isSignedIn();
+            allow create: if isSignedIn()
+                          && request.resource.data.studentUid == request.auth.uid;
+            allow update, delete: if isTeacherOf(schoolId, classId);
+          }
+        }
+
         match /spotGames/{gameId} {
           allow read: if true;
           allow write: if false;   // 서버(API)만

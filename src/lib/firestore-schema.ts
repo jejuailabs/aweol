@@ -210,7 +210,48 @@ export interface GradeDoc {
  * `meal` 은 **더 이상 반 알림판에 걸지 않는다** — 급식은 전 학년이 같아서
  * 학교 현관으로 옮겼다(`/api/meal`). 옛 반 문서에 남아 있을 수 있어 타입은 둔다.
  */
-export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot';
+/**
+ * 알림판 칸.
+ *
+ * `'spot'`(틀린그림)은 **지우지 않는다** — 이미 그걸 골라둔 반의 설정이 깨진다.
+ * 새 반에는 `'game'` 을 권한다(틀린그림도 그 안에 들어간다).
+ */
+export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot' | 'game';
+
+/**
+ * 게임 스테이지 — 그날 배운 것 한 묶음.
+ *
+ * 한 반이 한 해 동안 스테이지를 쌓아간다. 나중에 복습 게임이 지난 스테이지에서
+ * 문제를 꺼내 쓴다 — 그래서 지우지 말고 쌓이게 둔다.
+ */
+export interface StageDoc {
+  /** 몇 번째 스테이지인가 (1부터) */
+  order: number;
+  title: string;
+  /** 낱말과 뜻의 쌍. 게임 종류가 이걸 나눠 쓴다. */
+  pairs: { a: string; b: string }[];
+  /**
+   * 어디서 왔는가. `ai` 면 선생님이 확인을 마친 뒤에만 아이에게 보인다 —
+   * AI 가 만든 걸 그대로 내보내면 틀린 게 아이에게 간다.
+   */
+  source: 'manual' | 'ai';
+  /** 선생님이 확인했는가. 이게 false 면 아이 화면에 안 나온다. */
+  approved: boolean;
+  authorUid: string;
+  authorName: string;
+  createdAt: Timestamp;
+}
+
+/** 아이가 스테이지를 한 판 한 기록 */
+export interface StagePlayDoc {
+  studentUid: string;
+  studentName: string;
+  game: 'match';
+  /** 뒤집은 횟수 (시간이 아니라 이걸로 점수를 낸다) */
+  flips: number;
+  score: number;
+  playedAt: Timestamp;
+}
 
 export interface ClassDoc {
   schoolId: string;

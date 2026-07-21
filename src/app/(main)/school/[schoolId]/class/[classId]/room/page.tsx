@@ -70,7 +70,7 @@ export default function ClassRoomPage() {
 
   const noticeCounts = notices.reduce(
     (acc, n) => ({ ...acc, [n.kind]: (acc[n.kind] || 0) + 1 }),
-    { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0 } as Record<NoticeKind, number>
+    { notice: 0, meal: 0, homework: 0, quiz: 0, spot: 0, game: 0 } as Record<NoticeKind, number>
   );
 
   // 알림판에 걸 칸은 반 설정에서 온다 (선생님이 고른 것)

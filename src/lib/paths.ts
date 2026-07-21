@@ -47,6 +47,20 @@ export const questionsPath = (schoolId: string, classId: string, quizId: string)
 export const quizSubmissionsPath = (schoolId: string, classId: string, quizId: string) =>
   `${quizzesPath(schoolId, classId)}/${quizId}/submissions`;
 
+/**
+ * 게임 스테이지 — 한 반이 한 해 동안 쌓아가는 것.
+ *
+ * 스테이지 하나 = 낱말 묶음 하나 = 그날 배운 것.
+ * 게임 종류(짝맞추기·빙고…)는 이 재료를 **나눠 쓴다.**
+ * 게임마다 따로 만들게 하면 선생님이 안 쓴다.
+ */
+export const stagesPath = (schoolId: string, classId: string) =>
+  `${classPath(schoolId, classId)}/stages`;
+
+/** 아이별 기록. 스테이지 아래 둬서 '이 스테이지 누가 했나'를 한 번에 본다. */
+export const stagePlaysPath = (schoolId: string, classId: string, stageId: string) =>
+  `${stagesPath(schoolId, classId)}/${stageId}/plays`;
+
 export const spotGamesPath = (schoolId: string, classId: string) =>
   `${classPath(schoolId, classId)}/spotGames`;
 
