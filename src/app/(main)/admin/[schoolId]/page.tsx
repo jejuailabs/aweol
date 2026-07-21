@@ -103,6 +103,8 @@ export default function AdminPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [school, setSchool] = useState<SchoolSettings | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [villageBusy, setVillageBusy] = useState(false);
+  const [villageMsg, setVillageMsg] = useState('');
 
   const isSuper = role === 'super_admin';
 
@@ -447,6 +449,50 @@ export default function AdminPage() {
             `· 자녀 연결된 학부모 ${members.parents.filter((p) => p.childCount > 0).length}/${members.parents.length}명 (연결 기능 준비 중)`}
         </div>
       )}
+
+      {/* 우리 동네 만들기 — 학교 좌표로 걸어다닐 동네를 굽는다 */}
+      <div className="rounded-3xl p-4 mb-4" style={{ background: 'var(--color-surface)' }}>
+        <div className="text-sm font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
+          🏘️ 우리 동네 만들기
+        </div>
+        <div className="text-[11px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          학교 둘레 400m 를 지도에서 받아 <b>걸어다닐 수 있는 동네</b>로 만들어요.
+          아이들은 만들어진 파일 하나만 받으니 몇 명이 들어와도 요금이 늘지 않아요.
+          지도가 바뀌면 다시 눌러주세요.
+        </div>
+        <button
+          onClick={async () => {
+            setVillageBusy(true); setVillageMsg('');
+            try {
+              const token = await auth?.currentUser?.getIdToken();
+              const res = await fetch('/api/village', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ schoolId }),
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(json.error || '만들지 못했어요');
+              setVillageMsg(
+                `동네를 만들었어요 — 건물 ${json.counts.buildings}채, 길 ${json.counts.roads}조각`
+                + (json.named?.length ? ` (${json.named.slice(0, 3).join(', ')} …)` : '')
+              );
+            } catch (e) {
+              setVillageMsg((e as Error).message);
+            }
+            setVillageBusy(false);
+          }}
+          disabled={villageBusy}
+          className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-40"
+          style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+        >
+          {villageBusy ? '지도를 받는 중...' : '동네 만들기 (또는 다시 만들기)'}
+        </button>
+        {villageMsg && (
+          <div className="text-[11px] font-bold mt-2 leading-relaxed" style={{ color: 'var(--color-primary)' }}>
+            {villageMsg}
+          </div>
+        )}
+      </div>
 
       {/* ===== 학급 / 전시 내용 관리 ===== */}
       <div className="flex items-center justify-between mb-3">

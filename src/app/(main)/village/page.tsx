@@ -1,12 +1,20 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
+import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
 const VillageScene = dynamic(
   () => import('@/components/gallery3d/VillageScene'),
+  { ssr: false }
+);
+const VillageMapScene = dynamic(
+  () => import('@/components/gallery3d/VillageMapScene'),
   { ssr: false }
 );
 
@@ -38,6 +46,26 @@ export default function VillagePage() {
     },
   } : null;
 
+  /**
+   * 학교가 자기 동네를 구워뒀으면 그걸 보여주고, 없으면 손으로 만든 마을을 보여준다.
+   * 파일 하나(2KB 남짓)만 받으므로 지도 API 는 아예 안 부른다.
+   */
+  const [village, setVillage] = useState<VillageData | null>(null);
+  const [tried, setTried] = useState(false);
+
+  useEffect(() => {
+    if (!db) { setTried(true); return; }
+    getDoc(doc(db, 'schools', schoolId))
+      .then(async (s) => {
+        const url = s.exists() ? (s.data()?.villageUrl as string) : '';
+        if (!url) return;
+        const res = await fetch(url);
+        if (res.ok) setVillage(await res.json());
+      })
+      .catch(() => {})
+      .finally(() => setTried(true));
+  }, [schoolId]);
+
   const enter = (spot: VillageSpot) => {
     if (spot === 'school') {
       router.push(`/school/${schoolId}`);
@@ -52,14 +80,31 @@ export default function VillagePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <VillageScene
-        schoolId={schoolId}
-        me={me}
-        avatarId={userDoc?.avatarId}
-        avatarCustom={userDoc?.avatarCustom}
-        avatarTint={userDoc?.avatarTint}
-        onEnter={enter}
-      />
+      {!tried ? (
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#BFE8F5' }}>
+          <div className="text-sm font-bold" style={{ color: '#6B5B43' }}>동네를 여는 중...</div>
+        </div>
+      ) : village ? (
+        <VillageMapScene
+          data={village}
+          schoolId={schoolId}
+          schoolName={userDoc?.schoolIds?.[0] === schoolId ? '우리 학교' : '학교'}
+          me={me}
+          avatarId={userDoc?.avatarId}
+          avatarCustom={userDoc?.avatarCustom}
+          avatarTint={userDoc?.avatarTint}
+          onEnterSchool={() => router.push(`/school/${schoolId}`)}
+        />
+      ) : (
+        <VillageScene
+          schoolId={schoolId}
+          me={me}
+          avatarId={userDoc?.avatarId}
+          avatarCustom={userDoc?.avatarCustom}
+          avatarTint={userDoc?.avatarTint}
+          onEnter={enter}
+        />
+      )}
 
       <button
         onClick={() => router.push('/')}
@@ -73,7 +118,7 @@ export default function VillagePage() {
         className="absolute left-1/2 -translate-x-1/2 bottom-24 z-20 rounded-full px-4 py-2 text-[11px] font-bold pointer-events-none"
         style={{ background: 'rgba(255,248,231,0.9)', color: '#6B5B43' }}
       >
-        걸어다니다 문을 눌러보세요
+        {village ? '우리 동네예요. 학교 자리를 누르면 들어가요' : '걸어다니다 문을 눌러보세요'}
       </div>
     </div>
   );
