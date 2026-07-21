@@ -174,6 +174,9 @@ export default function TagPage() {
     endTag(schoolId, roomKey);
   }, [state.status, left, iAmIt, schoolId, roomKey]);
 
+  /** 같은 방에 있는 다른 사람 수. 혼자면 시작을 막는다. */
+  const [peerCount, setPeerCount] = useState(0);
+
   const ranking = Object.entries(state.scores)
     .map(([uid, v]) => ({ uid, name: v.n, count: v.c }))
     .sort((a, b) => b.count - a.count);
@@ -191,6 +194,7 @@ export default function TagPage() {
         avatarCustom={userDoc?.avatarCustom}
         avatarTint={userDoc?.avatarTint}
         onTag={handleTag}
+        onPeerCount={setPeerCount}
       />
 
       <button
@@ -242,14 +246,35 @@ export default function TagPage() {
               </div>
               <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
                 시작을 누르면 <b>누른 사람이 술래</b>예요. 친구에게 닿으면 술래가 넘어가요.
-                친구가 같이 들어와 있어야 재밌어요!
               </div>
+
+              {/*
+                혼자면 시작을 막는다.
+                전에는 혼자서도 시작이 눌렸고, 누른 사람이 곧 술래라 잡을 친구가
+                아무도 없는 채로 판이 돌아갔다 — 게임이 아니라 그냥 서 있는 것이다.
+              */}
+              <div
+                className="rounded-xl px-3 py-2.5 mb-2.5 text-[13px] font-bold text-center"
+                style={
+                  peerCount > 0
+                    ? { background: '#E2F6E9', color: '#2E8B57' }
+                    : { background: '#FFF6E5', color: '#A6762A' }
+                }
+              >
+                {peerCount > 0
+                  ? `🙋 지금 ${peerCount + 1}명이 운동장에 있어요`
+                  : '🕰️ 아직 혼자예요. 친구가 들어오면 시작할 수 있어요.'}
+              </div>
+
               <button
                 onClick={handleStart}
-                className="w-full rounded-full py-3 text-sm font-bold text-white"
+                disabled={peerCount < 1}
+                className="w-full rounded-full py-3 text-sm font-bold text-white disabled:opacity-40"
                 style={{ background: 'var(--color-primary)' }}
               >
-                {state.status === 'done' ? '한 판 더!' : '술래잡기 시작'}
+                {peerCount < 1
+                  ? '친구를 기다리는 중...'
+                  : state.status === 'done' ? '한 판 더!' : '술래잡기 시작'}
               </button>
             </>
           )}

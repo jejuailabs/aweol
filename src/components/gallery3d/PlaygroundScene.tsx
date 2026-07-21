@@ -137,7 +137,7 @@ function TagJudge({
 
 export default function PlaygroundScene({
   schoolId, roomKey, me, itUid, playing, speedBoost,
-  avatarId, avatarCustom, avatarTint, onTag,
+  avatarId, avatarCustom, avatarTint, onTag, onPeerCount,
 }: {
   schoolId: string;
   roomKey: string;
@@ -150,6 +150,8 @@ export default function PlaygroundScene({
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
   onTag: (uid: string, name: string) => void;
+  /** 같은 방에 있는 **나 말고** 다른 사람 수 */
+  onPeerCount?: (n: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 8));
@@ -208,7 +210,11 @@ export default function PlaygroundScene({
             avatarPos={avatarPos}
             avatarYaw={avatarYaw}
             itUid={itUid}
-            onPeersChange={(list) => { peersRef.current = list; }}
+            onPeersChange={(list) => {
+              peersRef.current = list;
+              // 몇 명이 와 있는지 화면 쪽에도 알린다 — 혼자면 시작을 막아야 한다
+              onPeerCount?.(list.length);
+            }}
           />
         )}
 
