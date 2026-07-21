@@ -10,6 +10,12 @@ import { inventoryPath } from '@/lib/paths';
 import { playSound } from '@/lib/sound';
 import { formatTime } from '@/lib/track';
 import { setMovementLock } from '@/components/gallery3d/walker';
+
+/**
+ * 조이스틱 — 휴대폰에서 **이게 없으면 아예 못 움직인다.**
+ * 학교·마을에는 있는데 여기만 빠져 있어서, 달리기가 휴대폰에서 시작조차 안 됐다.
+ */
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 import {
   watchLobby, setReady, callStart, clearStart, COUNTDOWN_MS, type LobbyState,
 } from '@/lib/race-lobby';
@@ -262,12 +268,18 @@ export default function TrackPage() {
       {/* 달리는 중 안내 */}
       {phase === 'running' && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 top-4 z-30 rounded-full px-4 py-2 text-[13px] font-bold"
+          className="pos-top-safe absolute left-1/2 -translate-x-1/2 z-30 rounded-full px-4 py-2 text-[13px] font-bold"
           style={{ background: 'rgba(255,248,231,0.92)', color: '#6B5B43' }}
         >
           흰 선을 밟으면 탈락이에요! 한 바퀴 돌아 출발선으로
         </div>
       )}
+
+      {/*
+        조이스틱. 세는 중·달리는 중에만 띄운다 —
+        준비·결과 화면에서는 아래 카드가 화면을 덮어 가려지기만 한다.
+      */}
+      {(phase === 'count' || phase === 'running') && <MobileJoystick />}
 
       {/* 준비 / 결과 */}
       {(phase === 'ready' || phase === 'done' || phase === 'foul') && (
@@ -282,6 +294,18 @@ export default function TrackPage() {
                 <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
                   트랙을 따라 한 바퀴 달려요. <b>흰 선을 밟으면 탈락</b>이고,
                   안쪽으로 질러가도 탈락이에요.
+                </div>
+                {/*
+                  어떻게 움직이는지 알려준다. 달리기는 화면에 트랙밖에 없어서
+                  조작을 모르면 가만히 서 있다가 끝난다.
+                  달리는 중이 아니라 **준비 화면에** 둔다 — 출발한 뒤에 읽을 여유는 없다.
+                */}
+                <div
+                  className="rounded-xl px-3 py-2.5 mb-3 text-[13px] font-bold leading-relaxed"
+                  style={{ background: '#EAF3FB', color: '#2C5D86' }}
+                >
+                  <span className="sm:hidden">🕹️ 왼쪽 아래 조이스틱으로 달려요. 화면을 끌면 시점이 돌아가요.</span>
+                  <span className="hidden sm:inline">⌨️ W·A·S·D 또는 방향키로 달려요. 화면을 끌면 시점이 돌아가요.</span>
                 </div>
 
                 {/* 출발선에 선 사람들 */}

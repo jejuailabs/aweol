@@ -14,6 +14,11 @@ const SchoolLobbyScene = dynamic(
   () => import('@/components/gallery3d/SchoolLobbyScene'),
   { ssr: false }
 );
+/**
+ * 조이스틱 — 휴대폰에서 **이게 없으면 아예 못 움직인다.**
+ * 걸어다니는 3D 화면에는 빠짐없이 있어야 한다.
+ */
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
 /**
  * 학교 현관 로비.
@@ -100,6 +105,9 @@ export default function LobbyPage() {
           onClose={() => setOpen(null)}
         />
       )}
+
+      {/* 모바일 조이스틱 */}
+      <MobileJoystick />
     </div>
   );
 }

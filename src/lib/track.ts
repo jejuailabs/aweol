@@ -79,8 +79,24 @@ export function pointAt(s: number): [number, number] {
   return [-HALF_STRAIGHT + Math.cos(ang) * RADIUS, Math.sin(ang) * RADIUS];
 }
 
-/** 출발 지점 (출발선 바로 뒤) */
-export const START_POS: [number, number, number] = [-HALF_STRAIGHT + 0.5, 0, RADIUS];
+/**
+ * 출발선 뒤로 몇 m 에 서는가.
+ *
+ * 예전에는 `-HALF_STRAIGHT + 0.5` 였는데, 위쪽 직선은 왼→오로 세므로
+ * 그건 진행도 +0.5 — **선을 이미 넘은 자리**였다. 달리기 전부터 앞서 있는 셈이다.
+ */
+const START_BEHIND_M = 2;
+
+/**
+ * 출발 지점 — 출발선 **뒤**.
+ *
+ * 진행도를 거꾸로 2m 되짚어 좌표를 얻는다. 출발선이 위쪽 직선의 왼쪽 끝이라
+ * 그 뒤는 왼쪽 곡선의 끝자락이다. 실제 트랙에서 출발 대기하는 자리와 같다.
+ */
+export const START_POS: [number, number, number] = (() => {
+  const [x, z] = pointAt(PERIMETER - START_BEHIND_M);
+  return [x, 0, z];
+})();
 
 /**
  * 한 바퀴를 제대로 돌았는지 세는 상태기.

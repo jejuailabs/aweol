@@ -17,6 +17,11 @@ const VillageMapScene = dynamic(
   () => import('@/components/gallery3d/VillageMapScene'),
   { ssr: false }
 );
+/**
+ * 조이스틱 — 휴대폰에서 **이게 없으면 아예 못 움직인다.**
+ * 걸어다니는 3D 화면에는 빠짐없이 있어야 한다.
+ */
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
 /** 학교를 아직 모를 때 기본으로 데려갈 곳 */
 const FALLBACK_SCHOOL = 'aewol-elementary';
@@ -123,6 +128,9 @@ export default function VillagePage() {
       >
         {village ? '우리 동네예요. 학교 자리를 누르면 들어가요' : '걸어다니다 문을 눌러보세요'}
       </div>
+
+      {/* 모바일 조이스틱 */}
+      <MobileJoystick />
     </div>
   );
 }

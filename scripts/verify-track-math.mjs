@@ -80,5 +80,43 @@ ok('1분 넘으면 분까지 보여줌', formatTime(72340) === '1분 12.34초', 
 ok('1분 안쪽은 초만', formatTime(9870) === '9.87초', formatTime(9870));
 ok('음수는 0으로', formatTime(-5) === '0.00초', formatTime(-5));
 
-console.log(`\n트랙 길이 ${PERIMETER.toFixed(1)}m · 레인 폭 ${(LANE_HALF * 2).toFixed(1)}m · 실패 ${failed}건`);
-process.exit(failed ? 1 : 0);
+
+// ---- 출발 지점 (2026-07-21) ----
+console.log('\n--- 출발 지점은 선 뒤인가 ---');
+{
+  const { START_POS, progress, PERIMETER, offCenter, LANE_HALF, LapCounter, pointAt } =
+    await import('../src/lib/track.ts');
+  const [sx, , sz] = START_POS;
+  const sp = progress(sx, sz);
+  ok(`출발 지점이 출발선 뒤에 있다 (진행도 ${sp.toFixed(1)} / 둘레 ${PERIMETER.toFixed(1)})`,
+     sp > PERIMETER - 5);
+  ok('출발 지점이 선을 밟고 있지 않다',
+     offCenter(sx, sz) < LANE_HALF - 0.3);
+
+  // 출발 지점에서 한 바퀴를 제대로 돌면 세어지는가
+  const lap = new LapCounter();
+  let counted = false;
+  /*
+    출발선 뒤에서 시작하므로 **둘레보다 조금 더** 달려야 완주다
+    (선까지 2m + 한 바퀴). 실제 경기와 같다. 딱 한 바퀴만 돌리면
+    선을 못 넘고 끝나서 안 세어진다 — 처음에 이걸로 한 번 틀렸다.
+  */
+  for (let i = 0; i <= 400; i++) {
+    const s = (PERIMETER - 2 + (i / 400) * (PERIMETER + 4)) % PERIMETER;
+    const [x, z] = pointAt(s);
+    if (lap.update(x, z)) { counted = true; break; }
+  }
+  ok('출발 지점에서 한 바퀴 돌면 세어진다', counted);
+
+  // 뒤로 갔다 앞으로만 왔다갔다 하면 세면 안 된다
+  const cheat = new LapCounter();
+  let cheated = false;
+  for (let i = 0; i < 200; i++) {
+    const s = (PERIMETER - 2 + (i % 2) * 3) % PERIMETER;
+    const [x, z] = pointAt(s);
+    if (cheat.update(x, z)) { cheated = true; break; }
+  }
+  ok('출발선 앞뒤로만 왔다갔다 하면 안 세어진다', !cheated);
+}
+console.log(`\n실패 ${failed}건`);
+process.exit(failed > 0 ? 1 : 0);

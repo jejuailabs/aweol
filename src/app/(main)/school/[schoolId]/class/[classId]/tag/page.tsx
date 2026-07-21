@@ -17,6 +17,11 @@ const PlaygroundScene = dynamic(
   () => import('@/components/gallery3d/PlaygroundScene'),
   { ssr: false }
 );
+/**
+ * 조이스틱 — 휴대폰에서 **이게 없으면 아예 못 움직인다.**
+ * 걸어다니는 3D 화면에는 빠짐없이 있어야 한다.
+ */
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
 /**
  * 우리 반 술래잡기.
@@ -325,6 +330,9 @@ export default function TagPage() {
           )}
         </div>
       </div>
+
+      {/* 모바일 조이스틱 */}
+      <MobileJoystick />
     </div>
   );
 }
