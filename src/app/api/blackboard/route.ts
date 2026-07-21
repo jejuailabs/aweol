@@ -118,15 +118,47 @@ export async function DELETE(req: NextRequest) {
   const schoolId = sp.get('schoolId');
   const classId = sp.get('classId');
   if (!schoolId || !classId) return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
-  if (!isTeacherOfClass(user, schoolId, classId)) {
-    return NextResponse.json({ error: '담당하는 반이 아닙니다' }, { status: 403 });
-  }
 
   const db = adminDb();
   const boardRef = db
     .collection('schools').doc(schoolId)
     .collection('classes').doc(classId)
     .collection('blackboard');
+
+  /**
+   * 한 개만 지우기.
+   *
+   * **쓴 사람 본인도 지울 수 있다.** 전에는 담임의 '전체 지우기' 뿐이라,
+   * 아이가 잘못 쓰면 선생님께 부탁해 반 전체를 날리는 수밖에 없었다.
+   */
+  const itemId = sp.get('itemId');
+  if (itemId) {
+    const ref = boardRef.doc(itemId);
+    const snap = await ref.get();
+    if (!snap.exists) return NextResponse.json({ error: '이미 지워졌어요' }, { status: 404 });
+    const mine = (snap.data()?.authorUid as string) === user.uid;
+    if (!mine && !isTeacherOfClass(user, schoolId, classId)) {
+      return NextResponse.json({ error: '내가 쓴 것만 지울 수 있어요' }, { status: 403 });
+    }
+    await ref.delete();
+    await db.collection('accessLogs').add({
+      uid: user.uid,
+      displayName: user.displayName,
+      role: user.role,
+      action: '칠판 한 개 지우기',
+      classId,
+      detail: mine ? '본인 것' : '담임이 지움',
+      ip: getClientIp(req.headers),
+      userAgent: req.headers.get('user-agent') || 'unknown',
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return NextResponse.json({ ok: true, deleted: 1 });
+  }
+
+  /** 아래는 전체 지우기 — 담임만 */
+  if (!isTeacherOfClass(user, schoolId, classId)) {
+    return NextResponse.json({ error: '담당하는 반이 아닙니다' }, { status: 403 });
+  }
 
   let deleted = 0;
   // 배치 상한(500)을 넘길 수 있으므로 나눠서 지운다

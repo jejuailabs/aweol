@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { isTeacherOfClass } from '@/lib/auth-helpers';
 import type { ClassroomActivity } from '@/components/gallery3d/ClassroomScene';
 import type { BoardItem } from '@/components/gallery3d/Blackboard';
+import BlackboardList from '@/components/gallery3d/BlackboardList';
 import type { NoticeKind } from '@/lib/firestore-schema';
 import NoticeModal, { type NoticePost } from '@/components/notice/NoticeModal';
 import { setMovementLock } from '@/components/gallery3d/walker';
@@ -88,7 +89,8 @@ export default function ClassRoomPage() {
 
   // ---- 칠판 낙서 ----
   const [noticeTabs, setNoticeTabs] = useState<NoticeKind[] | undefined>(undefined);
-  const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
+  const [boardItems, setBoardItems] = useState<(BoardItem & { authorUid?: string })[]>([]);
+  const [boardListOpen, setBoardListOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
 
   /**
@@ -133,7 +135,9 @@ export default function ClassRoomPage() {
             width: v.width || 5,
             text: v.text,
             authorName: v.authorName || '?',
-          } as BoardItem;
+            // 누가 지울 수 있는지 화면이 알아야 한다
+            authorUid: v.authorUid || '',
+          } as BoardItem & { authorUid: string };
         })
       );
     }, () => setBoardItems([]));
@@ -318,6 +322,18 @@ export default function ClassRoomPage() {
           📋 활동
         </button>
         {/*
+          칠판 정리 — 쓴 게 있을 때만. 전에는 담임의 '전체 지우기' 밖에 없어서
+          아이가 한 글자 잘못 쓰면 반 전체 칠판을 날리는 수밖에 없었다.
+        */}
+        {canDraw && boardItems.length > 0 && (
+          <button
+            onClick={() => setBoardListOpen(true)}
+            className="ac-btn shrink-0 px-3.5 py-2 text-sm"
+          >
+            🧽 정리
+          </button>
+        )}
+        {/*
           담임만 보인다. 지금까지는 교실에서 명부·활동을 고치려면 하단 '관리' 로
           나갔다가 학교·반을 다시 골라 들어와야 했다.
         */}
@@ -330,6 +346,18 @@ export default function ClassRoomPage() {
           </button>
         )}
       </div>
+
+      {/* 칠판 정리 — 골라서 지운다 */}
+      {boardListOpen && (
+        <BlackboardList
+          schoolId={schoolId}
+          classId={classId}
+          items={boardItems}
+          canClearAll={myClass}
+          onChanged={() => { /* onSnapshot 이 알아서 따라온다 */ }}
+          onClose={() => setBoardListOpen(false)}
+        />
+      )}
 
       {/* 칠판 편집 — 2D 모달에서 그리고 배치한 뒤 확정한다 */}
       {canDraw && boardOpen && (
