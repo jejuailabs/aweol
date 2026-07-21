@@ -9,6 +9,21 @@ service firebase.storage {
       allow write: if false;
     }
 
+    /**
+     * 선생님이 만든 도장 그림.
+     *
+     * 읽기는 공개다 — 도장은 아이 제출물에 찍혀 아이·학부모가 본다.
+     * 쓰기는 본인 경로만. 도장은 화면에서 24px 로 보이므로 160px 로 줄여 올린다.
+     * 그래서 1MB 면 충분히 넉넉하다(줄인 파일은 보통 10KB 안쪽).
+     */
+    match /stamps/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 1 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
     // 작품 이미지 — 읽기 공개(전시), 업로드는 로그인 사용자 본인 경로에만
     match /artworks/{uid}/{fileName} {
       allow read: if true;

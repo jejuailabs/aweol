@@ -345,8 +345,14 @@ export interface SubmissionDoc {
   /** 선생님이 실제로 들여다보고 검사를 끝냈는지. 그리드의 3번째 색이 이 값이다. */
   checked: boolean;
   checkedAt: Timestamp | null;
-  /** 선생님이 찍어준 도장 도안 (상점의 stamp 카테고리 id) */
-  stamp: { itemId: string; emoji: string; label: string } | null;
+  /**
+   * 선생님이 찍어준 도장.
+   *
+   * 상점 도안이면 `emoji` 가, 선생님이 만든 도장이면 `imageUrl` 이 찬다.
+   * **찍는 순간 값을 복사해 둔다** — 나중에 선생님이 그 도장을 지워도
+   * 아이가 받은 도장은 그대로 남아야 한다.
+   */
+  stamp: { itemId: string; emoji: string; label: string; imageUrl?: string } | null;
   /** 도장을 이미 지급했는지. 재검사해도 두 번 주지 않는다. */
   awarded: boolean;
   submittedAt: Timestamp;

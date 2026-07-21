@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { studentsPath, submissionsPath, nudgesPath, readsPath, inventoryPath } from '@/lib/paths';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
 import { SHOP_ITEMS, ShopItem } from '@/lib/shop-catalog';
+import { customStampsPath, type CustomStamp } from '@/lib/custom-stamps';
 
 /**
  * 교사용 숙제 현황판.
@@ -32,7 +33,7 @@ interface Sub {
   moderation: { flagged: boolean; reason: string } | null;
   teacherComment: string;
   checked: boolean;
-  stamp: { itemId: string; emoji: string; label: string } | null;
+  stamp: { itemId: string; emoji: string; label: string; imageUrl?: string } | null;
 }
 
 interface Nudge {
@@ -77,6 +78,7 @@ export default function HomeworkTeacherGrid({
   /** 숙제를 열어본 학생 uid */
   const [readUids, setReadUids] = useState<Set<string>>(new Set());
   const [myStamps, setMyStamps] = useState<ShopItem[]>([]);
+  const [mine, setMine] = useState<CustomStamp[]>([]);
   const [openUid, setOpenUid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
@@ -149,6 +151,16 @@ export default function HomeworkTeacherGrid({
         setMyStamps(SHOP_ITEMS.filter((i) => i.category === 'stamp' && ids.has(i.id)));
       },
       () => setMyStamps([])
+    );
+  }, [user]);
+
+  // 선생님이 직접 만든 도장 (상점 것과 나란히 고를 수 있어야 한다)
+  useEffect(() => {
+    if (!db || !user) { setMine([]); return; }
+    return onSnapshot(
+      collection(db, customStampsPath(user.uid)),
+      (snap) => setMine(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CustomStamp, 'id'>) }))),
+      () => setMine([])
     );
   }, [user]);
 
@@ -385,6 +397,7 @@ export default function HomeworkTeacherGrid({
           submitType={submitType}
           busy={busy}
           myStamps={myStamps}
+          mine={mine}
           onClose={() => setOpenUid(null)}
           onNudge={async () => {
             if (await call(opened.row.linkedUid!, { nudge: true, studentName: opened.row.name })) {
@@ -410,7 +423,7 @@ export default function HomeworkTeacherGrid({
 
 // ---------- 학생 한 명 상세 ----------
 function StudentSheet({
-  name, number, state, sub, nudged, submitType, busy, myStamps,
+  name, number, state, sub, nudged, submitType, busy, myStamps, mine,
   onClose, onNudge, onComment, onCheck, onApprove,
 }: {
   name: string;
@@ -421,6 +434,8 @@ function StudentSheet({
   submitType: SubmitType;
   busy: boolean;
   myStamps: ShopItem[];
+  /** 선생님이 직접 만든 도장 */
+  mine: CustomStamp[];
   onClose: () => void;
   onNudge: () => void;
   onComment: (c: string) => void;
@@ -428,7 +443,9 @@ function StudentSheet({
   onApprove: () => void;
 }) {
   const [cmt, setCmt] = useState(sub?.teacherComment || '');
-  const [pickedStamp, setPickedStamp] = useState(sub?.stamp?.itemId || myStamps[0]?.id || '');
+  const [pickedStamp, setPickedStamp] = useState(
+    sub?.stamp?.itemId || myStamps[0]?.id || mine[0]?.id || ''
+  );
 
   return (
     <div
@@ -552,7 +569,7 @@ function StudentSheet({
 
             {/* 도장 고르기 */}
             {!sub.checked && (
-              myStamps.length > 0 ? (
+              (myStamps.length > 0 || mine.length > 0) ? (
                 <>
                   <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
                   <div className="flex flex-wrap gap-1.5 mb-3">
@@ -571,6 +588,23 @@ function StudentSheet({
                         {s.label}
                       </button>
                     ))}
+                    {/* 내가 만든 도장 — 상점 것과 나란히 고른다 */}
+                    {mine.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setPickedStamp(s.id)}
+                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[13px] font-bold"
+                        style={
+                          pickedStamp === s.id
+                            ? { background: 'var(--color-primary)', color: 'white' }
+                            : { background: 'white', color: '#8A7A5F' }
+                        }
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={s.imageUrl} alt="" className="h-4 w-4 rounded object-cover" />
+                        {s.label}
+                      </button>
+                    ))}
                   </div>
                 </>
               ) : (
@@ -581,8 +615,15 @@ function StudentSheet({
             )}
 
             {sub.checked && sub.stamp && (
-              <div className="rounded-xl px-3 py-2 mb-3 text-[14px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
-                {sub.stamp.emoji} {sub.stamp.label}
+              <div className="rounded-xl px-3 py-2 mb-3 text-[14px] font-bold text-center flex items-center justify-center gap-1.5" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
+                {/* 선생님이 만든 도장이면 이모지 대신 그림이 찍혀 있다 */}
+                {sub.stamp.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={sub.stamp.imageUrl} alt="" className="h-6 w-6 rounded object-cover" />
+                ) : (
+                  <span>{sub.stamp.emoji}</span>
+                )}
+                {sub.stamp.label}
               </div>
             )}
 

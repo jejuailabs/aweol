@@ -123,6 +123,22 @@ service cloud.firestore {
         allow read: if isSignedIn() && (request.auth.uid == uid || isSuper());
         allow write: if false;
       }
+
+      /**
+       * 선생님이 직접 만든 도장 도안.
+       *
+       * 본인만 만들고 지운다. 아이는 여기를 안 읽는다 — 찍는 순간 제출물 쪽으로
+       * 그림 주소가 복사되므로, 선생님이 나중에 지워도 아이 도장은 남는다.
+       * 잔액(stamps)과 달리 이건 '가진 개수'가 아니라 도안이라 서버를 안 거쳐도 된다.
+       */
+      match /stamps/{stampId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isSuper());
+        allow create, update: if isSignedIn() && request.auth.uid == uid
+                      && request.resource.data.label is string
+                      && request.resource.data.label.size() <= 10
+                      && request.resource.data.imageUrl is string;
+        allow delete: if isSignedIn() && request.auth.uid == uid;
+      }
     }
 
     // ---------- 학교/학년/학급 ----------

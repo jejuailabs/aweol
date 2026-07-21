@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool, isTeacherOfClass } from '@/lib/firebase-admin';
-import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
+import { STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
+import { resolveStamp, isStampError, type StampMark } from '@/lib/server-stamps';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -239,20 +240,14 @@ export async function PATCH(req: NextRequest) {
     patch.status = 'held';
     patch.publicToClass = false;
   }
-  // 도장 도안은 선생님이 실제로 가지고 있는 것만 찍을 수 있다
-  let stamp: { itemId: string; emoji: string; label: string } | null = null;
+  // 도장 도안은 선생님이 실제로 가지고 있는 것만 찍을 수 있다 (상점 것이든 직접 만든 것이든)
+  let stamp: StampMark | null = null;
   if (typeof body.stampId === 'string' && body.stampId) {
-    const item = getShopItem(body.stampId);
-    if (!item || item.category !== 'stamp') {
-      return NextResponse.json({ error: '없는 도장이에요' }, { status: 404 });
+    const got = await resolveStamp(db, user.uid, body.stampId);
+    if (isStampError(got)) {
+      return NextResponse.json({ error: got.error }, { status: got.status });
     }
-    const owned = await db
-      .collection('users').doc(user.uid)
-      .collection('inventory').doc(item.id).get();
-    if (!owned.exists) {
-      return NextResponse.json({ error: '가지고 있지 않은 도장이에요' }, { status: 403 });
-    }
-    stamp = { itemId: item.id, emoji: item.emoji, label: item.label };
+    stamp = got;
   }
 
   if (typeof body.check === 'boolean') {

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import MyStampMaker from '@/components/shop/MyStampMaker';
 import { canManageClass } from '@/lib/auth-helpers';
 import { inventoryPath } from '@/lib/paths';
 import { SHOP_ITEMS, ShopItem, ShopCategory } from '@/lib/shop-catalog';
@@ -121,6 +122,9 @@ export default function ShopPage() {
         <span className="text-sm font-bold" style={{ color: '#7A5C00' }}>내 도장</span>
         <span className="text-lg font-bold" style={{ color: '#7A5C00' }}>🏅 {stamps}개</span>
       </div>
+
+      {/* 선생님만 — 자기 도장 만들기 */}
+      {isStaff && <MyStampMaker />}
 
       {sections.map((sec) => (
         <div key={sec.key} className="mb-7">

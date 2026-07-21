@@ -38,7 +38,7 @@ interface Submission {
   status: 'approved' | 'held';
   moderation: { flagged: boolean; reason: string } | null;
   teacherComment: string;
-  stamp: { itemId: string; emoji: string; label: string } | null;
+  stamp: { itemId: string; emoji: string; label: string; imageUrl?: string } | null;
 }
 
 const TYPE_LABEL: Record<SubmitType, string> = {
@@ -77,7 +77,7 @@ function formatDue(due: string): string {
 }
 
 export default function HomeworkPanel({ schoolId, classId }: { schoolId: string; classId: string }) {
-  const { user, userDoc, role } = useAuth();
+  const { user, userDoc, role, actualRole } = useAuth();
   /**
    * **이 반** 담임만 낸다. `canManageClass` 는 어느 반인지를 안 보므로
    * 그걸로 열면 남의 반에서 버튼이 보이다가 눌렀을 때 거부당한다.
@@ -375,6 +375,20 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           )}
         </div>
 
+        {/*
+          총관리자에게 길을 알려준다.
+          서버는 총관리자의 제출을 이미 받아준다 — 못 하는 게 아니라
+          '학생 보기' 로 바꾸는 길을 몰랐던 것이다.
+        */}
+        {actualRole === 'super_admin' && (
+          <div
+            className="rounded-2xl px-4 py-3 mb-3 text-[13px] font-bold leading-relaxed"
+            style={{ background: '#EAF3FB', color: '#2C5D86' }}
+          >
+            💡 오른쪽 위 <b>역할 바꾸기</b>에서 &apos;학생&apos;으로 보면 총관리자도 직접 제출해볼 수 있어요.
+          </div>
+        )}
+
         {/* 교사 — 명부 기반 현황판 */}
         {isStaff && (
           <HomeworkTeacherGrid
@@ -512,7 +526,17 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                     className="mt-2 rounded-xl px-3 py-2.5 text-center"
                     style={{ background: '#E2F6E9', border: '1px solid #A0DCB7' }}
                   >
-                    <div className="text-2xl leading-none mb-1">{mySub.stamp.emoji}</div>
+                    {/* 선생님이 만든 도장이면 그림이 찍혀 있다 */}
+                    {mySub.stamp.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={mySub.stamp.imageUrl}
+                        alt=""
+                        className="mx-auto h-10 w-10 rounded-lg object-cover mb-1"
+                      />
+                    ) : (
+                      <div className="text-2xl leading-none mb-1">{mySub.stamp.emoji}</div>
+                    )}
                     <div className="text-[14px] font-bold" style={{ color: '#2E8B57' }}>
                       {mySub.stamp.label}
                     </div>

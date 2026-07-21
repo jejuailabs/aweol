@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { adminDb, getClientIp, verifyRequestUser, isStaffOfSchool, isTeacherOfClass } from '@/lib/firebase-admin';
-import { getShopItem, STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
+import { STAMP_PER_HOMEWORK } from '@/lib/shop-catalog';
+import { resolveStamp, isStampError } from '@/lib/server-stamps';
 import { storagePathFromUrl } from '@/lib/storage-path';
 import {
   isShortAnswerCorrect, parseYoutubeId,
@@ -416,17 +417,11 @@ export async function PATCH(req: NextRequest) {
 
     let stamp: { itemId: string; emoji: string; label: string } | null = null;
     if (typeof body.stampId === 'string' && body.stampId) {
-      const item = getShopItem(body.stampId);
-      if (!item || item.category !== 'stamp') {
-        return NextResponse.json({ error: '없는 도장이에요' }, { status: 404 });
+      const got = await resolveStamp(db, user.uid, body.stampId);
+      if (isStampError(got)) {
+        return NextResponse.json({ error: got.error }, { status: got.status });
       }
-      const owned = await db
-        .collection('users').doc(user.uid)
-        .collection('inventory').doc(item.id).get();
-      if (!owned.exists) {
-        return NextResponse.json({ error: '가지고 있지 않은 도장이에요' }, { status: 403 });
-      }
-      stamp = { itemId: item.id, emoji: item.emoji, label: item.label };
+      stamp = got;
     }
 
     if (typeof body.check === 'boolean') {
