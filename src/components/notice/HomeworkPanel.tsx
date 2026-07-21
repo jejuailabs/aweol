@@ -8,7 +8,7 @@ import { setDoc, updateDoc,
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { canManageClass } from '@/lib/auth-helpers';
+import { isTeacherOfClass } from '@/lib/auth-helpers';
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
 import { nudgesPath, readsPath } from '@/lib/paths';
 import DrawingPad from './DrawingPad';
@@ -78,7 +78,11 @@ function formatDue(due: string): string {
 
 export default function HomeworkPanel({ schoolId, classId }: { schoolId: string; classId: string }) {
   const { user, userDoc, role } = useAuth();
-  const isStaff = canManageClass(role);
+  /**
+   * **이 반** 담임만 낸다. `canManageClass` 는 어느 반인지를 안 보므로
+   * 그걸로 열면 남의 반에서 버튼이 보이다가 눌렀을 때 거부당한다.
+   */
+  const isStaff = isTeacherOfClass(role, userDoc?.classIds, classId);
   const basePath = `schools/${schoolId}/classes/${classId}/homeworks`;
 
   const [list, setList] = useState<Homework[]>([]);
@@ -95,6 +99,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
   /** 수정 중인 숙제 id. null 이면 새로 내는 중 */
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
 
   // 제출
   const [subText, setSubText] = useState('');
@@ -200,24 +205,39 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
       visibility: wVis,
       dueDate: wDue || null,
     };
-    if (editId) {
+    setSaveErr('');
+    try {
+      if (editId) {
+        /**
+         * 제출 종류를 바꾸면 이미 낸 아이들의 제출물이 그 종류와 안 맞게 된다.
+         * 지우지는 않는다 — 아이가 한 걸 앱이 마음대로 없애면 안 된다.
+         * 대신 선생님에게 미리 알린다(아래 경고).
+         */
+        await updateDoc(doc(db, basePath, editId), payload);
+      } else {
+        await addDoc(collection(db, basePath), {
+          ...payload,
+          authorUid: user.uid,
+          authorName: userDoc.displayName || '선생님',
+          createdAt: serverTimestamp(),
+        });
+      }
+      setWTitle(''); setWDesc(''); setWDue(''); setEditId(null);
+      setWriting(false);
+    } catch {
       /**
-       * 제출 종류를 바꾸면 이미 낸 아이들의 제출물이 그 종류와 안 맞게 된다.
-       * 지우지는 않는다 — 아이가 한 걸 앱이 마음대로 없애면 안 된다.
-       * 대신 선생님에게 미리 알린다(아래 경고).
+       * 여기 오는 건 거의 '내 반이 아니다' 다.
+       * 예전에는 오류를 안 잡아서 '저장 중...' 에서 영영 멈춰 있었다.
        */
-      await updateDoc(doc(db, basePath, editId), payload);
-    } else {
-      await addDoc(collection(db, basePath), {
-        ...payload,
-        authorUid: user.uid,
-        authorName: userDoc.displayName || '선생님',
-        createdAt: serverTimestamp(),
-      });
+      setSaveErr(
+        isStaff
+          ? '숙제를 내지 못했어요. 잠시 뒤 다시 해주세요.'
+          : '내가 맡은 반이 아니라 숙제를 낼 수 없어요.'
+      );
+    } finally {
+      setSaving(false);
     }
-    setWTitle(''); setWDesc(''); setWDue(''); setEditId(null);
-    setWriting(false); setSaving(false);
-  }, [wTitle, wDesc, wType, wVis, wDue, editId, user, userDoc, basePath]);
+  }, [wTitle, wDesc, wType, wVis, wDue, editId, user, userDoc, basePath, isStaff]);
 
   const removeHomework = useCallback(async (id: string) => {
     if (!db) return;
@@ -638,6 +658,15 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             </button>
           ))}
         </div>
+
+        {saveErr && (
+          <div
+            className="rounded-xl px-3 py-2.5 mb-3 text-[14px] font-bold leading-relaxed"
+            style={{ background: '#FDECEA', color: '#B02A37', border: '1px solid #F5C6C4' }}
+          >
+            ⚠️ {saveErr}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button

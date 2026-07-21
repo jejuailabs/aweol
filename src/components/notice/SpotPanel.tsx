@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { canManageClass } from '@/lib/auth-helpers';
+import { isTeacherOfClass } from '@/lib/auth-helpers';
 import { spotGamesPath } from '@/lib/paths';
 import { HomeworkVisibility, SpotLayout } from '@/lib/firestore-schema';
 import SpotCompose from './SpotCompose';
@@ -21,8 +21,12 @@ interface Game {
 }
 
 export default function SpotPanel({ schoolId, classId }: { schoolId: string; classId: string }) {
-  const { user, role } = useAuth();
-  const isStaff = canManageClass(role);
+  const { user, userDoc, role } = useAuth();
+  /**
+   * **이 반** 담임만 낸다. `canManageClass` 는 어느 반인지를 안 보므로
+   * 그걸로 열면 남의 반에서 버튼이 보이다가 눌렀을 때 거부당한다.
+   */
+  const isStaff = isTeacherOfClass(role, userDoc?.classIds, classId);
 
   const [list, setList] = useState<Game[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);

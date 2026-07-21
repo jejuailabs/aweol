@@ -8,7 +8,7 @@ import {
 import { db } from '@/lib/firebase';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
-import { canManageClass } from '@/lib/auth-helpers';
+import { isTeacherOfClass } from '@/lib/auth-helpers';
 import { NoticeKind } from '@/lib/firestore-schema';
 import { NOTICE_TABS } from '@/components/gallery3d/NoticeWall';
 import HomeworkPanel from './HomeworkPanel';
@@ -60,7 +60,11 @@ export default function NoticeModal({
   const [wBody, setWBody] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const isStaff = canManageClass(role);
+  /**
+   * **이 반** 담임만 낸다. `canManageClass` 는 어느 반인지를 안 보므로
+   * 그걸로 열면 남의 반에서 버튼이 보이다가 눌렀을 때 거부당한다.
+   */
+  const isStaff = isTeacherOfClass(role, userDoc?.classIds, classId);
   const tab = NOTICE_TABS.find((t) => t.kind === kind)!;
   const list = posts.filter((p) => p.kind === kind);
   const openPost = list.find((p) => p.id === openId) || null;
