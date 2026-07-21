@@ -245,6 +245,8 @@ body {
 :root {
   /* 하단 메뉴 높이. 조이스틱·바로가기 버튼이 이걸 피해서 앉는다. */
   --nav-h: 60px;
+  /* 조이스틱 크기. 말풍선이 이 위로 올라가야 한다. */
+  --joystick-h: 88px;
 }
 
 /* 1rem 은 예전 `top-4` 와 같다 — 안전영역이 0 인 기기에서 **더 나빠지지 않게** 한다.
@@ -256,6 +258,28 @@ body {
 /* 하단 메뉴 위에 앉는다 */
 .pos-above-nav {
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nav-h) + 0.75rem);
+}
+
+/*
+  조이스틱 **위에** 앉는다.
+  왼쪽 아래는 조이스틱 자리다. 말풍선처럼 넓은 것을 거기 두면 조이스틱을 덮거나
+  조이스틱에 덮인다 — 실제로 차 타기 버튼과 안내 말풍선이 함께 가려져 있었다.
+*/
+.pos-above-joystick {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nav-h) + var(--joystick-h) + 1rem);
+}
+
+/*
+  말풍선 자리 — 조이스틱과 그 위 버튼 줄까지 모두 넘긴 **세 번째 층**.
+
+  화면 아래는 층이 셋이다.
+    1층 `.pos-above-nav`       — 하단 메뉴 바로 위 (오른쪽: 타기/내리기)
+    2층 `.pos-above-joystick`  — 왼쪽은 조이스틱, 오른쪽은 순간이동
+    3층 `.pos-hint`            — 넓은 말풍선
+  말풍선은 넓어서 2층에 두면 오른쪽 버튼과 부딪힌다(실제로 겹쳤다).
+*/
+.pos-hint {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nav-h) + var(--joystick-h) + 5.25rem);
 }
 
 .pad-bottom-safe {

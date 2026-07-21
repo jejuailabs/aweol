@@ -267,6 +267,17 @@ export default function VillageMapScene({
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
 
+  /**
+   * 화면에 띄울 이름표.
+   *
+   * 워프 목록과 같은 고르기(이름 있고, 서로 멀리 떨어진 것)를 쓴다.
+   * 다만 더 촘촘히 — 걸어다니며 보는 것이라 워프보다는 많아도 된다.
+   */
+  const labelSpots = useMemo(
+    () => warpTargets(data.poi, '', { max: 13, minGapM: 45 }).filter((t) => t.id !== 'school'),
+    [data.poi]
+  );
+
   const targets: WarpTarget[] = useMemo(
     () => warpTargets(data.poi, schoolName),
     [data.poi, schoolName]
@@ -368,18 +379,23 @@ export default function VillageMapScene({
           </Html>
         </group>
 
-        {/* 시설 표시 */}
-        {data.poi.filter((p) => p.n).slice(0, 30).map((p, i) => (
+        {/*
+          시설 이름표.
+          30개를 다 띄웠더니 서로 겹쳐서 하나도 못 읽었다. 가까운 것만,
+          그리고 **서로 떨어진 것만** 남긴다 — 워프 목록을 고를 때와 같은 방식이다.
+          이름이 길면 잘라 쓴다(영문 병기까지 다 쓰면 화면을 가로지른다).
+        */}
+        {labelSpots.map((p, i) => (
           <Html key={i} position={[p.x, 3, p.z]} center pointerEvents="none" zIndexRange={[3, 0]}>
             <div
               style={{
                 background: 'rgba(255,255,255,0.85)', color: '#6B5B43',
-                fontWeight: 700, fontSize: '13px', padding: '2px 7px',
+                fontWeight: 700, fontSize: '12px', padding: '2px 7px',
                 borderRadius: '999px', whiteSpace: 'nowrap',
                 fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
               }}
             >
-              📍 {p.n}
+              📍 {p.name.length > 9 ? `${p.name.slice(0, 9)}…` : p.name}
             </div>
           </Html>
         ))}
@@ -422,24 +438,28 @@ export default function VillageMapScene({
         휴대폰에서는 너무 작아진다.
       */}
 
-      {/* 타고 내리기 — 걷기 싫으면 바로 탄다 */}
-      <button
-        onClick={() => setForceCar((v) => !v)}
-        className="pos-above-nav absolute left-4 z-30 rounded-full px-4 py-3 text-[15px] font-bold"
-        style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
-      >
-        {forceCar ? '🚶 내리기' : '🚗 타기'}
-      </button>
-
-      {/* 자동차 모드 알림 — 왜 갑자기 빨라졌는지 알려준다 */}
-      {!forceCar && mode === 'car' && (
-        <div
-          className="pos-top-safe absolute left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-[14px] font-black"
+      {/*
+        오른쪽 아래 = 버튼 자리, 왼쪽 아래 = 조이스틱 자리.
+        전에는 차 타기 버튼이 조이스틱 밑에 깔려 아예 안 보였다.
+      */}
+      <div className="pos-above-nav absolute right-4 z-30 flex flex-col items-end gap-2">
+        {/* 왜 빨라졌는지 — 짧게. 길게 쓰면 세 줄로 터져 화면을 덮는다 */}
+        {!forceCar && mode === 'car' && (
+          <div
+            className="rounded-full px-3 py-1.5 text-[13px] font-bold whitespace-nowrap"
+            style={{ background: 'rgba(255,248,231,0.95)', color: '#8A7A5F' }}
+          >
+            🚗 멀어져서 빨라졌어요
+          </div>
+        )}
+        <button
+          onClick={() => setForceCar((v) => !v)}
+          className="rounded-full px-5 py-3 text-[15px] font-bold"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
         >
-          🚗 자동차 모드 — 학교에서 멀어져서 빨라졌어요
-        </div>
-      )}
+          {forceCar ? '🚶 내리기' : '🚗 타기'}
+        </button>
+      </div>
 
       {/* 워프한 직후 */}
       {warpedTo && (
@@ -455,7 +475,7 @@ export default function VillageMapScene({
       {/* 워프 열기 */}
       <button
         onClick={() => setWarpOpen((v) => !v)}
-        className="pos-above-nav absolute right-4 z-30 rounded-full px-5 py-3 text-[15px] font-bold"
+        className="pos-above-joystick absolute right-4 z-30 rounded-full px-5 py-3 text-[15px] font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         {warpOpen ? '✕ 닫기' : '🗺️ 순간이동'}
