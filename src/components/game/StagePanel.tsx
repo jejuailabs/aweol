@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { isTeacherOfClass } from '@/lib/auth-helpers';
 import { stagePlaysPath, stagesPath } from '@/lib/paths';
 import { MAX_PAIRS, parsePairs, type WordPair } from '@/lib/wordset';
+import { extractText, isSupported } from '@/lib/doc-text';
 import MatchGame from './MatchGame';
 
 interface Stage {
@@ -38,6 +39,11 @@ export default function StagePanel({ schoolId, classId }: { schoolId: string; cl
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
+  /** 자료로 만들기 — 파일에서 글자를 뽑아 AI 에 보내고, 결과를 선생님이 고친다 */
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [reading, setReading] = useState('');
+  const [aiNote, setAiNote] = useState('');
+
   const base = stagesPath(schoolId, classId);
 
   useEffect(() => {
@@ -55,6 +61,56 @@ export default function StagePanel({ schoolId, classId }: { schoolId: string; cl
   /** 아이에게는 선생님이 확인한 것만 보인다 */
   const visible = isStaff ? stages : stages.filter((s) => s.approved);
 
+  /**
+   * 수업자료로 스테이지 만들기.
+   *
+   * 파일은 **올리지 않는다.** 브라우저에서 글자만 뽑아 그것만 보낸다 —
+   * 저장 요금이 0 이고 아이들 자료가 우리 쪽에 남지도 않는다.
+   *
+   * 결과는 바로 저장하지 않고 **위 입력칸에 초안으로 붓는다.**
+   * AI 가 잘못 읽은 것을 선생님이 고친 뒤에 저장해야 한다.
+   */
+  const readFile = async (file: File | undefined) => {
+    if (!file || !user) return;
+    setErr(''); setAiNote('');
+    if (!isSupported(file.name)) {
+      setErr('txt·csv·엑셀(xlsx)·pdf 만 읽을 수 있어요.');
+      return;
+    }
+    setReading('자료를 읽는 중...');
+    try {
+      const got = await extractText(file);
+      if (!got.text) {
+        setErr(got.note);
+        return;
+      }
+      setReading('AI 가 낱말을 뽑는 중...');
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/game-stage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ classId, text: got.text, hint: title }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErr(data?.error || '자료를 읽지 못했어요.');
+        return;
+      }
+      // 초안을 입력칸에 붓는다. 선생님이 여기서 고치고 저장한다.
+      setWriting(true);
+      if (!title.trim() && data.title) setTitle(data.title);
+      setRaw((data.pairs as WordPair[]).map((x) => `${x.a}=${x.b}`).join('\n'));
+      setAiNote(
+        `AI 가 ${data.pairs.length}개를 뽑았어요. ${got.note} 아이에게 내보내기 전에 꼭 읽어봐 주세요.`.trim()
+      );
+    } catch {
+      setErr('자료를 읽지 못했어요. 다른 파일로 해보시겠어요?');
+    } finally {
+      setReading('');
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   const save = async () => {
     if (!db || !user || !userDoc || parsed.pairs.length < 2) return;
     setSaving(true); setErr('');
@@ -64,14 +120,17 @@ export default function StagePanel({ schoolId, classId }: { schoolId: string; cl
         order: nextOrder,
         title: title.trim() || `${nextOrder}번째 스테이지`,
         pairs: parsed.pairs,
-        source: 'manual',
-        // 선생님이 직접 적은 것이니 바로 열어준다 (AI 가 만든 건 다르다)
+        /*
+          AI 초안에서 왔더라도 선생님이 이 화면에서 읽고 저장을 누른 것이므로
+          그때는 확인을 마친 것으로 본다. 어디서 왔는지는 남겨둔다.
+        */
+        source: aiNote ? 'ai' : 'manual',
         approved: true,
         authorUid: user.uid,
         authorName: userDoc.displayName || '선생님',
         createdAt: serverTimestamp(),
       });
-      setTitle(''); setRaw(''); setWriting(false);
+      setTitle(''); setRaw(''); setWriting(false); setAiNote('');
     } catch {
       setErr(
         isStaff
@@ -127,13 +186,45 @@ export default function StagePanel({ schoolId, classId }: { schoolId: string; cl
   return (
     <div>
       {isStaff && !writing && (
-        <button
-          onClick={() => setWriting(true)}
-          className="w-full rounded-xl py-3 mb-3 text-[14px] font-bold text-white"
-          style={{ background: 'var(--color-primary)' }}
+        <div className="flex flex-col gap-2 mb-3">
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={!!reading}
+            className="w-full rounded-xl py-3 text-[14px] font-bold text-white disabled:opacity-50"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            {reading || '📄 수업자료로 만들기 (AI)'}
+          </button>
+          <button
+            onClick={() => setWriting(true)}
+            className="w-full rounded-xl py-2.5 text-[14px] font-bold"
+            style={{ background: 'rgba(255,255,255,0.85)', color: '#8A7A5F' }}
+          >
+            ＋ 직접 적기
+          </button>
+          <p className="text-[12px] leading-relaxed" style={{ color: '#A89880' }}>
+            txt·csv·엑셀·pdf 를 넣으면 AI 가 낱말을 뽑아줘요.
+            파일은 저장하지 않고 글자만 읽어요.
+          </p>
+        </div>
+      )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".txt,.csv,.md,.tsv,.xlsx,.xls,.pdf"
+        className="hidden"
+        onChange={(e) => readFile(e.target.files?.[0])}
+      />
+
+      {/* 파일을 못 읽었을 때도 목록 위에 보여야 한다 */}
+      {!writing && err && (
+        <div
+          className="rounded-xl px-3 py-2.5 mb-3 text-[13px] font-bold leading-relaxed"
+          style={{ background: '#FDECEA', color: '#B02A37' }}
         >
-          ＋ 새 스테이지 만들기
-        </button>
+          ⚠️ {err}
+        </div>
       )}
 
       {isStaff && writing && (
@@ -166,6 +257,18 @@ export default function StagePanel({ schoolId, classId }: { schoolId: string; cl
             <div className="text-[12px]" style={{ color: '#C0392B' }}>… 외 {parsed.problems.length - 4}줄</div>
           )}
 
+          {/*
+            AI 가 부어준 초안이라는 걸 분명히 한다.
+            그냥 저장 버튼만 있으면 읽지 않고 누른다.
+          */}
+          {aiNote && (
+            <div
+              className="rounded-xl px-3 py-2.5 mt-2 text-[13px] font-bold leading-relaxed"
+              style={{ background: '#FFF6E5', color: '#A6762A' }}
+            >
+              🤖 {aiNote}
+            </div>
+          )}
           {err && <div className="text-[13px] font-bold mt-2" style={{ color: '#C0392B' }}>⚠️ {err}</div>}
 
           <div className="flex gap-2 mt-3">
