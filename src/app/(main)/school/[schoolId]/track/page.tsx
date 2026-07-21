@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { inventoryPath } from '@/lib/paths';
 import { playSound } from '@/lib/sound';
 import { formatTime } from '@/lib/track';
 import { setMovementLock } from '@/components/gallery3d/walker';
@@ -17,7 +18,8 @@ const TrackScene = dynamic(() => import('@/components/gallery3d/TrackScene'), { 
 
 type Phase = 'ready' | 'count' | 'running' | 'done' | 'foul';
 
-interface Record { uid: string; name: string; bestMs: number }
+/** 순위표 한 줄. `Record` 라고 쓰면 TS 내장 Record<K,V> 를 가린다 */
+interface TrackRecord { uid: string; name: string; bestMs: number }
 
 export default function TrackPage() {
   const { user, userDoc } = useAuth();
@@ -28,8 +30,9 @@ export default function TrackPage() {
   const [count, setCount] = useState(3);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<{ ms: number; isBest: boolean; reason?: string } | null>(null);
-  const [records, setRecords] = useState<Record[]>([]);
+  const [records, setRecords] = useState<TrackRecord[]>([]);
   const [err, setErr] = useState('');
+  const [flash, setFlash] = useState('');
   /** 경기 번호 — 올리면 아바타가 출발선으로 돌아간다 */
   const [runId, setRunId] = useState(0);
 
@@ -38,6 +41,13 @@ export default function TrackPage() {
   const [iAmReady, setIAmReady] = useState(false);
   /** 이번 출발 신호를 이미 받았나 (같은 신호로 두 번 뛰지 않게) */
   const usedStart = useRef(0);
+
+  /** 가진 놀이 아이템 */
+  const [items, setItems] = useState<Record<string, number>>({});
+  /** 구름 신발을 신었나 — 선을 한 번 밟아도 봐준다 */
+  const [cloud, setCloud] = useState(false);
+  const cloudRef = useRef(false);
+  useEffect(() => { cloudRef.current = cloud; }, [cloud]);
 
   const me = user && userDoc
     ? { uid: user.uid, name: userDoc.displayName || '친구' }
@@ -52,12 +62,28 @@ export default function TrackPage() {
       collection(db, 'schools', schoolId, 'trackRecords'),
       orderBy('bestMs', 'asc'), limit(10)
     ));
-    setRecords(snap.docs.map((d) => d.data() as Record));
+    setRecords(snap.docs.map((d) => d.data() as TrackRecord));
   }, [schoolId]);
 
   useEffect(() => { loadRecords().catch(() => {}); }, [loadRecords]);
 
   useEffect(() => watchLobby(schoolId, setLobby), [schoolId]);
+
+  useEffect(() => {
+    if (!db || !user) return;
+    return onSnapshot(
+      collection(db, inventoryPath(user.uid)),
+      (snap) => {
+        const m: Record<string, number> = {};
+        snap.forEach((d) => {
+          const c = (d.data().count as number) ?? 0;
+          if (c > 0) m[d.id] = c;
+        });
+        setItems(m);
+      },
+      () => setItems({})
+    );
+  }, [user]);
 
   // 화면을 떠나면 출발선에서도 빠진다
   useEffect(() => () => {
@@ -149,6 +175,17 @@ export default function TrackPage() {
 
   const foul = () => {
     if (phase !== 'running') return;
+    /**
+     * 구름 신발은 **한 번만** 봐준다. 그 뒤로는 그냥 탈락이다.
+     * 시간에는 손대지 않는다 — 순위표는 신발을 신었든 아니든 같은 기록이어야 한다.
+     */
+    if (cloudRef.current) {
+      setCloud(false);
+      setFlash('🩹 구름 신발이 한 번 봐줬어요!');
+      setTimeout(() => setFlash(''), 1800);
+      playSound('tap');
+      return;
+    }
     setPhase('foul');
     setMovementLock(false);
     playSound('error');
@@ -156,6 +193,7 @@ export default function TrackPage() {
 
   const reset = () => {
     setPhase('ready');
+    setCloud(false);
     setResult(null);
     setErr('');
     // 다음 판을 위해 준비를 푼다. 안 풀면 지난 출발 신호로 또 뛴다.
@@ -206,6 +244,17 @@ export default function TrackPage() {
             style={{ color: 'white', textShadow: '0 6px 24px rgba(0,0,0,0.45)' }}
           >
             {count > 0 ? count : '출발!'}
+          </div>
+        </div>
+      )}
+
+      {flash && (
+        <div className="absolute inset-x-0 top-24 z-40 flex justify-center pointer-events-none px-4">
+          <div
+            className="rounded-2xl px-5 py-3 text-base font-black text-center"
+            style={{ background: 'rgba(255,248,231,0.96)', color: '#6B5B43', boxShadow: '0 6px 18px rgba(0,0,0,0.25)' }}
+          >
+            {flash}
           </div>
         </div>
       )}
@@ -261,6 +310,28 @@ export default function TrackPage() {
                     </div>
                   )}
                 </div>
+
+                {/* 숙제로 모은 도장으로 산 것 */}
+                <button
+                  onClick={async () => {
+                    if (cloud || !(items['play-cloud'] > 0)) return;
+                    const token = await auth?.currentUser?.getIdToken();
+                    const res = await fetch('/api/shop', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ action: 'use', itemId: 'play-cloud' }),
+                    });
+                    if (res.ok) setCloud(true);
+                  }}
+                  disabled={cloud || !(items['play-cloud'] > 0)}
+                  className="w-full rounded-2xl py-2.5 mb-2 flex items-center justify-center gap-2 disabled:opacity-40"
+                  style={{ background: cloud ? '#EAF7EA' : 'white' }}
+                >
+                  <span className="text-lg">🩹</span>
+                  <span className="text-[11px] font-bold" style={{ color: '#8A7A5F' }}>
+                    {cloud ? '구름 신발을 신었어요 — 한 번 봐줘요' : `구름 신발 신기 (${items['play-cloud'] ?? 0}개)`}
+                  </span>
+                </button>
 
                 <div className="flex gap-2">
                   <button

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { spotPlaysPath } from '@/lib/paths';
+import { inventoryPath, spotPlaysPath } from '@/lib/paths';
 
 /**
  * 틀린그림 찾기 — 아이 화면.
@@ -37,6 +37,8 @@ export default function SpotPlay({
   const { user } = useAuth();
   const [started, setStarted] = useState(false);
   const [found, setFound] = useState<Found[]>([]);
+  /** 가진 돋보기 개수 */
+  const [lens, setLens] = useState(0);
   const [misses, setMisses] = useState(0);
   const [done, setDone] = useState(false);
   const [seconds, setSeconds] = useState<number | null>(null);
@@ -118,7 +120,46 @@ export default function SpotPlay({
     }
   }, [started, done, busy, call]);
 
+  /**
+   * 돋보기 — 못 찾은 곳 하나를 서버가 알려준다.
+   * 정답 좌표는 애초에 화면으로 안 내려오므로 서버만 고를 수 있다.
+   */
+  const useLens = useCallback(async () => {
+    if (!started || done || busy) return;
+    setBusy(true);
+    const token = await auth?.currentUser?.getIdToken();
+    const spent = await fetch('/api/shop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'use', itemId: 'play-lens' }),
+    });
+    if (!spent.ok) {
+      setBusy(false);
+      setMsg('돋보기가 없어요');
+      setTimeout(() => setMsg(''), 1200);
+      return;
+    }
+    const { ok, json } = await call({ action: 'hint' });
+    setBusy(false);
+    if (!ok) { setMsg(json.error || '알려주지 못했어요'); return; }
+    setFound((prev) => [...prev, json.spot]);
+    setMsg('🔍 여기예요!');
+    setTimeout(() => setMsg(''), 1200);
+    if (json.done) { setDone(true); setSeconds(json.seconds ?? null); }
+  }, [started, done, busy, call]);
+
+  // 가진 돋보기 개수
+  useEffect(() => {
+    if (!db || !user) { setLens(0); return; }
+    return onSnapshot(
+      doc(db, inventoryPath(user.uid), 'play-lens'),
+      (d) => setLens(d.exists() ? ((d.data().count as number) ?? 0) : 0),
+      () => setLens(0)
+    );
+  }, [user]);
+
   const remaining = spotCount - found.length;
+
 
   return (
     <div>
@@ -146,6 +187,16 @@ export default function SpotPlay({
           <div className="rounded-xl px-3 py-2 text-[12px] font-bold" style={{ background: 'white', color: '#8A7A5F' }}>
             ⏱ {done && seconds != null ? `${seconds}초` : `${elapsed}초`}
           </div>
+          {lens > 0 && !done && (
+            <button
+              onClick={useLens}
+              disabled={busy}
+              className="rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+              style={{ background: '#EAF2FB', color: '#2F6DB5' }}
+            >
+              🔍 돋보기 {lens}
+            </button>
+          )}
           {misses > 0 && (
             <div className="rounded-xl px-3 py-2 text-[12px]" style={{ background: 'white', color: '#C0392B' }}>
               헛짚음 {misses}

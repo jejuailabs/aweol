@@ -48,6 +48,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'play-shield', emoji: '🛡️', label: '튼튼 방패', price: 3, category: 'play',
     consumable: true, desc: '잡혀도 한 번은 술래를 되돌려줘요',
   },
+  /**
+   * 달리기에는 **빨라지는 아이템을 넣지 않았다.**
+   * 순위표가 걸린 놀이라 아이템을 산 아이가 빨라지면 기록이 의미를 잃는다.
+   * 대신 실수를 한 번 봐주는 것으로 뒀다 — 시간에는 손대지 않는다.
+   */
+  {
+    id: 'play-cloud', emoji: '🩹', label: '구름 신발', price: 2, category: 'play',
+    consumable: true, desc: '달리기에서 선을 한 번 밟아도 봐줘요 (기록은 그대로)',
+  },
+  {
+    id: 'play-lens', emoji: '🔍', label: '돋보기', price: 2, category: 'play',
+    consumable: true, desc: '틀린그림에서 한 곳을 알려줘요 (쓴 표시가 남아요)',
+  },
 
   // ---------- 모자 ----------
   { id: 'hat-cap', emoji: '🧢', label: '야구모자', price: 2, category: 'hat' },

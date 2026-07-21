@@ -243,6 +243,64 @@ export async function PUT(req: NextRequest) {
     });
   }
 
+  /**
+   * ---------- 돋보기 (힌트) ----------
+   *
+   * 아직 못 찾은 곳 하나를 알려준다.
+   *
+   * **반드시 서버가 고른다.** 정답 좌표는 애초에 클라이언트로 안 내려가므로
+   * 힌트도 여기서만 만들 수 있다. 그리고 **쓴 표시(`hints`)를 기록에 남긴다** —
+   * 순위표에 돋보기를 쓴 기록과 안 쓴 기록이 섞여 있으면 순위가 의미를 잃는다.
+   */
+  if (body.action === 'hint') {
+    const [keySnap, playSnap] = await Promise.all([
+      gameRef.collection('answerKey').doc('spots').get(),
+      playRef.get(),
+    ]);
+    if (!playSnap.exists) {
+      return NextResponse.json({ error: '먼저 시작해주세요' }, { status: 409 });
+    }
+    const play = playSnap.data() || {};
+    if (play.completedAt) {
+      return NextResponse.json({ error: '이미 다 찾았어요' }, { status: 409 });
+    }
+
+    const spots = (keySnap.data()?.spots as Spot[]) || [];
+    const found: number[] = play.found || [];
+    const remain = spots.map((_, i) => i).filter((i) => !found.includes(i));
+    if (remain.length === 0) {
+      return NextResponse.json({ error: '알려줄 곳이 없어요' }, { status: 409 });
+    }
+
+    // 남은 것 중 첫 번째. 무작위로 고를 이유가 없다 — 어차피 하나만 알려준다.
+    const idx = remain[0];
+    const nextFound = [...found, idx];
+    const done = nextFound.length >= spots.length;
+
+    let seconds: number | null = null;
+    if (done) {
+      const started = play.startedAt?.toDate?.() as Date | undefined;
+      seconds = started ? Math.max(1, Math.round((Date.now() - started.getTime()) / 1000)) : null;
+    }
+
+    await playRef.set(
+      done
+        ? { found: nextFound, hints: FieldValue.increment(1), seconds, completedAt: FieldValue.serverTimestamp() }
+        : { found: nextFound, hints: FieldValue.increment(1) },
+      { merge: true }
+    );
+
+    return NextResponse.json({
+      ok: true,
+      index: idx,
+      spot: { x: spots[idx].x, y: spots[idx].y, r: spots[idx].r },
+      foundCount: nextFound.length,
+      total: spots.length,
+      done,
+      seconds,
+    });
+  }
+
   return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
 }
 
