@@ -247,8 +247,10 @@ body {
   --nav-h: 60px;
 }
 
+/* 1rem 은 예전 `top-4` 와 같다 — 안전영역이 0 인 기기에서 **더 나빠지지 않게** 한다.
+   (아이폰 사파리는 주소창이 위에 있으면 inset-top 이 0 이다) */
 .pos-top-safe {
-  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
 }
 
 /* 하단 메뉴 위에 앉는다 */

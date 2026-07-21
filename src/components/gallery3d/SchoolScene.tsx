@@ -387,7 +387,18 @@ function SchoolBuilding({
         );
       })}
       {/* 학교 간판 — 이름은 반드시 실제 학교에서 온다 (예전엔 애월초로 박혀 있었다) */}
-      <Html position={[0, 6.9, bodyD * 0.5 + 1.4]} transform scale={0.5} pointerEvents="none">
+      {/*
+        `zIndexRange` 를 빼먹으면 drei 가 z-index 16777271 을 준다.
+        그러면 3D 안의 간판이 화면 위 버튼(z-40)까지 덮어버린다 —
+        아이폰에서 간판이 '퍼가기' 를 가리고 있었다.
+      */}
+      <Html
+        position={[0, 6.9, bodyD * 0.5 + 1.4]}
+        transform
+        scale={0.5}
+        pointerEvents="none"
+        zIndexRange={[10, 0]}
+      >
         <div
           style={{
             background: '#FFF8E7', border: '3px solid #B08860', borderRadius: '12px',
