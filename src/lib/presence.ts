@@ -25,6 +25,12 @@ import { app } from './firebase';
  * 끊겼다 붙으면 `onDisconnect` 가 내 자리를 이미 지운 뒤라서, 위치만 갱신하면
  * 이름 없는 유령이 된다. 그래서 `.info/connected` 를 보고 **다시 붙을 때
  * 전체를 새로 쓴다.**
+ *
+ * **숨소식은 화면 그리기와 따로 돈다.** 예전에는 `useFrame` 에서만 보냈는데,
+ * 탭이 뒤로 가거나 화면이 안 보이면 `requestAnimationFrame` 이 멈춰서 숨소식도
+ * 같이 멈췄다. 그러면 멀쩡히 접속해 있는 사람이 남의 화면에서 사라졌다가
+ * 탭을 다시 보면 나타난다 — 실제로 '깜빡였다 사라진다' 는 증상이 이것이었다.
+ * 그래서 타이머로 따로 돌린다.
  */
 
 /** 초당 보내는 횟수 */
@@ -39,8 +45,16 @@ const TURN_EPSILON = 0.08;
 /**
  * 이 시간 넘게 소식 없는 사람은 화면에서 지운다.
  * onDisconnect 가 있지만 끊김을 못 잡는 경우(비행기 모드, 탭 강제 종료)가 있다.
+ *
+ * **넉넉해야 한다.** 짧게 잡으면 가만히 서 있는 사람이 숨소식 사이에 사라진다.
  */
-const STALE_MS = 20000;
+const STALE_MS = 45000;
+
+/**
+ * 숨소식 주기. 가만히 있어도 이만큼마다 한 번은 보낸다.
+ * STALE_MS 보다 충분히 짧아야 '살아 있는데 사라지는' 일이 없다.
+ */
+const HEARTBEAT_MS = 8000;
 
 export interface PeerLook {
   name: string;
@@ -95,6 +109,21 @@ export function joinRoom(
 
   const db = getDatabase(app);
 
+  /**
+   * **내 시계와 서버 시계의 차이.**
+   *
+   * `t` 는 서버가 찍은 시각인데 비교는 내 컴퓨터 시각으로 한다.
+   * 컴퓨터 시계가 몇십 초만 어긋나 있어도 멀쩡히 있는 친구가 '오래된 소식' 으로
+   * 걸러져 **깜빡이며 사라진다.** 실제로 그 증상이 나왔다.
+   * RTDB 가 `.info/serverTimeOffset` 으로 차이를 알려주므로 그걸 더해서 본다.
+   */
+  let clockOffset = 0;
+  const unsubOffset = onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+    const v = snap.val();
+    if (typeof v === 'number') clockOffset = v;
+  });
+  const serverNow = () => Date.now() + clockOffset;
+
   let lastSent = 0;
   let lastX = 0;
   let lastZ = 0;
@@ -131,8 +160,18 @@ export function joinRoom(
     wasConnected = now;
   });
 
+  /**
+   * 숨소식 타이머 — 화면이 안 그려져도 '나 여기 있다' 는 계속 보낸다.
+   * 위치는 마지막으로 알려진 값을 그대로 다시 쓴다.
+   */
+  const beat = setInterval(() => {
+    if (Date.now() - lastSent < HEARTBEAT_MS) return;
+    lastSent = Date.now();
+    update(meRef, { p: pack(lastX, lastZ, lastRy), t: serverTimestamp() }).catch(() => {});
+  }, HEARTBEAT_MS);
+
   const unsub = onValue(roomRef, (snap) => {
-    const now = Date.now();
+    const now = serverNow();
     const out: Peer[] = [];
     snap.forEach((child) => {
       const id = child.key;
@@ -163,9 +202,15 @@ export function joinRoom(
         Math.abs(x - lastX) > MOVE_EPSILON ||
         Math.abs(z - lastZ) > MOVE_EPSILON ||
         Math.abs(ry - lastRy) > TURN_EPSILON;
-      // 가만히 있으면 안 보낸다. 다만 아주 가끔은 보내야 '살아 있다' 가 갱신된다.
-      const heartbeat = now - lastSent > STALE_MS / 3;
-      if (!moved && !heartbeat) return;
+      /**
+       * 가만히 있으면 안 보낸다 — '살아 있다' 는 위 타이머가 따로 알린다.
+       * 여기서까지 숨소식을 챙기면 화면이 멈출 때 같이 멈춘다.
+       */
+      if (!moved) {
+        // 움직이지 않아도 마지막 자리는 기억해둔다 (타이머가 이 값을 쓴다)
+        lastX = x; lastZ = z; lastRy = ry;
+        return;
+      }
 
       lastSent = now;
       lastX = x; lastZ = z; lastRy = ry;
@@ -173,8 +218,10 @@ export function joinRoom(
       update(meRef, { p: pack(x, z, ry), t: serverTimestamp() }).catch(() => {});
     },
     leave() {
+      clearInterval(beat);
       unsub();
       unsubConn();
+      unsubOffset();
       remove(meRef).catch(() => {});
     },
   };
