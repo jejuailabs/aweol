@@ -106,10 +106,13 @@ export default function SchoolPage() {
 
   return (
     <div className="relative min-h-dvh overflow-hidden">
-      {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
+      {/*
+        3D 학교 전경 — 창문 문패 클릭으로 반 입장.
+        운동장 문은 게임 고르는 곳으로 간다. 곧장 달리기가 뜨면 양궁을 못 찾는다.
+      */}
       <SchoolScene classes={classButtons} myClasses={myClasses} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
         onEnterArchive={() => router.push(`/school/${schoolId}/archive`)}
-        onEnterTrack={() => router.push(`/school/${schoolId}/track`)}
+        onEnterTrack={() => router.push(`/school/${schoolId}/playground`)}
         schoolId={schoolId}
         me={user && userDoc ? {
           uid: user.uid,
@@ -146,11 +149,11 @@ export default function SchoolPage() {
       {/* 운동장으로 — 로그인해야 기록이 남으니 로그인한 사람에게만 보인다 */}
       {userDoc && (
         <button
-          onClick={() => router.push(`/school/${schoolId}/track`)}
+          onClick={() => router.push(`/school/${schoolId}/playground`)}
           className="hidden sm:block absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
         >
-          🏃 운동장 달리기
+          🏟️ 운동장
         </button>
       )}
 

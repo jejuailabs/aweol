@@ -139,10 +139,10 @@ export default function ArcheryPage() {
   return (
     <div className="px-4 pt-6 pb-28 mx-auto max-w-[520px]">
       <button
-        onClick={() => router.push(`/school/${schoolId}`)}
+        onClick={() => router.push(`/school/${schoolId}/playground`)}
         className="ac-btn px-3.5 py-2 text-sm mb-3"
       >
-        ← 학교로
+        ← 운동장으로
       </button>
 
       <h1 className="text-lg font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
