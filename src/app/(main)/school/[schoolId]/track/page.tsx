@@ -22,7 +22,8 @@ import {
 
 const TrackScene = dynamic(() => import('@/components/gallery3d/TrackScene'), { ssr: false });
 
-type Phase = 'ready' | 'count' | 'running' | 'done' | 'foul';
+// 'foul' 은 없앴다 — 선을 밟아도 끝나지 않고 출발선으로 돌아간다
+type Phase = 'ready' | 'count' | 'running' | 'done';
 
 /** 순위표 한 줄. `Record` 라고 쓰면 TS 내장 Record<K,V> 를 가린다 */
 interface TrackRecord { uid: string; name: string; bestMs: number }
@@ -192,8 +193,19 @@ export default function TrackPage() {
       playSound('tap');
       return;
     }
-    setPhase('foul');
-    setMovementLock(false);
+    /**
+     * 선을 밟으면 **탈락이 아니라 출발선으로 돌아간다.**
+     *
+     * 여럿이 같이 달릴 때 한 번 밟았다고 끝나면, 그 아이는 남은 아이들이
+     * 다 들어올 때까지 구경만 한다. 다시 뛰게 하는 편이 낫다 —
+     * 되돌아간 만큼 시간이 늦어지니 벌은 이미 충분하다.
+     *
+     * runId 를 올리면 아바타가 출발선에 다시 서고 한 바퀴 계산도 처음부터다.
+     * 시계는 멈추지 않는다.
+     */
+    setRunId((n) => n + 1);
+    setFlash('😵 선을 밟았어요! 출발선에서 다시 →');
+    setTimeout(() => setFlash(''), 1800);
     playSound('error');
   };
 
@@ -271,7 +283,7 @@ export default function TrackPage() {
           className="pos-top-safe absolute left-1/2 -translate-x-1/2 z-30 rounded-full px-4 py-2 text-[13px] font-bold"
           style={{ background: 'rgba(255,248,231,0.92)', color: '#6B5B43' }}
         >
-          흰 선을 밟으면 탈락이에요! 한 바퀴 돌아 출발선으로
+흰 선을 밟으면 출발선으로 돌아가요! 한 바퀴 돌아 들어오세요
         </div>
       )}
 
@@ -282,7 +294,7 @@ export default function TrackPage() {
       {(phase === 'count' || phase === 'running') && <MobileJoystick />}
 
       {/* 준비 / 결과 */}
-      {(phase === 'ready' || phase === 'done' || phase === 'foul') && (
+      {(phase === 'ready' || phase === 'done') && (
         <div className="absolute inset-x-0 bottom-0 z-30 px-4 pb-6">
           <div
             className="mx-auto w-full max-w-[420px] rounded-[28px] p-5"
@@ -292,8 +304,8 @@ export default function TrackPage() {
               <>
                 <div className="text-base font-black mb-1" style={{ color: '#3A3226' }}>🏃 운동장 한 바퀴</div>
                 <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
-                  트랙을 따라 한 바퀴 달려요. <b>흰 선을 밟으면 탈락</b>이고,
-                  안쪽으로 질러가도 탈락이에요.
+                  트랙을 따라 한 바퀴 달려요. <b>흰 선을 밟으면 출발선으로 돌아가요.</b>
+                  안쪽으로 질러가도 마찬가지예요.
                 </div>
                 {/*
                   어떻게 움직이는지 알려준다. 달리기는 화면에 트랙밖에 없어서
@@ -392,15 +404,6 @@ export default function TrackPage() {
                 </div>
                 <div className="text-[12px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
                   준비한 사람들이 <b>다 같이</b> 출발해요. 혼자여도 눌러서 뛸 수 있어요.
-                </div>
-              </>
-            )}
-
-            {phase === 'foul' && (
-              <>
-                <div className="text-base font-black mb-1" style={{ color: '#C0392B' }}>😵 선을 밟았어요!</div>
-                <div className="text-[13px] mb-3" style={{ color: '#8A7A5F' }}>
-                  트랙 안에서만 달려야 해요. 다시 해볼까요?
                 </div>
               </>
             )}

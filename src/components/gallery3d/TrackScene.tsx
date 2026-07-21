@@ -134,17 +134,31 @@ const INNER_D = (RADIUS - LANE_HALF) * 2;
  * 같은 코드를 두 벌 관리하게 된다.
  */
 function TrackJudge({
-  avatarPos, running, onLap, onFoul,
+  avatarPos, running, runId, onLap, onFoul,
 }: {
   avatarPos: React.MutableRefObject<THREE.Vector3>;
   running: boolean;
+  /** 선을 밟아 출발선으로 되돌아갈 때마다 올라간다 */
+  runId: number;
   onLap: () => void;
   onFoul: () => void;
 }) {
   const lap = useRef(new LapCounter());
   const wasRunning = useRef(false);
+  const seenRun = useRef(runId);
 
   useFrame(() => {
+    /*
+      출발선으로 되돌아갔으면 한 바퀴 계산도 처음부터.
+      안 그러면 밟기 직전까지 지난 체크포인트가 남아서, 되돌아간 뒤
+      조금만 뛰어도 완주로 세어진다.
+      (렌더 중에 ref 를 건드리면 안 되므로 여기서 본다)
+    */
+    if (seenRun.current !== runId) {
+      seenRun.current = runId;
+      lap.current.reset();
+    }
+
     if (!running) {
       if (wasRunning.current) { lap.current.reset(); wasRunning.current = false; }
       return;
@@ -211,7 +225,7 @@ export default function TrackScene({
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
         />
-        <TrackJudge avatarPos={avatarPos} running={running} onLap={onLap} onFoul={onFoul} />
+        <TrackJudge avatarPos={avatarPos} running={running} runId={runId} onLap={onLap} onFoul={onFoul} />
         <DustPuffs />
         <FollowCamera avatarPos={avatarPos} lookHeight={1.2} />
       </Canvas>

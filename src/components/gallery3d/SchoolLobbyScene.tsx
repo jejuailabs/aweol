@@ -33,8 +33,12 @@ const SPOTS: {
   pos: [number, number, number]; rot: number;
 }[] = [
   { key: 'about', label: '학교 소개', emoji: '🏫', color: '#6FBF73', pos: [-3.2, 2.1, -halfD + 0.12], rot: 0 },
-  // 급식은 전 학년이 같아서 여기 걸린다 (반 알림판에서 옮겨왔다)
-  { key: 'meal', label: '오늘 급식', emoji: '🍚', color: '#E8A33C', pos: [-halfW + 0.12, 2.1, 3], rot: HALF_PI },
+  /*
+    급식은 전 학년이 같아서 여기 걸린다 (반 알림판에서 옮겨왔다).
+    z=3 에 뒀더니 **신발장 속에 박혀** 보였다 — 신발장이 z 1.3~5.7 을 차지한다.
+    벽 반대쪽 끝으로 옮겼다. 벽에 뭘 걸 때는 아래 LOBBY_OBSTACLES 를 먼저 볼 것.
+  */
+  { key: 'meal', label: '오늘 급식', emoji: '🍚', color: '#E8A33C', pos: [-halfW + 0.12, 2.1, -4.5], rot: HALF_PI },
   { key: 'notice', label: '공지', emoji: '📢', color: '#E8604C', pos: [halfW - 0.12, 2.1, -1.5], rot: NEG_HALF_PI },
   { key: 'album', label: '앨범', emoji: '🖼️', color: '#7B4B94', pos: [-halfW + 0.12, 2.1, -1.5], rot: HALF_PI },
   { key: 'suggest', label: '건의함', emoji: '💌', color: '#E8A33C', pos: [halfW - 0.12, 2.1, 3], rot: NEG_HALF_PI },

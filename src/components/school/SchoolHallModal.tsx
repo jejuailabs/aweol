@@ -250,13 +250,19 @@ export default function SchoolHallModal({
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="flex-1 rounded-xl py-2 text-[13px] font-bold transition-all"
+              /*
+                다섯 칸이 한 줄에 들어가야 한다. 옆으로 나란히 두면 '건의 / 함'
+                처럼 글자가 쪼개져서, 그림을 위에 얹고 글자를 아래에 둔다.
+                하단 메뉴와 같은 방식이라 아이에게도 익숙하다.
+              */
+              className="flex-1 min-w-0 rounded-xl py-1.5 flex flex-col items-center gap-0.5 transition-all"
               style={{
                 background: tab === t.key ? 'var(--color-primary)' : 'white',
                 color: tab === t.key ? 'white' : '#8A7A5F',
               }}
             >
-              {t.emoji} {t.label}
+              <span className="text-[15px] leading-none">{t.emoji}</span>
+              <span className="text-[12px] font-bold whitespace-nowrap">{t.label}</span>
             </button>
           ))}
         </div>

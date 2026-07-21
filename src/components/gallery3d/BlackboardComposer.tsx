@@ -210,14 +210,27 @@ export default function BlackboardComposer({
         style={{ background: '#FAF5EA' }}
       >
         {/* 머리말 */}
+        {/*
+          휴대폰에서 세 덩이가 다 줄바꿈돼서 '칠판에 남 / 기기', '종 / 료' 가 됐다.
+          제목과 종료는 절대 안 줄이고(shrink-0 + nowrap), 가운데 안내만 줄인다.
+          좁으면 안내는 아예 감춘다 — 없어도 되는 말이다.
+        */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="text-sm font-black" style={{ color: '#3A3226' }}>✏️ 칠판에 남기기</div>
-          <div className="text-[13px]" style={{ color: '#A89880' }}>
-            ✏️{authorName} 이름으로 기록돼요
+          <div
+            className="text-sm font-black shrink-0 whitespace-nowrap"
+            style={{ color: '#3A3226' }}
+          >
+            ✏️ 칠판에 남기기
+          </div>
+          <div
+            className="hidden sm:block text-[13px] min-w-0 truncate"
+            style={{ color: '#A89880' }}
+          >
+            {authorName} 이름으로 기록돼요
           </div>
           <button
             onClick={onClose}
-            className="ml-auto rounded-full px-3.5 py-1.5 text-[14px] font-bold"
+            className="ml-auto shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[14px] font-bold"
             style={{ background: 'rgba(232,96,76,0.14)', color: '#E8604C' }}
           >
             종료
