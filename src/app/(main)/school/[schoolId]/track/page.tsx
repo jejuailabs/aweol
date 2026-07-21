@@ -300,6 +300,18 @@ export default function TrackPage() {
                   조작을 모르면 가만히 서 있다가 끝난다.
                   달리는 중이 아니라 **준비 화면에** 둔다 — 출발한 뒤에 읽을 여유는 없다.
                 */}
+                {/*
+                  양궁으로 가는 길. 둘 다 운동장 게임이라 여기 두는 게 자연스럽다.
+                  학교 화면 위쪽은 이미 버튼이 많아 더 넣으면 학교가 안 보인다.
+                */}
+                <button
+                  onClick={() => router.push(`/school/${schoolId}/archery`)}
+                  className="w-full rounded-xl py-2.5 mb-3 text-[14px] font-bold"
+                  style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
+                >
+                  🏹 양궁도 해보기
+                </button>
+
                 <div
                   className="rounded-xl px-3 py-2.5 mb-3 text-[13px] font-bold leading-relaxed"
                   style={{ background: '#EAF3FB', color: '#2C5D86' }}

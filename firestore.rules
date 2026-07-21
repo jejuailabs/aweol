@@ -210,6 +210,20 @@ service cloud.firestore {
       }
 
       /**
+       * 양궁 최고 기록 — 순위표라 읽기는 공개, 쓰기는 서버만.
+       * 점수는 서버가 씨앗으로 다시 계산해서 낸다(/api/archery).
+       */
+      match /archeryRecords/{uid} {
+        allow read: if true;
+        allow write: if false;
+      }
+      // 쏘는 중인 판. 씨앗이 들어 있어서 아예 안 보여준다 —
+      // 씨앗을 알면 바람과 흔들림을 미리 계산해 만점을 낼 수 있다.
+      match /archeryRounds/{uid} {
+        allow read, write: if false;
+      }
+
+      /**
        * 기억창고 — 지나간 해의 반 요약.
        * 읽기는 공개(졸업생도 자기 반을 볼 수 있어야 한다), 쓰기는 서버만.
        * (/api/archive 가 admin 으로 쓴다)
