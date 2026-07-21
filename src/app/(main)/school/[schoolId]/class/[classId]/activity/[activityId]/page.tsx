@@ -88,7 +88,7 @@ export default function ActivityExhibitPage() {
   }, [classId, activityId, fetchArtworks]);
 
   return (
-    <div className="relative w-full h-screen">
+    <div className="relative w-full h-dvh">
       {/* 3D 전시실 */}
       <ExhibitRoom
         artworks={artworks}

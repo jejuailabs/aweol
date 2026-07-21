@@ -71,7 +71,7 @@ export default function MyStandPage() {
 
   if (!loading && !user) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-6 gap-4">
+      <div className="flex min-h-dvh flex-col items-center justify-center px-6 gap-4">
         <span className="text-5xl">⭐</span>
         <p className="text-sm" style={{ color: 'var(--color-text-sub)' }}>내 스탠드를 보려면 로그인이 필요해요</p>
         <button

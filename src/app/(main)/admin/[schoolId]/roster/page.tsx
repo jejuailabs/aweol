@@ -265,7 +265,7 @@ export default function RosterPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>로딩 중...</div>
       </div>
     );

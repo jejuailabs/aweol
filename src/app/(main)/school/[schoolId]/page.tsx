@@ -76,7 +76,7 @@ export default function SchoolPage() {
     : ['3-1', '3-2', '3-3', '3-4'].map((label) => ({ id: label, label }));
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-dvh overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
       <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
         onEnterArchive={() => router.push(`/school/${schoolId}/archive`)}
@@ -101,10 +101,14 @@ export default function SchoolPage() {
         onPetClick={() => setShowPet(true)}
       />
 
-      {/* 기억창고 — 졸업생도 봐야 하니 로그인과 무관하게 보인다 */}
+      {/*
+        기억창고 — 졸업생도 봐야 하니 로그인과 무관하게 보인다.
+        휴대폰에서는 숨긴다. 상단에 버튼이 넷씩 겹쳐 학교가 안 보였고,
+        어차피 운동장·창고는 **3D 안에 건물로 서 있어서** 걸어가 들어갈 수 있다.
+      */}
       <button
         onClick={() => router.push(`/school/${schoolId}/archive`)}
-        className="absolute right-4 top-[136px] z-30 rounded-full px-4 py-2.5 text-sm font-bold"
+        className="hidden sm:block absolute right-4 top-[136px] z-30 rounded-full px-4 py-2.5 text-sm font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         📦 기억창고
@@ -114,7 +118,7 @@ export default function SchoolPage() {
       {userDoc && (
         <button
           onClick={() => router.push(`/school/${schoolId}/track`)}
-          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
+          className="hidden sm:block absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
         >
           🏃 운동장 달리기
@@ -169,13 +173,13 @@ export default function SchoolPage() {
       */}
       <button
         onClick={() => router.push('/')}
-        className="ac-btn absolute top-4 left-4 z-40 px-3.5 py-2 text-sm"
+        className="ac-btn pos-top-safe absolute left-4 z-40 px-3.5 py-2 text-sm"
       >
         ← 지도로
       </button>
 
       {/* 상단 로그인/프로필 메뉴 */}
-      <div className="absolute top-4 right-4 z-40 flex items-center gap-2">
+      <div className="pos-top-safe absolute right-4 z-40 flex items-center gap-2">
         <ShareButton title={`${schoolName || '학교'} 전시실`} text="우리 학교 작품 전시를 구경해보세요" />
         <ProfileMenu />
       </div>

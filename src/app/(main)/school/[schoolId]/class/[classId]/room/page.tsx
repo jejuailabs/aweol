@@ -248,7 +248,7 @@ export default function ClassRoomPage() {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div className="relative w-full h-dvh overflow-hidden">
       {/* 3D 교실 */}
       {/* 술래잡기 — 친구가 같이 있어야 재밌어서, 로그인한 사람에게만 보인다 */}
       {user && (

@@ -21,7 +21,7 @@ function LoginInner() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-dvh items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-primary)] border-t-transparent" />
       </div>
     );
@@ -29,7 +29,7 @@ function LoginInner() {
 
   return (
     <div
-      className="flex h-screen flex-col items-center justify-center px-6"
+      className="flex h-dvh flex-col items-center justify-center px-6"
       style={{ background: 'linear-gradient(180deg, var(--color-sky) 0%, #FFFFFF 100%)' }}
     >
       <div className="mb-8 text-center">

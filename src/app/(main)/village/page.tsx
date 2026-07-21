@@ -79,7 +79,7 @@ export default function VillagePage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-dvh overflow-hidden">
       {!tried ? (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#BFE8F5' }}>
           <div className="text-sm font-bold" style={{ color: '#6B5B43' }}>동네를 여는 중...</div>

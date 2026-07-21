@@ -78,7 +78,8 @@ export default function MobileJoystick() {
   return (
     <div
       ref={baseRef}
-      className="absolute bottom-20 left-6 z-40 w-[88px] h-[88px] rounded-full flex items-center justify-center"
+      /* 하단 메뉴 위에 앉는다. bottom-20 로 고정하면 메뉴에 깔려서 안 보였다. */
+      className="pos-above-nav absolute left-6 z-40 w-[88px] h-[88px] rounded-full flex items-center justify-center"
       style={{
         background: 'rgba(255,255,255,0.2)',
         border: '2px solid rgba(255,255,255,0.35)',

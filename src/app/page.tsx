@@ -64,14 +64,20 @@ export default function MapHomePage() {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div className="relative w-full h-dvh overflow-hidden">
       <SchoolMap schools={schools} onSelect={handleSelect} />
 
       {/* 상단 타이틀 + 프로필 */}
-      <div className="absolute top-4 left-4 right-4 z-30 flex items-start gap-2 pointer-events-none">
-        <div className="ac-bubble px-4 py-2.5 pointer-events-auto">
-          <div className="text-sm font-black" style={{ color: '#6B5B43' }}>🗺️ 우리 동네 전시 지도</div>
-          <div className="text-[12px]" style={{ color: '#A89880' }}>
+      <div className="pos-top-safe absolute left-4 right-4 z-30 flex items-start gap-2 pointer-events-none">
+        {/*
+          `min-w-0` 이 없으면 카드가 안 줄어들어 제목이 '…지 / 도' 로 쪼개진다.
+          안내문은 휴대폰에서 감춘다 — 좁은 화면에서 세 줄이 되어 지도를 가렸다.
+        */}
+        <div className="ac-bubble min-w-0 px-4 py-2.5 pointer-events-auto">
+          <div className="text-sm font-black whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: '#6B5B43' }}>
+            🗺️ 우리 동네 전시 지도
+          </div>
+          <div className="hidden sm:block text-[12px]" style={{ color: '#A89880' }}>
             학교를 눌러 전시를 보러 가요
           </div>
         </div>

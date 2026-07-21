@@ -84,7 +84,7 @@ export default function FloorPage() {
   const myFloor = myClass ? Math.ceil(myClass.grade / 2) : null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-dvh overflow-hidden">
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#EFE7D6' }}>
           <div className="text-base font-bold" style={{ color: '#6B5B43' }}>복도를 여는 중...</div>

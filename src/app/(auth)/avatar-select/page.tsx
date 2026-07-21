@@ -106,7 +106,7 @@ export default function AvatarSelectPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center px-6 pt-12 pb-24"
+      className="flex min-h-dvh flex-col items-center px-6 pt-12 pb-24"
       style={{ background: 'linear-gradient(180deg, var(--color-sky) 0%, #FFFFFF 100%)' }}
     >
       <Mascot message="나를 대신할 캐릭터를 골라줘!" />

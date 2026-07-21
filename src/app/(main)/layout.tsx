@@ -22,7 +22,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <div className="relative mx-auto w-full min-h-screen pb-20">
+    <div className="relative mx-auto w-full min-h-dvh pb-20">
       {children}
       <BottomNav />
       <RoleSwitcher />

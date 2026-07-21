@@ -51,7 +51,7 @@ export default function JoinClassPage() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center px-6"
+      className="flex min-h-dvh flex-col items-center justify-center px-6"
       style={{ background: 'linear-gradient(180deg, var(--color-sky) 0%, #FFFFFF 100%)' }}
     >
       {done ? (

@@ -238,3 +238,24 @@ body {
   .class-plate, .class-plate::before { animation: none; }
   .class-plate::before { opacity: 0; }
 }
+
+/* ===== 휴대폰 화면 가장자리 =====
+   아이폰 사파리는 위아래에 주소창·홈바가 겹쳐 있어서 `top-4` 로 붙이면 잘린다.
+   그래서 안전영역만큼 더 내려 붙인다. 안전영역이 없는 기기에선 0 이라 그대로다. */
+:root {
+  /* 하단 메뉴 높이. 조이스틱·바로가기 버튼이 이걸 피해서 앉는다. */
+  --nav-h: 60px;
+}
+
+.pos-top-safe {
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+}
+
+/* 하단 메뉴 위에 앉는다 */
+.pos-above-nav {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nav-h) + 0.75rem);
+}
+
+.pad-bottom-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
