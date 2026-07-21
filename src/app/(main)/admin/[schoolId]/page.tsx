@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin } from '@/lib/auth-helpers';
 import { UserRole } from '@/lib/firestore-schema';
 import SchoolSettingsModal, { type SchoolSettings } from '@/components/admin/SchoolSettingsModal';
+import ClassAdminBox from '@/components/admin/ClassAdminBox';
 
 
 interface ActivityStat {
@@ -595,6 +596,23 @@ export default function AdminPage() {
                     <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
                       전시실 {cls.activities.length}개
                     </div>
+
+                    {/*
+                      반 손보기 — 총관리자만. 담임에게는 안 보인다.
+                      규칙(isTeacherOf)은 담임에게도 열려 있지만, 자기 반을 통째로
+                      지우는 건 실수로 일어나기 쉬워서 화면에서는 막아둔다.
+                    */}
+                    {isSuper && (
+                      <div className="mb-3">
+                        <ClassAdminBox
+                          schoolId={schoolId}
+                          classId={cls.id}
+                          grade={cls.grade}
+                          classNumber={cls.classNumber}
+                          onChanged={() => setRefreshKey((k) => k + 1)}
+                        />
+                      </div>
+                    )}
                     {cls.activities.length === 0 ? (
                       <div className="text-[13px] py-3 text-center" style={{ color: 'var(--color-text-sub)' }}>
                         아직 전시실이 없어요. 교실 게시판의 ➕로 첫 수업을 만들어보세요.
