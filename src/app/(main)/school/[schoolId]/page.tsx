@@ -9,6 +9,7 @@ import { ClassDoc } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
 import { myClassIds } from '@/lib/auth-helpers';
+import { useDailyHint } from '@/lib/daily-hint';
 import ShareButton from '@/components/common/ShareButton';
 import Mascot from '@/components/mascot/Mascot';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
@@ -18,6 +19,22 @@ import { PET_KINDS, petMood } from '@/lib/school-pet';
 const SchoolScene = dynamic(() => import('@/components/gallery3d/SchoolScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
+
+/**
+ * 학교 화면 안내말.
+ *
+ * **컴포넌트 밖에** 둔다 — 안에 두면 그릴 때마다 새 배열이라 안내가 다시 계산된다.
+ * 날마다 하나씩 돌아가며 나온다. 아이가 아직 안 해본 걸 하나씩 알려주는 순서다.
+ */
+const SCHOOL_HINTS = [
+  '운동장을 걸어다니고, 창문의 반 문패를 눌러 입장해봐!',
+  '금색 문패가 우리 반이야. 눌러서 들어가 봐!',
+  '학교 옆 창고에는 지난 해 작품들이 모여 있어.',
+  '운동장에서 친구들과 달리기를 할 수 있어!',
+  '학교 현관에 들어가면 오늘의 급식을 볼 수 있어.',
+  '같은 시간에 들어온 친구가 있으면 운동장에서 만날 수 있어!',
+  '학교 동물에게 밥과 물을 주는 것도 잊지 마.',
+];
 
 export default function SchoolPage() {
   const { user, userDoc, role } = useAuth();
@@ -34,7 +51,12 @@ export default function SchoolPage() {
   // 동물을 들이는 건 그 학교 교직원만. 아이마다 들이면 매일 동물이 바뀐다.
   const isSchoolStaff = role === 'super_admin'
     || (role === 'teacher' && (userDoc?.schoolIds ?? []).includes(schoolId));
-  const [showMascot, setShowMascot] = useState(true);
+  /**
+   * 학교 안내는 **하루 한 번**만. 전에는 교실에 갔다 돌아올 때마다 다시 떠서
+   * 걸리적거렸다. 문구는 날마다 바뀐다 — 같은 말이 매일 나오면 읽지 않게 된다.
+   */
+  const hint = useDailyHint('school', SCHOOL_HINTS);
+  const [hintOpen, setHintOpen] = useState(true);
 
   useEffect(() => {
     async function fetchClasses() {
@@ -232,12 +254,9 @@ export default function SchoolPage() {
       {/* 모바일 조이스틱 */}
       <MobileJoystick />
 
-      {/* 마스코트 + 말풍선 */}
-      {showMascot && (
-        <Mascot
-          message="운동장을 걸어다니고, 창문의 반 문패를 눌러 입장해봐!"
-          onDismiss={() => setShowMascot(false)}
-        />
+      {/* 마스코트 + 말풍선 — 오늘 아직 안 봤을 때만 */}
+      {hint && hintOpen && (
+        <Mascot message={hint} onDismiss={() => setHintOpen(false)} />
       )}
     </div>
   );

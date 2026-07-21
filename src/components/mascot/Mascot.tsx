@@ -13,7 +13,8 @@ export default function Mascot({ message, onDismiss }: MascotProps) {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 z-40 flex items-end gap-2 max-w-[280px]">
+    <div /* 하단 메뉴 위에 앉는다. bottom-20 은 메뉴에 깔린다. */
+    className="pos-above-nav fixed left-4 z-40 flex items-end gap-2 max-w-[280px]">
       <div className="w-14 h-14 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-2xl shadow-lg">
         🐾
       </div>

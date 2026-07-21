@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
 import { extractSchoolPalette, DEFAULT_PALETTE, type SchoolPalette } from '@/lib/image-palette';
 import SchoolPet from './SchoolPet';
+import { playSound } from '@/lib/sound';
 import type { PetKind } from '@/lib/firestore-schema';
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
@@ -94,6 +95,38 @@ const SCHOOL_OBSTACLES: Obstacle[] = [
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
+
+/**
+ * 문을 눌렀다는 걸 **보이게** 하고 나서 넘어간다.
+ *
+ * 예전에는 누르는 즉시 화면을 바꿔서, 눌렀는데 아무 일도 안 일어난 것처럼 보였다.
+ * 특히 휴대폰은 마우스 올림(hover)이 없어 문에 불도 안 들어오니
+ * 아이가 '안 눌렸나?' 하고 다른 걸 누르게 된다.
+ *
+ * 그래서 세 가지를 준다 — 문에 불, 소리, '들어가는 중' 팻말.
+ * 그리고 한 박자(`ENTER_DELAY_MS`) 뒤에 넘어간다. 이 시간이 없으면
+ * 불이 켜지기도 전에 화면이 바뀌어 아무것도 못 본다.
+ */
+const ENTER_DELAY_MS = 260;
+
+function useDoorPress(onEnter?: () => void) {
+  const [pressed, setPressed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 화면을 떠날 때 예약을 지운다 (사라진 화면으로 보내면 안 된다)
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const press = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    // 두 번 눌러도 한 번만 들어간다
+    if (pressed || !onEnter) return;
+    setPressed(true);
+    playSound('open');
+    timer.current = setTimeout(onEnter, ENTER_DELAY_MS);
+  };
+
+  return { pressed, press };
+}
 
 // --------------- 무지개 (마리오 감성) ---------------
 function Rainbow() {
@@ -281,6 +314,7 @@ function SchoolBuilding({
   myClasses: string[];
 }) {
   const [doorHot, setDoorHot] = useState(false);
+  const hallDoor = useDoorPress(onEnterHall);
   const bodyW = 18;
   const bodyH = 6.5;
   const bodyD = 6;
@@ -314,7 +348,7 @@ function SchoolBuilding({
       </mesh>
       {/* 현관문 — 누르면 '우리 학교' 창이 열린다 */}
       <group
-        onClick={(e) => { e.stopPropagation(); onEnterHall?.(); }}
+        onClick={hallDoor.press}
         onPointerOver={(e) => { e.stopPropagation(); setDoorHot(true); document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { setDoorHot(false); document.body.style.cursor = 'auto'; }}
       >
@@ -324,15 +358,15 @@ function SchoolBuilding({
             color="#8A5A3B"
             roughness={0.5}
             emissive="#E8A33C"
-            emissiveIntensity={doorHot ? 0.35 : 0}
+            emissiveIntensity={hallDoor.pressed ? 1 : doorHot ? 0.35 : 0}
           />
         </mesh>
         <mesh position={[0, 1.25, bodyD * 0.5 + 1.39]}>
           <planeGeometry args={[0.9, 1.9]} />
           <meshStandardMaterial color="#5B3A24" />
         </mesh>
-        {/* 눌러도 되는 곳이라는 표시. 가리켰을 때만 띄운다 */}
-        {doorHot && (
+        {/* 눌러도 되는 곳이라는 표시. 가리켰을 때, 그리고 누른 직후 */}
+        {(doorHot || hallDoor.pressed) && (
           <Html position={[0, 2.85, bodyD * 0.5 + 1.4]} center pointerEvents="none" zIndexRange={[6, 0]}>
             <div
               style={{
@@ -342,7 +376,7 @@ function SchoolBuilding({
                 boxShadow: '0 3px 8px rgba(0,0,0,0.25)',
               }}
             >
-              🚪 우리 학교 들어가기
+              {hallDoor.pressed ? '🚪 들어가는 중...' : '🚪 우리 학교 들어가기'}
             </div>
           </Html>
         )}
@@ -455,6 +489,7 @@ function SidePlace({
   onEnter?: () => void;
 }) {
   const [hot, setHot] = useState(false);
+  const { pressed, press } = useDoorPress(onEnter);
 
   return (
     <group position={position}>
@@ -478,16 +513,17 @@ function SidePlace({
 
       {/* 문 */}
       <group
-        onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
+        onClick={press}
         onPointerOver={(e) => { e.stopPropagation(); setHot(true); document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { setHot(false); document.body.style.cursor = 'auto'; }}
       >
-        <mesh position={[0, 0.95, 1.74]}>
+        <mesh position={[0, 0.95, 1.74]} scale={pressed ? 0.94 : 1}>
           <boxGeometry args={[1.5, 1.9, 0.1]} />
+          {/* 누르면 확 밝아진다 — 휴대폰에는 hover 가 없어 이게 유일한 신호다 */}
           <meshStandardMaterial
             color="#8A5A3B"
             emissive="#E8A33C"
-            emissiveIntensity={hot ? 0.45 : 0}
+            emissiveIntensity={pressed ? 1 : hot ? 0.45 : 0}
           />
         </mesh>
         <mesh position={[0.48, 0.95, 1.81]}>
@@ -510,16 +546,17 @@ function SidePlace({
         </div>
       </Html>
 
-      {hot && (
+      {(hot || pressed) && (
         <Html position={[0, 3.9, 1.8]} center pointerEvents="none" zIndexRange={[6, 0]}>
           <div
             style={{
               background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',
               padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
-              fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
+              fontFamily: 'Pretendard, sans-serif',
+              border: pressed ? '2px solid #E8A33C' : '2px solid #EFE3CB',
             }}
           >
-            들어가기
+            {pressed ? '들어가는 중...' : '들어가기'}
           </div>
         </Html>
       )}
