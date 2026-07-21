@@ -15,17 +15,21 @@ import { db } from '@/lib/firebase';
  * 숫자를 보고 누르는 것과 모르고 누르는 것은 다르다.
  */
 export default function ClassAdminBox({
-  schoolId, classId, grade, classNumber, onChanged,
+  schoolId, classId, grade, classNumber, displayName, kind, onChanged,
 }: {
   schoolId: string;
   classId: string;
   grade: string;
   classNumber: number;
+  /** 전시관에서 '반' 대신 보여줄 전시 주제 */
+  displayName?: string;
+  kind: 'school' | 'gallery';
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [g, setG] = useState(grade);
   const [n, setN] = useState(String(classNumber));
+  const [title, setTitle] = useState(displayName || '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   /** 지우기 전에 센 것들. null 이면 아직 안 셌다. */
@@ -42,7 +46,15 @@ export default function ClassAdminBox({
     }
     setBusy(true); setErr('');
     try {
-      await updateDoc(doc(db, base), { grade: g.trim(), classNumber: num });
+      /*
+        전시 주제는 빈 문자열로 지울 수 있어야 한다 — 지우면 다시 '3-1' 로 보인다.
+        학년·반 번호는 늘 같이 저장한다(경로도 규칙도 이걸 쓴다).
+      */
+      await updateDoc(doc(db, base), {
+        grade: g.trim(),
+        classNumber: num,
+        displayName: title.trim().slice(0, 20),
+      });
       onChanged();
     } catch {
       setErr('고치지 못했어요.');
@@ -150,6 +162,26 @@ export default function ClassAdminBox({
           바꾸기
         </button>
       </div>
+
+      {/* 전시관일 때만 — 반 대신 보여줄 주제 */}
+      {kind === 'gallery' && (
+        <div className="mb-2">
+          <label className="block text-[12px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+            전시 주제 (배너에 걸려요)
+          </label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={20}
+            placeholder="예: 제주도, 이태리"
+            className="w-full rounded-lg px-3 py-2 text-[14px] outline-none"
+            style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+          />
+          <p className="text-[12px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+            위 &lsquo;바꾸기&rsquo;를 눌러야 저장돼요. 비우면 {grade}-{classNumber} 로 보여요.
+          </p>
+        </div>
+      )}
 
       {/* 보관 — 권하는 쪽 */}
       <button

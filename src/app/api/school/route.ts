@@ -249,6 +249,17 @@ export async function PATCH(req: NextRequest) {
   if (name) patch.name = name.slice(0, 60);
   if (isSuper && form.has('tagline')) patch.tagline = String(form.get('tagline') || '').trim().slice(0, 60);
 
+  /**
+   * 학교냐 전시관이냐 — **총관리자만** 바꾼다.
+   *
+   * 이걸 바꾸면 건물 앞면(문패↔배너)과 눌렀을 때 가는 곳이 통째로 달라진다.
+   * 담임이 자기 학교를 전시관으로 바꿔버리면 다른 반 선생님들이 교실을 못 찾는다.
+   */
+  if (isSuper && form.has('kind')) {
+    const k = String(form.get('kind'));
+    patch.kind = k === 'gallery' ? 'gallery' : 'school';
+  }
+
   const lat = isSuper ? parseFloat(String(form.get('lat'))) : NaN;
   const lng = isSuper ? parseFloat(String(form.get('lng'))) : NaN;
   if (!Number.isNaN(lat) && !Number.isNaN(lng)) {

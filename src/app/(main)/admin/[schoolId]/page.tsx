@@ -30,6 +30,8 @@ interface ClassStat {
   approvedCount: number;
   pendingCount: number;
   activities: ActivityStat[];
+  /** 전시관에서 '반' 대신 보여줄 전시 주제 */
+  displayName?: string;
 }
 
 interface MemberStat {
@@ -187,6 +189,7 @@ export default function AdminPage() {
           classPerGrade: (v.classPerGrade as number) ?? 4,
           emblemUrl: (v.emblemUrl as string) || '',
           profile: (v.profile as SchoolSettings['profile']) ?? undefined,
+          kind: v.kind === 'gallery' ? 'gallery' : 'school',
         });
       })
       .catch(() => setSchool(null));
@@ -259,6 +262,7 @@ export default function AdminPage() {
           grade: data.grade,
           classNumber: data.classNumber,
           teacherName: data.teacherName || '미지정',
+          displayName: (data as { displayName?: string }).displayName || '',
           teacherUid: data.teacherUid || '',
           studentCount: studentsSnap.size,
           activityCount: activitiesSnap.size,
@@ -609,6 +613,8 @@ export default function AdminPage() {
                           classId={cls.id}
                           grade={cls.grade}
                           classNumber={cls.classNumber}
+                          displayName={cls.displayName}
+                          kind={school?.kind === 'gallery' ? 'gallery' : 'school'}
                           onChanged={() => setRefreshKey((k) => k + 1)}
                         />
                       </div>

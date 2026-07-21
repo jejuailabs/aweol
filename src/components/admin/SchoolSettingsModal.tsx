@@ -21,6 +21,8 @@ export interface SchoolSettings {
   classPerGrade: number;
   emblemUrl?: string;
   profile?: SchoolProfile;
+  /** 'gallery' 면 전시관. 없으면 학교. */
+  kind?: 'school' | 'gallery';
 }
 
 export default function SchoolSettingsModal({
@@ -41,6 +43,8 @@ export default function SchoolSettingsModal({
 }) {
   const [name, setName] = useState(school.name);
   const [tagline, setTagline] = useState(school.tagline || '');
+  /** 학교냐 전시관이냐. 전시관은 문패 대신 배너를 걸고 교실을 건너뛴다. */
+  const [kind, setKind] = useState<'school' | 'gallery'>(school.kind === 'gallery' ? 'gallery' : 'school');
   const [gradeCount, setGradeCount] = useState(school.gradeCount || 6);
   const [classPerGrade, setClassPerGrade] = useState(school.classPerGrade || 4);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -88,6 +92,7 @@ export default function SchoolSettingsModal({
       form.set('tagline', tagline.trim());
       form.set('gradeCount', String(gradeCount));
       form.set('classPerGrade', String(classPerGrade));
+      if (isSuper) form.set('kind', kind);
       if (imageFile) form.set('image', imageFile);
       else if (generated) form.set('imageDataUrl', generated);
       form.set('profile', JSON.stringify(profile));
@@ -106,7 +111,7 @@ export default function SchoolSettingsModal({
     } finally {
       setSaving(false);
     }
-  }, [school.id, name, tagline, gradeCount, classPerGrade, imageFile, generated, profile, emblem, onSaved]);
+  }, [school.id, name, tagline, gradeCount, classPerGrade, imageFile, generated, profile, emblem, kind, isSuper, onSaved]);
 
   return (
     <div
@@ -160,6 +165,43 @@ export default function SchoolSettingsModal({
           className="w-full rounded-xl px-3 py-2.5 text-sm outline-none mb-3"
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
         />
+
+        {/*
+          학교냐 전시관이냐 — 총관리자만.
+          이걸 바꾸면 건물 앞면과 눌렀을 때 가는 곳이 통째로 달라진다.
+        */}
+        {isSuper && (
+          <>
+            <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+              어떤 곳인가요
+            </label>
+            <div className="flex gap-2 mb-1.5">
+              {([
+                ['school', '🏫 학교', '반마다 교실이 있어요'],
+                ['gallery', '🎨 전시관', '반 대신 전시 주제로 나눠요'],
+              ] as const).map(([k, label, desc]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setKind(k)}
+                  className="flex-1 rounded-xl px-3 py-2.5 text-left"
+                  style={
+                    kind === k
+                      ? { background: 'var(--color-primary)', color: 'white' }
+                      : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }
+                  }
+                >
+                  <div className="text-[14px] font-black">{label}</div>
+                  <div className="text-[12px] opacity-85 leading-snug">{desc}</div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[12px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+              전시관은 창문 문패 대신 건물에 <b>큰 배너</b>가 걸리고, 누르면 교실을 건너뛰고
+              전시로 바로 들어가요. 주제 이름은 아래 반 목록에서 반마다 붙여주세요.
+            </p>
+          </>
+        )}
 
         <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           대표 이미지
