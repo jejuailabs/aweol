@@ -24,8 +24,11 @@ export const maxDuration = 30;
 /** 판 하나를 붙잡아 두는 시간. 이보다 오래되면 낼 수 없다(켜두고 딴짓한 것). */
 const ROUND_TTL_MS = 10 * 60 * 1000;
 
-/** 한 발을 쏘기까지 이보다 빠를 수 없다. 자동으로 쏘는 것을 거른다. */
-const MIN_SHOT_GAP_MS = 120;
+/**
+ * 한 발을 겨누는 데 걸리는 최소 시간(ms).
+ * 이보다 빠르면 사람이 아니라 자동으로 누른 것이다.
+ */
+const MIN_AIM_MS = 80;
 
 /** 시작 — 서버가 씨앗을 정한다 */
 export async function POST(req: NextRequest) {
@@ -84,13 +87,15 @@ export async function PATCH(req: NextRequest) {
 
   /**
    * 쏜 시각이 말이 되는지 본다.
-   * 사람이 손으로 쏘는 이상 화살 사이에 최소한의 틈이 있다.
+   *
+   * **각 값은 그 화살을 겨눈 시간**이다(화살마다 0 부터 다시 잰다).
+   * 처음에 '쭉 이어진 시계'로 착각하고 앞뒤 차이를 봤더니, 정상적으로 쏴도
+   * 값이 늘 늘어나지는 않아서 400 이 났다 — 실제로 기록이 안 남았다.
+   * 겨누는 데 사람은 최소한의 시간이 걸리므로 **각 값 자체**를 본다.
    */
   const times = Array.isArray(body.times) ? body.times.slice(0, SHOTS) : [];
-  for (let i = 1; i < times.length; i++) {
-    const a = times[i - 1];
-    const b = times[i];
-    if (typeof a === 'number' && typeof b === 'number' && b - a < MIN_SHOT_GAP_MS) {
+  for (const t of times) {
+    if (typeof t === 'number' && Number.isFinite(t) && t >= 0 && t < MIN_AIM_MS) {
       return NextResponse.json({ error: '기록을 남기지 못했어요' }, { status: 400 });
     }
   }

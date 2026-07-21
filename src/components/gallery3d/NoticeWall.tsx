@@ -10,10 +10,11 @@ export const NOTICE_TABS: { kind: NoticeKind; label: string; emoji: string; colo
   { kind: 'quiz', label: '오늘의 퀴즈', emoji: '🧩', color: '#7B4B94' },
   /*
     '게임' 한 칸에 여러 게임을 넣는다. 게임이 늘 때마다 칸을 만들 수는 없다.
-    '틀린그림'(spot)은 남겨둔다 — 이미 그걸 골라둔 반의 설정이 깨지면 안 된다.
+    '틀린그림'은 이제 게임 안에 있으므로 벽에서는 뺀다.
+    다만 NoticeKind 의 'spot' 자체는 남겨둔다 — 이미 그걸 골라둔 반의
+    noticeTabs 설정이 깨지면 안 되고, 모달은 여전히 열 수 있어야 한다.
   */
   { kind: 'game', label: '게임', emoji: '🎮', color: '#E8A33C' },
-  { kind: 'spot', label: '틀린그림 찾기', emoji: '🔍', color: '#E8A33C' },
 ];
 
 /**

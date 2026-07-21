@@ -160,8 +160,11 @@ export default function ArcheryPage() {
           className="w-full"
           style={{ maxWidth: 340 }}
         >
-          {/* 10점부터 1점까지 — 실제 양궁 색 */}
-          {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((ring) => {
+          {/*
+            **큰 고리부터** 그린다. 작은 것부터 그리면 뒤에 그린 큰 원이
+            덮어버려서 민무늬 원 하나만 남는다 — 실제로 그렇게 나왔었다.
+          */}
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((ring) => {
             const r = (11 - ring) * (VIEW / 10);
             const fill =
               ring >= 9 ? '#F6D65B' : ring >= 7 ? '#E8604C' : ring >= 5 ? '#6FA8DC' : ring >= 3 ? '#3A3226' : '#FBF7EE';

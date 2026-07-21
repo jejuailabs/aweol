@@ -409,6 +409,7 @@ export function WalkerAvatar({
   avatarPos,
   bounds,
   start,
+  teleport,
   maxSpeed = 4.2,
   scale = 1,
   avatarId,
@@ -420,6 +421,16 @@ export function WalkerAvatar({
   avatarPos: React.MutableRefObject<THREE.Vector3>;
   bounds: WalkerBounds;
   start: [number, number, number];
+  /**
+   * 순간이동 — 값을 넣어두면 다음 프레임에 그 자리로 옮기고 비운다.
+   *
+   * `avatarPos` 에 직접 써도 소용없다. 저건 **결과를 받아 적는 쪽**이고
+   * 진짜 위치는 `groupRef` 다(아래 useFrame 끝에서 복사한다).
+   * 게다가 `position={start}` 가 렌더마다 다시 적용돼서, 밖에서 옮겨봤자
+   * 다시 그려지는 순간 출발 자리로 튕긴다 — 마을 워프가 늘 같은 곳에
+   * 떨어지던 이유가 이것이었다.
+   */
+  teleport?: React.MutableRefObject<THREE.Vector3 | null>;
   maxSpeed?: number;
   scale?: number;
   avatarId?: string | null;
@@ -445,6 +456,15 @@ export function WalkerAvatar({
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
+
+    // 옮겨야 할 자리가 잡혀 있으면 먼저 옮기고 비운다
+    if (teleport?.current) {
+      groupRef.current.position.x = teleport.current.x;
+      groupRef.current.position.z = teleport.current.z;
+      vel.current.x = 0;
+      vel.current.z = 0;
+      teleport.current = null;
+    }
 
     let dx = 0;
     let dz = 0;

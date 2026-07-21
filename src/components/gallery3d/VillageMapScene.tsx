@@ -251,9 +251,18 @@ export default function VillageMapScene({
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 30));
   const avatarYaw = useRef(0);
+  /** 워프할 자리. WalkerAvatar 가 다음 프레임에 집어간다. */
+  const teleport = useRef<THREE.Vector3 | null>(null);
   const [schoolHot, setSchoolHot] = useState(false);
   /** 걷는 중인가 차를 탔는가. 학교에서 멀어지면 저절로 차를 탄다. */
   const [mode, setMode] = useState<TravelMode>('walk');
+  /**
+   * 손으로 켠 자동차.
+   *
+   * 학교에서 멀어지면 저절로 타지지만, 그 전에 **걷기 싫은 아이도 있다.**
+   * 켜두면 거리와 상관없이 차를 탄다 — 끄면 다시 자동으로 돌아간다.
+   */
+  const [forceCar, setForceCar] = useState(false);
   const [warpOpen, setWarpOpen] = useState(false);
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
@@ -271,7 +280,7 @@ export default function VillageMapScene({
    */
   const warpTo = (t: WarpTarget) => {
     // 목적지 한가운데에 떨어지면 건물에 끼일 수 있어 살짝 앞에 세운다
-    avatarPos.current.set(t.x, 0, t.z + 6);
+    teleport.current = new THREE.Vector3(t.x, 0, t.z + 6);
     setWarpOpen(false);
     setWarpedTo(t.name);
     setTimeout(() => setWarpedTo(''), 2200);
@@ -307,6 +316,9 @@ export default function VillageMapScene({
     if (!el) return;
     return attachCameraControls(el, { minDist: 6, maxDist: 40 });
   }, []);
+
+  /** 지금 차를 타고 있나 — 손으로 켰거나, 멀어져서 저절로 탔거나 */
+  const riding = forceCar || mode === 'car';
 
   const R = data.r;
 
@@ -372,18 +384,20 @@ export default function VillageMapScene({
           </Html>
         ))}
 
-        <TravelWatcher avatarPos={avatarPos} mode={mode} onMode={setMode} />
-        <CarRig avatarPos={avatarPos} avatarYaw={avatarYaw} show={mode === 'car'} />
+        {/* 손으로 켰으면 거리를 안 본다 */}
+        {!forceCar && <TravelWatcher avatarPos={avatarPos} mode={mode} onMode={setMode} />}
+        <CarRig avatarPos={avatarPos} avatarYaw={avatarYaw} show={riding} />
 
         <WalkerAvatar
           avatarPos={avatarPos}
           bounds={{ xMin: -R, xMax: R, zMin: -R, zMax: R }}
           start={[0, 0, 30]}
-          maxSpeed={speedOf(mode)}
+          maxSpeed={speedOf(riding ? 'car' : 'walk')}
           avatarId={avatarId}
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
           avatarYaw={avatarYaw}
+          teleport={teleport}
           obstacles={obstacles}
         />
 
@@ -408,8 +422,17 @@ export default function VillageMapScene({
         휴대폰에서는 너무 작아진다.
       */}
 
+      {/* 타고 내리기 — 걷기 싫으면 바로 탄다 */}
+      <button
+        onClick={() => setForceCar((v) => !v)}
+        className="pos-above-nav absolute left-4 z-30 rounded-full px-4 py-3 text-[15px] font-bold"
+        style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+      >
+        {forceCar ? '🚶 내리기' : '🚗 타기'}
+      </button>
+
       {/* 자동차 모드 알림 — 왜 갑자기 빨라졌는지 알려준다 */}
-      {mode === 'car' && (
+      {!forceCar && mode === 'car' && (
         <div
           className="pos-top-safe absolute left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-[14px] font-black"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
