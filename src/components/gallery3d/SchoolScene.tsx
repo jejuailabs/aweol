@@ -86,6 +86,9 @@ const SCHOOL_OBSTACLES: Obstacle[] = [
   { x: -4.5, z: 3, halfW: 1.35, halfD: 0.65 },
   { x: 4.5, z: 3, halfW: 1.35, halfD: 0.65 },
   { x: 7.5, z: 1, halfW: 0.25, halfD: 0.25 },
+  // 기억창고 · 운동장 입구 (아래 SidePlace 배치와 같은 좌표여야 한다)
+  { x: -11.5, z: 8.5, halfW: 2.2, halfD: 1.9 },
+  { x: 11.5, z: 8.5, halfW: 2.2, halfD: 1.9 },
 ];
 
 const PI = Math.PI;
@@ -416,6 +419,96 @@ function SchoolBuilding({
   );
 }
 
+/**
+ * 학교 옆 작은 건물 하나.
+ *
+ * 기억창고와 운동장 입구를 **버튼이 아니라 건물로** 세운다.
+ * 화면 구석의 버튼은 '메뉴' 지만, 걸어가서 문을 여는 건 '장소' 다.
+ * 버튼도 그대로 두는 이유는 이미 길을 아는 아이가 빨리 가고 싶을 때가 있어서다.
+ */
+function SidePlace({
+  position, label, emoji, wall, roof, onEnter,
+}: {
+  position: [number, number, number];
+  label: string;
+  emoji: string;
+  wall: string;
+  roof: string;
+  onEnter?: () => void;
+}) {
+  const [hot, setHot] = useState(false);
+
+  return (
+    <group position={position}>
+      {/* 몸통 */}
+      <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
+        <boxGeometry args={[4, 3, 3.4]} />
+        <meshStandardMaterial color={wall} roughness={0.85} />
+      </mesh>
+      {/* 맞배지붕 */}
+      <mesh position={[0, 3.4, 0]} rotation={[0, HALF_PI, 0]} castShadow>
+        <cylinderGeometry args={[2.1, 2.1, 4.4, 3, 1, false, 0, PI]} />
+        <meshStandardMaterial color={roof} roughness={0.7} />
+      </mesh>
+      {/* 판자 무늬 — 창고 느낌 */}
+      {([-1.2, -0.4, 0.4, 1.2]).map((x) => (
+        <mesh key={x} position={[x, 1.5, 1.72]}>
+          <boxGeometry args={[0.06, 2.8, 0.03]} />
+          <meshStandardMaterial color={roof} opacity={0.35} transparent />
+        </mesh>
+      ))}
+
+      {/* 문 */}
+      <group
+        onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
+        onPointerOver={(e) => { e.stopPropagation(); setHot(true); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { setHot(false); document.body.style.cursor = 'auto'; }}
+      >
+        <mesh position={[0, 0.95, 1.74]}>
+          <boxGeometry args={[1.5, 1.9, 0.1]} />
+          <meshStandardMaterial
+            color="#8A5A3B"
+            emissive="#E8A33C"
+            emissiveIntensity={hot ? 0.45 : 0}
+          />
+        </mesh>
+        <mesh position={[0.48, 0.95, 1.81]}>
+          <sphereGeometry args={[0.07, 8, 8]} />
+          <meshStandardMaterial color="#E8C86A" metalness={0.6} roughness={0.3} />
+        </mesh>
+      </group>
+
+      {/* 명패 — 벽에 붙은 나무 팻말 */}
+      <Html position={[0, 2.45, 1.76]} transform scale={0.3} pointerEvents="none" zIndexRange={[5, 0]}>
+        <div
+          style={{
+            background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '30px',
+            padding: '8px 26px', borderRadius: '10px', whiteSpace: 'nowrap',
+            fontFamily: 'Pretendard, sans-serif', border: '4px solid #8A6038',
+            boxShadow: '0 5px 0 #6B4A2B', userSelect: 'none',
+          }}
+        >
+          {emoji} {label}
+        </div>
+      </Html>
+
+      {hot && (
+        <Html position={[0, 3.9, 1.8]} center pointerEvents="none" zIndexRange={[6, 0]}>
+          <div
+            style={{
+              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '12px',
+              padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
+              fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
+            }}
+          >
+            들어가기
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
 // --------------- 깃대 ---------------
 function FlagPole() {
   const flagRef = useRef<THREE.Mesh>(null);
@@ -499,6 +592,8 @@ export default function SchoolScene({
   schoolName = '학교',
   emblemUrl,
   onEnterHall,
+  onEnterArchive,
+  onEnterTrack,
   schoolId,
   me,
   pet,
@@ -513,6 +608,10 @@ export default function SchoolScene({
   schoolName?: string;
   emblemUrl?: string;
   onEnterHall?: () => void;
+  /** 기억창고 건물 문 */
+  onEnterArchive?: () => void;
+  /** 운동장 가는 문 */
+  onEnterTrack?: () => void;
   schoolId: string;
   /** 같이 있는 친구들을 보려면 준다. 로그인 안 했으면 없다. */
   me?: { uid: string; look: PeerLook } | null;
@@ -592,6 +691,25 @@ export default function SchoolScene({
         <Tree position={[10.5, 0, -1.5]} scale={1.05} />
         <Tree position={[-8, 0, 4]} scale={0.85} />
         <Tree position={[12, 0, 5]} scale={0.9} />
+
+        {/* 왼쪽 — 기억창고 */}
+        <SidePlace
+          position={[-11.5, 0, 8.5]}
+          label="기억창고"
+          emoji="📦"
+          wall="#E8D7BC"
+          roof="#A9865E"
+          onEnter={onEnterArchive}
+        />
+        {/* 오른쪽 — 운동장 가는 문 */}
+        <SidePlace
+          position={[11.5, 0, 8.5]}
+          label="운동장"
+          emoji="🏃"
+          wall="#DCEBD8"
+          roof="#5FA85C"
+          onEnter={onEnterTrack}
+        />
         <Cloud position={[-9, 12, -14]} speed={0.14} />
         <Cloud position={[7, 13.5, -16]} speed={0.1} />
         <Cloud position={[0, 11, -12]} speed={0.18} />

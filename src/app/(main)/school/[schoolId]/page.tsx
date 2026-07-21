@@ -79,6 +79,8 @@ export default function SchoolPage() {
     <div className="relative min-h-screen overflow-hidden">
       {/* 3D 학교 전경 — 창문 문패 클릭으로 반 입장 */}
       <SchoolScene classes={classButtons} onClassSelect={handleClassSelect} avatarId={userDoc?.avatarId} avatarCustom={userDoc?.avatarCustom} avatarTint={userDoc?.avatarTint} schoolName={schoolName} imageUrl={schoolImage} emblemUrl={schoolEmblem} onEnterHall={() => router.push(`/school/${schoolId}/lobby`)}
+        onEnterArchive={() => router.push(`/school/${schoolId}/archive`)}
+        onEnterTrack={() => router.push(`/school/${schoolId}/track`)}
         schoolId={schoolId}
         me={user && userDoc ? {
           uid: user.uid,

@@ -9,6 +9,9 @@ import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import { formatTime } from '@/lib/track';
 import { setMovementLock } from '@/components/gallery3d/walker';
+import {
+  watchLobby, setReady, callStart, clearStart, COUNTDOWN_MS, type LobbyState,
+} from '@/lib/race-lobby';
 
 const TrackScene = dynamic(() => import('@/components/gallery3d/TrackScene'), { ssr: false });
 
@@ -30,6 +33,16 @@ export default function TrackPage() {
   /** 경기 번호 — 올리면 아바타가 출발선으로 돌아간다 */
   const [runId, setRunId] = useState(0);
 
+  /** 출발선에 선 사람들 */
+  const [lobby, setLobby] = useState<LobbyState>({ players: [], startAt: 0 });
+  const [iAmReady, setIAmReady] = useState(false);
+  /** 이번 출발 신호를 이미 받았나 (같은 신호로 두 번 뛰지 않게) */
+  const usedStart = useRef(0);
+
+  const me = user && userDoc
+    ? { uid: user.uid, name: userDoc.displayName || '친구' }
+    : null;
+
   /** 화면에 보여주는 시계. 진짜 기록은 서버가 잰다 — 이건 보기용이다. */
   const startedAt = useRef(0);
 
@@ -44,6 +57,68 @@ export default function TrackPage() {
 
   useEffect(() => { loadRecords().catch(() => {}); }, [loadRecords]);
 
+  useEffect(() => watchLobby(schoolId, setLobby), [schoolId]);
+
+  // 화면을 떠나면 출발선에서도 빠진다
+  useEffect(() => () => {
+    if (me) setReady(schoolId, me.uid, me.name, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * 준비를 누르면 **곧바로 출발선으로 옮긴다.**
+   * 출발 직전에 옮기면 어디서 시작하는지 볼 새가 없다.
+   */
+  const toggleReady = useCallback(async () => {
+    if (!me) { setErr('로그인해야 기록이 남아요'); return; }
+    const next = !iAmReady;
+    setIAmReady(next);
+    if (next) { setRunId((n) => n + 1); setMovementLock(true); }
+    else setMovementLock(false);
+    await setReady(schoolId, me.uid, me.name, next);
+  }, [me, iAmReady, schoolId]);
+
+  /**
+   * 출발 신호를 받으면 **다 같이** 센다.
+   * 각자 자기 화면에서 세면 누구는 먼저 뛴다 — 신호 시각 하나를 모두가 본다.
+   */
+  useEffect(() => {
+    if (!iAmReady || !lobby.startAt || lobby.startAt === usedStart.current) return;
+    if (lobby.startAt < Date.now() - COUNTDOWN_MS * 2) return;   // 지난 신호는 무시
+    usedStart.current = lobby.startAt;
+
+    let alive = true;
+    const tick = () => {
+      if (!alive) return;
+      const left = lobby.startAt - Date.now();
+      if (left <= 0) {
+        // 서버에 출발을 알리고(여기서부터 서버가 시간을 잰다) 잠금을 푼다
+        (async () => {
+          try {
+            const token = await auth?.currentUser?.getIdToken();
+            await fetch('/api/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ schoolId }),
+            });
+          } catch { /* 실패해도 뛰게는 둔다. 기록만 안 남는다 */ }
+          if (!alive) return;
+          setMovementLock(false);
+          startedAt.current = Date.now();
+          setElapsed(0);
+          setPhase('running');
+          playSound('success');
+        })();
+        return;
+      }
+      setCount(Math.ceil(left / 1000));
+      setPhase('count');
+      setTimeout(tick, 120);
+    };
+    tick();
+    return () => { alive = false; };
+  }, [lobby.startAt, iAmReady, schoolId]);
+
   // 달리는 동안 시계를 굴린다
   useEffect(() => {
     if (phase !== 'running') return;
@@ -51,42 +126,8 @@ export default function TrackPage() {
     return () => clearInterval(t);
   }, [phase]);
 
-  // 카운트다운. 세는 동안은 못 움직이게 잠근다 — 미리 출발하면 시작부터 불공평하다.
-  useEffect(() => {
-    if (phase !== 'count') return;
-    setMovementLock(true);
-    if (count <= 0) {
-      setMovementLock(false);
-      startedAt.current = Date.now();
-      setElapsed(0);
-      setPhase('running');
-      playSound('success');
-      return;
-    }
-    const t = setTimeout(() => setCount((c) => c - 1), 900);
-    return () => clearTimeout(t);
-  }, [phase, count]);
-
   // 화면을 떠날 때 잠금이 남으면 다른 화면에서 못 움직인다
   useEffect(() => () => setMovementLock(false), []);
-
-  const start = async () => {
-    if (!user) { setErr('로그인해야 기록이 남아요'); return; }
-    setErr(''); setResult(null);
-    try {
-      const token = await auth?.currentUser?.getIdToken();
-      const res = await fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ schoolId }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || '출발하지 못했어요');
-      setCount(3);
-      // 세기 시작할 때 출발선으로. '출발!' 에 옮기면 갑자기 순간이동한다.
-      setRunId((n) => n + 1);
-      setPhase('count');
-    } catch (e) { setErr((e as Error).message); }
-  };
 
   const finish = async () => {
     setPhase('done');
@@ -113,7 +154,16 @@ export default function TrackPage() {
     playSound('error');
   };
 
-  const reset = () => { setPhase('ready'); setResult(null); setErr(''); };
+  const reset = () => {
+    setPhase('ready');
+    setResult(null);
+    setErr('');
+    // 다음 판을 위해 준비를 푼다. 안 풀면 지난 출발 신호로 또 뛴다.
+    setIAmReady(false);
+    setMovementLock(false);
+    if (me) setReady(schoolId, me.uid, me.name, false);
+    clearStart(schoolId);
+  };
 
   const myBest = records.find((r) => r.uid === user?.uid);
 
@@ -184,6 +234,58 @@ export default function TrackPage() {
                   트랙을 따라 한 바퀴 달려요. <b>흰 선을 밟으면 탈락</b>이고,
                   안쪽으로 질러가도 탈락이에요.
                 </div>
+
+                {/* 출발선에 선 사람들 */}
+                <div className="rounded-2xl p-3 mb-3" style={{ background: 'white' }}>
+                  <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>
+                    🏁 출발선 ({lobby.players.length}명)
+                  </div>
+                  {lobby.players.length === 0 ? (
+                    <div className="text-[11px]" style={{ color: '#A89880' }}>
+                      아직 아무도 없어요. 준비를 누르면 출발선으로 가요.
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {lobby.players.map((p) => (
+                        <span
+                          key={p.uid}
+                          className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                          style={{
+                            background: p.uid === me?.uid ? 'var(--color-primary)' : '#F0E9DA',
+                            color: p.uid === me?.uid ? 'white' : '#6B5B43',
+                          }}
+                        >
+                          {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={toggleReady}
+                    className="flex-1 rounded-full py-3 text-sm font-bold"
+                    style={{
+                      background: iAmReady ? '#F0E9DA' : 'white',
+                      color: '#6B5B43',
+                      border: '2px solid #E3D5B8',
+                    }}
+                  >
+                    {iAmReady ? '✅ 준비됨 (취소)' : '🏁 준비'}
+                  </button>
+                  <button
+                    onClick={() => callStart(schoolId)}
+                    disabled={!iAmReady}
+                    className="flex-1 rounded-full py-3 text-sm font-bold text-white disabled:opacity-40"
+                    style={{ background: 'var(--color-primary)' }}
+                  >
+                    출발 신호!
+                  </button>
+                </div>
+                <div className="text-[10px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+                  준비한 사람들이 <b>다 같이</b> 출발해요. 혼자여도 눌러서 뛸 수 있어요.
+                </div>
               </>
             )}
 
@@ -212,13 +314,15 @@ export default function TrackPage() {
 
             {err && <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{err}</div>}
 
-            <button
-              onClick={phase === 'ready' ? start : reset}
-              className="w-full rounded-full py-3 text-sm font-bold text-white"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              {phase === 'ready' ? '출발 준비!' : '한 번 더'}
-            </button>
+            {phase !== 'ready' && (
+              <button
+                onClick={reset}
+                className="w-full rounded-full py-3 text-sm font-bold text-white"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                한 번 더
+              </button>
+            )}
 
             {/* 순위표 */}
             {records.length > 0 && (

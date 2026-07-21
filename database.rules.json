@@ -21,6 +21,15 @@
             "$other": { ".validate": false }
           },
 
+          "ready": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid",
+              "n": { ".validate": "newData.isString() && newData.val().length <= 20" },
+              "t": { ".validate": "newData.isNumber()" },
+              "$other": { ".validate": false }
+            }
+          },
+
           "scores": {
             "$uid": {
               ".write": "auth != null && auth.uid === $uid",
