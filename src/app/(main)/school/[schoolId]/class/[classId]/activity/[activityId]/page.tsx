@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { CAPACITY, overflowCount } from '@/lib/exhibit-layout';
 import dynamic from 'next/dynamic';
 import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -144,6 +145,23 @@ export default function ActivityExhibitPage() {
           <div className="ac-bubble px-4 py-2.5 text-[12px] leading-relaxed">
             <span className="hidden sm:inline">🚶 WASD 이동 · 🖱️ 드래그로 상하좌우 시점 · 휠 줌 · ❗ 뜨면 작품 클릭!</span>
             <span className="sm:hidden">🕹️ 조이스틱 이동 · 드래그로 시점 · 두 손가락 줌</span>
+          </div>
+        </div>
+      )}
+
+      {/*
+        벽이 모자라 못 건 작품이 있으면 **말해준다.**
+        조용히 빼면 그 아이는 자기 작품이 왜 없는지 알 수 없다.
+        선생님에게 '전시를 나누라' 는 다음 할 일까지 알려준다.
+      */}
+      {overflowCount(artworks.length) > 0 && (
+        <div className="pos-hint absolute left-4 right-4 z-30 mx-auto max-w-[420px]">
+          <div
+            className="rounded-2xl px-4 py-3 text-[13px] font-bold leading-relaxed"
+            style={{ background: 'rgba(253,236,234,0.96)', color: '#B02A37' }}
+          >
+            ⚠️ 벽이 모자라서 {overflowCount(artworks.length)}점이 아직 안 걸렸어요.
+            전시실 하나에는 {CAPACITY}점까지 걸려요 — 전시를 하나 더 만들어 나눠 걸어주세요.
           </div>
         </div>
       )}

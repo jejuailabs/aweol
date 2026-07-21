@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { wallSlots } from '@/lib/exhibit-layout';
 import { WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls, type Obstacle, type AvatarCustom, type AvatarTint } from './walker';
 
 // 벤치 2개 + 코너 화분 4개 (Room의 배치와 같은 값)
@@ -594,35 +595,18 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatar
   type WallPlacement = { artwork: ArtworkData; pos: [number, number, number]; rot: [number, number, number] };
 
   /**
-   * 벽 자리 만들기.
+   * 벽 자리 만들기 — 계산은 `src/lib/exhibit-layout.ts` 가 한다.
    *
-   * 한 줄만 쓰면 10점이 넘는 순간 좌표가 벽을 넘어가 작품이 겹쳐 버렸다.
-   * 작품이 많으면 위·아래 두 줄로 건다 — 실제 전시실도 그렇게 한다.
+   * 한 반은 30명까지 잡아야 하는데, 전에는 두 줄에 20자리뿐이라 30명이면
+   * 열 점이 아무 말 없이 안 걸렸다. 지금은 한 줄 16 · 두 줄 32 자리다.
    */
-  const ONE_ROW_CAPACITY = 10; // 뒷벽 4 + 좌 3 + 우 3
-  const rows = flatArtworks.length > ONE_ROW_CAPACITY ? 2 : 1;
-  const rowY = rows === 1 ? [2.5] : [3.35, 1.72];
-
-  const slots: { pos: [number, number, number]; rot: [number, number, number] }[] = [];
-  for (const y of rowY) {
-    // 뒷벽
-    for (let i = 0; i < 4; i++) {
-      slots.push({ pos: [-4.5 + i * 3, y, -7.95], rot: [0, 0, 0] });
-    }
-    // 왼쪽 벽
-    for (let i = 0; i < 3; i++) {
-      slots.push({ pos: [-7.95, y, -5 + i * 4], rot: [0, HALF_PI, 0] });
-    }
-    // 오른쪽 벽
-    for (let i = 0; i < 3; i++) {
-      slots.push({ pos: [7.95, y, -5 + i * 4], rot: [0, NEG_HALF_PI, 0] });
-    }
-  }
+  const slots = wallSlots(flatArtworks.length);
 
   // 자리보다 작품이 많으면 뒤쪽은 걸지 않는다. 겹쳐 거는 것보다 낫다.
   const wallPlacements: WallPlacement[] = flatArtworks
     .slice(0, slots.length)
     .map((artwork, i) => ({ artwork, pos: slots[i].pos, rot: slots[i].rot }));
+
 
   return (
     <div
