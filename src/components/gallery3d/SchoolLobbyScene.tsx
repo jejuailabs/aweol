@@ -339,6 +339,8 @@ export default function SchoolLobbyScene({
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
   onOpen: (k: LobbySpot) => void;
+  /** 계단으로 교실 복도에 올라간다 */
+  onGoUp?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, halfD - 2.5));
