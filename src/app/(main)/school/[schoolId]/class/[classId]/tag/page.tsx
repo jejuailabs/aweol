@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { inventoryPath } from '@/lib/paths';
 import { playSound } from '@/lib/sound';
 import {
   watchTag, startTag, passTag, endTag, formatLeft,
@@ -39,6 +42,15 @@ export default function TagPage() {
   const cooldownUntil = useRef(0);
   const prevIt = useRef<string | null>(null);
 
+  /** 가진 놀이 아이템 개수 */
+  const [items, setItems] = useState<Record<string, number>>({});
+  /** 이 판에 신발을 썼나 */
+  const [fast, setFast] = useState(false);
+  /** 방패가 켜져 있나 — 잡히면 한 번 되돌려준다 */
+  const [shield, setShield] = useState(false);
+  const shieldRef = useRef(false);
+  useEffect(() => { shieldRef.current = shield; }, [shield]);
+
   const me = user && userDoc ? {
     uid: user.uid,
     look: {
@@ -54,6 +66,34 @@ export default function TagPage() {
 
   useEffect(() => watchTag(schoolId, roomKey, setState), [schoolId, roomKey]);
 
+  // 내 아이템 (상점에서 산 것)
+  useEffect(() => {
+    if (!db || !user) return;
+    return onSnapshot(
+      collection(db, inventoryPath(user.uid)),
+      (snap) => {
+        const m: Record<string, number> = {};
+        snap.forEach((d) => {
+          const c = (d.data().count as number) ?? 0;
+          if (c > 0) m[d.id] = c;
+        });
+        setItems(m);
+      },
+      () => setItems({})
+    );
+  }, [user]);
+
+  /** 아이템을 쓴다 — 개수는 서버가 깎는다 */
+  const useItem = useCallback(async (itemId: string) => {
+    const token = await auth?.currentUser?.getIdToken();
+    const res = await fetch('/api/shop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'use', itemId }),
+    });
+    return res.ok;
+  }, []);
+
   // 남은 시간
   useEffect(() => {
     const t = setInterval(() => setLeft(Math.max(0, state.endsAt - Date.now())), 250);
@@ -67,11 +107,31 @@ export default function TagPage() {
   useEffect(() => {
     if (state.it === prevIt.current) return;
     const wasFirst = prevIt.current === null;
+    const prev = prevIt.current;
     prevIt.current = state.it;
     cooldownUntil.current = Date.now() + TAG_COOLDOWN_MS;
     if (wasFirst || !me) return;
 
     if (state.it === me.uid) {
+      /**
+       * 방패는 '되돌려주기' 다.
+       *
+       * 잡힌 순간 나는 술래가 되고, **술래는 술래를 넘길 수 있다**(규칙).
+       * 그래서 나를 잡은 사람에게 곧장 돌려준다 — 규칙을 우회하지 않고
+       * 규칙 안에서 되는 방법이다. 남의 화면에 손대지도 않는다.
+       */
+      if (shieldRef.current) {
+        const tagger = prev;
+        setShield(false);
+        if (tagger) {
+          setFlash('🛡️ 방패로 막았다! 되돌려주기');
+          playSound('success');
+          passTag(schoolId, roomKey, tagger, me.uid, me.look.name, state.scores[me.uid]?.c ?? 0);
+          cooldownUntil.current = Date.now() + TAG_COOLDOWN_MS;
+          const tt = setTimeout(() => setFlash(''), 2200);
+          return () => clearTimeout(tt);
+        }
+      }
       setFlash('잡혔다! 이제 내가 술래 👹');
       playSound('error');
     } else {
@@ -98,6 +158,11 @@ export default function TagPage() {
     passTag(schoolId, roomKey, uid, me.uid, me.look.name, myCount);
   }, [schoolId, roomKey, me, playing, state.scores]);
 
+  // 판이 바뀌면 이번 판 효과는 사라진다. 한 번 쓴 게 계속 남으면 산 보람이 없다.
+  useEffect(() => {
+    if (state.status !== 'playing') { setFast(false); setShield(false); }
+  }, [state.status]);
+
   // 시간이 다 되면 끝낸다 (술래가 끝낸다 — 아무나 끝내면 여러 번 쓰인다)
   useEffect(() => {
     if (state.status !== 'playing' || left > 0 || !iAmIt) return;
@@ -116,6 +181,7 @@ export default function TagPage() {
         me={me}
         itUid={state.it}
         playing={playing}
+        speedBoost={fast}
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}
         avatarTint={userDoc?.avatarTint}
@@ -184,9 +250,59 @@ export default function TagPage() {
           )}
 
           {me && playing && (
-            <div className="text-[12px] text-center font-bold" style={{ color: iAmIt ? '#C0392B' : '#2E6DA8' }}>
-              {iAmIt ? '친구에게 닿으면 술래가 넘어가요!' : '술래에게 잡히지 마세요!'}
-            </div>
+            <>
+              <div className="text-[12px] text-center font-bold mb-2" style={{ color: iAmIt ? '#C0392B' : '#2E6DA8' }}>
+                {iAmIt ? '친구에게 닿으면 술래가 넘어가요!' : '술래에게 잡히지 마세요!'}
+              </div>
+
+              {/* 숙제로 모은 도장으로 산 것들 */}
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (fast || !(items['play-shoes'] > 0)) return;
+                    if (await useItem('play-shoes')) {
+                      setFast(true);
+                      setFlash('🥾 바람의 신발! 더 빨라졌어요');
+                      setTimeout(() => setFlash(''), 1800);
+                    }
+                  }}
+                  disabled={fast || !(items['play-shoes'] > 0)}
+                  className="flex-1 rounded-2xl py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-40"
+                  style={{ background: fast ? '#EAF7EA' : 'white' }}
+                >
+                  <span className="text-xl">🥾</span>
+                  <span className="text-[10px] font-bold" style={{ color: '#8A7A5F' }}>
+                    {fast ? '달리는 중!' : `바람의 신발 ${items['play-shoes'] ?? 0}`}
+                  </span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    if (shield || !(items['play-shield'] > 0)) return;
+                    if (await useItem('play-shield')) {
+                      setShield(true);
+                      setFlash('🛡️ 방패를 들었어요');
+                      setTimeout(() => setFlash(''), 1800);
+                    }
+                  }}
+                  disabled={shield || !(items['play-shield'] > 0)}
+                  className="flex-1 rounded-2xl py-2.5 flex flex-col items-center gap-0.5 disabled:opacity-40"
+                  style={{ background: shield ? '#EAF2FB' : 'white' }}
+                >
+                  <span className="text-xl">🛡️</span>
+                  <span className="text-[10px] font-bold" style={{ color: '#8A7A5F' }}>
+                    {shield ? '방패 켜짐!' : `튼튼 방패 ${items['play-shield'] ?? 0}`}
+                  </span>
+                </button>
+              </div>
+
+              {!items['play-shoes'] && !items['play-shield'] && (
+                <div className="text-[10px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+                  숙제를 내고 도장을 모으면 상점에서 놀이 아이템을 살 수 있어요.
+                  <b> 없어도 노는 데는 아무 지장 없어요.</b>
+                </div>
+              )}
+            </>
           )}
 
           {ranking.length > 0 && (

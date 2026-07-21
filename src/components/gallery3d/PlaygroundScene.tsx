@@ -136,7 +136,7 @@ function TagJudge({
 }
 
 export default function PlaygroundScene({
-  schoolId, roomKey, me, itUid, playing,
+  schoolId, roomKey, me, itUid, playing, speedBoost,
   avatarId, avatarCustom, avatarTint, onTag,
 }: {
   schoolId: string;
@@ -144,6 +144,8 @@ export default function PlaygroundScene({
   me: { uid: string; look: PeerLook } | null;
   itUid: string | null;
   playing: boolean;
+  /** 바람의 신발을 썼나 */
+  speedBoost?: boolean;
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
@@ -181,8 +183,12 @@ export default function PlaygroundScene({
             avatarPos={avatarPos}
             bounds={{ xMin: -HALF, xMax: HALF, zMin: -HALF, zMax: HALF }}
             start={[0, 0, 8]}
-            // 술래는 조금 빠르다. 안 그러면 영영 못 잡는다.
-            maxSpeed={iAmIt ? 5.4 : 4.8}
+            /**
+             * 술래는 조금 빠르다 — 안 그러면 영영 못 잡는다.
+             * 신발은 그 위에 얹는다. 다만 **술래보다 훨씬 빨라지지는 않게** 했다.
+             * 아이템 하나로 아무도 못 잡으면 나머지 아이들이 재미없어진다.
+             */
+            maxSpeed={(iAmIt ? 5.4 : 4.8) + (speedBoost ? 0.8 : 0)}
             avatarId={avatarId}
             avatarCustom={avatarCustom}
             avatarTint={avatarTint}

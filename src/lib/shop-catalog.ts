@@ -8,7 +8,7 @@
  * 살 수는 있는데 껴도 안 보이면 아이 입장에서는 도장을 버린 셈이 된다.
  */
 
-export type ShopCategory = 'hat' | 'accessory' | 'stamp';
+export type ShopCategory = 'hat' | 'accessory' | 'stamp' | 'play';
 
 export interface ShopItem {
   id: string;
@@ -19,9 +19,36 @@ export interface ShopItem {
   category: ShopCategory;
   /** 교사 전용 품목(도장 도안)은 학생 상점에 보이지 않는다 */
   staffOnly?: boolean;
+  /**
+   * 쓰면 없어지는 물건인가.
+   *
+   * 꾸미기 아이템은 한 번 사면 계속 가진다. 놀이 아이템은 쓰면 없어져서
+   * **도장을 계속 쓸 데가 생긴다** — 지금까지는 꾸미기 몇 개 사고 나면
+   * 도장이 쌓이기만 하고 쓸 곳이 없었다.
+   */
+  consumable?: boolean;
+  /** 아이 화면에 붙는 설명 */
+  desc?: string;
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
+  /**
+   * ---------- 놀이 아이템 (쓰면 없어짐) ----------
+   *
+   * 숙제를 내고 검사를 받으면 도장이 쌓이고, 그 도장으로 이걸 산다.
+   * **숙제를 안 했다고 못 노는 게 아니다** — 놀이는 누구나 그냥 할 수 있고,
+   * 이건 얹어지는 재미다. 집 사정으로 숙제를 못 하는 아이가 놀이에서까지
+   * 밀리면 안 된다. 그래서 값도 싸게 잡았다(숙제 두세 번이면 산다).
+   */
+  {
+    id: 'play-shoes', emoji: '🥾', label: '바람의 신발', price: 2, category: 'play',
+    consumable: true, desc: '술래잡기 한 판 동안 더 빨리 달려요',
+  },
+  {
+    id: 'play-shield', emoji: '🛡️', label: '튼튼 방패', price: 3, category: 'play',
+    consumable: true, desc: '잡혀도 한 번은 술래를 되돌려줘요',
+  },
+
   // ---------- 모자 ----------
   { id: 'hat-cap', emoji: '🧢', label: '야구모자', price: 2, category: 'hat' },
   { id: 'hat-ribbon', emoji: '🎀', label: '리본', price: 2, category: 'hat' },
