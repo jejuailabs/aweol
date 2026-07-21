@@ -6,17 +6,18 @@ import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestor
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
-import {
-  PERFECT, SHOTS, TARGET_R, aimAt, shotSetup, type ShotSetup,
-} from '@/lib/archery';
+import dynamic from 'next/dynamic';
+import { PERFECT, SHOTS, aimAt, shotSetup, type ShotSetup } from '@/lib/archery';
+
+/** 3D 경기장. 화면이 뜨기 전에 받아올 이유가 없다. */
+const ArcheryScene = dynamic(() => import('@/components/gallery3d/ArcheryScene'), { ssr: false });
 
 type Phase = 'ready' | 'aiming' | 'sending' | 'done';
 
-interface Hit { x: number; y: number; score: number }
+/** 화살이 날아가는 데 걸리는 시간(ms). 3D 연출과 맞춰야 한다. */
+const FLIGHT_MS = 620;
 
-/** 과녁 그림의 반지름(px). 계산 단위(TARGET_R)와 나누어 둔다. */
-const VIEW = 130;
-const K = VIEW / TARGET_R;
+interface Hit { x: number; y: number; score: number }
 
 /**
  * 양궁 — 집중력 게임.
@@ -37,17 +38,19 @@ export default function ArcheryPage() {
   const [seed, setSeed] = useState(0);
   const [shotIdx, setShotIdx] = useState(0);
   const [setup, setSetup] = useState<ShotSetup | null>(null);
-  const [aim, setAim] = useState({ x: 0, y: 0 });
   const [hits, setHits] = useState<Hit[]>([]);
   const [result, setResult] = useState<{ shots: number[]; total: number; best: number } | null>(null);
   const [err, setErr] = useState('');
   const [board, setBoard] = useState<{ name: string; total: number }[]>([]);
+  /** 화살이 날아가는 중 — 도착할 때까지 다음 발을 못 쏜다 */
+  const [flight, setFlight] = useState<{ x: number; y: number } | null>(null);
+  /** 겨누기 시작한 시각. 3D 가 이걸로 흔들림을 그린다. */
+  const [startedAt, setStartedAt] = useState(0);
 
   /** 이 화살을 쏘기까지 흐른 시간을 재는 기준 */
   const shotStart = useRef(0);
   /** 쏜 시각들 — 이것만 서버로 간다 */
   const times = useRef<number[]>([]);
-  const raf = useRef(0);
 
   // 순위표
   useEffect(() => {
@@ -58,17 +61,6 @@ export default function ArcheryPage() {
       () => setBoard([])
     );
   }, [schoolId]);
-
-  /** 조준점을 계속 움직인다 */
-  useEffect(() => {
-    if (phase !== 'aiming' || !setup) return;
-    const tick = () => {
-      setAim(aimAt(setup, performance.now() - shotStart.current));
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
-  }, [phase, setup]);
 
   const start = async () => {
     if (!user) { setErr('로그인하면 쏠 수 있어요'); return; }
@@ -86,6 +78,8 @@ export default function ArcheryPage() {
       setShotIdx(0);
       setSetup(shotSetup(data.seed, 0));
       shotStart.current = performance.now();
+      setStartedAt(shotStart.current);
+      setFlight(null);
       setPhase('aiming');
       playSound('open');
     } catch {
@@ -113,25 +107,39 @@ export default function ArcheryPage() {
     }
   }, [schoolId]);
 
-  /** 격발 */
+  /**
+   * 격발.
+   *
+   * 화살이 날아가는 동안에는 다음 발을 못 쏜다(`flight` 가 차 있으면 막힌다).
+   * 도착하는 자리는 **계산이 준 값 그대로** 쓴다 — 보이는 자리와 점수가
+   * 어긋나면 아이가 속았다고 느낀다.
+   */
   const shoot = () => {
-    if (phase !== 'aiming' || !setup) return;
+    if (phase !== 'aiming' || !setup || flight) return;
     const t = performance.now() - shotStart.current;
     times.current = [...times.current, t];
 
-    // 어디에 꽂혔는지는 화면에만 보여준다 — 점수는 서버가 낸다
     const p = aimAt(setup, t);
-    setHits((h) => [...h, { x: p.x + setup.wind, y: p.y, score: 0 }]);
+    const land = { x: p.x + setup.wind, y: p.y };
+    setFlight(land);
     playSound('tap');
 
-    const next = shotIdx + 1;
-    if (next >= SHOTS) {
-      send(times.current);
-      return;
-    }
-    setShotIdx(next);
-    setSetup(shotSetup(seed, next));
-    shotStart.current = performance.now();
+    // 날아가는 시간만큼 기다렸다가 꽂고 다음 발로
+    setTimeout(() => {
+      setHits((h) => [...h, { ...land, score: 0 }]);
+      setFlight(null);
+      playSound('like');
+
+      const next = shotIdx + 1;
+      if (next >= SHOTS) {
+        send(times.current);
+        return;
+      }
+      setShotIdx(next);
+      setSetup(shotSetup(seed, next));
+      shotStart.current = performance.now();
+      setStartedAt(shotStart.current);
+    }, FLIGHT_MS);
   };
 
   const wind = setup?.wind ?? 0;
@@ -153,38 +161,15 @@ export default function ArcheryPage() {
         <b> 바람 반대쪽</b>에서 쏘면 가운데로 가요.
       </p>
 
-      {/* 과녁 */}
-      <div className="flex justify-center mb-3">
-        <svg
-          viewBox={`${-VIEW - 12} ${-VIEW - 12} ${(VIEW + 12) * 2} ${(VIEW + 12) * 2}`}
-          className="w-full"
-          style={{ maxWidth: 340 }}
-        >
-          {/*
-            **큰 고리부터** 그린다. 작은 것부터 그리면 뒤에 그린 큰 원이
-            덮어버려서 민무늬 원 하나만 남는다 — 실제로 그렇게 나왔었다.
-          */}
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((ring) => {
-            const r = (11 - ring) * (VIEW / 10);
-            const fill =
-              ring >= 9 ? '#F6D65B' : ring >= 7 ? '#E8604C' : ring >= 5 ? '#6FA8DC' : ring >= 3 ? '#3A3226' : '#FBF7EE';
-            return <circle key={ring} cx={0} cy={0} r={r} fill={fill} stroke="#8A7A5F" strokeWidth={0.8} />;
-          })}
-
-          {/* 꽂힌 화살 */}
-          {hits.map((h, i) => (
-            <circle key={i} cx={h.x * K} cy={h.y * K} r={5} fill="#2E8B57" stroke="white" strokeWidth={2} />
-          ))}
-
-          {/* 조준점 */}
-          {phase === 'aiming' && (
-            <g>
-              <circle cx={aim.x * K} cy={aim.y * K} r={11} fill="none" stroke="#1F6FEB" strokeWidth={3} />
-              <line x1={aim.x * K - 17} y1={aim.y * K} x2={aim.x * K + 17} y2={aim.y * K} stroke="#1F6FEB" strokeWidth={2} />
-              <line x1={aim.x * K} y1={aim.y * K - 17} x2={aim.x * K} y2={aim.y * K + 17} stroke="#1F6FEB" strokeWidth={2} />
-            </g>
-          )}
-        </svg>
+      {/* 경기장 — 화살이 꽂히는 자리는 계산이 준 값 그대로다 */}
+      <div className="mb-3">
+        <ArcheryScene
+          setup={phase === 'aiming' ? setup : null}
+          startedAt={startedAt}
+          shooting={!!flight}
+          flight={flight}
+          hits={hits}
+        />
       </div>
 
       {phase === 'aiming' && (
@@ -198,10 +183,11 @@ export default function ArcheryPage() {
           </div>
           <button
             onClick={shoot}
-            className="w-full rounded-2xl py-5 text-[18px] font-black text-white active:scale-95 transition-transform"
+            disabled={!!flight}
+            className="w-full rounded-2xl py-5 text-[18px] font-black text-white active:scale-95 transition-transform disabled:opacity-50"
             style={{ background: 'var(--color-primary)' }}
           >
-            🏹 쏘기
+            {flight ? '화살이 날아가는 중...' : '🏹 쏘기'}
           </button>
         </>
       )}
