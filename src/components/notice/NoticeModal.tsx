@@ -158,7 +158,7 @@ export default function NoticeModal({
               <span className="text-2xl">{tab.emoji}</span>
               <div>
                 <div className="text-base font-black text-white">{tab.label}</div>
-                <div className="text-[10px] text-white opacity-80">우리 반 알림판</div>
+                <div className="text-[12px] text-white opacity-80">우리 반 알림판</div>
               </div>
             </div>
             <button
@@ -176,7 +176,7 @@ export default function NoticeModal({
               <button
                 key={t.kind}
                 onClick={() => { setKind(t.kind); setOpenId(null); setWriting(false); }}
-                className="rounded-full px-3 py-1 text-[11px] font-bold whitespace-nowrap transition-all"
+                className="rounded-full px-3 py-1 text-[13px] font-bold whitespace-nowrap transition-all"
                 style={{
                   background: kind === t.kind ? 'white' : 'rgba(255,255,255,0.25)',
                   color: kind === t.kind ? t.color : 'white',
@@ -201,7 +201,7 @@ export default function NoticeModal({
             <div>
               <button
                 onClick={() => setOpenId(null)}
-                className="text-[11px] font-bold mb-2.5"
+                className="text-[13px] font-bold mb-2.5"
                 style={{ color: '#8A7A5F' }}
               >
                 ← 목록으로
@@ -213,12 +213,12 @@ export default function NoticeModal({
                 <div className="text-base font-black mb-1" style={{ color: '#3A3226' }}>
                   {openPost.title}
                 </div>
-                <div className="text-[10px] mb-2.5" style={{ color: '#A89880' }}>
+                <div className="text-[12px] mb-2.5" style={{ color: '#A89880' }}>
                   {openPost.authorName}
                   {openPost.createdAt && ` · ${openPost.createdAt.toLocaleDateString('ko-KR')}`}
                 </div>
                 {openPost.body && (
-                  <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
+                  <div className="text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
                     {openPost.body}
                   </div>
                 )}
@@ -228,7 +228,7 @@ export default function NoticeModal({
               <div className="flex items-center gap-2 mb-3">
                 <button
                   onClick={toggleLike}
-                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-transform hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-transform hover:scale-105 active:scale-95"
                   style={{
                     background: liked ? '#FF6B81' : 'rgba(255,255,255,0.85)',
                     color: liked ? 'white' : '#8A7A5F',
@@ -240,7 +240,7 @@ export default function NoticeModal({
                 {isStaff && (
                   <button
                     onClick={() => removePost(openPost.id)}
-                    className="ml-auto rounded-full px-3 py-1.5 text-[11px] font-bold"
+                    className="ml-auto rounded-full px-3 py-1.5 text-[13px] font-bold"
                     style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
                   >
                     삭제
@@ -249,12 +249,12 @@ export default function NoticeModal({
               </div>
 
               {/* 댓글 */}
-              <div className="text-[11px] font-bold mb-2" style={{ color: '#8A7A5F' }}>
+              <div className="text-[13px] font-bold mb-2" style={{ color: '#8A7A5F' }}>
                 💬 댓글 {comments.length}
               </div>
               <div className="flex flex-col gap-2 mb-3">
                 {comments.length === 0 && (
-                  <div className="text-[11px] py-3 text-center" style={{ color: '#A89880' }}>
+                  <div className="text-[13px] py-3 text-center" style={{ color: '#A89880' }}>
                     아직 댓글이 없어요
                   </div>
                 )}
@@ -264,7 +264,7 @@ export default function NoticeModal({
                     className="rounded-2xl px-3.5 py-2.5"
                     style={{ background: 'rgba(255,255,255,0.75)' }}
                   >
-                    <div className="text-[11px] font-bold" style={{ color: '#3A3226' }}>
+                    <div className="text-[13px] font-bold" style={{ color: '#3A3226' }}>
                       {c.authorName}
                       {(c.authorRole === 'teacher' || c.authorRole === 'super_admin') && (
                         <span className="ml-1.5 rounded-full px-1.5 py-px text-[8px] text-white" style={{ background: '#E8604C' }}>
@@ -272,7 +272,7 @@ export default function NoticeModal({
                         </span>
                       )}
                     </div>
-                    <div className="text-[12px] mt-0.5" style={{ color: '#54493A' }}>{c.text}</div>
+                    <div className="text-[14px] mt-0.5" style={{ color: '#54493A' }}>{c.text}</div>
                   </div>
                 ))}
               </div>
@@ -284,13 +284,13 @@ export default function NoticeModal({
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) sendComment(); }}
                     placeholder="댓글을 남겨보세요"
-                    className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[12px] outline-none"
+                    className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[14px] outline-none"
                     style={{ background: 'rgba(255,255,255,0.9)', color: '#3A3226', border: '1px solid #E0D6C2' }}
                   />
                   <button
                     onClick={sendComment}
                     disabled={!newComment.trim() || sending}
-                    className="shrink-0 rounded-full px-4 text-[12px] font-bold text-white disabled:opacity-40"
+                    className="shrink-0 rounded-full px-4 text-[14px] font-bold text-white disabled:opacity-40"
                     style={{ background: 'var(--color-primary)' }}
                   >
                     남기기
@@ -299,7 +299,7 @@ export default function NoticeModal({
               ) : (
                 <button
                   onClick={() => { window.location.href = '/login'; }}
-                  className="w-full rounded-full py-2.5 text-[12px] font-bold"
+                  className="w-full rounded-full py-2.5 text-[14px] font-bold"
                   style={{ background: 'rgba(255,255,255,0.7)', color: '#8A7A5F', border: '1px dashed #CFC2A8' }}
                 >
                   🔑 로그인하면 좋아요와 댓글을 남길 수 있어요
@@ -351,7 +351,7 @@ export default function NoticeModal({
               {isStaff && (
                 <button
                   onClick={() => setWriting(true)}
-                  className="w-full rounded-2xl py-3 mb-3 text-xs font-bold border-2 border-dashed"
+                  className="w-full rounded-2xl py-3 mb-3 text-sm font-bold border-2 border-dashed"
                   style={{ borderColor: tab.color + '80', color: tab.color }}
                 >
                   + 새 {tab.label} 올리기
@@ -361,7 +361,7 @@ export default function NoticeModal({
               {list.length === 0 ? (
                 <div className="py-10 text-center">
                   <div className="text-4xl mb-2">{tab.emoji}</div>
-                  <div className="text-xs" style={{ color: '#A89880' }}>
+                  <div className="text-sm" style={{ color: '#A89880' }}>
                     아직 올라온 {tab.label}이 없어요
                   </div>
                 </div>
@@ -377,13 +377,13 @@ export default function NoticeModal({
                       <div className="text-sm font-bold" style={{ color: '#3A3226' }}>{p.title}</div>
                       {p.body && (
                         <div
-                          className="text-[11px] mt-0.5 leading-snug overflow-hidden"
+                          className="text-[13px] mt-0.5 leading-snug overflow-hidden"
                           style={{ color: '#8A7A5F', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
                         >
                           {p.body}
                         </div>
                       )}
-                      <div className="text-[10px] mt-1.5" style={{ color: '#A89880' }}>
+                      <div className="text-[12px] mt-1.5" style={{ color: '#A89880' }}>
                         {p.authorName}
                         {p.createdAt && ` · ${p.createdAt.toLocaleDateString('ko-KR')}`}
                       </div>

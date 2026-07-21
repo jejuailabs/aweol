@@ -13,6 +13,7 @@ import {
 } from '@/lib/track';
 
 const PI = Math.PI;
+const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
 /** 트랙 바닥 — 중심선을 따라 짧은 판을 이어 붙여 곡선을 만든다 */
@@ -49,17 +50,63 @@ function TrackSurface() {
             <planeGeometry args={[LANE_HALF * 2, p.len]} />
             <meshStandardMaterial color="#D98E5A" roughness={0.95} />
           </mesh>
-          {/* 양쪽 흰 선 — 이걸 넘으면 탈락이다. 판정선과 같은 자리에 그린다. */}
+          {/*
+            **바깥 두 줄만 판정선이다.** 이 자리가 곧 LANE_HALF 라,
+            여기를 넘으면 탈락한다. 굵게 그려 눈에 띄게 한다.
+          */}
           <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[-LANE_HALF, 0.012, 0]}>
-            <planeGeometry args={[0.14, p.len]} />
+            <planeGeometry args={[0.18, p.len]} />
             <meshStandardMaterial color="#FFFFFF" />
           </mesh>
           <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[LANE_HALF, 0.012, 0]}>
-            <planeGeometry args={[0.14, p.len]} />
+            <planeGeometry args={[0.18, p.len]} />
             <meshStandardMaterial color="#FFFFFF" />
           </mesh>
+
+          {/*
+            안쪽 세 줄은 **그림일 뿐 판정과 무관하다.** 진짜 트랙처럼 보이라고 그었다.
+            판정선과 헷갈리지 않게 얇고 흐리게 — 밟아도 아무 일 없다.
+          */}
+          {([-0.5, 0, 0.5]).map((f) => (
+            <mesh
+              key={`lane-${f}`}
+              rotation={[NEG_HALF_PI, 0, 0]}
+              position={[LANE_HALF * f, 0.011, 0]}
+            >
+              <planeGeometry args={[0.07, p.len]} />
+              <meshStandardMaterial color="#FFFFFF" transparent opacity={0.4} />
+            </mesh>
+          ))}
         </group>
       ))}
+
+      {/*
+        도는 방향 화살표.
+        중심선을 따라 진행 방향(진행도가 커지는 쪽)을 가리키므로,
+        판정 규칙이 바뀌면 화살표도 저절로 따라간다 — 손으로 맞출 일이 없다.
+      */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const s0 = (i / 12) * PERIMETER;
+        const [x0, z0] = pointAt(s0);
+        const [x1, z1] = pointAt(s0 + 2);
+        const rot = Math.atan2(x1 - x0, z1 - z0);
+        return (
+          <group key={`arrow-${i}`} position={[x0, 0.013, z0]} rotation={[0, rot, 0]}>
+            <mesh rotation={[NEG_HALF_PI, 0, 0]}>
+              <planeGeometry args={[0.5, 1.1]} />
+              <meshStandardMaterial color="#FFF3D0" transparent opacity={0.75} />
+            </mesh>
+            <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0, 0.85]}>
+              {/*
+                thetaStart 를 -90도로 준다. 기본값이면 삼각형 꼭짓점이 +X 를 보는데,
+                진행 방향은 이 그룹의 +Z 다 — 그대로 두면 화살표가 옆을 가리킨다.
+              */}
+              <circleGeometry args={[0.42, 3, -HALF_PI]} />
+              <meshStandardMaterial color="#FFF3D0" transparent opacity={0.85} />
+            </mesh>
+          </group>
+        );
+      })}
 
       {/* 출발선 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[-HALF_STRAIGHT, 0.014, RADIUS]}>

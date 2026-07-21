@@ -233,7 +233,7 @@ export default function SchoolHallModal({
           )}
           <div className="min-w-0">
             <div className="text-base font-black text-white truncate">{schoolName}</div>
-            <div className="text-[10px] text-white opacity-80">현관에 들어왔어요</div>
+            <div className="text-[12px] text-white opacity-80">현관에 들어왔어요</div>
           </div>
           <button
             onClick={onClose}
@@ -250,7 +250,7 @@ export default function SchoolHallModal({
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className="flex-1 rounded-xl py-2 text-[11px] font-bold transition-all"
+              className="flex-1 rounded-xl py-2 text-[13px] font-bold transition-all"
               style={{
                 background: tab === t.key ? 'var(--color-primary)' : 'white',
                 color: tab === t.key ? 'white' : '#8A7A5F',
@@ -262,8 +262,8 @@ export default function SchoolHallModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {err && <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{err}</div>}
-          {busy && <div className="text-[11px] mb-2" style={{ color: '#A89880' }}>불러오는 중...</div>}
+          {err && <div className="text-[13px] font-bold mb-2" style={{ color: '#C0392B' }}>{err}</div>}
+          {busy && <div className="text-[13px] mb-2" style={{ color: '#A89880' }}>불러오는 중...</div>}
 
           {/* ---- 학교 소개 ---- */}
           {tab === 'about' && (
@@ -284,13 +284,13 @@ export default function SchoolHallModal({
                   .map(([emoji, label, v]) => (
                     <div key={label} className="flex items-center gap-3 rounded-2xl px-4 py-2.5" style={{ background: 'white' }}>
                       <span className="text-lg">{emoji}</span>
-                      <span className="text-[11px] font-bold shrink-0" style={{ color: '#A89880' }}>{label}</span>
+                      <span className="text-[13px] font-bold shrink-0" style={{ color: '#A89880' }}>{label}</span>
                       <span className="text-sm ml-auto text-right" style={{ color: '#3A3226' }}>{v}</span>
                     </div>
                   ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-[12px] leading-relaxed" style={{ color: '#A89880' }}>
+              <div className="text-center py-8 text-[14px] leading-relaxed" style={{ color: '#A89880' }}>
                 아직 학교 소개가 없어요.<br />
                 선생님이 관리자 화면에서 채워주시면 여기에 보여요.
               </div>
@@ -313,13 +313,13 @@ export default function SchoolHallModal({
                   ))}
                 </div>
                 {meal.kcal && (
-                  <div className="text-[12px] mt-3 text-center" style={{ color: '#A89880' }}>
+                  <div className="text-[14px] mt-3 text-center" style={{ color: '#A89880' }}>
                     {meal.kcal}
                   </div>
                 )}
               </div>
             ) : !busy ? (
-              <div className="text-center py-8 text-[13px] leading-relaxed" style={{ color: '#A89880' }}>
+              <div className="text-center py-8 text-[15px] leading-relaxed" style={{ color: '#A89880' }}>
                 오늘은 급식 정보가 없어요.<br />
                 주말이나 방학일 수 있어요.
               </div>
@@ -349,7 +349,7 @@ export default function SchoolHallModal({
                   <button
                     onClick={addNotice}
                     disabled={busy || !nTitle.trim()}
-                    className="rounded-xl py-2 text-xs font-bold text-white disabled:opacity-40"
+                    className="rounded-xl py-2 text-sm font-bold text-white disabled:opacity-40"
                     style={{ background: 'var(--color-primary)' }}
                   >
                     공지 올리기
@@ -357,13 +357,13 @@ export default function SchoolHallModal({
                 </div>
               )}
               {notices.length === 0 && !busy && (
-                <div className="text-center py-8 text-[12px]" style={{ color: '#A89880' }}>아직 공지가 없어요</div>
+                <div className="text-center py-8 text-[14px]" style={{ color: '#A89880' }}>아직 공지가 없어요</div>
               )}
               {notices.map((n) => (
                 <div key={n.id} className="rounded-2xl px-4 py-3" style={{ background: 'white' }}>
                   <div className="text-sm font-bold mb-1" style={{ color: '#3A3226' }}>📢 {n.title}</div>
-                  {n.body && <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#5A4F3F' }}>{n.body}</div>}
-                  <div className="text-[10px] mt-1.5" style={{ color: '#A89880' }}>{n.authorName}</div>
+                  {n.body && <div className="text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: '#5A4F3F' }}>{n.body}</div>}
+                  <div className="text-[12px] mt-1.5" style={{ color: '#A89880' }}>{n.authorName}</div>
                 </div>
               ))}
             </div>
@@ -372,7 +372,7 @@ export default function SchoolHallModal({
           {/* ---- 건의함 ---- */}
           {tab === 'suggest' && (
             <div className="flex flex-col gap-2.5">
-              <div className="text-[10px] leading-relaxed" style={{ color: '#A89880' }}>
+              <div className="text-[12px] leading-relaxed" style={{ color: '#A89880' }}>
                 건의는 <b>선생님과 나만</b> 볼 수 있어요. 다른 친구에게는 안 보여요.
               </div>
               {user && (
@@ -388,7 +388,7 @@ export default function SchoolHallModal({
                   <button
                     onClick={addSuggestion}
                     disabled={busy || !sBody.trim()}
-                    className="rounded-xl py-2 text-xs font-bold text-white disabled:opacity-40"
+                    className="rounded-xl py-2 text-sm font-bold text-white disabled:opacity-40"
                     style={{ background: 'var(--color-primary)' }}
                   >
                     건의 보내기
@@ -396,7 +396,7 @@ export default function SchoolHallModal({
                 </div>
               )}
               {suggestions.length === 0 && !busy && (
-                <div className="text-center py-6 text-[12px]" style={{ color: '#A89880' }}>아직 건의가 없어요</div>
+                <div className="text-center py-6 text-[14px]" style={{ color: '#A89880' }}>아직 건의가 없어요</div>
               )}
               {suggestions.map((s) => (
                 <SuggestionCard
@@ -414,7 +414,7 @@ export default function SchoolHallModal({
           {/* ---- 앨범 ---- */}
           {tab === 'album' && (
             album.length === 0 && !busy ? (
-              <div className="text-center py-8 text-[12px]" style={{ color: '#A89880' }}>
+              <div className="text-center py-8 text-[14px]" style={{ color: '#A89880' }}>
                 아직 전시된 작품이 없어요
               </div>
             ) : (
@@ -426,8 +426,8 @@ export default function SchoolHallModal({
                       <img src={a.thumbnailUrl} alt={a.title} className="h-full w-full object-cover" />
                     </div>
                     <div className="px-1.5 py-1">
-                      <div className="text-[10px] font-bold truncate" style={{ color: '#3A3226' }}>{a.title}</div>
-                      <div className="text-[9px] truncate" style={{ color: '#A89880' }}>{a.artistName}</div>
+                      <div className="text-[12px] font-bold truncate" style={{ color: '#3A3226' }}>{a.title}</div>
+                      <div className="text-[11px] truncate" style={{ color: '#A89880' }}>{a.artistName}</div>
                     </div>
                   </div>
                 ))}
@@ -452,17 +452,17 @@ function SuggestionCard({
   const [text, setText] = useState('');
   return (
     <div className="rounded-2xl px-4 py-3" style={{ background: 'white' }}>
-      <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#3A3226' }}>{item.body}</div>
+      <div className="text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: '#3A3226' }}>{item.body}</div>
       <div className="flex items-center gap-2 mt-1.5">
-        <span className="text-[10px]" style={{ color: '#A89880' }}>{item.authorName}</span>
+        <span className="text-[12px]" style={{ color: '#A89880' }}>{item.authorName}</span>
         {canDelete && (
-          <button onClick={onDelete} className="ml-auto text-[10px] underline" style={{ color: '#C0392B' }}>
+          <button onClick={onDelete} className="ml-auto text-[12px] underline" style={{ color: '#C0392B' }}>
             지우기
           </button>
         )}
       </div>
       {item.reply ? (
-        <div className="mt-2 rounded-xl px-3 py-2 text-[12px] leading-relaxed" style={{ background: '#EAF7EA', color: '#3A5B3A' }}>
+        <div className="mt-2 rounded-xl px-3 py-2 text-[14px] leading-relaxed" style={{ background: '#EAF7EA', color: '#3A5B3A' }}>
           💬 {item.reply}
         </div>
       ) : canReply ? (
@@ -471,13 +471,13 @@ function SuggestionCard({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="답변 달기"
-            className="flex-1 min-w-0 rounded-xl px-3 py-1.5 text-[12px] outline-none"
+            className="flex-1 min-w-0 rounded-xl px-3 py-1.5 text-[14px] outline-none"
             style={{ background: '#F7F2E8', color: '#3A3226' }}
           />
           <button
             onClick={() => { onReply(text); setText(''); }}
             disabled={!text.trim()}
-            className="shrink-0 rounded-xl px-3 text-[11px] font-bold text-white disabled:opacity-40"
+            className="shrink-0 rounded-xl px-3 text-[13px] font-bold text-white disabled:opacity-40"
             style={{ background: 'var(--color-primary)' }}
           >
             등록

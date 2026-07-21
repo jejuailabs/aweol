@@ -88,7 +88,7 @@ function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
         <div
           style={{
             background: 'rgba(255,248,231,0.92)', color: '#6B5B43',
-            fontWeight: 800, fontSize: '11px', padding: '3px 9px',
+            fontWeight: 800, fontSize: '14px', padding: '3px 9px',
             borderRadius: '999px', whiteSpace: 'nowrap',
             fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
           }}

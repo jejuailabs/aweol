@@ -97,7 +97,7 @@ export default function ShopPage() {
       <div className="px-4 pt-8 pb-24 mx-auto max-w-[960px] text-center">
         <div className="text-5xl mb-3">🛒</div>
         <h1 className="text-lg font-bold mb-2" style={{ color: 'var(--color-text-main)' }}>꾸미기 상점</h1>
-        <p className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+        <p className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
           로그인하면 모은 도장으로 아바타를 꾸밀 수 있어요
         </p>
       </div>
@@ -107,7 +107,7 @@ export default function ShopPage() {
   return (
     <div className="px-4 pt-8 pb-24 mx-auto max-w-[960px]">
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>🛒 꾸미기 상점</h1>
-      <p className="text-xs mb-5" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-sm mb-5" style={{ color: 'var(--color-text-sub)' }}>
         {isStaff
           ? '아이들에게 찍어줄 도장을 챙기고, 내 아바타도 꾸며보세요'
           : '숙제를 내고 검사를 받으면 도장이 쌓여요!'}
@@ -125,7 +125,7 @@ export default function ShopPage() {
       {sections.map((sec) => (
         <div key={sec.key} className="mb-7">
           <h2 className="text-sm font-bold mb-0.5" style={{ color: 'var(--color-text-main)' }}>{sec.title}</h2>
-          <p className="text-[10px] mb-3" style={{ color: 'var(--color-text-sub)' }}>{sec.desc}</p>
+          <p className="text-[12px] mb-3" style={{ color: 'var(--color-text-sub)' }}>{sec.desc}</p>
           <div className="grid grid-cols-4 gap-3">
             {SHOP_ITEMS.filter((i) => i.category === sec.key).map((item) => {
               const has = owned.has(item.id);
@@ -145,17 +145,17 @@ export default function ShopPage() {
                   }}
                 >
                   <span className="text-3xl">{item.emoji}</span>
-                  <span className="text-[10px] font-bold" style={{ color: 'var(--color-text-main)' }}>{item.label}</span>
+                  <span className="text-[12px] font-bold" style={{ color: 'var(--color-text-main)' }}>{item.label}</span>
                   {item.consumable ? (
-                    <span className="text-[9px] font-bold" style={{ color: count > 0 ? 'var(--color-primary)' : 'var(--color-text-sub)' }}>
+                    <span className="text-[11px] font-bold" style={{ color: count > 0 ? 'var(--color-primary)' : 'var(--color-text-sub)' }}>
                       {count > 0 ? `${count}개 있어요` : `🏅 ${item.price}`}
                     </span>
                   ) : has ? (
-                    <span className="text-[9px] font-bold" style={{ color: on ? 'var(--color-primary)' : 'var(--color-text-sub)' }}>
+                    <span className="text-[11px] font-bold" style={{ color: on ? 'var(--color-primary)' : 'var(--color-text-sub)' }}>
                       {on ? '착용 중' : item.category === 'stamp' ? '보유' : '가지고 있어요'}
                     </span>
                   ) : (
-                    <span className="text-[9px]" style={{ color: 'var(--color-text-sub)' }}>
+                    <span className="text-[11px]" style={{ color: 'var(--color-text-sub)' }}>
                       {item.price === 0 ? '무료' : `🏅 ${item.price}`}
                     </span>
                   )}
@@ -168,7 +168,7 @@ export default function ShopPage() {
 
       {msg && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full px-4 py-2 text-[12px] font-bold text-white"
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full px-4 py-2 text-[14px] font-bold text-white"
           style={{ background: 'rgba(20,20,25,0.9)' }}
         >
           {msg}
@@ -189,7 +189,7 @@ export default function ShopPage() {
           >
             <div className="text-6xl mb-3">{selected.emoji}</div>
             <div className="font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>{selected.label}</div>
-            <div className="text-xs mb-4" style={{ color: 'var(--color-text-sub)' }}>
+            <div className="text-sm mb-4" style={{ color: 'var(--color-text-sub)' }}>
               {selected.price === 0 ? '무료' : `🏅 도장 ${selected.price}개`}
             </div>
 
@@ -197,7 +197,7 @@ export default function ShopPage() {
             {selected.consumable ? (
               <>
                 {selected.desc && (
-                  <div className="rounded-xl p-3 text-xs mb-3 leading-relaxed" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
+                  <div className="rounded-xl p-3 text-sm mb-3 leading-relaxed" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
                     {selected.desc}
                     {(counts[selected.id] ?? 0) > 0 && (
                       <b style={{ color: 'var(--color-primary)' }}> · 지금 {counts[selected.id]}개</b>
@@ -215,7 +215,7 @@ export default function ShopPage() {
               </>
             ) : owned.has(selected.id) ? (
               selected.category === 'stamp' ? (
-                <div className="rounded-xl p-3 text-xs mb-4" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
+                <div className="rounded-xl p-3 text-sm mb-4" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
                   숙제 검사할 때 이 도장을 찍어줄 수 있어요 💮
                 </div>
               ) : (
@@ -242,7 +242,7 @@ export default function ShopPage() {
                 {busy ? '가져오는 중...' : selected.price === 0 ? '받기' : '사기'}
               </button>
             ) : (
-              <div className="rounded-xl p-3 text-xs mb-4" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
+              <div className="rounded-xl p-3 text-sm mb-4" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
                 도장이 {selected.price - stamps}개 모자라요. 숙제를 내고 검사를 받아보세요 📝
               </div>
             )}

@@ -63,8 +63,8 @@ export default function ShareButton({
         aria-label="퍼가기"
         className={
           variant === 'floating'
-            ? 'ac-btn shrink-0 px-3 py-2 text-xs font-bold'
-            : 'rounded-full px-3 py-1.5 text-[11px] font-bold'
+            ? 'ac-btn shrink-0 px-3 py-2 text-sm font-bold'
+            : 'rounded-full px-3 py-1.5 text-[13px] font-bold'
         }
         style={{
           background: 'rgba(255,255,255,0.9)',
@@ -88,12 +88,12 @@ export default function ShareButton({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-sm font-black mb-1" style={{ color: '#3A3226' }}>🔗 퍼가기</div>
-            <div className="text-[11px] mb-3 leading-relaxed" style={{ color: '#A89880' }}>
+            <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#A89880' }}>
               {title}
             </div>
 
             <div
-              className="rounded-xl px-3 py-2 mb-2 text-[11px] break-all"
+              className="rounded-xl px-3 py-2 mb-2 text-[13px] break-all"
               style={{ background: 'white', color: '#6B5B43' }}
             >
               {href}
@@ -101,7 +101,7 @@ export default function ShareButton({
 
             <button
               onClick={copy}
-              className="w-full rounded-xl py-2.5 mb-2 text-[13px] font-bold text-white"
+              className="w-full rounded-xl py-2.5 mb-2 text-[15px] font-bold text-white"
               style={{ background: copied ? '#3BAF9F' : 'var(--color-primary)' }}
             >
               {copied ? '복사했어요!' : '링크 복사하기'}
@@ -112,7 +112,7 @@ export default function ShareButton({
                 href={`https://twitter.com/intent/tweet?text=${enc(title)}&url=${enc(href)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 rounded-xl py-2.5 text-center text-[12px] font-bold"
+                className="flex-1 rounded-xl py-2.5 text-center text-[14px] font-bold"
                 style={{ background: '#111', color: 'white' }}
               >
                 X
@@ -121,7 +121,7 @@ export default function ShareButton({
                 href={`https://www.facebook.com/sharer/sharer.php?u=${enc(href)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 rounded-xl py-2.5 text-center text-[12px] font-bold text-white"
+                className="flex-1 rounded-xl py-2.5 text-center text-[14px] font-bold text-white"
                 style={{ background: '#1877F2' }}
               >
                 페이스북
@@ -130,7 +130,7 @@ export default function ShareButton({
 
             <button
               onClick={() => setOpen(false)}
-              className="w-full rounded-xl py-2 text-[12px] font-bold"
+              className="w-full rounded-xl py-2 text-[14px] font-bold"
               style={{ background: 'rgba(0,0,0,0.05)', color: '#8A7A5F' }}
             >
               닫기

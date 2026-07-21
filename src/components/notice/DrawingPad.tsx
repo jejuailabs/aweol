@@ -113,14 +113,14 @@ export default function DrawingPad({ onChange }: { onChange: (blob: Blob | null)
         ))}
         <button
           onClick={() => setErasing((v) => !v)}
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold"
+          className="rounded-full px-2.5 py-1 text-[12px] font-bold"
           style={{ background: erasing ? '#4A90D9' : '#F1EADB', color: erasing ? 'white' : '#8A7A5F' }}
         >
           🧽 지우개
         </button>
         <button
           onClick={clearAll}
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold"
+          className="rounded-full px-2.5 py-1 text-[12px] font-bold"
           style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
         >
           전체 지우기
@@ -139,7 +139,7 @@ export default function DrawingPad({ onChange }: { onChange: (blob: Blob | null)
         style={{ background: 'white', border: '2px solid #E0D6C2', touchAction: 'none', aspectRatio: `${W} / ${H}` }}
       />
       {!dirty && (
-        <div className="text-[10px] mt-1 text-center" style={{ color: '#A89880' }}>
+        <div className="text-[12px] mt-1 text-center" style={{ color: '#A89880' }}>
           손가락이나 마우스로 그려보세요
         </div>
       )}

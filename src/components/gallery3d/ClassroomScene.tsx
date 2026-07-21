@@ -260,8 +260,8 @@ function AddActivityPoster({
           >
             +
           </div>
-          <div style={{ fontWeight: 800, fontSize: '16px', color: '#7A6A52' }}>새 활동 만들기</div>
-          <div style={{ fontSize: '11px', color: '#A89880', lineHeight: 1.3, textAlign: 'center' }}>
+          <div style={{ fontWeight: 800, fontSize: '19px', color: '#7A6A52' }}>새 활동 만들기</div>
+          <div style={{ fontSize: '14px', color: '#A89880', lineHeight: 1.3, textAlign: 'center' }}>
             수업 이름을 넣고 작품을 전시해요
           </div>
         </button>
@@ -319,7 +319,7 @@ function ActivityPoster({
               {activity.emoji}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '17px', color: '#6B5B43', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontWeight: 800, fontSize: '20px', color: '#6B5B43', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {activity.title}
               </div>
               <div style={{ fontSize: '10.5px', color: '#A89880', marginTop: '2px' }}>{activity.date}</div>
@@ -331,7 +331,7 @@ function ActivityPoster({
           <div
             style={{
               marginTop: 'auto', background: activity.color, color: 'white', fontWeight: 800,
-              fontSize: '12px', padding: '7px 0', textAlign: 'center', letterSpacing: '0.02em',
+              fontSize: '15px', padding: '7px 0', textAlign: 'center', letterSpacing: '0.02em',
             }}
           >
             전시실 입장 →
@@ -392,7 +392,7 @@ function Desks() {
                 <Html position={[0, 1.15, 0.5]} center pointerEvents="none" zIndexRange={[6, 0]}>
                   <div
                     style={{
-                      background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '12px',
+                      background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',
                       padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
                       fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
                       boxShadow: '0 3px 8px rgba(0,0,0,0.2)',
@@ -555,7 +555,7 @@ export default function ClassroomScene({
           onClick={() => standUp()}
           style={{
             position: 'absolute', left: '50%', bottom: '96px', transform: 'translateX(-50%)',
-            background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '14px',
+            background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '17px',
             padding: '10px 22px', borderRadius: '999px', border: '3px solid #EFE3CB',
             boxShadow: '0 4px 0 #E3D5B8, 0 8px 18px rgba(0,0,0,0.2)', cursor: 'pointer',
           }}

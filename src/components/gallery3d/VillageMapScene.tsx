@@ -75,7 +75,7 @@ function Buildings({ list }: { list: VillageData['b'] }) {
                 <div
                   style={{
                     background: 'rgba(255,248,231,0.94)', color: '#5B4A3B',
-                    fontWeight: 800, fontSize: '11px', padding: '3px 10px',
+                    fontWeight: 800, fontSize: '14px', padding: '3px 10px',
                     borderRadius: '999px', whiteSpace: 'nowrap',
                     fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
                   }}
@@ -242,7 +242,7 @@ export default function VillageMapScene({
           <Html position={[0, 9, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
             <div
               style={{
-                background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '14px',
+                background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '17px',
                 padding: '7px 18px', borderRadius: '12px', whiteSpace: 'nowrap',
                 fontFamily: 'Pretendard, sans-serif', border: '3px solid #B08860',
                 boxShadow: '0 4px 0 #9C7448', userSelect: 'none',
@@ -259,7 +259,7 @@ export default function VillageMapScene({
             <div
               style={{
                 background: 'rgba(255,255,255,0.85)', color: '#6B5B43',
-                fontWeight: 700, fontSize: '10px', padding: '2px 7px',
+                fontWeight: 700, fontSize: '13px', padding: '2px 7px',
                 borderRadius: '999px', whiteSpace: 'nowrap',
                 fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
               }}

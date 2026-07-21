@@ -276,7 +276,7 @@ export default function RosterPage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => router.push(`/admin/${schoolId}`)}
-          className="text-xs"
+          className="text-sm"
           style={{ color: 'var(--color-text-sub)' }}
         >
           ← 대시보드
@@ -290,7 +290,7 @@ export default function RosterPage() {
       <div className="flex gap-2 mb-4 overflow-x-auto">
         {classes.length === 0 && (
           <div
-            className="rounded-2xl px-4 py-3 text-[13px] leading-relaxed"
+            className="rounded-2xl px-4 py-3 text-[15px] leading-relaxed"
             style={{ background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }}
           >
             ℹ️ 아직 맡은 반이 없어요. 총관리자에게 담임 배정을 요청하면
@@ -321,7 +321,7 @@ export default function RosterPage() {
           <button
             key={t.key}
             onClick={() => setMode(t.key)}
-            className="flex-1 rounded-xl py-2.5 text-xs font-bold transition-all"
+            className="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all"
             style={{
               background: mode === t.key ? 'var(--color-surface)' : 'transparent',
               color: mode === t.key ? 'var(--color-text-main)' : 'var(--color-text-sub)',
@@ -367,14 +367,14 @@ export default function RosterPage() {
               추가
             </button>
           </div>
-          <p className="text-[10px] mb-3" style={{ color: 'var(--color-text-sub)' }}>
+          <p className="text-[12px] mb-3" style={{ color: 'var(--color-text-sub)' }}>
             번호를 비우면 {nextNumber}번으로 자동 지정돼요
           </p>
 
           {/* 여러 명 붙여넣기 */}
           <button
             onClick={() => setShowBulk((v) => !v)}
-            className="w-full rounded-xl py-2.5 text-xs font-bold"
+            className="w-full rounded-xl py-2.5 text-sm font-bold"
             style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
           >
             {showBulk ? '▲ 접기' : '📋 여러 명 한 번에 붙여넣기'}
@@ -391,7 +391,7 @@ export default function RosterPage() {
                 style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
               />
               {parsedBulk.length > 0 && (
-                <div className="text-[11px] mt-1.5 mb-2 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[13px] mt-1.5 mb-2 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
                   {parsedBulk.length}명 인식됨 ·{' '}
                   {parsedBulk.slice(0, 5).map((p) => p.name).join(', ')}
                   {parsedBulk.length > 5 ? ` 외 ${parsedBulk.length - 5}명` : ''}
@@ -400,7 +400,7 @@ export default function RosterPage() {
               <button
                 onClick={handleBulkAdd}
                 disabled={parsedBulk.length === 0 || saving}
-                className="w-full rounded-xl py-2.5 text-xs font-bold text-white disabled:opacity-40"
+                className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
                 style={{ background: 'var(--color-primary)' }}
               >
                 {saving ? '등록 중...' : `${parsedBulk.length}명 등록하기`}
@@ -410,7 +410,7 @@ export default function RosterPage() {
 
           {message && (
             <div
-              className="text-xs font-bold mt-2.5"
+              className="text-sm font-bold mt-2.5"
               style={{ color: message.includes('오류') || message.includes('이미') ? '#E8604C' : 'var(--color-primary)' }}
             >
               {message}
@@ -427,21 +427,21 @@ export default function RosterPage() {
               <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
                 엑셀로 명부 등록
               </div>
-              <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                 &ldquo;번호&rdquo;, &ldquo;이름&rdquo; 컬럼이 포함된 엑셀 파일
               </div>
             </div>
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="rounded-xl px-4 py-2 text-xs font-bold text-white"
+              className="rounded-xl px-4 py-2 text-sm font-bold text-white"
               style={{ background: 'var(--color-primary)' }}
             >
               {uploading ? '처리 중...' : '파일 선택'}
             </button>
           </div>
           {message && (
-            <div className="text-xs font-bold mt-2" style={{ color: message.includes('오류') ? '#FF6B6B' : 'var(--color-primary)' }}>
+            <div className="text-sm font-bold mt-2" style={{ color: message.includes('오류') ? '#FF6B6B' : 'var(--color-primary)' }}>
               {message}
             </div>
           )}
@@ -449,10 +449,10 @@ export default function RosterPage() {
           {/* 새 명부에 없는 기존 학생 — 자동 삭제하지 않고 확인받는다 */}
           {orphanStudents.length > 0 && (
             <div className="mt-3 rounded-xl p-3.5 text-left" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
-              <div className="text-xs font-bold mb-1" style={{ color: '#8A6D2F' }}>
+              <div className="text-sm font-bold mb-1" style={{ color: '#8A6D2F' }}>
                 ⚠️ 새 명부에 없는 학생 {orphanStudents.length}명
               </div>
-              <div className="text-[11px] mb-2.5 leading-relaxed" style={{ color: '#A08A5B' }}>
+              <div className="text-[13px] mb-2.5 leading-relaxed" style={{ color: '#A08A5B' }}>
                 {orphanStudents.map((o) => o.name).join(', ')}
                 <br />
                 전학·오타일 수 있어 자동으로 지우지 않았어요. 확인 후 삭제하세요.
@@ -460,14 +460,14 @@ export default function RosterPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleDeleteOrphans}
-                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
+                  className="rounded-lg px-3 py-1.5 text-[13px] font-bold text-white"
                   style={{ background: '#E8604C' }}
                 >
                   명단에서 삭제
                 </button>
                 <button
                   onClick={() => setOrphanStudents([])}
-                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold"
+                  className="rounded-lg px-3 py-1.5 text-[13px] font-bold"
                   style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
                 >
                   그대로 두기
@@ -486,7 +486,7 @@ export default function RosterPage() {
           <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
             등록된 학생이 없습니다
           </div>
-          <div className="text-[11px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-[13px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
             위에서 직접 입력하거나 엑셀로 등록해보세요
           </div>
         </div>
@@ -495,14 +495,14 @@ export default function RosterPage() {
           {/* 학생코드 안내 + 발급 */}
           <div className="px-4 py-3" style={{ background: '#EAF4FF', borderBottom: '1px solid var(--color-surface)' }}>
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="text-xs font-bold" style={{ color: '#2E6DA4' }}>
+              <div className="text-sm font-bold" style={{ color: '#2E6DA4' }}>
                 🔑 학생코드 {students.filter((s) => s.code).length}/{students.length}
               </div>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => issueCodes(false)}
                   disabled={issuing}
-                  className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                  className="rounded-lg px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50"
                   style={{ background: '#4A90D9' }}
                 >
                   {issuing ? '발급 중...' : '코드 발급'}
@@ -511,7 +511,7 @@ export default function RosterPage() {
                   <button
                     onClick={() => issueCodes(true)}
                     disabled={issuing}
-                    className="rounded-lg px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+                    className="rounded-lg px-3 py-1.5 text-[13px] font-bold disabled:opacity-50"
                     style={{ background: 'white', color: '#E8604C' }}
                   >
                     전체 재발급
@@ -519,14 +519,14 @@ export default function RosterPage() {
                 )}
               </div>
             </div>
-            <div className="text-[10px] leading-relaxed" style={{ color: '#5B8CB8' }}>
+            <div className="text-[12px] leading-relaxed" style={{ color: '#5B8CB8' }}>
               학생은 가입 절차 없이 이 코드만 입력하면 우리 반에 들어옵니다.
               학부모가 같은 코드를 넣으면 자녀와 연결돼요. 재발급하면 이전 코드는 즉시 무효가 됩니다.
             </div>
           </div>
 
           <div
-            className="flex px-4 py-2.5 text-[10px] font-bold"
+            className="flex px-4 py-2.5 text-[12px] font-bold"
             style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
           >
             <div className="w-10">번호</div>
@@ -540,7 +540,7 @@ export default function RosterPage() {
               className="flex items-center px-4 py-2.5 border-t text-sm"
               style={{ borderColor: 'var(--color-surface)', color: 'var(--color-text-main)' }}
             >
-              <div className="w-10 text-xs font-bold" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="w-10 text-sm font-bold" style={{ color: 'var(--color-text-sub)' }}>
                 {s.number}
               </div>
               <div className="flex-1 min-w-0">
@@ -566,7 +566,7 @@ export default function RosterPage() {
                 {s.code ? (
                   <div className="flex items-center gap-1">
                     <span
-                      className="rounded-md px-1.5 py-0.5 text-[11px] font-mono font-bold tracking-wider"
+                      className="rounded-md px-1.5 py-0.5 text-[13px] font-mono font-bold tracking-wider"
                       style={{ background: '#EAF4FF', color: '#2E6DA4' }}
                     >
                       {s.code}
@@ -574,13 +574,13 @@ export default function RosterPage() {
                     {s.linkedUid && <span title="계정 연결됨">✅</span>}
                   </div>
                 ) : (
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>미발급</span>
+                  <span className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>미발급</span>
                 )}
               </div>
               <div className="w-16 flex justify-end gap-1">
                 <button
                   onClick={() => { setEditingNum(s.number); setEditName(s.name); }}
-                  className="w-7 h-7 rounded-lg text-[11px]"
+                  className="w-7 h-7 rounded-lg text-[13px]"
                   style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
                   title="이름 수정"
                 >
@@ -588,7 +588,7 @@ export default function RosterPage() {
                 </button>
                 <button
                   onClick={() => handleDeleteStudent(s.number)}
-                  className="w-7 h-7 rounded-lg text-[11px]"
+                  className="w-7 h-7 rounded-lg text-[13px]"
                   style={{ background: 'var(--color-surface)', color: '#E8604C' }}
                   title="삭제"
                 >
@@ -598,7 +598,7 @@ export default function RosterPage() {
             </div>
           ))}
           <div
-            className="px-4 py-2.5 text-[10px] border-t text-right"
+            className="px-4 py-2.5 text-[12px] border-t text-right"
             style={{ borderColor: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
           >
             총 {students.length}명

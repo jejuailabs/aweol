@@ -251,7 +251,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
               <span className="text-sm font-bold" style={{ color: 'var(--color-text-sub)' }}>
                 {isTeacher ? '작품 사진을 한꺼번에 선택하세요' : '작품 사진을 선택하세요'}
               </span>
-              <span className="text-[10px] text-center px-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+              <span className="text-[12px] text-center px-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
                 {isTeacher
                   ? '여러 장을 한 번에 고를 수 있어요 · AI가 선예도·조명을 자동 보정합니다'
                   : 'AI가 선예도·조명을 자동 보정해요'}
@@ -262,7 +262,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
               {/* 교사용 일괄 도구 */}
               {isTeacher && (
                 <div className="rounded-2xl p-3 mb-3" style={{ background: 'var(--color-surface-soft)' }}>
-                  <div className="text-[11px] font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>
+                  <div className="text-[13px] font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>
                     ⚡ 한 번에 채우기
                   </div>
                   <div className="flex gap-2 mb-2">
@@ -271,13 +271,13 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                       value={bulkTitle}
                       onChange={(e) => setBulkTitle(e.target.value)}
                       placeholder="공통 작품명 (예: 봄 풍경)"
-                      className="flex-1 min-w-0 rounded-lg px-3 py-2 text-xs outline-none"
+                      className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm outline-none"
                       style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                     />
                     <button
                       onClick={applyBulkTitle}
                       disabled={!bulkTitle.trim()}
-                      className="shrink-0 rounded-lg px-3 text-xs font-bold text-white disabled:opacity-40"
+                      className="shrink-0 rounded-lg px-3 text-sm font-bold text-white disabled:opacity-40"
                       style={{ background: 'var(--color-primary)' }}
                     >
                       전체 적용
@@ -286,7 +286,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                   <button
                     onClick={applyRosterInOrder}
                     disabled={roster.length === 0}
-                    className="w-full rounded-lg py-2 text-xs font-bold disabled:opacity-40"
+                    className="w-full rounded-lg py-2 text-sm font-bold disabled:opacity-40"
                     style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                   >
                     {roster.length > 0
@@ -322,7 +322,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                           </div>
                         )}
                         <span
-                          className="absolute top-0.5 left-0.5 rounded-md px-1 text-[9px] font-bold text-white"
+                          className="absolute top-0.5 left-0.5 rounded-md px-1 text-[11px] font-bold text-white"
                           style={{ background: 'rgba(0,0,0,0.55)' }}
                         >
                           {idx + 1}
@@ -338,12 +338,12 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                             value={it.artistName}
                             onChange={(e) => updateItem(it.id, { artistName: e.target.value })}
                             placeholder="작가 이름 *"
-                            className="flex-1 min-w-0 rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                            className="flex-1 min-w-0 rounded-lg px-2.5 py-1.5 text-sm outline-none"
                             style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                           />
                           <button
                             onClick={() => removeItem(it.id)}
-                            className="shrink-0 w-7 rounded-lg text-xs"
+                            className="shrink-0 w-7 rounded-lg text-sm"
                             style={{ background: 'var(--color-surface)', color: '#E8604C' }}
                           >
                             ✕
@@ -354,13 +354,13 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                           value={it.title}
                           onChange={(e) => updateItem(it.id, { title: e.target.value })}
                           placeholder="작품명 *"
-                          className="rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                          className="rounded-lg px-2.5 py-1.5 text-sm outline-none"
                           style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                         />
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => updateItem(it.id, { type: it.type === 'flat' ? 'sculpture' : 'flat' })}
-                            className="rounded-lg px-2 py-1 text-[10px] font-bold"
+                            className="rounded-lg px-2 py-1 text-[12px] font-bold"
                             style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
                           >
                             {it.type === 'flat' ? '🖼️ 평면' : '🏺 입체'}
@@ -368,7 +368,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                           {it.enhancedUrl && (
                             <button
                               onClick={() => updateItem(it.id, { useEnhanced: !it.useEnhanced })}
-                              className="rounded-lg px-2 py-1 text-[10px] font-bold"
+                              className="rounded-lg px-2 py-1 text-[12px] font-bold"
                               style={{
                                 background: it.useEnhanced ? 'var(--color-primary)' : 'var(--color-surface)',
                                 color: it.useEnhanced ? 'white' : 'var(--color-text-sub)',
@@ -378,7 +378,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                             </button>
                           )}
                           {it.status === 'failed' && (
-                            <span className="text-[10px]" style={{ color: '#C0392B' }}>보정 실패 · 원본 사용</span>
+                            <span className="text-[12px]" style={{ color: '#C0392B' }}>보정 실패 · 원본 사용</span>
                           )}
                         </div>
                       </div>
@@ -398,7 +398,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
 
               <button
                 onClick={() => fileRef.current?.click()}
-                className="w-full mt-2.5 rounded-xl py-2.5 text-xs font-bold border-2 border-dashed"
+                className="w-full mt-2.5 rounded-xl py-2.5 text-sm font-bold border-2 border-dashed"
                 style={{ borderColor: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
               >
                 + 사진 더 추가
@@ -420,7 +420,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
         {items.length > 0 && (
           <div className="px-5 pb-5 pt-2" style={{ borderTop: '1px solid var(--color-surface-soft)' }}>
             {!canSubmit && !uploading && (
-              <p className="text-[10px] text-center mb-2" style={{ color: 'var(--color-text-sub)' }}>
+              <p className="text-[12px] text-center mb-2" style={{ color: 'var(--color-text-sub)' }}>
                 {stillEnhancing
                   ? '✨ AI 보정 중이에요...'
                   : `이름·작품명을 모두 채워주세요 (${readyCount}/${items.length})`}
@@ -438,7 +438,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
                   ? `${items.length}점 바로 전시하기`
                   : `${items.length}점 제출하기`}
             </button>
-            <p className="text-[10px] text-center mt-2" style={{ color: 'var(--color-text-sub)' }}>
+            <p className="text-[12px] text-center mt-2" style={{ color: 'var(--color-text-sub)' }}>
               {isTeacher ? '선생님이 올린 작품은 바로 전시실에 걸려요' : '선생님 승인 후 전시실에 전시됩니다'}
             </p>
           </div>

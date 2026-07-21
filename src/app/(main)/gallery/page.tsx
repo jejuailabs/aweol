@@ -60,7 +60,7 @@ export default function GalleryPage() {
   return (
     <div className="px-4 pt-8 pb-24 mx-auto max-w-[960px]">
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>🖼️ 전체 갤러리</h1>
-      <p className="text-xs mb-5" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-sm mb-5" style={{ color: 'var(--color-text-sub)' }}>
         우리 학교 친구들의 모든 전시 작품을 한눈에 볼 수 있어요
       </p>
 
@@ -74,7 +74,7 @@ export default function GalleryPage() {
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className="rounded-full px-4 py-1.5 text-xs font-bold transition-all"
+            className="rounded-full px-4 py-1.5 text-sm font-bold transition-all"
             style={{
               background: filter === tab.key ? 'var(--color-primary)' : 'var(--color-surface-soft)',
               color: filter === tab.key ? 'white' : 'var(--color-text-sub)',
@@ -87,7 +87,7 @@ export default function GalleryPage() {
 
       {fetched && filtered.length === 0 && (
         <div
-          className="rounded-2xl p-10 text-center text-xs"
+          className="rounded-2xl p-10 text-center text-sm"
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
         >
           아직 전시된 작품이 없어요
@@ -112,8 +112,8 @@ export default function GalleryPage() {
               )}
             </div>
             <div className="p-2.5">
-              <div className="text-xs font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{art.title}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{art.artistName}</div>
+              <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{art.title}</div>
+              <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{art.artistName}</div>
             </div>
           </button>
         ))}

@@ -341,7 +341,7 @@ export default function AdminPage() {
         {isSuper ? '🏫 학교 관리자 대시보드' : '👩‍🏫 우리 반 관리'}
       </h1>
       <div className="flex items-center gap-2 mb-5">
-        <p className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+        <p className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
           {isSuper
             ? `${school?.name || schoolId} 전체 현황을 한눈에 봅니다`
             : '학생·학부모와 전시 내용을 관리합니다'}
@@ -349,7 +349,7 @@ export default function AdminPage() {
         {school && (
           <button
             onClick={() => setShowSettings(true)}
-            className="ml-auto shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold"
+            className="ml-auto shrink-0 rounded-full px-3 py-1.5 text-[13px] font-bold"
             style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
           >
             ⚙️ 학교 정보
@@ -368,7 +368,7 @@ export default function AdminPage() {
 
       {noOwnedClass && fetched && classes.length > 0 && (
         <div
-          className="rounded-2xl p-3.5 mb-4 text-[11px] leading-relaxed"
+          className="rounded-2xl p-3.5 mb-4 text-[13px] leading-relaxed"
           style={{ background: '#FFF6E5', border: '1px solid #F0D9A8', color: '#8A6D2F' }}
         >
           담당 반으로 지정된 학급이 없어 학교 전체를 표시하고 있어요.
@@ -386,7 +386,7 @@ export default function AdminPage() {
           <div key={s.label} className="rounded-2xl p-3.5 text-center" style={{ background: 'var(--color-surface-soft)' }}>
             <div className="text-lg mb-0.5">{s.icon}</div>
             <div className="text-xl font-bold" style={{ color: 'var(--color-text-main)' }}>{s.value}</div>
-            <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{s.label}</div>
+            <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -403,7 +403,7 @@ export default function AdminPage() {
             style={{ background: 'var(--color-surface-soft)', cursor: s.link ? 'pointer' : 'default' }}
           >
             <div className="text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{s.label}</div>
+            <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{s.label}</div>
           </button>
         ))}
       </div>
@@ -416,7 +416,7 @@ export default function AdminPage() {
       </div>
       {!members.readable ? (
         <div
-          className="rounded-2xl p-4 mb-6 text-[11px]"
+          className="rounded-2xl p-4 mb-6 text-[13px]"
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
         >
           구성원 정보를 불러올 권한이 없습니다.
@@ -431,9 +431,9 @@ export default function AdminPage() {
             <div key={g.label} className="rounded-2xl p-3.5" style={{ background: 'var(--color-surface-soft)' }}>
               <div className="text-lg mb-0.5">{g.icon}</div>
               <div className="text-xl font-bold" style={{ color: 'var(--color-text-main)' }}>{g.value}</div>
-              <div className="text-[10px] mb-1" style={{ color: 'var(--color-text-sub)' }}>{g.label}</div>
+              <div className="text-[12px] mb-1" style={{ color: 'var(--color-text-sub)' }}>{g.label}</div>
               {g.names.length > 0 && (
-                <div className="text-[9px] leading-snug break-keep" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[11px] leading-snug break-keep" style={{ color: 'var(--color-text-sub)' }}>
                   {g.names.slice(0, 3).join(', ')}
                   {g.names.length > 3 ? ` 외 ${g.names.length - 3}` : ''}
                 </div>
@@ -443,7 +443,7 @@ export default function AdminPage() {
         </div>
       )}
       {members.readable && (
-        <div className="text-[10px] mb-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        <div className="text-[12px] mb-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
           {members.pending > 0 && `· 역할 미지정 가입자 ${members.pending}명 `}
           {members.parents.length > 0 &&
             `· 자녀 연결된 학부모 ${members.parents.filter((p) => p.childCount > 0).length}/${members.parents.length}명 (연결 기능 준비 중)`}
@@ -455,7 +455,7 @@ export default function AdminPage() {
         <div className="text-sm font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
           🏘️ 우리 동네 만들기
         </div>
-        <div className="text-[11px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        <div className="text-[13px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
           학교 둘레 400m 를 지도에서 받아 <b>걸어다닐 수 있는 동네</b>로 만들어요.
           아이들은 만들어진 파일 하나만 받으니 몇 명이 들어와도 요금이 늘지 않아요.
           지도가 바뀌면 다시 눌러주세요.
@@ -488,7 +488,7 @@ export default function AdminPage() {
           {villageBusy ? '지도를 받는 중...' : '동네 만들기 (또는 다시 만들기)'}
         </button>
         {villageMsg && (
-          <div className="text-[11px] font-bold mt-2 leading-relaxed" style={{ color: 'var(--color-primary)' }}>
+          <div className="text-[13px] font-bold mt-2 leading-relaxed" style={{ color: 'var(--color-primary)' }}>
             {villageMsg}
           </div>
         )}
@@ -501,7 +501,7 @@ export default function AdminPage() {
         </h2>
         <button
           onClick={() => { setCreateMsg(null); setShowCreate(true); }}
-          className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md transition-transform hover:scale-105"
+          className="rounded-full px-4 py-1.5 text-sm font-bold text-white shadow-md transition-transform hover:scale-105"
           style={{ background: 'var(--color-primary)' }}
         >
           + 반 만들기
@@ -510,7 +510,7 @@ export default function AdminPage() {
 
       {fetched && visibleClasses.length === 0 && (
         <div
-          className="rounded-2xl p-8 text-center text-xs leading-relaxed"
+          className="rounded-2xl p-8 text-center text-sm leading-relaxed"
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
         >
           아직 만든 반이 없어요. &lsquo;+ 반 만들기&rsquo;로 첫 교실을 만들어보세요!<br />
@@ -521,7 +521,7 @@ export default function AdminPage() {
       {Object.entries(byGrade).map(([grade, list]) => (
         <div key={grade} className="mb-4">
           {isSuper && (
-            <div className="text-[11px] font-bold mb-1.5 px-1" style={{ color: 'var(--color-text-sub)' }}>
+            <div className="text-[13px] font-bold mb-1.5 px-1" style={{ color: 'var(--color-text-sub)' }}>
               {grade}학년 · {list.length}개 반
             </div>
           )}
@@ -547,7 +547,7 @@ export default function AdminPage() {
                       <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
                         {cls.grade}학년 {cls.classNumber}반
                       </div>
-                      <div className="text-[10px] truncate" style={{ color: 'var(--color-text-sub)' }}>
+                      <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
                         담임 {cls.teacherName} · 학생 {cls.studentCount}명 · 전시실 {cls.activityCount}개{cls.artworkCount >= 0 ? ` · 작품 ${cls.artworkCount}점` : ''}
                       </div>
                     </div>
@@ -555,7 +555,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     {cls.pendingCount > 0 && (
                       <span
-                        className="text-[10px] font-bold px-2 py-1 rounded-full"
+                        className="text-[12px] font-bold px-2 py-1 rounded-full"
                         style={{ background: '#E8A33C', color: 'white' }}
                       >
                         {cls.pendingCount} 대기
@@ -571,32 +571,32 @@ export default function AdminPage() {
                     <div className="flex gap-2 my-3">
                       <button
                         onClick={() => router.push(`/school/${schoolId}/class/${cls.id}/room`)}
-                        className="flex-1 rounded-xl py-2 text-[11px] font-bold"
+                        className="flex-1 rounded-xl py-2 text-[13px] font-bold"
                         style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                       >
                         🏫 교실 열기
                       </button>
                       <button
                         onClick={() => router.push(`/admin/${schoolId}/class/${cls.id}`)}
-                        className="flex-1 rounded-xl py-2 text-[11px] font-bold"
+                        className="flex-1 rounded-xl py-2 text-[13px] font-bold"
                         style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                       >
                         ⚙️ 학급 설정
                       </button>
                       <button
                         onClick={() => router.push(`/admin/${schoolId}/roster`)}
-                        className="flex-1 rounded-xl py-2 text-[11px] font-bold"
+                        className="flex-1 rounded-xl py-2 text-[13px] font-bold"
                         style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
                       >
                         📋 명부
                       </button>
                     </div>
 
-                    <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                    <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
                       전시실 {cls.activities.length}개
                     </div>
                     {cls.activities.length === 0 ? (
-                      <div className="text-[11px] py-3 text-center" style={{ color: 'var(--color-text-sub)' }}>
+                      <div className="text-[13px] py-3 text-center" style={{ color: 'var(--color-text-sub)' }}>
                         아직 전시실이 없어요. 교실 게시판의 ➕로 첫 수업을 만들어보세요.
                       </div>
                     ) : (
@@ -608,10 +608,10 @@ export default function AdminPage() {
                             className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left"
                             style={{ background: 'var(--color-surface)' }}
                           >
-                            <span className="text-xs font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
+                            <span className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
                               🖼️ {act.title}
                             </span>
-                            <span className="text-[10px] shrink-0 ml-2" style={{ color: 'var(--color-text-sub)' }}>
+                            <span className="text-[12px] shrink-0 ml-2" style={{ color: 'var(--color-text-sub)' }}>
                               {act.artworkCount >= 0 ? `작품 ${act.artworkCount}점` : '작품 …'}
                               {act.pendingCount > 0 && ` · 대기 ${act.pendingCount}`}
                             </span>
@@ -639,7 +639,7 @@ export default function AdminPage() {
         >
           <div className="text-2xl mb-2">✅</div>
           <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>작품 승인</div>
-          <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
             {totals.pending > 0 ? `${totals.pending}점 대기 중` : '대기 중인 작품 없음'}
           </div>
         </button>
@@ -650,7 +650,7 @@ export default function AdminPage() {
         >
           <div className="text-2xl mb-2">📋</div>
           <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>학생 명부</div>
-          <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
             직접 입력 / 엑셀 등록
           </div>
         </button>
@@ -663,7 +663,7 @@ export default function AdminPage() {
             >
               <div className="text-2xl mb-2">👩‍🏫</div>
               <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>선생님 승인</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
                 교사 신청 확인 후 권한 부여
               </div>
             </button>
@@ -674,7 +674,7 @@ export default function AdminPage() {
             >
               <div className="text-2xl mb-2">🔎</div>
               <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>접근 기록</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
                 작성자·IP 확인 (도용 추적)
               </div>
             </button>
@@ -697,13 +697,13 @@ export default function AdminPage() {
             <div className="text-center mb-5">
               <div className="text-3xl mb-1">🏫</div>
               <h3 className="text-base font-bold" style={{ color: 'var(--color-text-main)' }}>새 반 만들기</h3>
-              <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+              <p className="text-[13px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
                 만들면 학교 창문에 문패가 걸리고 빈 교실이 생겨요
               </p>
             </div>
 
             <div className="mb-3">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>학년</div>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>학년</div>
               <div className="grid grid-cols-6 gap-1.5">
                 {['1', '2', '3', '4', '5', '6'].map((g) => (
                   <button
@@ -722,7 +722,7 @@ export default function AdminPage() {
             </div>
 
             <div className="mb-3">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>반 번호</div>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>반 번호</div>
               <input
                 type="number"
                 min={1}
@@ -740,14 +740,14 @@ export default function AdminPage() {
               '이미 있어요' 를 듣는다 — 적기 전에 알 수 있어야 한다.
             */}
             {takenInGrade.length > 0 && (
-              <div className="mb-3 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="mb-3 text-[12px] leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
                 {newGrade}학년에 이미 있는 반: <b>{takenInGrade.join(', ')}반</b>
               </div>
             )}
 
             {isTaken && (
               <div
-                className="rounded-xl px-3 py-2 mb-3 text-[11px]"
+                className="rounded-xl px-3 py-2 mb-3 text-[13px]"
                 style={{ background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }}
               >
                 <b>ℹ️ {newGrade}학년 {newClassNum}반은 이미 있어요.</b> 다른 번호를 골라주세요.
@@ -755,7 +755,7 @@ export default function AdminPage() {
             )}
 
             <div className="mb-5">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>급훈 (선택)</div>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>급훈 (선택)</div>
               <input
                 type="text"
                 value={newMotto}
@@ -768,7 +768,7 @@ export default function AdminPage() {
 
             {createMsg && (
               <div
-                className="rounded-xl px-3 py-2.5 mb-3 text-[11px] leading-relaxed"
+                className="rounded-xl px-3 py-2.5 mb-3 text-[13px] leading-relaxed"
                 style={
                   createMsg.kind === 'info'
                     ? { background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }

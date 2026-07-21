@@ -97,7 +97,7 @@ export default function SchoolPetPanel({
   const bar = (label: string, emoji: string, v: number) => (
     <div className="flex items-center gap-2">
       <span className="text-sm w-5 text-center">{emoji}</span>
-      <span className="text-[10px] font-bold w-9 shrink-0" style={{ color: '#A89880' }}>{label}</span>
+      <span className="text-[12px] font-bold w-9 shrink-0" style={{ color: '#A89880' }}>{label}</span>
       <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: '#EFE6D4' }}>
         <div
           className="h-full rounded-full transition-all"
@@ -133,7 +133,7 @@ export default function SchoolPetPanel({
             <div className="text-base font-black text-white truncate">
               {kindLabel?.emoji} {pet.name}
             </div>
-            <div className="text-[10px] text-white opacity-85">
+            <div className="text-[12px] text-white opacity-85">
               우리 학교 {kindLabel?.label} · 함께 돌본 횟수 {pet.careCount}번
             </div>
           </div>
@@ -177,7 +177,7 @@ export default function SchoolPetPanel({
                   style={{ background: 'white' }}
                 >
                   <span className="text-2xl">{CARE_LABEL[k].emoji}</span>
-                  <span className="text-[10px] font-bold" style={{ color: '#8A7A5F' }}>
+                  <span className="text-[12px] font-bold" style={{ color: '#8A7A5F' }}>
                     {full ? '충분해요' : CARE_LABEL[k].label}
                   </span>
                 </button>
@@ -186,16 +186,16 @@ export default function SchoolPetPanel({
           </div>
 
           {!user && (
-            <div className="text-[10px] text-center mb-2" style={{ color: '#A89880' }}>
+            <div className="text-[12px] text-center mb-2" style={{ color: '#A89880' }}>
               로그인하면 돌볼 수 있어요
             </div>
           )}
           {pet.lastCarerName && (
-            <div className="text-[10px] text-center" style={{ color: '#A89880' }}>
+            <div className="text-[12px] text-center" style={{ color: '#A89880' }}>
               마지막으로 돌본 사람: {pet.lastCarerName}
             </div>
           )}
-          {err && <div className="text-[10px] font-bold mt-2 text-center" style={{ color: '#C0392B' }}>{err}</div>}
+          {err && <div className="text-[12px] font-bold mt-2 text-center" style={{ color: '#C0392B' }}>{err}</div>}
 
           {/* 선생님만 이름 바꾸기 */}
           {isStaff && (
@@ -211,7 +211,7 @@ export default function SchoolPetPanel({
                 <button
                   onClick={rename}
                   disabled={busy || !newName.trim()}
-                  className="shrink-0 rounded-xl px-3 text-[11px] font-bold text-white disabled:opacity-40"
+                  className="shrink-0 rounded-xl px-3 text-[13px] font-bold text-white disabled:opacity-40"
                   style={{ background: 'var(--color-primary)' }}
                 >
                   저장
@@ -220,7 +220,7 @@ export default function SchoolPetPanel({
             ) : (
               <button
                 onClick={() => setRenaming(true)}
-                className="w-full text-[10px] underline mt-3"
+                className="w-full text-[12px] underline mt-3"
                 style={{ color: '#A89880' }}
               >
                 이름 바꾸기

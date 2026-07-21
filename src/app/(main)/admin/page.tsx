@@ -100,7 +100,7 @@ export default function AdminHomePage() {
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
         🗂️ 전체 학교 관리
       </h1>
-      <p className="text-xs mb-5" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-sm mb-5" style={{ color: 'var(--color-text-sub)' }}>
         학교를 골라 들어가면 그 학교의 대시보드가 열려요
       </p>
 
@@ -115,7 +115,7 @@ export default function AdminHomePage() {
           <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
             선생님 승인
           </div>
-          <div className="text-[10px] mt-0.5" style={{ color: pendingTeachers > 0 ? 'var(--color-primary)' : 'var(--color-text-sub)' }}>
+          <div className="text-[12px] mt-0.5" style={{ color: pendingTeachers > 0 ? 'var(--color-primary)' : 'var(--color-text-sub)' }}>
             {pendingTeachers > 0 ? `${pendingTeachers}명 기다리는 중` : '기다리는 신청 없음'}
           </div>
         </button>
@@ -128,7 +128,7 @@ export default function AdminHomePage() {
           <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
             접근 기록
           </div>
-          <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
             작성자·IP 확인
           </div>
         </button>
@@ -139,18 +139,18 @@ export default function AdminHomePage() {
       </h2>
 
       {!fetched ? (
-        <div className="rounded-2xl py-10 text-center text-xs" style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}>
+        <div className="rounded-2xl py-10 text-center text-sm" style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}>
           불러오는 중...
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl py-10 text-center" style={{ background: 'var(--color-surface)' }}>
           <div className="text-3xl mb-2">🏫</div>
-          <div className="text-xs mb-3" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-sm mb-3" style={{ color: 'var(--color-text-sub)' }}>
             아직 만든 학교가 없어요
           </div>
           <button
             onClick={() => router.push('/')}
-            className="rounded-full px-4 py-2 text-[12px] font-bold text-white"
+            className="rounded-full px-4 py-2 text-[14px] font-bold text-white"
             style={{ background: 'var(--color-primary)' }}
           >
             지도에서 학교 만들기
@@ -180,10 +180,10 @@ export default function AdminHomePage() {
                 <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
                   {s.name}
                 </div>
-                <div className="text-[10px] truncate" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
                   {s.tagline || s.id}
                 </div>
-                <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
                   반 {s.classCount}개 · 전시 {s.activityCount}개
                 </div>
               </div>

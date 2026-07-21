@@ -220,7 +220,7 @@ export default function TrackPage() {
       {/* 나가기 */}
       <button
         onClick={() => router.push(`/school/${schoolId}`)}
-        className="absolute left-4 top-4 z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+        className="absolute left-4 top-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         ← 학교로
@@ -262,7 +262,7 @@ export default function TrackPage() {
       {/* 달리는 중 안내 */}
       {phase === 'running' && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 top-4 z-30 rounded-full px-4 py-2 text-[11px] font-bold"
+          className="absolute left-1/2 -translate-x-1/2 top-4 z-30 rounded-full px-4 py-2 text-[13px] font-bold"
           style={{ background: 'rgba(255,248,231,0.92)', color: '#6B5B43' }}
         >
           흰 선을 밟으면 탈락이에요! 한 바퀴 돌아 출발선으로
@@ -279,18 +279,18 @@ export default function TrackPage() {
             {phase === 'ready' && (
               <>
                 <div className="text-base font-black mb-1" style={{ color: '#3A3226' }}>🏃 운동장 한 바퀴</div>
-                <div className="text-[11px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
+                <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
                   트랙을 따라 한 바퀴 달려요. <b>흰 선을 밟으면 탈락</b>이고,
                   안쪽으로 질러가도 탈락이에요.
                 </div>
 
                 {/* 출발선에 선 사람들 */}
                 <div className="rounded-2xl p-3 mb-3" style={{ background: 'white' }}>
-                  <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>
+                  <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>
                     🏁 출발선 ({lobby.players.length}명)
                   </div>
                   {lobby.players.length === 0 ? (
-                    <div className="text-[11px]" style={{ color: '#A89880' }}>
+                    <div className="text-[13px]" style={{ color: '#A89880' }}>
                       아직 아무도 없어요. 준비를 누르면 출발선으로 가요.
                     </div>
                   ) : (
@@ -298,7 +298,7 @@ export default function TrackPage() {
                       {lobby.players.map((p) => (
                         <span
                           key={p.uid}
-                          className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                          className="rounded-full px-2.5 py-1 text-[13px] font-bold"
                           style={{
                             background: p.uid === me?.uid ? 'var(--color-primary)' : '#F0E9DA',
                             color: p.uid === me?.uid ? 'white' : '#6B5B43',
@@ -328,7 +328,7 @@ export default function TrackPage() {
                   style={{ background: cloud ? '#EAF7EA' : 'white' }}
                 >
                   <span className="text-lg">🩹</span>
-                  <span className="text-[11px] font-bold" style={{ color: '#8A7A5F' }}>
+                  <span className="text-[13px] font-bold" style={{ color: '#8A7A5F' }}>
                     {cloud ? '구름 신발을 신었어요 — 한 번 봐줘요' : `구름 신발 신기 (${items['play-cloud'] ?? 0}개)`}
                   </span>
                 </button>
@@ -354,7 +354,7 @@ export default function TrackPage() {
                     출발 신호!
                   </button>
                 </div>
-                <div className="text-[10px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+                <div className="text-[12px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
                   준비한 사람들이 <b>다 같이</b> 출발해요. 혼자여도 눌러서 뛸 수 있어요.
                 </div>
               </>
@@ -363,7 +363,7 @@ export default function TrackPage() {
             {phase === 'foul' && (
               <>
                 <div className="text-base font-black mb-1" style={{ color: '#C0392B' }}>😵 선을 밟았어요!</div>
-                <div className="text-[11px] mb-3" style={{ color: '#8A7A5F' }}>
+                <div className="text-[13px] mb-3" style={{ color: '#8A7A5F' }}>
                   트랙 안에서만 달려야 해요. 다시 해볼까요?
                 </div>
               </>
@@ -378,12 +378,12 @@ export default function TrackPage() {
                   {formatTime(result.ms)}
                 </div>
                 {result.reason && (
-                  <div className="text-[11px] mb-2" style={{ color: '#C0392B' }}>{result.reason}</div>
+                  <div className="text-[13px] mb-2" style={{ color: '#C0392B' }}>{result.reason}</div>
                 )}
               </>
             )}
 
-            {err && <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{err}</div>}
+            {err && <div className="text-[13px] font-bold mb-2" style={{ color: '#C0392B' }}>{err}</div>}
 
             {phase !== 'ready' && (
               <button
@@ -398,12 +398,12 @@ export default function TrackPage() {
             {/* 순위표 */}
             {records.length > 0 && (
               <div className="mt-4">
-                <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>🏆 우리 학교 기록</div>
+                <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>🏆 우리 학교 기록</div>
                 <div className="flex flex-col gap-1">
                   {records.slice(0, 5).map((r, i) => (
                     <div
                       key={r.uid}
-                      className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12px]"
+                      className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-[14px]"
                       style={{
                         background: r.uid === user?.uid ? '#EAF7EA' : 'white',
                         color: '#3A3226',
@@ -416,7 +416,7 @@ export default function TrackPage() {
                   ))}
                 </div>
                 {myBest && !records.slice(0, 5).some((r) => r.uid === user?.uid) && (
-                  <div className="text-[10px] mt-1.5 text-center" style={{ color: '#A89880' }}>
+                  <div className="text-[12px] mt-1.5 text-center" style={{ color: '#A89880' }}>
                     내 최고 기록 {formatTime(myBest.bestMs)}
                   </div>
                 )}

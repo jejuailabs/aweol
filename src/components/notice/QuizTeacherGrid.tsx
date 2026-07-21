@@ -183,7 +183,7 @@ export default function QuizTeacherGrid({
     return (
       <div className="rounded-2xl py-8 px-4 text-center" style={{ background: 'rgba(255,255,255,0.8)' }}>
         <div className="text-3xl mb-2">📋</div>
-        <div className="text-[11px] leading-relaxed" style={{ color: '#A89880' }}>
+        <div className="text-[13px] leading-relaxed" style={{ color: '#A89880' }}>
           명부를 등록하면 누가 풀었는지 한눈에 보여요
         </div>
       </div>
@@ -195,11 +195,11 @@ export default function QuizTeacherGrid({
       <div className="flex gap-1.5 mb-2.5">
         <div className="flex-1 rounded-xl py-2 text-center" style={{ background: '#F4EEE2', border: '1px solid #E0D3BB' }}>
           <div className="text-base font-black leading-none" style={{ color: '#9C8A6C' }}>{notYet}</div>
-          <div className="text-[10px] font-bold mt-0.5" style={{ color: '#9C8A6C' }}>안 풀었어요</div>
+          <div className="text-[12px] font-bold mt-0.5" style={{ color: '#9C8A6C' }}>안 풀었어요</div>
         </div>
         <div className="flex-1 rounded-xl py-2 text-center" style={{ background: '#F0E8F6', border: '1px solid #C9AEDC' }}>
           <div className="text-base font-black leading-none" style={{ color: '#7B4B94' }}>{done}</div>
-          <div className="text-[10px] font-bold mt-0.5" style={{ color: '#7B4B94' }}>풀었어요</div>
+          <div className="text-[12px] font-bold mt-0.5" style={{ color: '#7B4B94' }}>풀었어요</div>
         </div>
       </div>
 
@@ -216,10 +216,10 @@ export default function QuizTeacherGrid({
               minHeight: 52,
             }}
           >
-            <div className="text-[9px] font-bold leading-none opacity-70" style={{ color: sub ? '#7B4B94' : '#9C8A6C' }}>
+            <div className="text-[11px] font-bold leading-none opacity-70" style={{ color: sub ? '#7B4B94' : '#9C8A6C' }}>
               {row.number}
             </div>
-            <div className="text-[11px] font-bold leading-tight mt-1 truncate" style={{ color: sub ? '#7B4B94' : un ? '#C0B197' : '#9C8A6C' }}>
+            <div className="text-[13px] font-bold leading-tight mt-1 truncate" style={{ color: sub ? '#7B4B94' : un ? '#C0B197' : '#9C8A6C' }}>
               {row.name}
             </div>
           </button>
@@ -227,14 +227,14 @@ export default function QuizTeacherGrid({
       </div>
 
       {unlinked > 0 && (
-        <div className="text-[10px] mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+        <div className="text-[12px] mt-2 leading-relaxed" style={{ color: '#A89880' }}>
           점선 칸 {unlinked}명은 아직 학생코드로 계정을 연결하지 않아 풀 수 없어요.
         </div>
       )}
 
       {toast && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-[60] rounded-full px-4 py-2 text-[12px] font-bold text-white"
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-[60] rounded-full px-4 py-2 text-[14px] font-bold text-white"
           style={{ background: 'rgba(58,50,38,0.92)' }}
         >
           {toast}
@@ -258,7 +258,7 @@ export default function QuizTeacherGrid({
                 {opened.row.number}번 {opened.row.name}
               </div>
               {opened.sub.gradedCount > 0 && (
-                <span className="rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: '#F0E8F6', color: '#7B4B94' }}>
+                <span className="rounded-full px-2.5 py-1 text-[12px] font-bold" style={{ background: '#F0E8F6', color: '#7B4B94' }}>
                   채점 문항 {opened.sub.correctCount}/{opened.sub.gradedCount}
                 </span>
               )}
@@ -272,14 +272,14 @@ export default function QuizTeacherGrid({
               return (
                 <div key={q.id} className="rounded-2xl p-3 mb-2" style={{ background: 'white' }}>
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="text-[12px] font-bold" style={{ color: '#3A3226' }}>
+                    <div className="text-[14px] font-bold" style={{ color: '#3A3226' }}>
                       {i + 1}. {q.prompt}
                     </div>
                     {a?.correct !== null && a?.correct !== undefined && (
                       <span className="shrink-0 text-sm">{a.correct ? '⭕' : '❌'}</span>
                     )}
                   </div>
-                  <div className="text-[11px] whitespace-pre-wrap" style={{ color: '#54493A' }}>
+                  <div className="text-[13px] whitespace-pre-wrap" style={{ color: '#54493A' }}>
                     {q.type === 'choice'
                       ? a?.choiceIndex !== null && a?.choiceIndex !== undefined
                         ? `${a.choiceIndex + 1}. ${q.choices[a.choiceIndex] ?? ''}`
@@ -291,7 +291,7 @@ export default function QuizTeacherGrid({
                   {q.type === 'essay' && (
                     <div className="mt-2 pt-2" style={{ borderTop: '1px dashed #EFE3CB' }}>
                       {fb.stamp && (
-                        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#2E8B57' }}>
+                        <div className="text-[13px] font-bold mb-1.5" style={{ color: '#2E8B57' }}>
                           {fb.stamp.emoji} {fb.stamp.label}
                         </div>
                       )}
@@ -300,7 +300,7 @@ export default function QuizTeacherGrid({
                           value={draftComment[key] ?? fb.comment ?? ''}
                           onChange={(e) => setDraftComment((p) => ({ ...p, [key]: e.target.value }))}
                           placeholder="한마디 남겨주세요"
-                          className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-[11px] outline-none"
+                          className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-[13px] outline-none"
                           style={{ background: '#F6F0E4', color: '#3A3226' }}
                         />
                         <button
@@ -311,7 +311,7 @@ export default function QuizTeacherGrid({
                             }
                           }}
                           disabled={busy}
-                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[13px] font-bold text-white disabled:opacity-40"
                           style={{ background: 'var(--color-primary)' }}
                         >
                           저장
@@ -324,7 +324,7 @@ export default function QuizTeacherGrid({
                               }
                             }}
                             disabled={busy}
-                            className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40"
+                            className="shrink-0 rounded-lg px-2.5 py-1.5 text-[13px] font-bold disabled:opacity-40"
                             style={{ background: '#F0E8F6', color: '#7B4B94' }}
                           >
                             도장
@@ -335,7 +335,7 @@ export default function QuizTeacherGrid({
                   )}
 
                   {q.type !== 'essay' && fb.comment && (
-                    <div className="mt-1.5 rounded-lg px-2 py-1 text-[10px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+                    <div className="mt-1.5 rounded-lg px-2 py-1 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
                       👩‍🏫 {fb.comment}
                     </div>
                   )}
@@ -346,13 +346,13 @@ export default function QuizTeacherGrid({
             {/* 전체 검사완료 — 숙제와 같은 방식으로 도장 1개 */}
             {myStamps.length > 0 && !opened.sub.checked && (
               <>
-                <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
+                <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
                 <div className="flex flex-wrap gap-1.5 mb-2.5">
                   {myStamps.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => setPickedStamp(s.id)}
-                      className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold"
+                      className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[13px] font-bold"
                       style={
                         pickedStamp === s.id
                           ? { background: 'var(--color-primary)', color: 'white' }
@@ -368,7 +368,7 @@ export default function QuizTeacherGrid({
             )}
 
             {opened.sub.checked && opened.sub.stamp && (
-              <div className="rounded-xl px-3 py-2 mb-2 text-[12px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
+              <div className="rounded-xl px-3 py-2 mb-2 text-[14px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
                 {opened.sub.stamp.emoji} {opened.sub.stamp.label}
               </div>
             )}
@@ -381,7 +381,7 @@ export default function QuizTeacherGrid({
                 }
               }}
               disabled={busy}
-              className="w-full rounded-xl py-3 text-[13px] font-bold disabled:opacity-40"
+              className="w-full rounded-xl py-3 text-[15px] font-bold disabled:opacity-40"
               style={
                 opened.sub.checked
                   ? { background: '#E2F6E9', color: '#2E8B57', border: '1px solid #A0DCB7' }
@@ -393,7 +393,7 @@ export default function QuizTeacherGrid({
 
             <button
               onClick={() => setOpenUid(null)}
-              className="w-full rounded-xl py-2.5 mt-2 text-[12px] font-bold"
+              className="w-full rounded-xl py-2.5 mt-2 text-[14px] font-bold"
               style={{ background: 'rgba(255,255,255,0.8)', color: '#8A7A5F' }}
             >
               닫기

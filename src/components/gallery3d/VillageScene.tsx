@@ -104,7 +104,7 @@ function Building({
       <Html position={[0, b.h + 1.7, 0]} center pointerEvents="none" zIndexRange={[5, 0]}>
         <div
           style={{
-            background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '14px',
+            background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '17px',
             padding: '6px 16px', borderRadius: '12px', whiteSpace: 'nowrap',
             fontFamily: 'Pretendard, sans-serif', border: '3px solid #B08860',
             boxShadow: '0 4px 0 #9C7448', userSelect: 'none',
@@ -118,7 +118,7 @@ function Building({
         <Html position={[0, 2.7, b.d / 2 + 0.3]} center pointerEvents="none" zIndexRange={[6, 0]}>
           <div
             style={{
-              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '12px',
+              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',
               padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
               fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
             }}

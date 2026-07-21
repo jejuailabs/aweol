@@ -148,10 +148,10 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
                         style={{ background: 'repeating-linear-gradient(45deg, #FBF7EE 0px, #FBF7EE 14px, #F5EFE2 14px, #F5EFE2 28px)' }}
                       >
                         <span className="float-slow text-5xl">{artwork.type === 'sculpture' ? '🏺' : '🖼️'}</span>
-                        <span className="text-[10px] tracking-widest font-semibold" style={{ color: '#A89880', letterSpacing: '0.2em' }}>
+                        <span className="text-[12px] tracking-widest font-semibold" style={{ color: '#A89880', letterSpacing: '0.2em' }}>
                           COMING SOON
                         </span>
-                        <span className="text-xs" style={{ color: '#8B7B63' }}>작품이 곧 걸릴 예정이에요</span>
+                        <span className="text-sm" style={{ color: '#8B7B63' }}>작품이 곧 걸릴 예정이에요</span>
                       </div>
                     )}
                   </div>
@@ -172,7 +172,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
             <div className="text-base font-black leading-tight" style={{ color: '#3A3226' }}>
               {artwork.title}
             </div>
-            <div className="mt-1 flex items-center justify-center gap-2 text-[11px]" style={{ color: '#8B7B63' }}>
+            <div className="mt-1 flex items-center justify-center gap-2 text-[13px]" style={{ color: '#8B7B63' }}>
               <span className="font-semibold">{artwork.artistName}</span>
               <span style={{ opacity: 0.5 }}>·</span>
               <span>{artwork.type === 'sculpture' ? '조형 작품' : '회화 · 글'}</span>
@@ -183,7 +183,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
           {artwork.artistComment && (
             <div className="mt-3.5 flex items-start gap-2.5 max-w-[460px] w-full justify-center px-2">
               <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
                 style={{ background: '#3BAF9F', color: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.35)' }}
               >
                 {artwork.artistName[0]}
@@ -211,7 +211,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
           }}
         >
           <span className="text-xl leading-none">{liked ? '❤️' : '🤍'}</span>
-          <span className="text-[10px] font-black leading-tight" style={{ color: liked ? 'white' : '#8A7A5F' }}>
+          <span className="text-[12px] font-black leading-tight" style={{ color: liked ? 'white' : '#8A7A5F' }}>
             {likeUids.length}
           </span>
         </button>
@@ -226,7 +226,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
             style={{ background: 'rgba(255,255,255,0.95)', border: '2.5px solid #EFE3CB', boxShadow: '0 6px 16px rgba(0,0,0,0.35)' }}
           >
             <span className="text-lg leading-none">💬</span>
-            <span className="text-[11px] font-black leading-tight" style={{ color: '#8A7A5F' }}>
+            <span className="text-[13px] font-black leading-tight" style={{ color: '#8A7A5F' }}>
               {comments.length}
             </span>
           </div>
@@ -258,14 +258,14 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
                 <span className="text-xl">✍️</span>
                 <div>
                   <div className="text-sm font-black" style={{ color: '#3A3226' }}>관람 방명록</div>
-                  <div className="text-[10px]" style={{ color: '#A89880' }}>
+                  <div className="text-[12px]" style={{ color: '#A89880' }}>
                     {comments.length > 0 ? `${comments.length}명이 감상평을 남겼어요` : '작품을 보고 느낀 점을 나눠요'}
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => setShowComments(false)}
-                className="w-7 h-7 rounded-full text-xs"
+                className="w-7 h-7 rounded-full text-sm"
                 style={{ background: '#F1EADB', color: '#8B7B63' }}
               >
                 ✕
@@ -276,7 +276,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
               {comments.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-8 text-center">
                   <span className="float-slower text-3xl">🕊️</span>
-                  <span className="text-[11px] leading-relaxed" style={{ color: '#A89880' }}>
+                  <span className="text-[13px] leading-relaxed" style={{ color: '#A89880' }}>
                     아직 방명록이 비어 있어요.<br />첫 감상평의 주인공이 되어보세요!
                   </span>
                 </div>
@@ -287,21 +287,21 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
                     return (
                       <div key={c.id} className="flex items-start gap-2.5">
                         <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
                           style={{ background: meta.color }}
                         >
                           {c.authorName[0]}
                         </div>
                         <div className="flex-1 rounded-2xl rounded-tl-sm px-3.5 py-2.5" style={{ background: '#F6F0E4' }}>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-bold" style={{ color: '#3A3226' }}>{c.authorName}</span>
+                            <span className="text-[13px] font-bold" style={{ color: '#3A3226' }}>{c.authorName}</span>
                             {meta.badge && (
                               <span className="rounded-full px-1.5 py-px text-[8px] font-bold text-white" style={{ background: meta.color }}>
                                 {meta.badge}
                               </span>
                             )}
                           </div>
-                          <div className="mt-0.5 text-[12px] leading-relaxed" style={{ color: '#54493A' }}>
+                          <div className="mt-0.5 text-[14px] leading-relaxed" style={{ color: '#54493A' }}>
                             {c.text}
                           </div>
                         </div>
@@ -322,13 +322,13 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend(); }}
                     placeholder="감상평을 남겨주세요..."
-                    className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[12px] outline-none"
+                    className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-[14px] outline-none"
                     style={{ background: '#F1EADB', color: '#3A3226', border: '1px solid #E0D6C2' }}
                   />
                   <button
                     onClick={handleSend}
                     disabled={!newComment.trim() || sending}
-                    className="shrink-0 rounded-full px-4 text-[12px] font-bold text-white transition-all hover:scale-105 disabled:opacity-40"
+                    className="shrink-0 rounded-full px-4 text-[14px] font-bold text-white transition-all hover:scale-105 disabled:opacity-40"
                     style={{ background: 'linear-gradient(135deg, #4FD886 0%, #2E9E56 100%)' }}
                   >
                     남기기
@@ -337,7 +337,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
               ) : (
                 <button
                   onClick={() => { window.location.href = '/login'; }}
-                  className="w-full rounded-full py-3 text-[12px] font-bold"
+                  className="w-full rounded-full py-3 text-[14px] font-bold"
                   style={{ background: '#F1EADB', color: '#8B7B63', border: '1px dashed #CFC2A8' }}
                 >
                   🔑 로그인하고 감상평 남기기

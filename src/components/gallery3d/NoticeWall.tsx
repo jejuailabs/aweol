@@ -106,10 +106,10 @@ export default function NoticeWall({
                 >
                   {tab.emoji}
                 </div>
-                <div style={{ fontWeight: 800, fontSize: '19px', color: '#6B5B43' }}>{tab.label}</div>
+                <div style={{ fontWeight: 800, fontSize: '22px', color: '#6B5B43' }}>{tab.label}</div>
                 <div
                   style={{
-                    fontSize: '12px', fontWeight: 700,
+                    fontSize: '15px', fontWeight: 700,
                     color: isHot ? 'white' : '#A89880',
                     background: isHot ? tab.color : 'transparent',
                     borderRadius: '999px', padding: isHot ? '3px 12px' : 0,

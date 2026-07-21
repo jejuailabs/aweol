@@ -118,7 +118,7 @@ export default function SchoolProfileFields({
 
   const field = (k: keyof SchoolProfile, label: string, ph: string) => (
     <div className="flex-1 min-w-0">
-      <div className="text-[10px] mb-1" style={{ color: '#A89880' }}>{label}</div>
+      <div className="text-[12px] mb-1" style={{ color: '#A89880' }}>{label}</div>
       <input
         value={String(profile[k] ?? '')}
         onChange={(e) => set(k, e.target.value)}
@@ -134,17 +134,17 @@ export default function SchoolProfileFields({
       <button
         onClick={research}
         disabled={researching}
-        className="w-full rounded-xl py-2.5 text-xs font-bold text-white disabled:opacity-50 mb-1.5"
+        className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50 mb-1.5"
         style={{ background: '#4A90D9' }}
       >
         {researching ? '🔎 학교를 찾아보는 중...' : '🔎 AI로 학교 조사하기'}
       </button>
-      <div className="text-[10px] mb-2 leading-relaxed" style={{ color: '#A89880' }}>
+      <div className="text-[12px] mb-2 leading-relaxed" style={{ color: '#A89880' }}>
         AI가 웹에서 찾은 <b>초안</b>이에요. 개교연도는 잘 찾지만 교훈·교화·교목은
         학교 홈페이지에만 있어서 못 찾는 경우가 많아요. 반드시 확인하고 고쳐주세요.
       </div>
-      {msg && <div className="text-[10px] mb-2 leading-relaxed" style={{ color: '#2E9E56' }}>{msg}</div>}
-      {err && <div className="text-[10px] mb-2 font-bold" style={{ color: '#C0392B' }}>{err}</div>}
+      {msg && <div className="text-[12px] mb-2 leading-relaxed" style={{ color: '#2E9E56' }}>{msg}</div>}
+      {err && <div className="text-[12px] mb-2 font-bold" style={{ color: '#C0392B' }}>{err}</div>}
 
       <div className="flex gap-2 mb-2">
         {field('founded', '개교연도', '1923')}
@@ -153,7 +153,7 @@ export default function SchoolProfileFields({
       </div>
       <div className="mb-2">{field('motto', '교훈', '바르게 슬기롭게 튼튼하게')}</div>
       <div className="mb-2">
-        <div className="text-[10px] mb-1" style={{ color: '#A89880' }}>학교 자랑 (한두 줄)</div>
+        <div className="text-[12px] mb-1" style={{ color: '#A89880' }}>학교 자랑 (한두 줄)</div>
         <textarea
           value={profile.note}
           onChange={(e) => set('note', e.target.value)}
@@ -165,7 +165,7 @@ export default function SchoolProfileFields({
       </div>
 
       {profile.sources.length > 0 && (
-        <div className="text-[10px] mb-3 leading-relaxed" style={{ color: '#A89880' }}>
+        <div className="text-[12px] mb-3 leading-relaxed" style={{ color: '#A89880' }}>
           출처:{' '}
           {profile.sources.map((u, i) => (
             <a
@@ -183,7 +183,7 @@ export default function SchoolProfileFields({
       )}
 
       {/* 교표 */}
-      <div className="text-[10px] mb-1" style={{ color: '#A89880' }}>
+      <div className="text-[12px] mb-1" style={{ color: '#A89880' }}>
         교표 — 현관 위 동그란 자리에 걸려요
       </div>
       <div className="flex items-center gap-3 mb-2">
@@ -195,21 +195,21 @@ export default function SchoolProfileFields({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={emblemPreview} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-[9px] text-center leading-tight" style={{ color: '#A89880' }}>비어<br />있음</span>
+            <span className="text-[11px] text-center leading-tight" style={{ color: '#A89880' }}>비어<br />있음</span>
           )}
         </div>
         <div className="flex-1 flex flex-col gap-1.5">
           <button
             onClick={drawEmblem}
             disabled={drawing}
-            className="rounded-xl py-2 text-[11px] font-bold text-white disabled:opacity-50"
+            className="rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-50"
             style={{ background: '#7B4B94' }}
           >
             {drawing ? '✨ 그리는 중...' : '✨ AI로 교표 만들기'}
           </button>
           <button
             onClick={() => fileRef.current?.click()}
-            className="rounded-xl py-2 text-[11px] font-bold"
+            className="rounded-xl py-2 text-[13px] font-bold"
             style={{ background: 'white', color: '#8A7A5F' }}
           >
             📷 진짜 교표 올리기
@@ -217,7 +217,7 @@ export default function SchoolProfileFields({
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickFile} />
         </div>
       </div>
-      <div className="text-[10px] mb-4 leading-relaxed" style={{ color: '#A89880' }}>
+      <div className="text-[12px] mb-4 leading-relaxed" style={{ color: '#A89880' }}>
         AI가 만든 건 <b>진짜 교표가 아니라</b> 교화·교목으로 새로 그린 마크예요.
         학교의 진짜 교표가 있으면 그걸 올려주세요.
       </div>

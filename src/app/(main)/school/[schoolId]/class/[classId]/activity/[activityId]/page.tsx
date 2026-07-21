@@ -100,11 +100,11 @@ export default function ActivityExhibitPage() {
       <div className="absolute top-4 left-4 right-4 z-30 flex items-center gap-2">
         <button
           onClick={() => router.push(`/school/${schoolId}/class/${classId}/room`)}
-          className="ac-btn shrink-0 px-3.5 py-2 text-xs"
+          className="ac-btn shrink-0 px-3.5 py-2 text-sm"
         >
           ← 교실로
         </button>
-        <div className="ac-bubble hidden sm:block px-4 py-2 text-xs truncate">
+        <div className="ac-bubble hidden sm:block px-4 py-2 text-sm truncate">
           🖼️ {activity?.title || activityId}
         </div>
         <div className="ml-auto shrink-0">
@@ -113,7 +113,7 @@ export default function ActivityExhibitPage() {
         {canUploadArtwork(role) && (
           <button
             onClick={() => setShowUpload(true)}
-            className="ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-xs"
+            className="ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-sm"
           >
             + 작품 올리기
           </button>
@@ -123,7 +123,7 @@ export default function ActivityExhibitPage() {
       {/* 빈 전시실 안내 */}
       {fetched && artworks.length === 0 && !selectedArtwork && !showUpload && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 px-4 w-full max-w-[380px] pointer-events-none">
-          <div className="ac-bubble px-5 py-4 text-center text-[11px] leading-relaxed">
+          <div className="ac-bubble px-5 py-4 text-center text-[13px] leading-relaxed">
             🖼️ 아직 전시된 작품이 없어요<br />
             {canUploadArtwork(role)
               ? '오른쪽 위 [+ 작품 올리기]로 첫 작품을 걸어보세요!'
@@ -138,7 +138,7 @@ export default function ActivityExhibitPage() {
       {/* 조작 안내 */}
       {!selectedArtwork && !showUpload && (
         <div className="absolute bottom-6 right-4 z-30 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto">
-          <div className="ac-bubble px-4 py-2.5 text-[10px] leading-relaxed">
+          <div className="ac-bubble px-4 py-2.5 text-[12px] leading-relaxed">
             <span className="hidden sm:inline">🚶 WASD 이동 · 🖱️ 드래그로 상하좌우 시점 · 휠 줌 · ❗ 뜨면 작품 클릭!</span>
             <span className="sm:hidden">🕹️ 조이스틱 이동 · 드래그로 시점 · 두 손가락 줌</span>
           </div>

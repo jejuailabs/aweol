@@ -216,7 +216,7 @@ function Stairs({
       <Html position={[0, 2.2, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
         <div
           style={{
-            background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '15px',
+            background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '18px',
             padding: '8px 18px', borderRadius: '999px', whiteSpace: 'nowrap',
             fontFamily: 'Pretendard, sans-serif', border: '3px solid #B08860',
             boxShadow: '0 4px 0 #9C7448', userSelect: 'none',

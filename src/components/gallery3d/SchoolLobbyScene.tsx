@@ -302,7 +302,7 @@ function Board({
           {count > 0 && (
             <div
               style={{
-                fontSize: '17px', fontWeight: 800, color: 'white',
+                fontSize: '20px', fontWeight: 800, color: 'white',
                 background: spot.color, borderRadius: '999px', padding: '4px 16px',
               }}
             >

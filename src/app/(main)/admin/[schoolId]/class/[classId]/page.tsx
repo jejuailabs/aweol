@@ -121,7 +121,7 @@ export default function AdminClassPage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => router.push(`/admin/${schoolId}`)}
-          className="text-xs"
+          className="text-sm"
           style={{ color: 'var(--color-text-sub)' }}
         >
           ← 대시보드
@@ -136,7 +136,7 @@ export default function AdminClassPage() {
         <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
           📢 알림판에 걸 것
         </h2>
-        <p className="text-[11px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        <p className="text-[13px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
           교실 알림판에 걸어둘 칸을 고르세요. 안 쓰는 칸을 걸어두면 아이들이
           빈 칸을 눌러보고 실망해요. 나중에 언제든 다시 켤 수 있어요.
         </p>
@@ -154,7 +154,7 @@ export default function AdminClassPage() {
                   )
                 }
                 title={last ? '적어도 하나는 걸어두어야 해요' : undefined}
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-bold disabled:opacity-60"
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-bold disabled:opacity-60"
                 style={{
                   background: on ? t.color : 'var(--color-surface)',
                   color: on ? 'white' : 'var(--color-text-sub)',
@@ -169,7 +169,7 @@ export default function AdminClassPage() {
           })}
         </div>
         {tabMsg && (
-          <div className="text-[11px] font-bold mt-2" style={{ color: 'var(--color-primary)' }}>
+          <div className="text-[13px] font-bold mt-2" style={{ color: 'var(--color-primary)' }}>
             {tabMsg}
           </div>
         )}
@@ -182,7 +182,7 @@ export default function AdminClassPage() {
           {!editing ? (
             <button
               onClick={() => setEditing(true)}
-              className="text-xs font-bold px-3 py-1 rounded-lg"
+              className="text-sm font-bold px-3 py-1 rounded-lg"
               style={{ background: 'var(--color-primary)', color: 'white' }}
             >
               수정
@@ -191,14 +191,14 @@ export default function AdminClassPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setEditing(false)}
-                className="text-xs px-3 py-1 rounded-lg"
+                className="text-sm px-3 py-1 rounded-lg"
                 style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
               >
                 취소
               </button>
               <button
                 onClick={handleSaveSettings}
-                className="text-xs font-bold px-3 py-1 rounded-lg"
+                className="text-sm font-bold px-3 py-1 rounded-lg"
                 style={{ background: 'var(--color-primary)', color: 'white' }}
               >
                 저장
@@ -209,7 +209,7 @@ export default function AdminClassPage() {
 
         <div className="space-y-3">
           <div>
-            <label className="text-[10px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
+            <label className="text-[12px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
               담임선생님
             </label>
             <div className="text-sm" style={{ color: 'var(--color-text-main)' }}>
@@ -217,7 +217,7 @@ export default function AdminClassPage() {
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
+            <label className="text-[12px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
               급훈
             </label>
             {editing ? (
@@ -235,7 +235,7 @@ export default function AdminClassPage() {
             )}
           </div>
           <div>
-            <label className="text-[10px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
+            <label className="text-[12px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
               학급 소개
             </label>
             {editing ? (
@@ -262,7 +262,7 @@ export default function AdminClassPage() {
         </h2>
         <button
           onClick={() => setShowAddActivity(true)}
-          className="text-xs font-bold px-3 py-1.5 rounded-lg"
+          className="text-sm font-bold px-3 py-1.5 rounded-lg"
           style={{ background: 'var(--color-primary)', color: 'white' }}
         >
           + 활동 추가
@@ -286,13 +286,13 @@ export default function AdminClassPage() {
               <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
                 {act.title}
               </div>
-              <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                 {act.description}
               </div>
             </div>
             <button
               onClick={() => router.push(`/school/${schoolId}/class/${classId}/activity/${act.id}`)}
-              className="text-xs px-3 py-1 rounded-lg"
+              className="text-sm px-3 py-1 rounded-lg"
               style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
             >
               보기
@@ -306,7 +306,7 @@ export default function AdminClassPage() {
         <div className="text-sm font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
           📦 한 해 마무리
         </div>
-        <div className="text-[11px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        <div className="text-[13px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
           이 반을 기억창고로 옮겨요. 작품·활동·숙제가 그대로 담기고,
           졸업한 뒤에도 볼 수 있어요.
           <b> 아이들이 만든 건 지워지지 않아요</b> — 활성 목록에서만 빠집니다.
@@ -360,7 +360,7 @@ export default function AdminClassPage() {
         )}
 
         {archiveMsg && (
-          <div className="text-[11px] font-bold mt-2" style={{ color: 'var(--color-primary)' }}>
+          <div className="text-[13px] font-bold mt-2" style={{ color: 'var(--color-primary)' }}>
             {archiveMsg}
           </div>
         )}
@@ -381,7 +381,7 @@ export default function AdminClassPage() {
             </h3>
             <div className="space-y-3 mb-4">
               <div>
-                <label className="text-[10px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
+                <label className="text-[12px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
                   활동 제목
                 </label>
                 <input
@@ -394,7 +394,7 @@ export default function AdminClassPage() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
+                <label className="text-[12px] font-bold block mb-1" style={{ color: 'var(--color-text-sub)' }}>
                   설명
                 </label>
                 <textarea

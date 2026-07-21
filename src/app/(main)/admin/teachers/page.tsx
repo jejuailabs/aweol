@@ -98,7 +98,7 @@ export default function TeacherApprovalPage() {
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
         👩‍🏫 선생님 승인
       </h1>
-      <p className="text-xs mb-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
         승인하면 이 계정은 <b>신청한 반</b>의 명부와 제출물을 볼 수 있게 됩니다.
         같은 학교라도 다른 반은 보지 못합니다. 아는 분인지, 그 반 담임이 맞는지 확인해 주세요.
       </p>
@@ -106,7 +106,7 @@ export default function TeacherApprovalPage() {
       {list.length === 0 ? (
         <div className="rounded-2xl py-12 text-center" style={{ background: 'var(--color-surface)' }}>
           <div className="text-4xl mb-2">✅</div>
-          <div className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
             기다리는 신청이 없어요
           </div>
         </div>
@@ -133,17 +133,17 @@ export default function TeacherApprovalPage() {
                 <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
                   {a.displayName}
                 </div>
-                <div className="text-[11px] font-bold truncate" style={{ color: 'var(--color-primary)' }}>
+                <div className="text-[13px] font-bold truncate" style={{ color: 'var(--color-primary)' }}>
                   🏫 {a.schoolName} {a.classId ? `· ${a.classId}반` : '· (반 미지정)'}
                 </div>
-                <div className="text-[10px] truncate" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
                   {a.uid}
                 </div>
               </div>
               <button
                 onClick={() => decide(a.uid, false, a.displayName)}
                 disabled={!!busy}
-                className="shrink-0 rounded-full px-3 py-2 text-[11px] font-bold disabled:opacity-40"
+                className="shrink-0 rounded-full px-3 py-2 text-[13px] font-bold disabled:opacity-40"
                 style={{ background: 'rgba(232,96,76,0.12)', color: '#E8604C' }}
               >
                 거절
@@ -151,7 +151,7 @@ export default function TeacherApprovalPage() {
               <button
                 onClick={() => decide(a.uid, true, a.displayName)}
                 disabled={!!busy}
-                className="shrink-0 rounded-full px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40"
+                className="shrink-0 rounded-full px-3 py-2 text-[13px] font-bold text-white disabled:opacity-40"
                 style={{ background: 'var(--color-primary)' }}
               >
                 승인
@@ -163,7 +163,7 @@ export default function TeacherApprovalPage() {
 
       {msg && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full px-4 py-2 text-[12px] font-bold text-white"
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full px-4 py-2 text-[14px] font-bold text-white"
           style={{ background: 'rgba(20,20,25,0.9)' }}
         >
           {msg}

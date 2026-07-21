@@ -257,7 +257,7 @@ export default function SchoolMap({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className={detail === 'full' ? 'text-lg' : 'text-xs'}>🏫</span>
+                      <span className={detail === 'full' ? 'text-lg' : 'text-sm'}>🏫</span>
                     )}
                   </div>
                   <div className="text-left min-w-0">
@@ -268,7 +268,7 @@ export default function SchoolMap({
                       {s.name}
                     </div>
                     {detail === 'full' && (
-                      <div className="text-[9px]" style={{ color: '#A89880' }}>
+                      <div className="text-[11px]" style={{ color: '#A89880' }}>
                         {s.classCount > 0 ? `${s.classCount}개 반 전시 중` : '준비 중'}
                       </div>
                     )}
@@ -305,7 +305,7 @@ export default function SchoolMap({
 
       {/* 저작권 표기 (OSM 타일 사용 조건) */}
       <div
-        className="absolute bottom-1 right-1 z-30 rounded px-1.5 py-0.5 text-[9px]"
+        className="absolute bottom-1 right-1 z-30 rounded px-1.5 py-0.5 text-[11px]"
         style={{ background: 'rgba(255,255,255,0.75)', color: '#5B5B5B' }}
       >
         © OpenStreetMap contributors

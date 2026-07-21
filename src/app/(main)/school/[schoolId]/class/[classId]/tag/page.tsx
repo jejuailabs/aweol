@@ -190,7 +190,7 @@ export default function TagPage() {
 
       <button
         onClick={() => router.push(`/school/${schoolId}/class/${classId}/room`)}
-        className="absolute left-4 top-4 z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+        className="absolute left-4 top-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         ← 교실로
@@ -225,7 +225,7 @@ export default function TagPage() {
           style={{ background: 'rgba(255,250,240,0.96)', border: '3px solid rgba(255,255,255,0.7)' }}
         >
           {!me && (
-            <div className="text-[12px] text-center" style={{ color: '#8A7A5F' }}>
+            <div className="text-[14px] text-center" style={{ color: '#8A7A5F' }}>
               로그인하면 친구들과 같이 놀 수 있어요
             </div>
           )}
@@ -235,7 +235,7 @@ export default function TagPage() {
               <div className="text-base font-black mb-1" style={{ color: '#3A3226' }}>
                 {state.status === 'done' ? '🏁 끝났어요!' : '👹 우리 반 술래잡기'}
               </div>
-              <div className="text-[11px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
+              <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
                 시작을 누르면 <b>누른 사람이 술래</b>예요. 친구에게 닿으면 술래가 넘어가요.
                 친구가 같이 들어와 있어야 재밌어요!
               </div>
@@ -251,7 +251,7 @@ export default function TagPage() {
 
           {me && playing && (
             <>
-              <div className="text-[12px] text-center font-bold mb-2" style={{ color: iAmIt ? '#C0392B' : '#2E6DA8' }}>
+              <div className="text-[14px] text-center font-bold mb-2" style={{ color: iAmIt ? '#C0392B' : '#2E6DA8' }}>
                 {iAmIt ? '친구에게 닿으면 술래가 넘어가요!' : '술래에게 잡히지 마세요!'}
               </div>
 
@@ -271,7 +271,7 @@ export default function TagPage() {
                   style={{ background: fast ? '#EAF7EA' : 'white' }}
                 >
                   <span className="text-xl">🥾</span>
-                  <span className="text-[10px] font-bold" style={{ color: '#8A7A5F' }}>
+                  <span className="text-[12px] font-bold" style={{ color: '#8A7A5F' }}>
                     {fast ? '달리는 중!' : `바람의 신발 ${items['play-shoes'] ?? 0}`}
                   </span>
                 </button>
@@ -290,14 +290,14 @@ export default function TagPage() {
                   style={{ background: shield ? '#EAF2FB' : 'white' }}
                 >
                   <span className="text-xl">🛡️</span>
-                  <span className="text-[10px] font-bold" style={{ color: '#8A7A5F' }}>
+                  <span className="text-[12px] font-bold" style={{ color: '#8A7A5F' }}>
                     {shield ? '방패 켜짐!' : `튼튼 방패 ${items['play-shield'] ?? 0}`}
                   </span>
                 </button>
               </div>
 
               {!items['play-shoes'] && !items['play-shield'] && (
-                <div className="text-[10px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+                <div className="text-[12px] text-center mt-2 leading-relaxed" style={{ color: '#A89880' }}>
                   숙제를 내고 도장을 모으면 상점에서 놀이 아이템을 살 수 있어요.
                   <b> 없어도 노는 데는 아무 지장 없어요.</b>
                 </div>
@@ -307,12 +307,12 @@ export default function TagPage() {
 
           {ranking.length > 0 && (
             <div className="mt-3">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>🏆 많이 잡은 친구</div>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>🏆 많이 잡은 친구</div>
               <div className="flex flex-col gap-1">
                 {ranking.slice(0, 5).map((r, i) => (
                   <div
                     key={r.uid}
-                    className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12px]"
+                    className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-[14px]"
                     style={{ background: r.uid === me?.uid ? '#EAF7EA' : 'white', color: '#3A3226' }}
                   >
                     <span className="font-black w-5">{['🥇', '🥈', '🥉'][i] ?? i + 1}</span>

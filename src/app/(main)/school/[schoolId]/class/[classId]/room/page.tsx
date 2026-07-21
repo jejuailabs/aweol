@@ -254,7 +254,7 @@ export default function ClassRoomPage() {
       {user && (
         <button
           onClick={() => router.push(`/school/${schoolId}/class/${classId}/tag`)}
-          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
         >
           👹 술래잡기
@@ -291,11 +291,11 @@ export default function ClassRoomPage() {
       <div className="absolute top-4 left-4 right-4 z-30 flex items-center gap-2">
         <button
           onClick={() => router.push(`/school/${schoolId}`)}
-          className="ac-btn shrink-0 px-3.5 py-2 text-xs"
+          className="ac-btn shrink-0 px-3.5 py-2 text-sm"
         >
           ← 학교로
         </button>
-        <div className="ac-bubble hidden sm:block px-4 py-2 text-xs truncate">
+        <div className="ac-bubble hidden sm:block px-4 py-2 text-sm truncate">
           📚 {classId} 교실
         </div>
         <div className="ml-auto shrink-0">
@@ -304,14 +304,14 @@ export default function ClassRoomPage() {
         {canDraw && (
           <button
             onClick={() => setBoardOpen((v) => !v)}
-            className={`ac-btn shrink-0 px-3.5 py-2 text-xs${boardOpen ? ' ac-btn-green' : ''}`}
+            className={`ac-btn shrink-0 px-3.5 py-2 text-sm${boardOpen ? ' ac-btn-green' : ''}`}
           >
             ✏️ 칠판
           </button>
         )}
         <button
           onClick={() => setShowList(true)}
-          className="ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-xs"
+          className="ac-btn ac-btn-green shrink-0 px-3.5 py-2 text-sm"
         >
           📋 활동
         </button>
@@ -330,7 +330,7 @@ export default function ClassRoomPage() {
       {/* 빈 교실 안내 */}
       {isEmpty && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 px-4 w-full max-w-[400px] pointer-events-none">
-          <div className="ac-bubble px-5 py-3.5 text-center text-[11px] leading-relaxed">
+          <div className="ac-bubble px-5 py-3.5 text-center text-[13px] leading-relaxed">
             {isTeacher
               ? '아직 활동이 없어요. 게시판의 ➕ 카드를 눌러 첫 수업을 만들어보세요!'
               : '아직 이 반에는 전시된 활동이 없어요. 선생님이 수업을 등록하면 여기에 걸립니다 🎨'}
@@ -354,7 +354,7 @@ export default function ClassRoomPage() {
 
       {/* 하단 안내 */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden sm:block">
-        <div className="ac-bubble px-4 py-2.5 text-[11px]">
+        <div className="ac-bubble px-4 py-2.5 text-[13px]">
           🚶 WASD 걷기 · 🖱️ 드래그로 상하좌우 시점 · 휠/핀치 줌 · 게시판 포스터를 눌러 입장!
         </div>
       </div>
@@ -393,8 +393,8 @@ export default function ClassRoomPage() {
                     {act.emoji}
                   </div>
                   <div className="p-2.5">
-                    <div className="text-xs font-bold" style={{ color: 'var(--color-text-main)' }}>{act.title}</div>
-                    <div className="text-[10px] mt-0.5 line-clamp-1" style={{ color: 'var(--color-text-sub)' }}>{act.description}</div>
+                    <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>{act.title}</div>
+                    <div className="text-[12px] mt-0.5 line-clamp-1" style={{ color: 'var(--color-text-sub)' }}>{act.description}</div>
                   </div>
                 </button>
               ))}
@@ -418,13 +418,13 @@ export default function ClassRoomPage() {
             <div className="text-center mb-5">
               <div className="text-3xl mb-1">📌</div>
               <h3 className="text-base font-bold" style={{ color: 'var(--color-text-main)' }}>새 활동 만들기</h3>
-              <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
+              <p className="text-[13px] mt-1" style={{ color: 'var(--color-text-sub)' }}>
                 게시판에 포스터가 붙고, 그 안에 작품을 전시할 수 있어요
               </p>
             </div>
 
             <div className="mb-3">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>수업(활동) 이름 *</div>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>수업(활동) 이름 *</div>
               <input
                 type="text"
                 value={newTitle}
@@ -437,7 +437,7 @@ export default function ClassRoomPage() {
             </div>
 
             <div className="mb-5">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>한 줄 소개 (선택)</div>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>한 줄 소개 (선택)</div>
               <input
                 type="text"
                 value={newDesc}
@@ -450,7 +450,7 @@ export default function ClassRoomPage() {
 
             {!myClass && (
               <div
-                className="rounded-xl px-3 py-2.5 mb-3 text-[12px] leading-relaxed"
+                className="rounded-xl px-3 py-2.5 mb-3 text-[14px] leading-relaxed"
                 style={{ background: '#EAF2FB', color: '#2F6DB5', border: '1px solid #C9DDF2' }}
               >
                 ℹ️ 내가 맡은 반이 아니에요. 활동은 그 반 담임 선생님만 만들 수 있어요.
@@ -458,7 +458,7 @@ export default function ClassRoomPage() {
             )}
             {addErr && (
               <div
-                className="rounded-xl px-3 py-2.5 mb-3 text-[12px] font-bold leading-relaxed"
+                className="rounded-xl px-3 py-2.5 mb-3 text-[14px] font-bold leading-relaxed"
                 style={{ background: '#FDECEA', color: '#B02A37', border: '1px solid #F5C6C4' }}
               >
                 ⚠️ {addErr}

@@ -165,7 +165,7 @@ export default function SpotPlay({
     <div>
       <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
         <div className="text-base font-black" style={{ color: '#3A3226' }}>{title}</div>
-        <div className="text-[12px] mt-1" style={{ color: '#8A7A5F' }}>
+        <div className="text-[14px] mt-1" style={{ color: '#8A7A5F' }}>
           다른 곳 <b>{spotCount}군데</b>를 찾아보세요
         </div>
       </div>
@@ -181,24 +181,24 @@ export default function SpotPlay({
         </button>
       ) : (
         <div className="flex items-center gap-2 mb-2">
-          <div className="rounded-xl px-3 py-2 text-[12px] font-bold" style={{ background: '#FFF1D6', color: '#A6762A' }}>
+          <div className="rounded-xl px-3 py-2 text-[14px] font-bold" style={{ background: '#FFF1D6', color: '#A6762A' }}>
             남은 곳 {Math.max(0, remaining)}
           </div>
-          <div className="rounded-xl px-3 py-2 text-[12px] font-bold" style={{ background: 'white', color: '#8A7A5F' }}>
+          <div className="rounded-xl px-3 py-2 text-[14px] font-bold" style={{ background: 'white', color: '#8A7A5F' }}>
             ⏱ {done && seconds != null ? `${seconds}초` : `${elapsed}초`}
           </div>
           {lens > 0 && !done && (
             <button
               onClick={useLens}
               disabled={busy}
-              className="rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+              className="rounded-xl px-3 py-2 text-[14px] font-bold disabled:opacity-40"
               style={{ background: '#EAF2FB', color: '#2F6DB5' }}
             >
               🔍 돋보기 {lens}
             </button>
           )}
           {misses > 0 && (
-            <div className="rounded-xl px-3 py-2 text-[12px]" style={{ background: 'white', color: '#C0392B' }}>
+            <div className="rounded-xl px-3 py-2 text-[14px]" style={{ background: 'white', color: '#C0392B' }}>
               헛짚음 {misses}
             </div>
           )}
@@ -247,15 +247,15 @@ export default function SpotPlay({
       </div>
 
       {msg && (
-        <div className="text-center text-[13px] font-bold mb-3" style={{ color: '#A6762A' }}>{msg}</div>
+        <div className="text-center text-[15px] font-bold mb-3" style={{ color: '#A6762A' }}>{msg}</div>
       )}
 
       {/* 순위 */}
-      <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>
+      <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>
         🏆 빨리 찾은 친구들
       </div>
       {ranks.length === 0 ? (
-        <div className="py-5 text-center text-[11px]" style={{ color: '#A89880' }}>
+        <div className="py-5 text-center text-[13px]" style={{ color: '#A89880' }}>
           아직 다 찾은 친구가 없어요
         </div>
       ) : (
@@ -268,13 +268,13 @@ export default function SpotPlay({
                 background: r.studentUid === user?.uid ? '#FFF1D6' : 'white',
               }}
             >
-              <span className="text-[12px] font-black w-5" style={{ color: i < 3 ? '#E8A33C' : '#A89880' }}>
+              <span className="text-[14px] font-black w-5" style={{ color: i < 3 ? '#E8A33C' : '#A89880' }}>
                 {i + 1}
               </span>
-              <span className="text-[12px] font-bold flex-1 truncate" style={{ color: '#3A3226' }}>
+              <span className="text-[14px] font-bold flex-1 truncate" style={{ color: '#3A3226' }}>
                 {r.studentName}
               </span>
-              <span className="text-[12px] font-bold" style={{ color: '#8A7A5F' }}>{r.seconds}초</span>
+              <span className="text-[14px] font-bold" style={{ color: '#8A7A5F' }}>{r.seconds}초</span>
             </div>
           ))}
         </div>

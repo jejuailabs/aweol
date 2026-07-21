@@ -71,7 +71,7 @@ export default function MapHomePage() {
       <div className="absolute top-4 left-4 right-4 z-30 flex items-start gap-2 pointer-events-none">
         <div className="ac-bubble px-4 py-2.5 pointer-events-auto">
           <div className="text-sm font-black" style={{ color: '#6B5B43' }}>🗺️ 우리 동네 전시 지도</div>
-          <div className="text-[10px]" style={{ color: '#A89880' }}>
+          <div className="text-[12px]" style={{ color: '#A89880' }}>
             학교를 눌러 전시를 보러 가요
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function MapHomePage() {
             <div className="text-sm font-bold mb-1" style={{ color: '#6B5B43' }}>
               지도에 올라온 학교가 아직 없어요
             </div>
-            <div className="text-[11px] leading-relaxed" style={{ color: '#A89880' }}>
+            <div className="text-[13px] leading-relaxed" style={{ color: '#A89880' }}>
               {isSuper
                 ? '아래 + 버튼으로 첫 학교를 만들어보세요'
                 : '곧 학교들이 문을 열 예정이에요'}
@@ -102,7 +102,7 @@ export default function MapHomePage() {
       {isSuper && (
         <button
           onClick={() => { playSound('open'); setShowCreate(true); }}
-          className="ac-btn ac-btn-green absolute left-4 bottom-28 z-30 px-4 py-2.5 text-xs"
+          className="ac-btn ac-btn-green absolute left-4 bottom-28 z-30 px-4 py-2.5 text-sm"
         >
           + 학교 만들기
         </button>
@@ -128,7 +128,7 @@ export default function MapHomePage() {
               )}
             </div>
             <div className="text-lg font-black text-white mb-1">{entering.name}</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>
+            <div className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
               입장하는 중...
             </div>
           </div>

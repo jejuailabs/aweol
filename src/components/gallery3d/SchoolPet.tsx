@@ -272,7 +272,7 @@ export default function SchoolPet({
         <Html position={[0, 1.28, 0]} center pointerEvents="none" zIndexRange={[7, 0]}>
           <div
             style={{
-              background: 'white', color: '#3A3226', fontWeight: 800, fontSize: '13px',
+              background: 'white', color: '#3A3226', fontWeight: 800, fontSize: '16px',
               padding: '7px 14px', borderRadius: '14px', whiteSpace: 'nowrap',
               fontFamily: 'Pretendard, sans-serif', border: '2px solid #E8D9BE',
               boxShadow: '0 4px 10px rgba(0,0,0,0.22)',
@@ -287,7 +287,7 @@ export default function SchoolPet({
         <Html position={[0, 1.05, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
           <div
             style={{
-              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '12px',
+              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',
               padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
               fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
               boxShadow: '0 3px 8px rgba(0,0,0,0.22)',

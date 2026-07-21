@@ -68,13 +68,13 @@ export default function RoleSwitcher() {
             className="flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-1 shadow-lg"
             style={{ background: '#FFD93D', color: '#7A5800' }}
           >
-            <span className="text-[10px] font-bold whitespace-nowrap">
+            <span className="text-[12px] font-bold whitespace-nowrap">
               {MODES.find((m) => m.role === viewAs.role)?.label} 모드
               {viewAs.role !== 'teacher' && ` · ${viewAs.classId}`}
             </span>
             <button
               onClick={exit}
-              className="rounded-full px-2 py-0.5 text-[9px] font-bold"
+              className="rounded-full px-2 py-0.5 text-[11px] font-bold"
               style={{ background: '#7A5800', color: '#FFF8E7' }}
             >
               종료
@@ -108,7 +108,7 @@ export default function RoleSwitcher() {
             <div className="text-center mb-4">
               <div className="text-2xl mb-1">🧪</div>
               <h3 className="text-base font-bold" style={{ color: 'var(--color-text-main)' }}>역할 테스트</h3>
-              <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+              <p className="text-[13px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
                 다른 역할의 화면을 그대로 체험해봅니다.<br />
                 계정 정보는 바뀌지 않아요.
               </p>
@@ -117,7 +117,7 @@ export default function RoleSwitcher() {
             {/* 테스트할 반 */}
             {classes.length > 0 && (
               <div className="mb-3">
-                <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
                   테스트할 반 (학생·학부모 모드)
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
@@ -125,7 +125,7 @@ export default function RoleSwitcher() {
                     <button
                       key={c.id}
                       onClick={() => setClassId(c.id)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
+                      className="rounded-lg px-3 py-1.5 text-sm font-bold transition-all"
                       style={{
                         background: classId === c.id ? 'var(--color-primary)' : 'var(--color-surface-soft)',
                         color: classId === c.id ? 'white' : 'var(--color-text-sub)',
@@ -156,7 +156,7 @@ export default function RoleSwitcher() {
                       <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
                         {m.label} 모드{active && ' · 사용 중'}
                       </div>
-                      <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>{m.desc}</div>
+                      <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>{m.desc}</div>
                     </div>
                   </button>
                 );
@@ -174,7 +174,7 @@ export default function RoleSwitcher() {
               {viewAs ? '↩️ 슈퍼 관리자로 돌아가기' : '지금은 슈퍼 관리자'}
             </button>
 
-            <p className="text-[10px] text-center mt-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+            <p className="text-[12px] text-center mt-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
               ⚠️ 화면(UI)만 해당 역할로 바뀝니다. 데이터 접근 권한은 실제 계정 기준이라
               권한 차단까지 검증하려면 각 역할로 직접 로그인해야 해요.
             </p>

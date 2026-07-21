@@ -86,7 +86,7 @@ export default function SpotCompose({
 
   return (
     <div>
-      <button onClick={onCancel} className="text-[11px] font-bold mb-2.5" style={{ color: '#8A7A5F' }}>
+      <button onClick={onCancel} className="text-[13px] font-bold mb-2.5" style={{ color: '#8A7A5F' }}>
         ← 놀이 목록
       </button>
       <div className="text-sm font-black mb-3" style={{ color: '#3A3226' }}>🔍 틀린그림 찾기 만들기</div>
@@ -107,7 +107,7 @@ export default function SpotCompose({
           <button
             key={o.v}
             onClick={() => setVis(o.v)}
-            className="flex-1 rounded-xl py-2.5 text-[11px] font-bold"
+            className="flex-1 rounded-xl py-2.5 text-[13px] font-bold"
             style={{
               background: vis === o.v ? '#E8A33C' : 'rgba(255,255,255,0.85)',
               color: vis === o.v ? 'white' : '#8A7A5F',
@@ -127,10 +127,10 @@ export default function SpotCompose({
             style={{ borderColor: '#E8A33C80', background: 'rgba(255,255,255,0.7)' }}
           >
             <span className="text-3xl">{generating ? '✨' : '📷'}</span>
-            <span className="text-[12px] font-bold" style={{ color: '#A6762A' }}>
+            <span className="text-[14px] font-bold" style={{ color: '#A6762A' }}>
               {generating ? 'AI가 다른 그림을 만드는 중...' : '사진 고르기'}
             </span>
-            <span className="text-[10px]" style={{ color: '#A89880' }}>
+            <span className="text-[12px]" style={{ color: '#A89880' }}>
               교실·운동장 사진이면 아이들이 더 재밌어해요
             </span>
           </button>
@@ -148,19 +148,19 @@ export default function SpotCompose({
         </>
       ) : (
         <>
-          <div className="rounded-xl px-3 py-2 mb-2 text-[11px] leading-relaxed" style={{ background: '#FFF1D6', color: '#A6762A' }}>
+          <div className="rounded-xl px-3 py-2 mb-2 text-[13px] leading-relaxed" style={{ background: '#FFF1D6', color: '#A6762A' }}>
             두 그림을 비교해서 <b>다른 곳을 아래 그림에서 눌러주세요</b>.
             AI가 정확히 몇 군데를 바꿨는지는 알 수 없어서, 선생님이 찍은 곳만 정답이 됩니다.
           </div>
 
           <div className={`flex gap-2 mb-2 ${layout === 'horizontal' ? 'flex-row' : 'flex-col'}`}>
             <div className="flex-1">
-              <div className="text-[10px] font-bold mb-1" style={{ color: '#8A7A5F' }}>원본</div>
+              <div className="text-[12px] font-bold mb-1" style={{ color: '#8A7A5F' }}>원본</div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={originalUrl} alt="원본" className="w-full rounded-xl" />
             </div>
             <div className="flex-1">
-              <div className="text-[10px] font-bold mb-1" style={{ color: '#8A7A5F' }}>
+              <div className="text-[12px] font-bold mb-1" style={{ color: '#8A7A5F' }}>
                 바뀐 그림 — 눌러서 표시 ({spots.length}/10)
               </div>
               <div className="relative cursor-crosshair" onClick={markSpot}>
@@ -169,7 +169,7 @@ export default function SpotCompose({
                 {spots.map((s, i) => (
                   <div
                     key={i}
-                    className="absolute rounded-full flex items-center justify-center text-[11px] font-bold text-white pointer-events-none"
+                    className="absolute rounded-full flex items-center justify-center text-[13px] font-bold text-white pointer-events-none"
                     style={{
                       left: `${s.x * 100}%`,
                       top: `${s.y * 100}%`,
@@ -191,14 +191,14 @@ export default function SpotCompose({
             <button
               onClick={() => setSpots((p) => p.slice(0, -1))}
               disabled={spots.length === 0}
-              className="rounded-xl px-4 py-2.5 text-[12px] font-bold disabled:opacity-40"
+              className="rounded-xl px-4 py-2.5 text-[14px] font-bold disabled:opacity-40"
               style={{ background: 'white', color: '#8A7A5F' }}
             >
               ↩︎ 하나 취소
             </button>
             <button
               onClick={() => { setOriginalUrl(''); setVariantUrl(''); setSpots([]); }}
-              className="rounded-xl px-4 py-2.5 text-[12px] font-bold"
+              className="rounded-xl px-4 py-2.5 text-[14px] font-bold"
               style={{ background: 'white', color: '#8A7A5F' }}
             >
               다른 사진으로
@@ -207,7 +207,7 @@ export default function SpotCompose({
         </>
       )}
 
-      {error && <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>}
+      {error && <div className="text-[13px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>}
 
       <div className="flex gap-2">
         <button

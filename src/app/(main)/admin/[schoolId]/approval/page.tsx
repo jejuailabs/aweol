@@ -115,7 +115,7 @@ export default function ApprovalPage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => router.push(`/admin/${schoolId}`)}
-          className="text-xs"
+          className="text-sm"
           style={{ color: 'var(--color-text-sub)' }}
         >
           ← 대시보드
@@ -125,7 +125,7 @@ export default function ApprovalPage() {
         </h1>
         {pending.length > 0 && (
           <span
-            className="text-xs font-bold px-2 py-1 rounded-full"
+            className="text-sm font-bold px-2 py-1 rounded-full"
             style={{ background: '#FF6B6B', color: 'white' }}
           >
             {pending.length}
@@ -139,7 +139,7 @@ export default function ApprovalPage() {
           <div className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
             모든 작품이 처리되었어요!
           </div>
-          <div className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
             대기 중인 작품이 없습니다
           </div>
         </div>
@@ -170,14 +170,14 @@ export default function ApprovalPage() {
                     <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
                       {item.data.title}
                     </div>
-                    <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+                    <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                       {item.data.artistName} · {item.classId} · {item.activityTitle}
                     </div>
                   </div>
                 </div>
 
                 {item.data.artistComment && (
-                  <div className="text-xs mb-3 italic" style={{ color: 'var(--color-text-sub)' }}>
+                  <div className="text-sm mb-3 italic" style={{ color: 'var(--color-text-sub)' }}>
                     &ldquo;{item.data.artistComment}&rdquo;
                   </div>
                 )}
@@ -218,7 +218,7 @@ export default function ApprovalPage() {
             <h3 className="text-base font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
               작품 반려
             </h3>
-            <p className="text-xs mb-4" style={{ color: 'var(--color-text-sub)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-sub)' }}>
               &ldquo;{rejectTarget.data.title}&rdquo; — {rejectTarget.data.artistName}
             </p>
             <textarea

@@ -87,7 +87,7 @@ export default function ClassInfoPage() {
 
             <div className="relative">
               <div
-                className="inline-block rounded-full px-3 py-1 text-[10px] font-bold tracking-widest mb-3"
+                className="inline-block rounded-full px-3 py-1 text-[12px] font-bold tracking-widest mb-3"
                 style={{ background: 'rgba(255,255,255,0.25)', color: 'white', letterSpacing: '0.15em' }}
               >
                 CLASS EXHIBITION TICKET
@@ -102,7 +102,7 @@ export default function ClassInfoPage() {
                 <span className="text-white text-lg font-bold mb-2 opacity-90">반 전시실</span>
               </div>
               {classDoc?.year && (
-                <div className="mt-2 text-[11px] font-medium text-white opacity-80">
+                <div className="mt-2 text-[13px] font-medium text-white opacity-80">
                   {classDoc.year}학년도 · 애월초등학교
                 </div>
               )}
@@ -135,7 +135,7 @@ export default function ClassInfoPage() {
                 👩‍🏫
               </div>
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                <div className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
                   담임선생님
                 </div>
                 <div className="text-sm font-bold" style={{ color: '#1F2937' }}>{teacherName}</div>
@@ -146,14 +146,14 @@ export default function ClassInfoPage() {
               className="rounded-2xl px-4 py-3.5 mb-3 text-center"
               style={{ background: '#F8FAFC', border: '1px solid #EEF2F7' }}
             >
-              <div className="text-[10px] font-semibold mb-1" style={{ color: '#9CA3AF' }}>우리 반 급훈</div>
+              <div className="text-[12px] font-semibold mb-1" style={{ color: '#9CA3AF' }}>우리 반 급훈</div>
               <div className="text-[15px] font-bold leading-snug" style={{ color: '#374151' }}>
                 “{motto}”
               </div>
             </div>
 
             {classDoc?.introText && (
-              <p className="text-xs leading-relaxed mb-3 px-1" style={{ color: '#6B7280' }}>
+              <p className="text-sm leading-relaxed mb-3 px-1" style={{ color: '#6B7280' }}>
                 {classDoc.introText}
               </p>
             )}
@@ -171,7 +171,7 @@ export default function ClassInfoPage() {
               <span className="transition-transform group-hover:translate-x-1">→</span>
             </button>
 
-            <div className="mt-3 text-center text-[10px]" style={{ color: '#B0B7C3' }}>
+            <div className="mt-3 text-center text-[12px]" style={{ color: '#B0B7C3' }}>
               로그인 없이 누구나 관람할 수 있어요
             </div>
           </div>

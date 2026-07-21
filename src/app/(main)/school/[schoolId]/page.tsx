@@ -104,7 +104,7 @@ export default function SchoolPage() {
       {/* 기억창고 — 졸업생도 봐야 하니 로그인과 무관하게 보인다 */}
       <button
         onClick={() => router.push(`/school/${schoolId}/archive`)}
-        className="absolute right-4 top-[136px] z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+        className="absolute right-4 top-[136px] z-30 rounded-full px-4 py-2.5 text-sm font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         📦 기억창고
@@ -114,7 +114,7 @@ export default function SchoolPage() {
       {userDoc && (
         <button
           onClick={() => router.push(`/school/${schoolId}/track`)}
-          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-xs font-bold"
+          className="absolute right-4 top-20 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
         >
           🏃 운동장 달리기
@@ -144,7 +144,7 @@ export default function SchoolPage() {
                 setPet(await loadPet(schoolId));
                 setAdopting(false);
               }}
-              className="rounded-full px-4 py-2.5 text-xs font-bold"
+              className="rounded-full px-4 py-2.5 text-sm font-bold"
               style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
             >
               {k.emoji} {k.label}
@@ -152,7 +152,7 @@ export default function SchoolPage() {
           )) : (
             <button
               onClick={() => setAdopting(true)}
-              className="rounded-full px-5 py-2.5 text-xs font-bold"
+              className="rounded-full px-5 py-2.5 text-sm font-bold"
               style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
             >
               🐾 학교 동물 들이기
@@ -169,7 +169,7 @@ export default function SchoolPage() {
       */}
       <button
         onClick={() => router.push('/')}
-        className="ac-btn absolute top-4 left-4 z-40 px-3.5 py-2 text-xs"
+        className="ac-btn absolute top-4 left-4 z-40 px-3.5 py-2 text-sm"
       >
         ← 지도로
       </button>
@@ -194,7 +194,7 @@ export default function SchoolPage() {
       {role === 'parent' && userDoc?.children && userDoc.children.length > 0 && (
         <div className="absolute left-4 bottom-24 z-30 flex flex-col gap-2">
           <div
-            className="text-[10px] font-bold px-2"
+            className="text-[12px] font-bold px-2"
             style={{ color: '#FFFFFF', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
           >
             👨‍👩‍👧 내 아이 반 바로가기
@@ -203,11 +203,11 @@ export default function SchoolPage() {
             <button
               key={child.studentUid + child.classId}
               onClick={() => router.push(`/school/${schoolId}/class/${child.classId}/room`)}
-              className="flex items-center gap-2 rounded-full pl-3 pr-4 py-2 text-xs font-bold shadow-lg transition-transform hover:scale-105"
+              className="flex items-center gap-2 rounded-full pl-3 pr-4 py-2 text-sm font-bold shadow-lg transition-transform hover:scale-105"
               style={{ background: 'rgba(255,255,255,0.92)', color: '#2B2B2B' }}
             >
               <span
-                className="flex h-6 w-6 items-center justify-center rounded-full text-white text-[10px]"
+                className="flex h-6 w-6 items-center justify-center rounded-full text-white text-[12px]"
                 style={{ background: 'var(--color-primary)' }}
               >
                 {child.name?.[0] || '🙂'}

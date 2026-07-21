@@ -107,7 +107,7 @@ export default function JoinClassPage() {
           />
 
           {error && (
-            <div className="text-xs font-bold mb-3 text-center" style={{ color: '#E8604C' }}>
+            <div className="text-sm font-bold mb-3 text-center" style={{ color: '#E8604C' }}>
               {error}
             </div>
           )}
@@ -123,7 +123,7 @@ export default function JoinClassPage() {
 
           <button
             onClick={() => router.replace('/')}
-            className="mt-4 text-xs"
+            className="mt-4 text-sm"
             style={{ color: 'var(--color-text-sub)' }}
           >
             나중에 할게요 (구경만 하기)

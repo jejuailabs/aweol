@@ -109,12 +109,12 @@ export default function MyStandPage() {
           <h1 className="text-lg font-bold" style={{ color: 'var(--color-text-main)' }}>
             {userDoc?.displayName || '이름 없음'}
           </h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
             작품 {stats.artworks}개 · 전시 중 {stats.approved}개 · 배지 {earnedBadges.length}개
           </p>
           <button
             onClick={() => router.push('/avatar-select')}
-            className="mt-2 rounded-full px-3 py-1 text-[10px] font-bold"
+            className="mt-2 rounded-full px-3 py-1 text-[12px] font-bold"
             style={{ background: 'var(--color-primary)', color: 'white' }}
           >
             아바타 바꾸기
@@ -140,7 +140,7 @@ export default function MyStandPage() {
               }}
             >
               <span className="text-3xl">{badge.emoji}</span>
-              <span className="text-[10px] font-bold" style={{ color: 'var(--color-text-main)' }}>{badge.label}</span>
+              <span className="text-[12px] font-bold" style={{ color: 'var(--color-text-main)' }}>{badge.label}</span>
               <span className="text-[8px] leading-tight" style={{ color: 'var(--color-text-sub)' }}>{badge.desc}</span>
             </div>
           );
@@ -151,7 +151,7 @@ export default function MyStandPage() {
       <h2 className="text-sm font-bold mb-3" style={{ color: 'var(--color-text-main)' }}>🖼️ 내 작품</h2>
       {fetched && myArtworks.length === 0 && (
         <div
-          className="rounded-2xl p-8 text-center text-xs"
+          className="rounded-2xl p-8 text-center text-sm"
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
         >
           아직 올린 작품이 없어요. 전시실에서 작품을 올려보세요!
@@ -173,9 +173,9 @@ export default function MyStandPage() {
               )}
             </div>
             <div className="p-2.5">
-              <div className="text-xs font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{art.title}</div>
+              <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{art.title}</div>
               <span
-                className="mt-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold"
+                className="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold"
                 style={{
                   background: art.status === 'approved' ? 'rgba(62,196,109,0.15)' : art.status === 'pending' ? 'rgba(255,201,60,0.2)' : 'rgba(255,107,107,0.15)',
                   color: art.status === 'approved' ? 'var(--color-primary-dark)' : art.status === 'pending' ? '#B8860B' : '#C0392B',

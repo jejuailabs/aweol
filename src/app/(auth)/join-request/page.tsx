@@ -127,7 +127,7 @@ export default function JoinRequestPage() {
                 <span className="text-3xl">{r.icon}</span>
                 <div>
                   <div className="font-bold text-sm" style={{ color: 'var(--color-text-main)' }}>{r.label}</div>
-                  <div className="text-xs" style={{ color: 'var(--color-text-sub)' }}>{r.desc}</div>
+                  <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>{r.desc}</div>
                 </div>
               </button>
             ))}
@@ -135,12 +135,12 @@ export default function JoinRequestPage() {
 
           {selectedRole === 'teacher' && (
             <div className="mt-4 w-full max-w-[320px]">
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
                 어느 학교 선생님이신가요?
               </div>
               <div className="flex flex-col gap-1.5 mb-3">
                 {schools.length === 0 ? (
-                  <div className="rounded-xl px-4 py-3 text-[11px]" style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}>
+                  <div className="rounded-xl px-4 py-3 text-[13px]" style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}>
                     아직 등록된 학교가 없어요. 총관리자에게 문의해 주세요.
                   </div>
                 ) : (
@@ -148,7 +148,7 @@ export default function JoinRequestPage() {
                     <button
                       key={s.id}
                       onClick={() => setSchoolId(s.id)}
-                      className="rounded-xl px-4 py-2.5 text-[12px] font-bold text-left"
+                      className="rounded-xl px-4 py-2.5 text-[14px] font-bold text-left"
                       style={{
                         background: schoolId === s.id ? 'var(--color-primary)' : 'rgba(255,255,255,0.85)',
                         color: schoolId === s.id ? 'white' : 'var(--color-text-sub)',
@@ -159,7 +159,7 @@ export default function JoinRequestPage() {
                   ))
                 )}
               </div>
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
                 맡으신 학년과 반
               </div>
               <div className="flex gap-2 mb-3">
@@ -179,7 +179,7 @@ export default function JoinRequestPage() {
                 />
               </div>
               <div
-                className="rounded-xl px-4 py-3 text-[11px] leading-relaxed"
+                className="rounded-xl px-4 py-3 text-[13px] leading-relaxed"
                 style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
               >
                 ⏳ 선생님은 아이들 명부를 다루기 때문에 <b>총관리자 확인</b>을 거쳐요.
@@ -191,7 +191,7 @@ export default function JoinRequestPage() {
 
           {(selectedRole === 'student' || selectedRole === 'parent') && (
             <div
-              className="mt-4 w-full max-w-[320px] rounded-xl px-4 py-3 text-[11px] leading-relaxed"
+              className="mt-4 w-full max-w-[320px] rounded-xl px-4 py-3 text-[13px] leading-relaxed"
               style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
             >
               🔑 다음 화면에서 선생님께 받은 <b>6자리 코드</b>를 넣으면
@@ -213,7 +213,7 @@ export default function JoinRequestPage() {
           </button>
 
           {error && (
-            <div className="mt-3 text-[12px] font-bold" style={{ color: '#C0392B' }}>{error}</div>
+            <div className="mt-3 text-[14px] font-bold" style={{ color: '#C0392B' }}>{error}</div>
           )}
       </>
     </div>

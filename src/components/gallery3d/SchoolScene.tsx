@@ -330,7 +330,7 @@ function SchoolBuilding({
           <Html position={[0, 2.85, bodyD * 0.5 + 1.4]} center pointerEvents="none" zIndexRange={[6, 0]}>
             <div
               style={{
-                background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '13px',
+                background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '16px',
                 padding: '6px 14px', borderRadius: '999px', whiteSpace: 'nowrap',
                 fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
                 boxShadow: '0 3px 8px rgba(0,0,0,0.25)',
@@ -496,7 +496,7 @@ function SidePlace({
         <Html position={[0, 3.9, 1.8]} center pointerEvents="none" zIndexRange={[6, 0]}>
           <div
             style={{
-              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '12px',
+              background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',
               padding: '5px 12px', borderRadius: '999px', whiteSpace: 'nowrap',
               fontFamily: 'Pretendard, sans-serif', border: '2px solid #EFE3CB',
             }}

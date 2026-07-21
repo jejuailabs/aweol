@@ -52,7 +52,7 @@ export default function BottomNav() {
             >
               <span className="text-xl">{item.icon}</span>
               <span
-                className="text-[10px] font-medium"
+                className="text-[12px] font-medium"
                 style={{ color: isActive ? 'var(--color-primary)' : '#9CA3AF' }}
               >
                 {item.label}

@@ -162,7 +162,7 @@ export default function QuizSolve({
 
   if (questions.length === 0) {
     return (
-      <div className="py-10 text-center text-[11px]" style={{ color: '#A89880' }}>
+      <div className="py-10 text-center text-[13px]" style={{ color: '#A89880' }}>
         문제를 불러오는 중이에요...
       </div>
     );
@@ -176,7 +176,7 @@ export default function QuizSolve({
         <div className="rounded-2xl p-4 mb-3 text-center" style={{ background: '#F0E8F6' }}>
           <div className="text-3xl mb-1">🎉</div>
           <div className="text-sm font-black" style={{ color: '#5A3570' }}>다 풀었어요!</div>
-          <div className="text-[11px] mt-1" style={{ color: '#7B4B94' }}>
+          <div className="text-[13px] mt-1" style={{ color: '#7B4B94' }}>
             궁금한 문제는 <b>설명 듣기</b>를 눌러보세요
           </div>
         </div>
@@ -187,8 +187,8 @@ export default function QuizSolve({
             style={{ background: '#E2F6E9', border: '1px solid #A0DCB7' }}
           >
             <div className="text-2xl leading-none mb-1">{overallStamp.emoji}</div>
-            <div className="text-[12px] font-bold" style={{ color: '#2E8B57' }}>{overallStamp.label}</div>
-            <div className="text-[10px] mt-0.5" style={{ color: '#5FA87C' }}>
+            <div className="text-[14px] font-bold" style={{ color: '#2E8B57' }}>{overallStamp.label}</div>
+            <div className="text-[12px] mt-0.5" style={{ color: '#5FA87C' }}>
               선생님이 도장을 찍어주셨어요 🏅
             </div>
           </div>
@@ -200,7 +200,7 @@ export default function QuizSolve({
           return (
             <div key={q.id} className="rounded-2xl p-3.5 mb-2" style={{ background: 'white' }}>
               <div className="flex items-start justify-between gap-2 mb-1.5">
-                <div className="text-[12px] font-bold" style={{ color: '#3A3226' }}>
+                <div className="text-[14px] font-bold" style={{ color: '#3A3226' }}>
                   {i + 1}. {q.prompt}
                 </div>
                 {!isEssay && (
@@ -209,36 +209,36 @@ export default function QuizSolve({
               </div>
 
               {q.type === 'choice' && (
-                <div className="text-[11px] mb-1" style={{ color: '#8A7A5F' }}>
+                <div className="text-[13px] mb-1" style={{ color: '#8A7A5F' }}>
                   내가 고른 답: {a?.choiceIndex !== null && a?.choiceIndex !== undefined
                     ? `${a.choiceIndex + 1}. ${q.choices[a.choiceIndex] ?? ''}`
                     : '고르지 않았어요'}
                 </div>
               )}
               {q.type !== 'choice' && (
-                <div className="text-[11px] mb-1 whitespace-pre-wrap" style={{ color: '#8A7A5F' }}>
+                <div className="text-[13px] mb-1 whitespace-pre-wrap" style={{ color: '#8A7A5F' }}>
                   내 답: {a?.text || '적지 않았어요'}
                 </div>
               )}
               {isEssay && !feedback[q.id]?.comment && !feedback[q.id]?.stamp && (
-                <div className="text-[10px] mb-1" style={{ color: '#A89880' }}>
+                <div className="text-[12px] mb-1" style={{ color: '#A89880' }}>
                   선생님이 읽고 답해주실 거예요
                 </div>
               )}
 
               {feedback[q.id]?.stamp && (
-                <div className="mt-1.5 text-[12px] font-bold" style={{ color: '#2E8B57' }}>
+                <div className="mt-1.5 text-[14px] font-bold" style={{ color: '#2E8B57' }}>
                   {feedback[q.id].stamp!.emoji} {feedback[q.id].stamp!.label}
                 </div>
               )}
               {feedback[q.id]?.comment && (
-                <div className="mt-1.5 rounded-xl px-3 py-2 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+                <div className="mt-1.5 rounded-xl px-3 py-2 text-[14px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
                   👩‍🏫 {feedback[q.id].comment}
                 </div>
               )}
 
               {explain[q.id] ? (
-                <div className="mt-2 rounded-xl px-3 py-2.5 text-[12px] leading-relaxed whitespace-pre-wrap"
+                <div className="mt-2 rounded-xl px-3 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap"
                      style={{ background: '#F0E8F6', color: '#4A2C5A' }}>
                   💡 {explain[q.id]}
                 </div>
@@ -246,7 +246,7 @@ export default function QuizSolve({
                 <button
                   onClick={() => askExplain(q.id)}
                   disabled={loadingId === q.id}
-                  className="mt-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-50"
+                  className="mt-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-bold disabled:opacity-50"
                   style={{ background: '#F0E8F6', color: '#7B4B94' }}
                 >
                   {loadingId === q.id ? '생각하는 중...' : '💡 왜 그런지 설명 듣기'}
@@ -265,18 +265,18 @@ export default function QuizSolve({
       <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
         <div className="text-base font-black" style={{ color: '#3A3226' }}>{title}</div>
         {description && (
-          <div className="text-[12px] mt-1 leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
+          <div className="text-[14px] mt-1 leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
             {description}
           </div>
         )}
-        <div className="text-[11px] mt-2 font-bold" style={{ color: '#7B4B94' }}>
+        <div className="text-[13px] mt-2 font-bold" style={{ color: '#7B4B94' }}>
           {answered} / {questions.length} 문제 풀었어요
         </div>
       </div>
 
       {questions.map((q, i) => (
         <div key={q.id} className="rounded-2xl p-3.5 mb-2.5" style={{ background: 'white' }}>
-          <div className="text-[13px] font-bold mb-2" style={{ color: '#3A3226' }}>
+          <div className="text-[15px] font-bold mb-2" style={{ color: '#3A3226' }}>
             {i + 1}. {q.prompt}
           </div>
 
@@ -302,14 +302,14 @@ export default function QuizSolve({
                 <button
                   key={ci}
                   onClick={() => setChoice((p) => ({ ...p, [q.id]: ci }))}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[12px] font-bold"
+                  className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[14px] font-bold"
                   style={{
                     background: choice[q.id] === ci ? '#7B4B94' : '#F6F0E4',
                     color: choice[q.id] === ci ? 'white' : '#54493A',
                   }}
                 >
                   <span
-                    className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
+                    className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[12px]"
                     style={{
                       background: choice[q.id] === ci ? 'rgba(255,255,255,0.25)' : 'white',
                       color: choice[q.id] === ci ? 'white' : '#A89880',
@@ -328,7 +328,7 @@ export default function QuizSolve({
               value={text[q.id] || ''}
               onChange={(e) => setText((p) => ({ ...p, [q.id]: e.target.value }))}
               placeholder="답을 적어보세요"
-              className="w-full rounded-xl px-3 py-2.5 text-[13px] outline-none"
+              className="w-full rounded-xl px-3 py-2.5 text-[15px] outline-none"
               style={{ background: '#F6F0E4', color: '#3A3226' }}
             />
           )}
@@ -339,7 +339,7 @@ export default function QuizSolve({
               onChange={(e) => setText((p) => ({ ...p, [q.id]: e.target.value }))}
               rows={5}
               placeholder="생각을 자유롭게 적어보세요"
-              className="w-full rounded-xl px-3 py-2.5 text-[13px] outline-none resize-none"
+              className="w-full rounded-xl px-3 py-2.5 text-[15px] outline-none resize-none"
               style={{ background: '#F6F0E4', color: '#3A3226' }}
             />
           )}
@@ -347,7 +347,7 @@ export default function QuizSolve({
       ))}
 
       {error && (
-        <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
+        <div className="text-[13px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
       )}
 
       <button
@@ -359,11 +359,11 @@ export default function QuizSolve({
         {submitting ? '내는 중...' : '다 풀었어요!'}
       </button>
       {answered < questions.length && answered > 0 && (
-        <div className="text-[10px] mt-1.5 text-center" style={{ color: '#A89880' }}>
+        <div className="text-[12px] mt-1.5 text-center" style={{ color: '#A89880' }}>
           아직 안 푼 문제가 {questions.length - answered}개 있어요
         </div>
       )}
-      <div className="text-[10px] mt-1.5 text-center" style={{ color: '#A89880' }}>
+      <div className="text-[12px] mt-1.5 text-center" style={{ color: '#A89880' }}>
         한 번 내면 다시 풀 수 없어요
       </div>
     </div>

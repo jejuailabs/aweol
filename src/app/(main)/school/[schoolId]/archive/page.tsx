@@ -81,7 +81,7 @@ export default function ArchivePage() {
     <div className="px-4 pt-6 pb-24 mx-auto max-w-[720px]">
       <button
         onClick={() => router.push(`/school/${schoolId}`)}
-        className="text-[11px] font-bold mb-3"
+        className="text-[13px] font-bold mb-3"
         style={{ color: 'var(--color-text-sub)' }}
       >
         ← 학교로
@@ -90,18 +90,18 @@ export default function ArchivePage() {
       <h1 className="text-lg font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
         📦 기억창고
       </h1>
-      <p className="text-[11px] mb-5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-[13px] mb-5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
         지나간 해의 우리 반이 여기 담겨 있어요. 졸업해도 볼 수 있어요.
       </p>
 
-      {err && <div className="text-[11px] font-bold mb-3" style={{ color: '#C0392B' }}>{err}</div>}
+      {err && <div className="text-[13px] font-bold mb-3" style={{ color: '#C0392B' }}>{err}</div>}
 
       {loading ? (
-        <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>여는 중...</div>
+        <div className="text-[14px]" style={{ color: 'var(--color-text-sub)' }}>여는 중...</div>
       ) : list.length === 0 ? (
         <div className="py-12 text-center">
           <div className="text-4xl mb-2">📦</div>
-          <div className="text-xs leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-sm leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
             아직 담긴 해가 없어요.<br />
             한 해가 끝나면 선생님이 반을 기억창고로 옮겨요.
           </div>
@@ -129,10 +129,10 @@ export default function ArchivePage() {
                       )}
                     </div>
                     <div className="px-2.5 py-2">
-                      <div className="text-[13px] font-bold" style={{ color: 'var(--color-text-main)' }}>
+                      <div className="text-[15px] font-bold" style={{ color: 'var(--color-text-main)' }}>
                         {a.grade}학년 {a.classNumber}반
                       </div>
-                      <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+                      <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                         {a.teacherName || '담임 미정'} · 작품 {a.counts?.artworks ?? 0}개
                       </div>
                     </div>
@@ -159,7 +159,7 @@ export default function ArchivePage() {
                 <div className="text-base font-black text-white">
                   {open.year}년 {open.grade}학년 {open.classNumber}반
                 </div>
-                <div className="text-[10px] text-white opacity-85">{open.teacherName || '담임 미정'}</div>
+                <div className="text-[12px] text-white opacity-85">{open.teacherName || '담임 미정'}</div>
               </div>
               <button
                 onClick={() => setOpen(null)}
@@ -181,20 +181,20 @@ export default function ArchivePage() {
                   <div key={label} className="rounded-2xl py-2.5 text-center" style={{ background: 'var(--color-surface-soft)' }}>
                     <div className="text-lg">{emoji}</div>
                     <div className="text-sm font-black" style={{ color: 'var(--color-text-main)' }}>{n ?? 0}</div>
-                    <div className="text-[9px]" style={{ color: 'var(--color-text-sub)' }}>{label}</div>
+                    <div className="text-[11px]" style={{ color: 'var(--color-text-sub)' }}>{label}</div>
                   </div>
                 ))}
               </div>
 
               {detailBusy && (
-                <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>기록을 펼치는 중...</div>
+                <div className="text-[14px]" style={{ color: 'var(--color-text-sub)' }}>기록을 펼치는 중...</div>
               )}
 
               {detail && (
                 <>
                   {detail.artworks?.length > 0 && (
                     <>
-                      <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>🖼️ 그 해의 작품</div>
+                      <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>🖼️ 그 해의 작품</div>
                       <div className="grid grid-cols-3 gap-2 mb-4">
                         {detail.artworks.slice(0, 12).map((a) => (
                           <div key={a.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--color-surface-soft)' }}>
@@ -205,7 +205,7 @@ export default function ArchivePage() {
                               )}
                             </div>
                             <div className="px-1.5 py-1">
-                              <div className="text-[9px] font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{a.title}</div>
+                              <div className="text-[11px] font-bold truncate" style={{ color: 'var(--color-text-main)' }}>{a.title}</div>
                               <div className="text-[8px] truncate" style={{ color: 'var(--color-text-sub)' }}>{a.artistName}</div>
                             </div>
                           </div>
@@ -216,12 +216,12 @@ export default function ArchivePage() {
 
                   {detail.activities?.length > 0 && (
                     <>
-                      <div className="text-[11px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>🎪 그 해의 활동</div>
+                      <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>🎪 그 해의 활동</div>
                       <div className="flex flex-col gap-1 mb-4">
                         {detail.activities.map((v) => (
-                          <div key={v.id} className="rounded-xl px-3 py-2 text-[12px]" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}>
+                          <div key={v.id} className="rounded-xl px-3 py-2 text-[14px]" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}>
                             {v.emoji ?? '🎪'} {v.title}
-                            {v.date && <span className="text-[10px] ml-1.5" style={{ color: 'var(--color-text-sub)' }}>{v.date}</span>}
+                            {v.date && <span className="text-[12px] ml-1.5" style={{ color: 'var(--color-text-sub)' }}>{v.date}</span>}
                           </div>
                         ))}
                       </div>

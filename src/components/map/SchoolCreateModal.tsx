@@ -158,7 +158,7 @@ export default function SchoolCreateModal({
         <div className="px-5 pt-4 pb-3 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #8FD98Add, #6AB56599)' }}>
           <div>
             <div className="text-base font-black text-white">🏫 새 학교 만들기</div>
-            <div className="text-[10px] text-white opacity-80">지도에 마커가 생기고 3D 학교가 열려요</div>
+            <div className="text-[12px] text-white opacity-80">지도에 마커가 생기고 3D 학교가 열려요</div>
           </div>
           <button
             onClick={onClose}
@@ -171,7 +171,7 @@ export default function SchoolCreateModal({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {/* 위치 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>1. 어디에 있나요? *</div>
+          <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>1. 어디에 있나요? *</div>
           <div className="flex gap-2 mb-1.5">
             <input
               value={addressQuery}
@@ -184,20 +184,20 @@ export default function SchoolCreateModal({
             <button
               onClick={searchAddress}
               disabled={searching || !addressQuery.trim()}
-              className="shrink-0 rounded-xl px-4 text-xs font-bold text-white disabled:opacity-40"
+              className="shrink-0 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-40"
               style={{ background: '#4A90D9' }}
             >
               {searching ? '찾는 중' : '찾기'}
             </button>
           </div>
           {searchMsg && (
-            <div className="text-[10px] mb-3 leading-relaxed" style={{ color: coords ? '#2E9E56' : '#C0392B' }}>
+            <div className="text-[12px] mb-3 leading-relaxed" style={{ color: coords ? '#2E9E56' : '#C0392B' }}>
               {searchMsg}
             </div>
           )}
 
           {/* 이름 */}
-          <div className="text-[11px] font-bold mb-1.5 mt-2" style={{ color: '#8A7A5F' }}>2. 학교 이름 *</div>
+          <div className="text-[13px] font-bold mb-1.5 mt-2" style={{ color: '#8A7A5F' }}>2. 학교 이름 *</div>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -214,7 +214,7 @@ export default function SchoolCreateModal({
           />
 
           {/* 대표 이미지 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>3. 대표 이미지</div>
+          <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>3. 대표 이미지</div>
           <div
             className="w-full aspect-[3/2] rounded-xl mb-2 flex items-center justify-center overflow-hidden"
             style={{ background: 'white', border: '2px dashed #D8C9AC' }}
@@ -223,21 +223,21 @@ export default function SchoolCreateModal({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imagePreview} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-[11px]" style={{ color: '#A89880' }}>AI로 만들거나 직접 올려주세요</span>
+              <span className="text-[13px]" style={{ color: '#A89880' }}>AI로 만들거나 직접 올려주세요</span>
             )}
           </div>
           <div className="flex gap-2 mb-4">
             <button
               onClick={generateImage}
               disabled={generating}
-              className="flex-1 rounded-xl py-2.5 text-xs font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50"
               style={{ background: '#7B4B94' }}
             >
               {generating ? '✨ 만드는 중...' : '✨ AI로 만들기'}
             </button>
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex-1 rounded-xl py-2.5 text-xs font-bold"
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold"
               style={{ background: 'white', color: '#8A7A5F' }}
             >
               📷 직접 올리기
@@ -246,7 +246,7 @@ export default function SchoolCreateModal({
           </div>
 
           {/* 학교 상징 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>4. 학교 상징 · 교표</div>
+          <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>4. 학교 상징 · 교표</div>
           <SchoolProfileFields
             schoolName={name}
             address={addressQuery}
@@ -257,14 +257,14 @@ export default function SchoolCreateModal({
           />
 
           {/* 학년·반 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>5. 학년 · 반</div>
+          <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>5. 학년 · 반</div>
           <div className="flex gap-2 mb-1.5">
             {([
               { label: '학년 수', value: gradeCount, set: setGradeCount, max: 6 },
               { label: '학년당 반', value: classPerGrade, set: setClassPerGrade, max: 12 },
             ]).map((f) => (
               <div key={f.label} className="flex-1">
-                <div className="text-[10px] mb-1" style={{ color: '#A89880' }}>{f.label}</div>
+                <div className="text-[12px] mb-1" style={{ color: '#A89880' }}>{f.label}</div>
                 <input
                   type="number"
                   min={1}
@@ -277,12 +277,12 @@ export default function SchoolCreateModal({
               </div>
             ))}
           </div>
-          <div className="text-[10px] mb-4" style={{ color: '#A89880' }}>
+          <div className="text-[12px] mb-4" style={{ color: '#A89880' }}>
             총 {gradeCount * classPerGrade}개 반이 자동으로 만들어져요
           </div>
 
           {/* 에셋 */}
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>6. 학교에 넣을 것 (선택)</div>
+          <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>6. 학교에 넣을 것 (선택)</div>
           <div className="flex flex-wrap gap-1.5 mb-4">
             {ASSET_OPTIONS.map((a) => {
               const on = assets.includes(a.key);
@@ -292,7 +292,7 @@ export default function SchoolCreateModal({
                   onClick={() =>
                     setAssets((prev) => (on ? prev.filter((k) => k !== a.key) : [...prev, a.key]))
                   }
-                  className="rounded-full px-3 py-1.5 text-[11px] font-bold"
+                  className="rounded-full px-3 py-1.5 text-[13px] font-bold"
                   style={{
                     background: on ? 'var(--color-primary)' : 'white',
                     color: on ? 'white' : '#8A7A5F',
@@ -305,7 +305,7 @@ export default function SchoolCreateModal({
           </div>
 
           {error && (
-            <div className="text-[11px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
+            <div className="text-[13px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
           )}
         </div>
 
@@ -319,7 +319,7 @@ export default function SchoolCreateModal({
             {saving ? '학교를 세우는 중...' : '지도에 학교 세우기 🏫'}
           </button>
           {!coords && (
-            <div className="text-[10px] text-center mt-2" style={{ color: '#A89880' }}>
+            <div className="text-[12px] text-center mt-2" style={{ color: '#A89880' }}>
               먼저 위치를 찾아주세요
             </div>
           )}

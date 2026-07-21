@@ -46,7 +46,7 @@ export default function ProfileMenu() {
       <button
         // 로그인 뒤 보던 화면으로 돌아오게 현재 경로를 넘긴다
         onClick={() => router.push(`/login?from=${encodeURIComponent(pathname || '/')}`)}
-        className="ac-btn px-4 py-2 text-xs"
+        className="ac-btn px-4 py-2 text-sm"
       >
         🔑 로그인
       </button>
@@ -98,7 +98,7 @@ export default function ProfileMenu() {
             </div>
             {shownRole && (
               <span
-                className="inline-block mt-1 rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
+                className="inline-block mt-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white"
                 style={{ background: ROLE_COLOR[shownRole] }}
               >
                 {ROLE_LABEL[shownRole]}

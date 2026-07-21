@@ -77,18 +77,18 @@ export default function PortfolioPage() {
       <h1 className="text-lg font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
         📚 나의 발자취
       </h1>
-      <p className="text-[11px] mb-5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+      <p className="text-[13px] mb-5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
         {userDoc?.displayName ?? '선생님'}님이 함께한 반들이에요.
       </p>
 
-      {err && <div className="text-[11px] font-bold mb-3" style={{ color: '#C0392B' }}>{err}</div>}
+      {err && <div className="text-[13px] font-bold mb-3" style={{ color: '#C0392B' }}>{err}</div>}
 
       {busy ? (
-        <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>불러오는 중...</div>
+        <div className="text-[14px]" style={{ color: 'var(--color-text-sub)' }}>불러오는 중...</div>
       ) : rows.length === 0 ? (
         <div className="py-12 text-center">
           <div className="text-4xl mb-2">📚</div>
-          <div className="text-xs leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-sm leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
             아직 기억창고로 옮긴 반이 없어요.<br />
             한 해가 끝나면 반 화면에서 옮길 수 있어요.
           </div>
@@ -105,7 +105,7 @@ export default function PortfolioPage() {
               <div key={label} className="rounded-2xl py-3 text-center" style={{ background: 'var(--color-surface)' }}>
                 <div className="text-lg">{emoji}</div>
                 <div className="text-base font-black" style={{ color: 'var(--color-text-main)' }}>{n}</div>
-                <div className="text-[9px]" style={{ color: 'var(--color-text-sub)' }}>{label}</div>
+                <div className="text-[11px]" style={{ color: 'var(--color-text-sub)' }}>{label}</div>
               </div>
             ))}
           </div>
@@ -134,7 +134,7 @@ export default function PortfolioPage() {
                       <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
                         {r.grade}학년 {r.classNumber}반
                       </div>
-                      <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+                      <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                         아이 {r.counts?.students ?? 0}명 · 작품 {r.counts?.artworks ?? 0}개 · 활동 {r.counts?.activities ?? 0}개
                       </div>
                     </div>

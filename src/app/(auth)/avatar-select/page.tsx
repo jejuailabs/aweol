@@ -62,7 +62,7 @@ function ColorRow({
 }: { title: string; colors: string[]; value: string; onPick: (c: string) => void }) {
   return (
     <div className="w-full">
-      <div className="text-xs font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>{title}</div>
+      <div className="text-sm font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>{title}</div>
       <div className="flex flex-wrap gap-2">
         {colors.map((c) => (
           <button
@@ -129,7 +129,7 @@ export default function AvatarSelectPage() {
             }}
           >
             <span className="text-3xl">{avatar.emoji}</span>
-            <span className="text-[10px] font-medium leading-tight text-center" style={{ color: 'var(--color-text-main)' }}>
+            <span className="text-[12px] font-medium leading-tight text-center" style={{ color: 'var(--color-text-main)' }}>
               {avatar.label}
             </span>
           </button>
@@ -144,7 +144,7 @@ export default function AvatarSelectPage() {
           <AvatarPreview preset={preset} shirt={shirt} hair={hair} />
           <div className="text-center">
             <div className="font-bold" style={{ color: 'var(--color-text-main)' }}>{preset.label}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{preset.desc}</div>
+            <div className="text-sm mt-0.5" style={{ color: 'var(--color-text-sub)' }}>{preset.desc}</div>
           </div>
 
           <ColorRow title="👕 옷 색" colors={SHIRT_COLORS} value={shirt} onPick={(c) => setShirt(c === shirt ? '' : c)} />
@@ -153,14 +153,14 @@ export default function AvatarSelectPage() {
           {(shirt || hair) && (
             <button
               onClick={() => { setShirt(''); setHair(''); }}
-              className="text-xs font-bold underline"
+              className="text-sm font-bold underline"
               style={{ color: 'var(--color-text-sub)' }}
             >
               원래 색으로 되돌리기
             </button>
           )}
 
-          <div className="text-xs" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
             ✨ 전시실에서 이 모습으로 걸어다녀요
           </div>
         </div>

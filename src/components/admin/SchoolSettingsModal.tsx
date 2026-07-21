@@ -140,7 +140,7 @@ export default function SchoolSettingsModal({
 
         {isSuper && (
         <>
-        <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+        <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           학교 이름
         </label>
         <input
@@ -150,7 +150,7 @@ export default function SchoolSettingsModal({
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
         />
 
-        <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+        <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           한 줄 소개
         </label>
         <input
@@ -161,7 +161,7 @@ export default function SchoolSettingsModal({
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
         />
 
-        <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+        <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           대표 이미지
         </label>
         <div
@@ -172,7 +172,7 @@ export default function SchoolSettingsModal({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="" className="w-full object-cover" style={{ maxHeight: 200 }} />
           ) : (
-            <span className="text-[11px]" style={{ color: 'var(--color-text-sub)' }}>
+            <span className="text-[13px]" style={{ color: 'var(--color-text-sub)' }}>
               아직 이미지가 없어요
             </span>
           )}
@@ -181,7 +181,7 @@ export default function SchoolSettingsModal({
           <button
             onClick={generate}
             disabled={generating || saving}
-            className="flex-1 rounded-xl py-2.5 text-[12px] font-bold text-white disabled:opacity-50"
+            className="flex-1 rounded-xl py-2.5 text-[14px] font-bold text-white disabled:opacity-50"
             style={{ background: '#7B4B94' }}
           >
             {generating ? '✨ 만드는 중...' : '✨ AI로 새로 만들기'}
@@ -189,7 +189,7 @@ export default function SchoolSettingsModal({
           <button
             onClick={() => fileRef.current?.click()}
             disabled={generating || saving}
-            className="flex-1 rounded-xl py-2.5 text-[12px] font-bold disabled:opacity-50"
+            className="flex-1 rounded-xl py-2.5 text-[14px] font-bold disabled:opacity-50"
             style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
           >
             📷 직접 올리기
@@ -212,7 +212,7 @@ export default function SchoolSettingsModal({
         </>
         )}
 
-        <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+        <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           학교 상징 · 교표
         </label>
         <div className="mb-3">
@@ -228,12 +228,12 @@ export default function SchoolSettingsModal({
 
         {isSuper && (
         <>
-        <label className="block text-[11px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+        <label className="block text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
           학년 · 반
         </label>
         <div className="flex gap-2 mb-1">
           <div className="flex-1">
-            <div className="text-[10px] mb-1" style={{ color: 'var(--color-text-sub)' }}>학년 수</div>
+            <div className="text-[12px] mb-1" style={{ color: 'var(--color-text-sub)' }}>학년 수</div>
             <input
               type="number" min={school.gradeCount || 1} max={6} value={gradeCount}
               onChange={(e) => setGradeCount(Number(e.target.value))}
@@ -242,7 +242,7 @@ export default function SchoolSettingsModal({
             />
           </div>
           <div className="flex-1">
-            <div className="text-[10px] mb-1" style={{ color: 'var(--color-text-sub)' }}>학년당 반</div>
+            <div className="text-[12px] mb-1" style={{ color: 'var(--color-text-sub)' }}>학년당 반</div>
             <input
               type="number" min={school.classPerGrade || 1} max={12} value={classPerGrade}
               onChange={(e) => setClassPerGrade(Number(e.target.value))}
@@ -251,7 +251,7 @@ export default function SchoolSettingsModal({
             />
           </div>
         </div>
-        <div className="text-[10px] mb-4 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        <div className="text-[12px] mb-4 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
           늘리면 없던 반만 새로 만들어요. <b>줄이는 건 막아뒀어요</b> — 그 반의 작품과 숙제가
           통째로 사라지기 때문이에요. 안 쓰는 반은 반별로 보관 처리해 주세요.
         </div>
@@ -259,17 +259,17 @@ export default function SchoolSettingsModal({
         )}
 
         {!isSuper && (
-          <div className="text-[10px] mb-4 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          <div className="text-[12px] mb-4 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
             학교 이름·위치·학년/반 수는 총관리자만 바꿀 수 있어요.
             학교 전체가 따라 바뀌는 것들이라서요.
           </div>
         )}
 
         {error && (
-          <div className="text-[12px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
+          <div className="text-[14px] font-bold mb-2" style={{ color: '#C0392B' }}>{error}</div>
         )}
         {msg && (
-          <div className="text-[12px] font-bold mb-2" style={{ color: 'var(--color-primary)' }}>{msg}</div>
+          <div className="text-[14px] font-bold mb-2" style={{ color: 'var(--color-primary)' }}>{msg}</div>
         )}
 
         <button

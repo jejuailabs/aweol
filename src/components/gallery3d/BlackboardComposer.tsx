@@ -212,12 +212,12 @@ export default function BlackboardComposer({
         {/* 머리말 */}
         <div className="flex items-center gap-2 mb-3">
           <div className="text-sm font-black" style={{ color: '#3A3226' }}>✏️ 칠판에 남기기</div>
-          <div className="text-[11px]" style={{ color: '#A89880' }}>
+          <div className="text-[13px]" style={{ color: '#A89880' }}>
             ✏️{authorName} 이름으로 기록돼요
           </div>
           <button
             onClick={onClose}
-            className="ml-auto rounded-full px-3.5 py-1.5 text-[12px] font-bold"
+            className="ml-auto rounded-full px-3.5 py-1.5 text-[14px] font-bold"
             style={{ background: 'rgba(232,96,76,0.14)', color: '#E8604C' }}
           >
             종료
@@ -235,7 +235,7 @@ export default function BlackboardComposer({
               key={t.k}
               onClick={() => { setTool(t.k); setPhase('edit'); setDx(0); setDy(0); setScale(1); }}
               disabled={phase === 'place'}
-              className="rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+              className="rounded-xl px-3 py-2 text-[14px] font-bold disabled:opacity-40"
               style={{
                 background: tool === t.k ? 'var(--color-primary)' : 'white',
                 color: tool === t.k ? 'white' : '#8A7A5F',
@@ -262,7 +262,7 @@ export default function BlackboardComposer({
           </div>
 
           {tool !== 'text' && (
-            <label className="flex items-center gap-1.5 text-[11px] ml-1" style={{ color: '#8A7A5F' }}>
+            <label className="flex items-center gap-1.5 text-[13px] ml-1" style={{ color: '#8A7A5F' }}>
               굵기
               <input
                 type="range" min={2} max={16} value={penWidth}
@@ -283,7 +283,7 @@ export default function BlackboardComposer({
               className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
               style={{ background: 'white', color: '#3A3226' }}
             />
-            <label className="flex items-center gap-1.5 text-[11px] shrink-0" style={{ color: '#8A7A5F' }}>
+            <label className="flex items-center gap-1.5 text-[13px] shrink-0" style={{ color: '#8A7A5F' }}>
               크기
               <input
                 type="range" min={5} max={20} value={textSize}
@@ -313,7 +313,7 @@ export default function BlackboardComposer({
         {/* 안내 + 버튼 */}
         {phase === 'edit' ? (
           <>
-            <div className="text-[11px] mb-2" style={{ color: '#A89880' }}>
+            <div className="text-[13px] mb-2" style={{ color: '#A89880' }}>
               {tool === 'text'
                 ? '내용을 적고 [붙이기]를 누르면 칠판 위에서 위치를 옮길 수 있어요'
                 : '칠판 위에 그린 뒤 [붙이기]를 누르면 위치와 크기를 맞출 수 있어요'}
@@ -322,7 +322,7 @@ export default function BlackboardComposer({
               {tool !== 'text' && draft.length > 0 && (
                 <button
                   onClick={() => setDraft((p) => p.slice(0, -1))}
-                  className="rounded-xl px-4 py-2.5 text-[13px] font-bold"
+                  className="rounded-xl px-4 py-2.5 text-[15px] font-bold"
                   style={{ background: 'white', color: '#8A7A5F' }}
                 >
                   ↩︎ 한 획 취소
@@ -331,7 +331,7 @@ export default function BlackboardComposer({
               <button
                 onClick={() => setPhase('place')}
                 disabled={!hasDraft}
-                className="flex-1 rounded-xl py-2.5 text-[13px] font-bold text-white disabled:opacity-40"
+                className="flex-1 rounded-xl py-2.5 text-[15px] font-bold text-white disabled:opacity-40"
                 style={{ background: 'var(--color-primary)' }}
               >
                 붙이기
@@ -340,10 +340,10 @@ export default function BlackboardComposer({
           </>
         ) : (
           <>
-            <div className="text-[11px] mb-2" style={{ color: '#A89880' }}>
+            <div className="text-[13px] mb-2" style={{ color: '#A89880' }}>
               끌어서 옮기고, 아래에서 크기를 맞춘 뒤 [칠판에 올리기]를 누르세요
             </div>
-            <label className="flex items-center gap-2 text-[12px] mb-2" style={{ color: '#8A7A5F' }}>
+            <label className="flex items-center gap-2 text-[14px] mb-2" style={{ color: '#8A7A5F' }}>
               크기
               <input
                 type="range" min={0.3} max={2.5} step={0.05} value={scale}
@@ -355,7 +355,7 @@ export default function BlackboardComposer({
             <div className="flex gap-2">
               <button
                 onClick={() => { setPhase('edit'); setDx(0); setDy(0); setScale(1); }}
-                className="rounded-xl px-4 py-2.5 text-[13px] font-bold"
+                className="rounded-xl px-4 py-2.5 text-[15px] font-bold"
                 style={{ background: 'white', color: '#8A7A5F' }}
               >
                 ← 다시 그리기
@@ -363,7 +363,7 @@ export default function BlackboardComposer({
               <button
                 onClick={commit}
                 disabled={saving}
-                className="flex-1 rounded-xl py-2.5 text-[13px] font-bold text-white disabled:opacity-40"
+                className="flex-1 rounded-xl py-2.5 text-[15px] font-bold text-white disabled:opacity-40"
                 style={{ background: 'var(--color-primary)' }}
               >
                 {saving ? '올리는 중...' : '칠판에 올리기'}

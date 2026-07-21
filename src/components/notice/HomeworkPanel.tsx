@@ -302,7 +302,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
     const shown = subs.filter((s) => s.status === 'approved');
     return (
       <div>
-        <button onClick={() => setOpenId(null)} className="text-[11px] font-bold mb-2.5" style={{ color: '#8A7A5F' }}>
+        <button onClick={() => setOpenId(null)} className="text-[13px] font-bold mb-2.5" style={{ color: '#8A7A5F' }}>
           ← 숙제 목록
         </button>
 
@@ -312,7 +312,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             {isStaff && (
               <button
                 onClick={() => removeHomework(open.id)}
-                className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold"
+                className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold"
                 style={{ background: 'rgba(232,96,76,0.15)', color: '#E8604C' }}
               >
                 삭제
@@ -320,15 +320,15 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             )}
           </div>
           <div className="flex gap-1.5 mt-1.5 mb-2">
-            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: '#4A90D920', color: '#4A90D9' }}>
+            <span className="rounded-full px-2 py-0.5 text-[12px] font-bold" style={{ background: '#4A90D920', color: '#4A90D9' }}>
               {TYPE_LABEL[open.submitType]}
             </span>
-            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
+            <span className="rounded-full px-2 py-0.5 text-[12px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
               {open.visibility === 'class' ? '👀 친구들과 함께 보기' : '🔒 선생님만 보기'}
             </span>
             {open.dueDate && (
               <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                className="rounded-full px-2 py-0.5 text-[12px] font-bold"
                 style={
                   isOverdue(open.dueDate)
                     ? { background: '#F8D7DA', color: '#B02A37' }
@@ -342,14 +342,14 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           {isStaff && (
             <button
               onClick={() => openWriter(open)}
-              className="text-[11px] font-bold underline mb-1"
+              className="text-[13px] font-bold underline mb-1"
               style={{ color: '#4A90D9' }}
             >
               숙제 고치기
             </button>
           )}
           {open.description && (
-            <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
+            <div className="text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: '#54493A' }}>
               {open.description}
             </div>
           )}
@@ -369,13 +369,13 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
         {/* 학생 제출 */}
         {!isStaff && user && (
           <div className="rounded-2xl p-4 mb-3" style={{ background: 'rgba(255,255,255,0.8)' }}>
-            <div className="text-xs font-black mb-2" style={{ color: '#3A3226' }}>
+            <div className="text-sm font-black mb-2" style={{ color: '#3A3226' }}>
               {mySub ? '📮 다시 제출하기' : '📮 내 숙제 제출하기'}
             </div>
 
             {myNudge > 0 && !mySub && (
               <div
-                className="rounded-xl px-3 py-2 mb-2.5 text-[12px] font-bold"
+                className="rounded-xl px-3 py-2 mb-2.5 text-[14px] font-bold"
                 style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
               >
                 👉 선생님이 콕 찔렀어요! 숙제를 내볼까요?
@@ -411,8 +411,8 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                   ) : (
                     <>
                       <span className="text-3xl">🎬</span>
-                      <span className="text-[11px]" style={{ color: '#A89880' }}>동영상 고르기</span>
-                      <span className="text-[10px]" style={{ color: '#C4B69C' }}>{VIDEO_MAX_MB}MB까지 (30초쯤)</span>
+                      <span className="text-[13px]" style={{ color: '#A89880' }}>동영상 고르기</span>
+                      <span className="text-[12px]" style={{ color: '#C4B69C' }}>{VIDEO_MAX_MB}MB까지 (30초쯤)</span>
                     </>
                   )}
                 </button>
@@ -430,7 +430,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                   className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                   style={{ background: 'white', color: '#3A3226' }}
                 />
-                <div className="text-[10px] mt-1" style={{ color: '#A89880' }}>
+                <div className="text-[12px] mt-1" style={{ color: '#A89880' }}>
                   유튜브에 영상을 올리고 주소를 붙여넣어 주세요.
                 </div>
               </div>
@@ -449,7 +449,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                   ) : (
                     <>
                       <span className="text-3xl">📷</span>
-                      <span className="text-[11px]" style={{ color: '#A89880' }}>사진 고르기</span>
+                      <span className="text-[13px]" style={{ color: '#A89880' }}>사진 고르기</span>
                     </>
                   )}
                 </button>
@@ -467,16 +467,16 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             </button>
 
             {submitMsg && (
-              <div className="text-[11px] mt-2 leading-relaxed" style={{ color: submitMsg.includes('실패') ? '#C0392B' : '#2E9E56' }}>
+              <div className="text-[13px] mt-2 leading-relaxed" style={{ color: submitMsg.includes('실패') ? '#C0392B' : '#2E9E56' }}>
                 {submitMsg}
               </div>
             )}
 
             {mySub && (
               <div className="mt-3 pt-3" style={{ borderTop: '1px dashed #E6DCC8' }}>
-                <div className="text-[11px] font-bold mb-1" style={{ color: '#8A7A5F' }}>내 제출물</div>
+                <div className="text-[13px] font-bold mb-1" style={{ color: '#8A7A5F' }}>내 제출물</div>
                 {mySub.status === 'held' && (
-                  <div className="text-[11px] mb-1.5" style={{ color: '#E8A33C' }}>
+                  <div className="text-[13px] mb-1.5" style={{ color: '#E8A33C' }}>
                     ⏳ 선생님 확인을 기다리는 중이에요
                   </div>
                 )}
@@ -485,7 +485,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                   <img src={mySub.imageUrl} alt="" className="w-full rounded-lg mb-1" />
                 )}
                 {mySub.text && (
-                  <div className="text-[12px] whitespace-pre-wrap" style={{ color: '#54493A' }}>{mySub.text}</div>
+                  <div className="text-[14px] whitespace-pre-wrap" style={{ color: '#54493A' }}>{mySub.text}</div>
                 )}
                 {mySub.stamp && (
                   <div
@@ -493,16 +493,16 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                     style={{ background: '#E2F6E9', border: '1px solid #A0DCB7' }}
                   >
                     <div className="text-2xl leading-none mb-1">{mySub.stamp.emoji}</div>
-                    <div className="text-[12px] font-bold" style={{ color: '#2E8B57' }}>
+                    <div className="text-[14px] font-bold" style={{ color: '#2E8B57' }}>
                       {mySub.stamp.label}
                     </div>
-                    <div className="text-[10px] mt-0.5" style={{ color: '#5FA87C' }}>
+                    <div className="text-[12px] mt-0.5" style={{ color: '#5FA87C' }}>
                       선생님이 도장을 찍어주셨어요 🏅
                     </div>
                   </div>
                 )}
                 {mySub.teacherComment && (
-                  <div className="mt-2 rounded-xl px-3 py-2 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+                  <div className="mt-2 rounded-xl px-3 py-2 text-[14px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
                     👩‍🏫 {mySub.teacherComment}
                   </div>
                 )}
@@ -514,11 +514,11 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
         {/* 친구들 것 모아보기 (교사는 위 현황판에서 본다) */}
         {!isStaff && (
           <>
-            <div className="text-[11px] font-bold mb-2" style={{ color: '#8A7A5F' }}>
+            <div className="text-[13px] font-bold mb-2" style={{ color: '#8A7A5F' }}>
               📋 친구들 숙제 {shown.length}건
             </div>
             {shown.length === 0 ? (
-              <div className="py-8 text-center text-[11px]" style={{ color: '#A89880' }}>
+              <div className="py-8 text-center text-[13px]" style={{ color: '#A89880' }}>
                 {open.visibility === 'teacher'
                   ? '선생님만 볼 수 있는 숙제예요'
                   : '아직 제출한 친구가 없어요'}
@@ -557,8 +557,8 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           style={{ background: 'rgba(255,255,255,0.9)', color: '#3A3226' }}
         />
 
-        <div className="text-[11px] font-bold mb-1" style={{ color: '#8A7A5F' }}>어떻게 제출하나요?</div>
-        <div className="text-[10px] mb-1.5" style={{ color: '#A89880' }}>
+        <div className="text-[13px] font-bold mb-1" style={{ color: '#8A7A5F' }}>어떻게 제출하나요?</div>
+        <div className="text-[12px] mb-1.5" style={{ color: '#A89880' }}>
           고른 것 하나만 아이 화면에 나와요. 헷갈릴 일이 없어요.
         </div>
         <div className="flex flex-col gap-1.5 mb-2">
@@ -572,15 +572,15 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
                 color: wType === t ? 'white' : '#8A7A5F',
               }}
             >
-              <div className="text-xs font-bold">{TYPE_LABEL[t]}</div>
-              <div className="text-[10px] opacity-80">{TYPE_HINT[t]}</div>
+              <div className="text-sm font-bold">{TYPE_LABEL[t]}</div>
+              <div className="text-[12px] opacity-80">{TYPE_HINT[t]}</div>
             </button>
           ))}
         </div>
 
         {wType === 'video' && (
           <div
-            className="rounded-xl px-3 py-2 mb-3 text-[10px] leading-relaxed"
+            className="rounded-xl px-3 py-2 mb-3 text-[12px] leading-relaxed"
             style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
           >
             영상 파일은 자리를 많이 차지해요. 30초짜리도 한 반이면 450MB쯤이라
@@ -591,7 +591,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
 
         {editId && (
           <div
-            className="rounded-xl px-3 py-2 mb-3 text-[10px] leading-relaxed"
+            className="rounded-xl px-3 py-2 mb-3 text-[12px] leading-relaxed"
             style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
           >
             제출 종류를 바꿔도 이미 낸 아이들의 숙제는 지워지지 않아요.
@@ -599,7 +599,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           </div>
         )}
 
-        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>언제까지 내나요? (안 정해도 돼요)</div>
+        <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>언제까지 내나요? (안 정해도 돼요)</div>
         <div className="flex gap-1.5 mb-3">
           <input
             type="date"
@@ -611,7 +611,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           {wDue && (
             <button
               onClick={() => setWDue('')}
-              className="shrink-0 rounded-xl px-3 text-[11px] font-bold"
+              className="shrink-0 rounded-xl px-3 text-[13px] font-bold"
               style={{ background: 'rgba(255,255,255,0.7)', color: '#8A7A5F' }}
             >
               지우기
@@ -619,7 +619,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
           )}
         </div>
 
-        <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>누가 볼 수 있나요?</div>
+        <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>누가 볼 수 있나요?</div>
         <div className="flex gap-1.5 mb-4">
           {([
             { v: 'class' as const, label: '👀 아이들과 함께 보기' },
@@ -628,7 +628,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             <button
               key={o.v}
               onClick={() => setWVis(o.v)}
-              className="flex-1 rounded-xl py-2.5 text-[11px] font-bold"
+              className="flex-1 rounded-xl py-2.5 text-[13px] font-bold"
               style={{
                 background: wVis === o.v ? 'var(--color-primary)' : 'rgba(255,255,255,0.85)',
                 color: wVis === o.v ? 'white' : '#8A7A5F',
@@ -666,7 +666,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
       {isStaff && (
         <button
           onClick={() => openWriter()}
-          className="w-full rounded-2xl py-3 mb-3 text-xs font-bold border-2 border-dashed"
+          className="w-full rounded-2xl py-3 mb-3 text-sm font-bold border-2 border-dashed"
           style={{ borderColor: '#4A90D980', color: '#4A90D9' }}
         >
           + 새 숙제 내기
@@ -675,7 +675,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
       {list.length === 0 ? (
         <div className="py-10 text-center">
           <div className="text-4xl mb-2">📝</div>
-          <div className="text-xs" style={{ color: '#A89880' }}>아직 나온 숙제가 없어요</div>
+          <div className="text-sm" style={{ color: '#A89880' }}>아직 나온 숙제가 없어요</div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -688,16 +688,16 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
             >
               <div className="text-sm font-bold" style={{ color: '#3A3226' }}>{h.title}</div>
               <div className="flex gap-1.5 mt-1">
-                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: '#4A90D920', color: '#4A90D9' }}>
+                <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: '#4A90D920', color: '#4A90D9' }}>
                   {TYPE_LABEL[h.submitType]}
                 </span>
-                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
+                <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: '#8A7A5F20', color: '#8A7A5F' }}>
                   {h.visibility === 'class' ? '함께 보기' : '선생님만'}
                 </span>
                 {/* 마감은 목록에서 바로 보여야 한다. 하나씩 열어보게 하면 놓친다. */}
                 {h.dueDate && (
                   <span
-                    className="rounded-full px-2 py-0.5 text-[9px] font-bold"
+                    className="rounded-full px-2 py-0.5 text-[11px] font-bold"
                     style={
                       isOverdue(h.dueDate)
                         ? { background: '#F8D7DA', color: '#B02A37' }
@@ -720,7 +720,7 @@ export default function HomeworkPanel({ schoolId, classId }: { schoolId: string;
 function SubmissionCard({ sub }: { sub: Submission }) {
   return (
     <div className="rounded-2xl p-2.5 mb-1.5" style={{ background: 'white', border: '1px solid #EFE3CB' }}>
-      <div className="text-[11px] font-bold mb-1" style={{ color: '#3A3226' }}>{sub.studentName}</div>
+      <div className="text-[13px] font-bold mb-1" style={{ color: '#3A3226' }}>{sub.studentName}</div>
       {sub.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={sub.imageUrl} alt="" className="w-full rounded-lg mb-1" style={{ maxHeight: 160, objectFit: 'contain' }} />
@@ -745,7 +745,7 @@ function SubmissionCard({ sub }: { sub: Submission }) {
            * 그 사이트에 우리 페이지 주소를 넘겨줄 이유가 없다.
            */
           rel="noreferrer noopener"
-          className="block rounded-lg px-2 py-1.5 mb-1 text-[11px] font-bold truncate"
+          className="block rounded-lg px-2 py-1.5 mb-1 text-[13px] font-bold truncate"
           style={{ background: '#EAF2FB', color: '#2F6DB5' }}
         >
           🔗 영상 보러가기
@@ -753,14 +753,14 @@ function SubmissionCard({ sub }: { sub: Submission }) {
       )}
       {sub.text && (
         <div
-          className="text-[11px] leading-snug whitespace-pre-wrap"
+          className="text-[13px] leading-snug whitespace-pre-wrap"
           style={{ color: '#54493A', display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
         >
           {sub.text}
         </div>
       )}
       {sub.teacherComment && (
-        <div className="mt-1.5 rounded-lg px-2 py-1 text-[10px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
+        <div className="mt-1.5 rounded-lg px-2 py-1 text-[12px]" style={{ background: '#FFF3E0', color: '#8A6D2F' }}>
           👩‍🏫 {sub.teacherComment}
         </div>
       )}

@@ -45,7 +45,7 @@ export default function SettingsPage() {
       <h1 className="text-xl font-bold mb-6" style={{ color: 'var(--color-text-main)' }}>⚙️ 설정</h1>
 
       {/* 계정 */}
-      <h2 className="text-xs font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>계정</h2>
+      <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>계정</h2>
       <div className="rounded-2xl overflow-hidden shadow-md mb-6" style={{ background: 'var(--color-surface)' }}>
         {user ? (
           <>
@@ -58,7 +58,7 @@ export default function SettingsPage() {
               )}
               <div>
                 <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>{userDoc?.displayName}</div>
-                <div className="text-[10px]" style={{ color: 'var(--color-text-sub)' }}>
+                <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                   {role ? ROLE_LABEL[role] : '역할 미지정'}
                 </div>
               </div>
@@ -86,7 +86,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 화면 */}
-      <h2 className="text-xs font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>화면</h2>
+      <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>화면</h2>
       <div className="rounded-2xl overflow-hidden shadow-md mb-6" style={{ background: 'var(--color-surface)' }}>
         <button
           onClick={toggleTheme}
@@ -107,13 +107,13 @@ export default function SettingsPage() {
       </div>
 
       {/* 정보 */}
-      <h2 className="text-xs font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>정보</h2>
+      <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>정보</h2>
       <div className="rounded-2xl overflow-hidden shadow-md" style={{ background: 'var(--color-surface)' }}>
         <div className="p-4 text-sm flex items-center justify-between" style={{ color: 'var(--color-text-main)' }}>
           <span>버전</span>
           <span style={{ color: 'var(--color-text-sub)' }}>1.0.0</span>
         </div>
-        <div className="p-4 pt-0 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        <div className="p-4 pt-0 text-[12px] leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
           애월초 학급 전시실 — 우리 반 친구들의 작품을 3D 전시실에서 만나보세요.
         </div>
       </div>

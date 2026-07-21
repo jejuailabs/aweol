@@ -249,8 +249,8 @@ export default function HomeworkTeacherGrid({
     return (
       <div className="rounded-2xl py-8 px-4 text-center" style={{ background: 'rgba(255,255,255,0.8)' }}>
         <div className="text-3xl mb-2">📋</div>
-        <div className="text-[12px] font-bold mb-1" style={{ color: '#3A3226' }}>명부가 아직 없어요</div>
-        <div className="text-[11px] leading-relaxed" style={{ color: '#A89880' }}>
+        <div className="text-[14px] font-bold mb-1" style={{ color: '#3A3226' }}>명부가 아직 없어요</div>
+        <div className="text-[13px] leading-relaxed" style={{ color: '#A89880' }}>
           관리 → 명부에서 학생을 등록하면
           <br />
           누가 냈고 누가 안 냈는지 한눈에 보여요
@@ -272,7 +272,7 @@ export default function HomeworkTeacherGrid({
             <div className="text-base font-black leading-none" style={{ color: STATE_STYLE[s].fg }}>
               {counts[s]}
             </div>
-            <div className="text-[10px] font-bold mt-0.5" style={{ color: STATE_STYLE[s].fg }}>
+            <div className="text-[12px] font-bold mt-0.5" style={{ color: STATE_STYLE[s].fg }}>
               {STATE_STYLE[s].label}
             </div>
           </div>
@@ -284,13 +284,13 @@ export default function HomeworkTeacherGrid({
           <button
             onClick={nudgeAll}
             disabled={busy}
-            className="w-full rounded-xl py-2 mb-1.5 text-[11px] font-bold disabled:opacity-40"
+            className="w-full rounded-xl py-2 mb-1.5 text-[13px] font-bold disabled:opacity-40"
             style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
           >
             👉 미제출 {counts.none + counts.unread}명 모두 콕 찌르기
           </button>
           {counts.unread > 0 && (
-            <div className="text-[10px] mb-2.5 leading-relaxed" style={{ color: '#B5645E' }}>
+            <div className="text-[12px] mb-2.5 leading-relaxed" style={{ color: '#B5645E' }}>
               이 중 <b>{counts.unread}명</b>은 숙제를 아직 열어보지도 않았어요.
               콕 찌르기가 안 닿고 있을 수 있으니 다른 방법으로도 알려주세요.
             </div>
@@ -315,23 +315,23 @@ export default function HomeworkTeacherGrid({
                 minHeight: 52,
               }}
             >
-              <div className="text-[9px] font-bold leading-none opacity-70" style={{ color: st.fg }}>
+              <div className="text-[11px] font-bold leading-none opacity-70" style={{ color: st.fg }}>
                 {row.number}
               </div>
               <div
-                className="text-[11px] font-bold leading-tight mt-1 truncate"
+                className="text-[13px] font-bold leading-tight mt-1 truncate"
                 style={{ color: st.fg }}
               >
                 {row.name}
               </div>
               {sub?.status === 'held' && (
-                <span className="absolute -top-1 -right-1 text-[11px]" title="AI 보류">⏳</span>
+                <span className="absolute -top-1 -right-1 text-[13px]" title="AI 보류">⏳</span>
               )}
               {(state === 'none' || state === 'unread') && nudged > 0 && (
-                <span className="absolute -top-1 -right-1 text-[11px]" title={`${nudged}번 찔렀어요`}>👉</span>
+                <span className="absolute -top-1 -right-1 text-[13px]" title={`${nudged}번 찔렀어요`}>👉</span>
               )}
               {sub?.teacherComment && (
-                <span className="absolute -bottom-1 -right-1 text-[10px]">💬</span>
+                <span className="absolute -bottom-1 -right-1 text-[12px]">💬</span>
               )}
             </button>
           );
@@ -339,13 +339,13 @@ export default function HomeworkTeacherGrid({
       </div>
 
       {counts.unlinked > 0 && (
-        <div className="text-[10px] mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+        <div className="text-[12px] mt-2 leading-relaxed" style={{ color: '#A89880' }}>
           점선 칸 {counts.unlinked}명은 아직 학생코드로 계정을 연결하지 않아 제출할 수 없어요.
         </div>
       )}
 
       {visibility === 'teacher' && (
-        <div className="text-[10px] mt-1" style={{ color: '#A89880' }}>
+        <div className="text-[12px] mt-1" style={{ color: '#A89880' }}>
           🔒 이 숙제는 선생님만 볼 수 있어요.
         </div>
       )}
@@ -353,11 +353,11 @@ export default function HomeworkTeacherGrid({
       {/* 명부 밖 제출물 */}
       {orphans.length > 0 && (
         <div className="mt-3 rounded-2xl p-3" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
-          <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A6D2F' }}>
+          <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A6D2F' }}>
             명부에 없는 제출물 {orphans.length}건
           </div>
           {orphans.map((s) => (
-            <div key={s.studentUid} className="text-[11px]" style={{ color: '#A08A5B' }}>
+            <div key={s.studentUid} className="text-[13px]" style={{ color: '#A08A5B' }}>
               {s.studentName || s.studentUid}
             </div>
           ))}
@@ -366,7 +366,7 @@ export default function HomeworkTeacherGrid({
 
       {toast && (
         <div
-          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full px-4 py-2 text-[12px] font-bold text-white"
+          className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full px-4 py-2 text-[14px] font-bold text-white"
           style={{ background: 'rgba(58,50,38,0.92)' }}
         >
           {toast}
@@ -446,7 +446,7 @@ function StudentSheet({
             {number}번 {name}
           </div>
           <span
-            className="rounded-full px-2.5 py-1 text-[10px] font-bold"
+            className="rounded-full px-2.5 py-1 text-[12px] font-bold"
             style={{ background: STATE_STYLE[state].bg, color: STATE_STYLE[state].fg, border: `1px solid ${STATE_STYLE[state].border}` }}
           >
             {STATE_STYLE[state].label}
@@ -456,19 +456,19 @@ function StudentSheet({
         {!sub ? (
           <div className="rounded-2xl p-4 text-center" style={{ background: 'white' }}>
             <div className="text-3xl mb-2">📭</div>
-            <div className="text-[12px] mb-1" style={{ color: '#54493A' }}>아직 내지 않았어요</div>
+            <div className="text-[14px] mb-1" style={{ color: '#54493A' }}>아직 내지 않았어요</div>
             {nudged > 0 && (
-              <div className="text-[11px] mb-3" style={{ color: '#A6762A' }}>👉 {nudged}번 콕 찔렀어요</div>
+              <div className="text-[13px] mb-3" style={{ color: '#A6762A' }}>👉 {nudged}번 콕 찔렀어요</div>
             )}
             <button
               onClick={onNudge}
               disabled={busy}
-              className="w-full rounded-xl py-2.5 text-[12px] font-bold disabled:opacity-40"
+              className="w-full rounded-xl py-2.5 text-[14px] font-bold disabled:opacity-40"
               style={{ background: '#FFF1D6', color: '#A6762A', border: '1px solid #F0D9A8' }}
             >
               👉 콕 찌르기
             </button>
-            <div className="text-[10px] mt-2 leading-relaxed" style={{ color: '#A89880' }}>
+            <div className="text-[12px] mt-2 leading-relaxed" style={{ color: '#A89880' }}>
               종이로 낸 아이라면 찌르지 않아도 괜찮아요.
             </div>
           </div>
@@ -476,16 +476,16 @@ function StudentSheet({
           <>
             {sub.status === 'held' && (
               <div className="rounded-2xl p-3 mb-2" style={{ background: '#FFF6E5', border: '1px solid #F0D9A8' }}>
-                <div className="text-[11px] font-bold mb-1" style={{ color: '#8A6D2F' }}>
+                <div className="text-[13px] font-bold mb-1" style={{ color: '#8A6D2F' }}>
                   ⏳ AI가 확인을 요청했어요
                 </div>
-                <div className="text-[10px] leading-relaxed mb-2" style={{ color: '#A08A5B' }}>
+                <div className="text-[12px] leading-relaxed mb-2" style={{ color: '#A08A5B' }}>
                   {sub.moderation?.reason || '확인 필요'} · 오탐일 수 있으니 직접 보고 판단해 주세요.
                 </div>
                 <button
                   onClick={onApprove}
                   disabled={busy}
-                  className="w-full rounded-xl py-2 text-[11px] font-bold text-white disabled:opacity-40"
+                  className="w-full rounded-xl py-2 text-[13px] font-bold text-white disabled:opacity-40"
                   style={{ background: '#3BAF9F' }}
                 >
                   괜찮아요, 공개하기
@@ -513,37 +513,37 @@ function StudentSheet({
                   href={sub.linkUrl}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="block rounded-xl px-3 py-2 mb-2 text-[12px] font-bold break-all"
+                  className="block rounded-xl px-3 py-2 mb-2 text-[14px] font-bold break-all"
                   style={{ background: '#EAF2FB', color: '#2F6DB5' }}
                 >
                   🔗 {sub.linkUrl}
                 </a>
               )}
               {sub.text && (
-                <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: '#3A3226' }}>
+                <div className="text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: '#3A3226' }}>
                   {sub.text}
                 </div>
               )}
               {!sub.imageUrl && !sub.videoUrl && !sub.linkUrl && !sub.text && (
-                <div className="text-[11px]" style={{ color: '#A89880' }}>
+                <div className="text-[13px]" style={{ color: '#A89880' }}>
                   내용이 비어 있어요 ({submitType})
                 </div>
               )}
             </div>
 
-            <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💬 칭찬 한마디</div>
+            <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💬 칭찬 한마디</div>
             <div className="flex gap-1.5 mb-3">
               <input
                 value={cmt}
                 onChange={(e) => setCmt(e.target.value)}
                 placeholder="참 잘했어요!"
-                className="min-w-0 flex-1 rounded-xl px-3 py-2 text-[12px] outline-none"
+                className="min-w-0 flex-1 rounded-xl px-3 py-2 text-[14px] outline-none"
                 style={{ background: 'white', color: '#3A3226' }}
               />
               <button
                 onClick={() => onComment(cmt)}
                 disabled={busy}
-                className="shrink-0 rounded-xl px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40"
+                className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-bold text-white disabled:opacity-40"
                 style={{ background: 'var(--color-primary)' }}
               >
                 저장
@@ -554,13 +554,13 @@ function StudentSheet({
             {!sub.checked && (
               myStamps.length > 0 ? (
                 <>
-                  <div className="text-[11px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
+                  <div className="text-[13px] font-bold mb-1.5" style={{ color: '#8A7A5F' }}>💮 찍어줄 도장</div>
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {myStamps.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => setPickedStamp(s.id)}
-                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold"
+                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[13px] font-bold"
                         style={
                           pickedStamp === s.id
                             ? { background: 'var(--color-primary)', color: 'white' }
@@ -574,14 +574,14 @@ function StudentSheet({
                   </div>
                 </>
               ) : (
-                <div className="rounded-xl px-3 py-2 mb-3 text-[10px] leading-relaxed" style={{ background: '#FFF6E5', color: '#A08A5B' }}>
+                <div className="rounded-xl px-3 py-2 mb-3 text-[12px] leading-relaxed" style={{ background: '#FFF6E5', color: '#A08A5B' }}>
                   상점에서 도장을 받아오면 여기서 찍어줄 수 있어요. (지금은 전부 무료)
                 </div>
               )
             )}
 
             {sub.checked && sub.stamp && (
-              <div className="rounded-xl px-3 py-2 mb-3 text-[12px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
+              <div className="rounded-xl px-3 py-2 mb-3 text-[14px] font-bold text-center" style={{ background: '#E2F6E9', color: '#2E8B57' }}>
                 {sub.stamp.emoji} {sub.stamp.label}
               </div>
             )}
@@ -589,7 +589,7 @@ function StudentSheet({
             <button
               onClick={() => onCheck(!sub.checked, pickedStamp || undefined)}
               disabled={busy}
-              className="w-full rounded-xl py-3 text-[13px] font-bold disabled:opacity-40"
+              className="w-full rounded-xl py-3 text-[15px] font-bold disabled:opacity-40"
               style={
                 sub.checked
                   ? { background: '#E2F6E9', color: '#2E8B57', border: '1px solid #A0DCB7' }
@@ -599,7 +599,7 @@ function StudentSheet({
               {sub.checked ? '✅ 검사완료 (눌러서 취소)' : '도장 찍고 검사완료'}
             </button>
             {!sub.checked && (
-              <div className="text-[10px] mt-1.5 text-center" style={{ color: '#A89880' }}>
+              <div className="text-[12px] mt-1.5 text-center" style={{ color: '#A89880' }}>
                 검사완료하면 {name}에게 도장 1개가 쌓여요
               </div>
             )}
@@ -608,7 +608,7 @@ function StudentSheet({
 
         <button
           onClick={onClose}
-          className="w-full rounded-xl py-2.5 mt-2 text-[12px] font-bold"
+          className="w-full rounded-xl py-2.5 mt-2 text-[14px] font-bold"
           style={{ background: 'rgba(255,255,255,0.8)', color: '#8A7A5F' }}
         >
           닫기
