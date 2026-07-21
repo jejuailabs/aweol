@@ -19,7 +19,7 @@ const D = 14;
 const halfW = W * 0.5;
 const halfD = D * 0.5;
 
-export type LobbySpot = 'about' | 'notice' | 'suggest' | 'album';
+export type LobbySpot = 'about' | 'meal' | 'notice' | 'suggest' | 'album';
 
 /**
  * 게시물이 걸리는 자리들.
@@ -33,6 +33,8 @@ const SPOTS: {
   pos: [number, number, number]; rot: number;
 }[] = [
   { key: 'about', label: '학교 소개', emoji: '🏫', color: '#6FBF73', pos: [-3.2, 2.1, -halfD + 0.12], rot: 0 },
+  // 급식은 전 학년이 같아서 여기 걸린다 (반 알림판에서 옮겨왔다)
+  { key: 'meal', label: '오늘 급식', emoji: '🍚', color: '#E8A33C', pos: [-halfW + 0.12, 2.1, 3], rot: HALF_PI },
   { key: 'notice', label: '공지', emoji: '📢', color: '#E8604C', pos: [halfW - 0.12, 2.1, -1.5], rot: NEG_HALF_PI },
   { key: 'album', label: '앨범', emoji: '🖼️', color: '#7B4B94', pos: [-halfW + 0.12, 2.1, -1.5], rot: HALF_PI },
   { key: 'suggest', label: '건의함', emoji: '💌', color: '#E8A33C', pos: [halfW - 0.12, 2.1, 3], rot: NEG_HALF_PI },

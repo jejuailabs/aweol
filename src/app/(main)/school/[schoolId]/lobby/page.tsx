@@ -31,7 +31,7 @@ export default function LobbyPage() {
   const [emblemUrl, setEmblemUrl] = useState('');
   const [profile, setProfile] = useState<SchoolProfile | undefined>();
   const [counts, setCounts] = useState<Record<LobbySpot, number>>({
-    about: 0, notice: 0, suggest: 0, album: 0,
+    about: 0, meal: 0, notice: 0, suggest: 0, album: 0,
   });
   const [open, setOpen] = useState<LobbySpot | null>(null);
 

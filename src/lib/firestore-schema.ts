@@ -204,6 +204,12 @@ export interface GradeDoc {
   order: number;
 }
 
+/**
+ * 알림판 칸.
+ *
+ * `meal` 은 **더 이상 반 알림판에 걸지 않는다** — 급식은 전 학년이 같아서
+ * 학교 현관으로 옮겼다(`/api/meal`). 옛 반 문서에 남아 있을 수 있어 타입은 둔다.
+ */
 export type NoticeKind = 'notice' | 'meal' | 'homework' | 'quiz' | 'spot';
 
 export interface ClassDoc {

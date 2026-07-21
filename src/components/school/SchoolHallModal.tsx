@@ -5,15 +5,17 @@ import {
   addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query,
   serverTimestamp, updateDoc, where,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import type { SchoolProfile } from '@/lib/firestore-schema';
 
-type Tab = 'about' | 'notice' | 'suggest' | 'album';
+type Tab = 'about' | 'meal' | 'notice' | 'suggest' | 'album';
 
 const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: 'about', label: '학교 소개', emoji: '🏫' },
+  // 급식은 전 학년이 같아서 반 알림판이 아니라 여기 있다
+  { key: 'meal', label: '오늘 급식', emoji: '🍚' },
   { key: 'notice', label: '공지', emoji: '📢' },
   { key: 'suggest', label: '건의함', emoji: '💌' },
   { key: 'album', label: '앨범', emoji: '🖼️' },
@@ -53,8 +55,9 @@ export default function SchoolHallModal({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [album, setAlbum] = useState<AlbumItem[]>([]);
   const [loaded, setLoaded] = useState<Record<Tab, boolean>>({
-    about: true, notice: false, suggest: false, album: false,
+    about: true, meal: false, notice: false, suggest: false, album: false,
   });
+  const [meal, setMeal] = useState<{ dishes: string[]; kcal: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -68,6 +71,19 @@ export default function SchoolHallModal({
   const isStaff = userDoc?.role === 'teacher' || userDoc?.role === 'super_admin';
   const canWriteNotice = isStaff && (userDoc?.schoolIds ?? []).includes(schoolId);
   const canManageAll = userDoc?.role === 'super_admin' || canWriteNotice;
+
+  /**
+   * 급식은 서버가 하루에 한 번만 NEIS 를 부르고 학교 문서에 얹어둔다.
+   * 아이가 볼 때마다 남의 서버를 두드리지 않는다.
+   */
+  const loadMeal = useCallback(async () => {
+    const token = await auth?.currentUser?.getIdToken();
+    const res = await fetch(`/api/meal?schoolId=${encodeURIComponent(schoolId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const j = await res.json().catch(() => ({}));
+    setMeal({ dishes: j.dishes ?? [], kcal: j.kcal ?? '' });
+  }, [schoolId]);
 
   const loadNotices = useCallback(async () => {
     if (!db) return;
@@ -128,14 +144,17 @@ export default function SchoolHallModal({
   useEffect(() => {
     if (loaded[tab]) return;
     setErr('');
-    const run = tab === 'notice' ? loadNotices : tab === 'suggest' ? loadSuggestions : tab === 'album' ? loadAlbum : null;
+    const run = tab === 'meal' ? loadMeal
+      : tab === 'notice' ? loadNotices
+        : tab === 'suggest' ? loadSuggestions
+          : tab === 'album' ? loadAlbum : null;
     if (!run) return;
     setBusy(true);
     run()
       .then(() => setLoaded((p) => ({ ...p, [tab]: true })))
       .catch((e) => setErr(String(e).slice(0, 80)))
       .finally(() => setBusy(false));
-  }, [tab, loaded, loadNotices, loadSuggestions, loadAlbum]);
+  }, [tab, loaded, loadMeal, loadNotices, loadSuggestions, loadAlbum]);
 
   const addNotice = async () => {
     if (!db || !user || !nTitle.trim()) return;
@@ -276,6 +295,35 @@ export default function SchoolHallModal({
                 선생님이 관리자 화면에서 채워주시면 여기에 보여요.
               </div>
             )
+          )}
+
+          {/* ---- 오늘 급식 ---- */}
+          {tab === 'meal' && (
+            meal && meal.dishes.length > 0 ? (
+              <div>
+                <div className="flex flex-col gap-2">
+                  {meal.dishes.map((d, i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl px-4 py-3 text-[15px] font-bold"
+                      style={{ background: 'white', color: '#3A3226' }}
+                    >
+                      🍽️ {d}
+                    </div>
+                  ))}
+                </div>
+                {meal.kcal && (
+                  <div className="text-[12px] mt-3 text-center" style={{ color: '#A89880' }}>
+                    {meal.kcal}
+                  </div>
+                )}
+              </div>
+            ) : !busy ? (
+              <div className="text-center py-8 text-[13px] leading-relaxed" style={{ color: '#A89880' }}>
+                오늘은 급식 정보가 없어요.<br />
+                주말이나 방학일 수 있어요.
+              </div>
+            ) : null
           )}
 
           {/* ---- 공지 ---- */}

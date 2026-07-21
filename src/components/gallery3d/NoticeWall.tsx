@@ -6,7 +6,6 @@ import { NoticeKind } from '@/lib/firestore-schema';
 
 export const NOTICE_TABS: { kind: NoticeKind; label: string; emoji: string; color: string }[] = [
   { kind: 'notice', label: '알림장', emoji: '📌', color: '#E8604C' },
-  { kind: 'meal', label: '오늘의 급식', emoji: '🍚', color: '#E8A33C' },
   { kind: 'homework', label: '숙제', emoji: '📝', color: '#4A90D9' },
   { kind: 'quiz', label: '오늘의 퀴즈', emoji: '🧩', color: '#7B4B94' },
   { kind: 'spot', label: '틀린그림 찾기', emoji: '🔍', color: '#E8A33C' },
