@@ -51,12 +51,15 @@ export default function VillagePage() {
    * 파일 하나(2KB 남짓)만 받으므로 지도 API 는 아예 안 부른다.
    */
   const [village, setVillage] = useState<VillageData | null>(null);
+  /** 순간이동 목록에 '학교' 대신 진짜 이름이 뜨게 하려고 받아둔다 */
+  const [schoolName, setSchoolName] = useState('학교');
   const [tried, setTried] = useState(false);
 
   useEffect(() => {
     if (!db) { setTried(true); return; }
     getDoc(doc(db, 'schools', schoolId))
       .then(async (s) => {
+        if (s.exists() && s.data()?.name) setSchoolName(s.data()!.name as string);
         const url = s.exists() ? (s.data()?.villageUrl as string) : '';
         if (!url) return;
         const res = await fetch(url);
@@ -88,7 +91,7 @@ export default function VillagePage() {
         <VillageMapScene
           data={village}
           schoolId={schoolId}
-          schoolName={userDoc?.schoolIds?.[0] === schoolId ? '우리 학교' : '학교'}
+          schoolName={schoolName}
           me={me}
           avatarId={userDoc?.avatarId}
           avatarCustom={userDoc?.avatarCustom}
