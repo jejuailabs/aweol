@@ -2,12 +2,14 @@
 
 import { useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
   type Obstacle, type AvatarCustom, type AvatarTint,
 } from './walker';
 import Peers, { ItRing } from './Peers';
+import { botStart, isCaught, stepBot } from '@/lib/tag-bot';
 import type { Peer, PeerLook } from '@/lib/presence';
 import { TAG_DIST } from '@/lib/tag-game';
 
@@ -16,6 +18,93 @@ const NEG_HALF_PI = -PI * 0.5;
 
 /** 놀이터 크기 (울타리 안쪽) */
 const HALF = 13;
+
+/**
+ * 연습 상대 로봇 — **혼자일 때만** 나온다.
+ *
+ * 그래서 남과 위치를 맞출 일이 없다. 이 아이 화면에만 있으면 된다
+ * (맞추려 들면 사람마다 로봇이 딴 데 있게 된다).
+ */
+function TagBot({
+  avatarPos, startedAt, onCaught,
+}: {
+  avatarPos: React.MutableRefObject<THREE.Vector3>;
+  /** 판이 시작된 시각(performance.now). 0 이면 아직 안 뛴다. */
+  startedAt: number;
+  onCaught: (survivedMs: number) => void;
+}) {
+  const g = useRef<THREE.Group>(null);
+  const pos = useRef<{ x: number; z: number }>({ x: -HALF, z: -HALF });
+  const done = useRef(false);
+  const placed = useRef(0);
+
+  useFrame((_, delta) => {
+    if (!g.current || !startedAt) return;
+
+    // 판이 새로 시작되면 아이에게서 가장 먼 구석에 다시 세운다
+    if (placed.current !== startedAt) {
+      placed.current = startedAt;
+      done.current = false;
+      pos.current = botStart(
+        { x: avatarPos.current.x, z: avatarPos.current.z },
+        { half: HALF }
+      );
+    }
+    if (done.current) return;
+
+    const elapsed = (performance.now() - startedAt) / 1000;
+    const kid = { x: avatarPos.current.x, z: avatarPos.current.z };
+    pos.current = stepBot(pos.current, kid, delta, elapsed, { half: HALF });
+    g.current.position.set(pos.current.x, 0, pos.current.z);
+    // 아이 쪽을 본다
+    g.current.rotation.y = Math.atan2(kid.x - pos.current.x, kid.z - pos.current.z);
+
+    if (isCaught(pos.current, kid, elapsed)) {
+      done.current = true;
+      onCaught(performance.now() - startedAt);
+    }
+  });
+
+  if (!startedAt) return null;
+
+  return (
+    <group ref={g}>
+      {/* 몸통 */}
+      <mesh position={[0, 0.55, 0]} castShadow>
+        <boxGeometry args={[0.7, 0.9, 0.5]} />
+        <meshStandardMaterial color="#8A94A6" metalness={0.35} roughness={0.5} />
+      </mesh>
+      {/* 머리 */}
+      <mesh position={[0, 1.25, 0]} castShadow>
+        <boxGeometry args={[0.6, 0.5, 0.5]} />
+        <meshStandardMaterial color="#B9C2D0" metalness={0.35} roughness={0.45} />
+      </mesh>
+      {/* 눈 — 술래라는 걸 알 수 있게 붉게 */}
+      {([-0.15, 0.15]).map((x) => (
+        <mesh key={x} position={[x, 1.28, 0.26]}>
+          <sphereGeometry args={[0.07, 8, 8]} />
+          <meshStandardMaterial color="#E8493C" emissive="#E8493C" emissiveIntensity={0.6} />
+        </mesh>
+      ))}
+      {/* 안테나 */}
+      <mesh position={[0, 1.62, 0]}>
+        <cylinderGeometry args={[0.03, 0.03, 0.26, 6]} />
+        <meshStandardMaterial color="#6B7482" />
+      </mesh>
+      <Html position={[0, 2.1, 0]} center pointerEvents="none" zIndexRange={[8, 0]}>
+        <div
+          style={{
+            background: '#3A3226', color: '#FFF8E7', fontWeight: 800, fontSize: '13px',
+            padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
+            fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+          }}
+        >
+          🤖 로봇 술래
+        </div>
+      </Html>
+    </group>
+  );
+}
 
 /** 숨거나 돌아갈 것들 — 아무것도 없는 벌판이면 그냥 쫓기만 한다 */
 const PROPS: { x: number; z: number; kind: 'tree' | 'rock' | 'hay' }[] = [
@@ -137,7 +226,7 @@ function TagJudge({
 
 export default function PlaygroundScene({
   schoolId, roomKey, me, itUid, playing, speedBoost,
-  avatarId, avatarCustom, avatarTint, onTag, onPeerCount,
+  avatarId, avatarCustom, avatarTint, onTag, onPeerCount, botStartedAt = 0, onBotCaught,
 }: {
   schoolId: string;
   roomKey: string;
@@ -152,6 +241,9 @@ export default function PlaygroundScene({
   onTag: (uid: string, name: string) => void;
   /** 같은 방에 있는 **나 말고** 다른 사람 수 */
   onPeerCount?: (n: number) => void;
+  /** 로봇과 연습 중이면 시작 시각(performance.now). 0 이면 안 나온다. */
+  botStartedAt?: number;
+  onBotCaught?: (survivedMs: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 8));
@@ -179,6 +271,13 @@ export default function PlaygroundScene({
         <directionalLight position={[10, 14, 8]} intensity={1} color="#FFF4DC" castShadow />
 
         <Ground />
+
+        {/* 연습 로봇 — 혼자일 때만 */}
+        <TagBot
+          avatarPos={avatarPos}
+          startedAt={botStartedAt}
+          onCaught={(ms) => onBotCaught?.(ms)}
+        />
 
         <group>
           <WalkerAvatar

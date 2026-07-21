@@ -8,6 +8,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { inventoryPath } from '@/lib/paths';
 import { playSound } from '@/lib/sound';
+import { formatSurvived } from '@/lib/tag-bot';
 import {
   watchTag, startTag, passTag, endTag, formatLeft,
   TAG_COOLDOWN_MS, type TagState,
@@ -177,6 +178,23 @@ export default function TagPage() {
   /** 같은 방에 있는 다른 사람 수. 혼자면 시작을 막는다. */
   const [peerCount, setPeerCount] = useState(0);
 
+  /**
+   * 로봇과 연습.
+   *
+   * 혼자 들어온 아이가 그냥 나가지 않게. 친구가 들어오면 물러난다 —
+   * 사람이 먼저다. 기록은 랭킹에 안 올린다(진짜 친구와 논 것과 섞이면 안 된다).
+   */
+  const [botStartedAt, setBotStartedAt] = useState(0);
+  const [botResult, setBotResult] = useState<number | null>(null);
+
+  // 친구가 들어오면 로봇은 사라진다
+  useEffect(() => {
+    if (peerCount > 0 && botStartedAt) {
+      setBotStartedAt(0);
+      setBotResult(null);
+    }
+  }, [peerCount, botStartedAt]);
+
   const ranking = Object.entries(state.scores)
     .map(([uid, v]) => ({ uid, name: v.n, count: v.c }))
     .sort((a, b) => b.count - a.count);
@@ -195,6 +213,8 @@ export default function TagPage() {
         avatarTint={userDoc?.avatarTint}
         onTag={handleTag}
         onPeerCount={setPeerCount}
+        botStartedAt={botStartedAt}
+        onBotCaught={(ms) => { setBotStartedAt(0); setBotResult(ms); playSound('error'); }}
       />
 
       <button
@@ -265,6 +285,27 @@ export default function TagPage() {
                   ? `🙋 지금 ${peerCount + 1}명이 운동장에 있어요`
                   : '🕰️ 아직 혼자예요. 친구가 들어오면 시작할 수 있어요.'}
               </div>
+
+              {/* 혼자면 로봇과 연습할 수 있다 — 그냥 나가는 것보다 낫다 */}
+              {peerCount < 1 && (
+                <>
+                  {botResult !== null && (
+                    <div
+                      className="rounded-xl px-3 py-2.5 mb-2 text-[14px] font-black text-center"
+                      style={{ background: '#FFF1D6', color: '#A6762A' }}
+                    >
+                      🤖 잡혔어요! {formatSurvived(botResult)} 버텼어요
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setBotResult(null); setBotStartedAt(performance.now()); playSound('open'); }}
+                    className="w-full rounded-full py-3 mb-2 text-sm font-bold"
+                    style={{ background: '#FFF1D6', color: '#A6762A', border: '2px solid #F0D9A8' }}
+                  >
+                    🤖 로봇과 연습하기
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={handleStart}
