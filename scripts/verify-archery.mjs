@@ -98,4 +98,35 @@ ok('화살을 더 보내도 5발만 센다', scoreRound(5,Array(50).fill(100)).s
   ok(`잘 맞히면 높은 점수가 난다 (최고 ${best}/${PERFECT})`, best>=PERFECT*0.5);
 }
 
+// ---- 난이도 (2026-07-22) ----
+{
+  const { LEVELS, asLevel } = await import('../src/lib/archery.ts');
+  console.log('\n--- 난이도가 실제로 갈리나 ---');
+  ok('세 단계가 있다', ['easy','normal','hard'].every(k=>LEVELS[k]));
+  ok('어려울수록 빠르다', LEVELS.easy.mul < LEVELS.normal.mul && LEVELS.normal.mul < LEVELS.hard.mul);
+  ok('어려울수록 바람이 세다', LEVELS.easy.windMul < LEVELS.hard.windMul);
+  ok('이상한 값은 보통으로', asLevel('몰라')==='normal' && asLevel('easy')==='easy');
+
+  /*
+    진짜 난이도는 '타이밍이 얼마나 빡센가' 다. 조준점이 중앙을 지나는 순간에서
+    100ms 늦게 쏘면(누구나 조금 늦는다), 흔들림이 빠를수록 그새 더 멀리 가 있다.
+    바람 노이즈를 빼고 **조준점이 얼마나 벗어나는지**를 직접 본다.
+  */
+  const missAt = (level, lateMs) => {
+    let sum=0, n=0;
+    for (let seed=1; seed<=60; seed++)
+      for (let i=0;i<5;i++){
+        const s = shotSetup(seed, i, level);
+        let bestT=0, bestD=1e9;
+        for (let t=0;t<4000;t+=8){ const p=aimAt(s,t); const d=Math.hypot(p.x,p.y); if(d<bestD){bestD=d;bestT=t;} }
+        const p = aimAt(s, bestT + lateMs);
+        sum += Math.hypot(p.x, p.y); n++;
+      }
+    return sum/n;
+  };
+  const me=missAt('easy',100), mn=missAt('normal',100), mh=missAt('hard',100);
+  console.log(`   중앙에서 100ms 늦으면 벗어나는 거리 — 쉬움 ${me.toFixed(1)} · 보통 ${mn.toFixed(1)} · 어려움 ${mh.toFixed(1)}`);
+  ok('어려울수록 타이밍이 빡세다(같은 오차에 더 벗어남)', me < mn && mn < mh);
+  ok('쉬움↔어려움 차이가 뚜렷하다', mh > me * 2);
+}
 console.log(`\n실패 ${f}건`); process.exit(f?1:0);

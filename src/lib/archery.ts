@@ -15,6 +15,29 @@ export const SHOTS = 5;
 export const TARGET_R = 100;
 
 /**
+ * 난이도.
+ *
+ * 예전엔 하나뿐이라 44/50 이 쉽게 나왔다 — 흔들림이 느려 타이밍이 넉넉하고
+ * 바람도 약했다. 둘을 난이도로 묶는다.
+ * - `mul`: 흔들리는 **빠르기** 배수. 빠를수록 정중앙을 지나는 순간이 짧아 어렵다.
+ * - `windMul`: 바람 배수. 셀수록 가운데서 쏴도 밀려 손해가 크다(반대쪽을 노려야).
+ *
+ * **서버가 이 값으로 다시 채점한다.** 그래서 판을 시작할 때 고른 난이도를
+ * `archeryRounds` 에 적어두고, 낼 때 그걸로 되짚는다 — 화면이 난이도를 우겨도 안 통한다.
+ */
+export type Level = 'easy' | 'normal' | 'hard';
+
+export const LEVELS: Record<Level, { label: string; mul: number; windMul: number }> = {
+  easy: { label: '쉬움', mul: 0.62, windMul: 0.5 },
+  normal: { label: '보통', mul: 1, windMul: 1 },
+  hard: { label: '어려움', mul: 1.7, windMul: 1.5 },
+};
+
+export function asLevel(v: unknown): Level {
+  return v === 'easy' || v === 'hard' ? v : 'normal';
+}
+
+/**
  * 판을 정하는 씨앗에서 화살마다 다른 수를 뽑는다 (0~1).
  *
  * 섞기가 약하면 **씨앗이 달라도 같은 값**이 나온다. 처음에 xorshift 를 얕게
@@ -51,19 +74,21 @@ export interface ShotSetup {
  *
  * 뒤로 갈수록 조금씩 어려워진다 — 처음부터 어려우면 아이가 그만둔다.
  */
-export function shotSetup(seed: number, i: number): ShotSetup {
+export function shotSetup(seed: number, i: number, level: Level = 'normal'): ShotSetup {
   const a = hash(seed, i * 3);
   const b = hash(seed, i * 3 + 1);
   const c = hash(seed, i * 3 + 2);
   const step = i / Math.max(1, SHOTS - 1); // 0 → 1
+  const L = LEVELS[level];
   return {
     // 뒤로 갈수록 선이 길어져(멀리까지 흔들려) 타이밍 잡기가 어려워진다
     reach: 34 + a * 26 + step * 24,
     // 기울기는 화살마다 다르다 — 한 바퀴 어디로든
     angle: b * Math.PI * 2,
-    speed: 1.7 + c * 1.1 + step * 0.5,
-    // 바람은 좌우 어느 쪽이든 분다
-    wind: (hash(seed, i * 3 + 7) - 0.5) * (16 + step * 14),
+    // 난이도가 흔들리는 빠르기를 정한다 — 빠를수록 중앙을 지나는 순간이 짧다
+    speed: (1.7 + c * 1.1 + step * 0.5) * L.mul,
+    // 바람은 좌우 어느 쪽이든. 난이도가 셀수록 세게 분다.
+    wind: (hash(seed, i * 3 + 7) - 0.5) * (16 + step * 14) * L.windMul,
   };
 }
 
@@ -113,7 +138,11 @@ export function ringScore(x: number, y: number): number {
  *
  * 안 쏜 화살(빠진 값)은 0점이다. 화살 수를 넘겨 보내도 앞의 `SHOTS` 개만 센다.
  */
-export function scoreRound(seed: number, times: unknown): { shots: number[]; total: number } {
+export function scoreRound(
+  seed: number,
+  times: unknown,
+  level: Level = 'normal'
+): { shots: number[]; total: number } {
   const list = Array.isArray(times) ? times : [];
   const shots: number[] = [];
   for (let i = 0; i < SHOTS; i++) {
@@ -122,7 +151,7 @@ export function scoreRound(seed: number, times: unknown): { shots: number[]; tot
       shots.push(0);
       continue;
     }
-    const p = landing(shotSetup(seed, i), t);
+    const p = landing(shotSetup(seed, i, level), t);
     shots.push(ringScore(p.x, p.y));
   }
   return { shots, total: shots.reduce((a, b) => a + b, 0) };

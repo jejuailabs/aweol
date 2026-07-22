@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, verifyRequestUser } from '@/lib/firebase-admin';
-import { PERFECT, SHOTS, scoreRound } from '@/lib/archery';
+import { PERFECT, SHOTS, asLevel, scoreRound } from '@/lib/archery';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
 
-  let body: { schoolId?: string };
+  let body: { schoolId?: string; level?: string };
   try {
     body = await req.json();
   } catch {
@@ -44,17 +44,22 @@ export async function POST(req: NextRequest) {
   const schoolId = (body.schoolId || '').trim();
   if (!schoolId) return NextResponse.json({ error: '학교가 필요합니다' }, { status: 400 });
 
+  // 난이도는 판을 시작할 때 정해 **문서에 적어둔다** — 낼 때 이걸로 되짚는다.
+  // 화면이 낼 때 난이도를 우겨도 안 통한다.
+  const level = asLevel(body.level);
+
   // 32비트 안에서 고른다 — 계산이 정수 범위를 넘지 않아야 서버와 화면이 같은 값을 본다
   const seed = (Math.floor(Math.random() * 0xffffffff) | 0) || 1;
 
   await adminDb().doc(`schools/${schoolId}/archeryRounds/${user.uid}`).set({
     seed,
+    level,
     startedAt: FieldValue.serverTimestamp(),
     startedAtMs: Date.now(),
     done: false,
   });
 
-  return NextResponse.json({ seed, shots: SHOTS, perfect: PERFECT });
+  return NextResponse.json({ seed, level, shots: SHOTS, perfect: PERFECT });
 }
 
 /** 제출 — 서버가 다시 계산해 점수를 낸다 */
@@ -77,7 +82,7 @@ export async function PATCH(req: NextRequest) {
   if (!round.exists) {
     return NextResponse.json({ error: '시작한 판이 없어요' }, { status: 409 });
   }
-  const r = round.data() as { seed: number; startedAtMs: number; done: boolean };
+  const r = round.data() as { seed: number; level?: string; startedAtMs: number; done: boolean };
   if (r.done) {
     return NextResponse.json({ error: '이미 낸 판이에요' }, { status: 409 });
   }
@@ -101,7 +106,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   // 여기서만 점수가 정해진다. 클라이언트가 보낸 점수는 아예 읽지 않는다.
-  const { shots, total } = scoreRound(r.seed, times);
+  const { shots, total } = scoreRound(r.seed, times, asLevel(r.level));
 
   // 판을 닫는다 — 같은 판을 다시 내서 점수를 고를 수 없다
   await roundRef.update({ done: true });

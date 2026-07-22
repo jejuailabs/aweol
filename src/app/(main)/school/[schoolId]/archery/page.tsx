@@ -7,7 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import dynamic from 'next/dynamic';
-import { PERFECT, SHOTS, aimAt, ringScore, shotSetup, type ShotSetup } from '@/lib/archery';
+import { LEVELS, PERFECT, SHOTS, aimAt, ringScore, shotSetup, type Level, type ShotSetup } from '@/lib/archery';
 
 /** 3D 경기장. 화면이 뜨기 전에 받아올 이유가 없다. */
 const ArcheryScene = dynamic(() => import('@/components/gallery3d/ArcheryScene'), { ssr: false });
@@ -36,6 +36,8 @@ export default function ArcheryPage() {
 
   const [phase, setPhase] = useState<Phase>('ready');
   const [seed, setSeed] = useState(0);
+  /** 고른 난이도. 판을 시작할 때 서버로 보내고, 화면 흔들림도 이걸로 그린다. */
+  const [level, setLevel] = useState<Level>('normal');
   const [shotIdx, setShotIdx] = useState(0);
   const [setup, setSetup] = useState<ShotSetup | null>(null);
   const [hits, setHits] = useState<Hit[]>([]);
@@ -78,13 +80,13 @@ export default function ArcheryPage() {
       const res = await fetch('/api/archery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
-        body: JSON.stringify({ schoolId }),
+        body: JSON.stringify({ schoolId, level }),
       });
       const data = await res.json();
       if (!res.ok) { setErr(data?.error || '시작하지 못했어요'); return; }
       setSeed(data.seed);
       setShotIdx(0);
-      setSetup(shotSetup(data.seed, 0));
+      setSetup(shotSetup(data.seed, 0, level));
       shotStart.current = performance.now();
       setStartedAt(shotStart.current);
       setFlight(null);
@@ -149,7 +151,7 @@ export default function ArcheryPage() {
         return;
       }
       setShotIdx(next);
-      setSetup(shotSetup(seed, next));
+      setSetup(shotSetup(seed, next, level));
       shotStart.current = performance.now();
       setStartedAt(shotStart.current);
     }, FLIGHT_MS);
@@ -182,7 +184,7 @@ export default function ArcheryPage() {
       {/* 나가기 */}
       <button
         onClick={() => router.push(`/school/${schoolId}/playground`)}
-        className="ac-btn pos-top-safe absolute left-4 z-30 px-3.5 py-2 text-sm"
+        className="ac-btn pos-top-safe fixed left-4 z-30 px-3.5 py-2 text-sm"
       >
         ← 운동장으로
       </button>
@@ -271,9 +273,27 @@ export default function ArcheryPage() {
               </div>
             )}
 
+            {/* 난이도 — 어려울수록 흔들림이 빠르고 바람이 세다 */}
+            <div className="flex gap-1.5 mb-2">
+              {(['easy', 'normal', 'hard'] as Level[]).map((lv) => (
+                <button
+                  key={lv}
+                  onClick={() => setLevel(lv)}
+                  className="flex-1 rounded-xl py-2 text-[14px] font-bold transition-transform active:scale-95"
+                  style={
+                    level === lv
+                      ? { background: 'var(--color-primary)', color: 'white' }
+                      : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }
+                  }
+                >
+                  {LEVELS[lv].label}
+                </button>
+              ))}
+            </div>
+
             <button
               onClick={start}
-              className="w-full mt-2 rounded-2xl py-4 text-[16px] font-black text-white"
+              className="w-full mt-1 rounded-2xl py-4 text-[16px] font-black text-white"
               style={{ background: 'var(--color-primary)' }}
             >
               {phase === 'done' ? '한 번 더' : '혼자 연습'}
