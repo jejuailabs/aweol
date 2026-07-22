@@ -8,7 +8,7 @@
  * 살 수는 있는데 껴도 안 보이면 아이 입장에서는 도장을 버린 셈이 된다.
  */
 
-export type ShopCategory = 'hat' | 'accessory' | 'stamp' | 'play';
+export type ShopCategory = 'hat' | 'accessory' | 'stamp' | 'play' | 'vehicle';
 
 export interface ShopItem {
   id: string;
@@ -62,6 +62,18 @@ export const SHOP_ITEMS: ShopItem[] = [
     consumable: true, desc: '틀린그림에서 한 곳을 알려줘요 (쓴 표시가 남아요)',
   },
 
+  /**
+   * 탈것 — 마을에서 학교 밖으로 나갔을 때 탄다.
+   *
+   * 소모품이 아니다. **한 번 사면 계속 탄다.** 속도만 다르다(빠를수록 비싸다).
+   * 순위표가 걸린 놀이가 아니라 탐험이라, 빨라져도 아무한테도 손해가 없다.
+   * 속도 값은 여기 안 둔다 — `village-travel.ts` 의 VEHICLES 한 곳에서만 정한다.
+   */
+  { id: 'vehicle-scooter', emoji: '🛴', label: '킥보드', price: 6, category: 'vehicle',
+    desc: '자동차보다 빨라요' },
+  { id: 'vehicle-rocket', emoji: '🚀', label: '로켓카', price: 15, category: 'vehicle',
+    desc: '아주 빨라요! 마을 끝까지 금방' },
+
   // ---------- 모자 ----------
   { id: 'hat-cap', emoji: '🧢', label: '야구모자', price: 2, category: 'hat' },
   { id: 'hat-ribbon', emoji: '🎀', label: '리본', price: 2, category: 'hat' },
@@ -88,9 +100,17 @@ export const SHOP_ITEM_BY_ID: Record<string, ShopItem> = Object.fromEntries(
 export const getShopItem = (id: string): ShopItem | null => SHOP_ITEM_BY_ID[id] ?? null;
 
 /** 아바타에 착용하는 두 칸. 도장 도안은 착용 대상이 아니다. */
-export type EquipSlot = 'hat' | 'accessory';
+/**
+ * 몸에 지니는 칸.
+ *
+ * `vehicle` 도 넣는다 — 탈것도 '가진 것만 고를 수 있어야' 하므로 착용과
+ * 똑같이 다룬다(서버가 인벤토리를 확인한다). 다만 화면에 그리는 건 아바타가
+ * 아니라 마을의 자동차다.
+ */
+export type EquipSlot = 'hat' | 'accessory' | 'vehicle';
 
-export const isEquipSlot = (v: unknown): v is EquipSlot => v === 'hat' || v === 'accessory';
+export const isEquipSlot = (v: unknown): v is EquipSlot =>
+  v === 'hat' || v === 'accessory' || v === 'vehicle';
 
 /** 숙제 검사완료 한 번에 아이가 받는 도장 수 */
 export const STAMP_PER_HOMEWORK = 1;

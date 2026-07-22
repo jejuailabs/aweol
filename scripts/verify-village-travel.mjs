@@ -57,4 +57,28 @@ const many = Array.from({length:500},(_,i)=>({x:i*100,z:0,k:'shop',n:`가게${i}
 ok('수백 개여도 8개까지', warpTargets(many,'학교').length===8);
 ok('한 곳도 없으면 학교만', warpTargets([],'학교').length===1);
 
-console.log(`\n실패 ${f}건`); process.exit(f?1:0);
+
+// ---- 탈것 (2026-07-22) ----
+{
+  const { VEHICLES, vehicleById, speedOf } = await import('../src/lib/village-travel.ts');
+  const { SHOP_ITEMS } = await import('../src/lib/shop-catalog.ts');
+  console.log('\n--- 탈것 ---');
+  ok('기본은 자동차(공짜)', VEHICLES[0].shopId === null);
+  ok('아래로 갈수록 빠르다', VEHICLES.every((v,i,a)=> i===0 || v.speed > a[i-1].speed));
+  ok('걷기보다 다 빠르다', VEHICLES.every(v => v.speed > 7));
+
+  // 상점의 vehicle 아이템과 VEHICLES 가 어긋나면 안 된다
+  const shopVeh = SHOP_ITEMS.filter(i => i.category === 'vehicle').map(i => i.id).sort();
+  const listVeh = VEHICLES.filter(v => v.shopId).map(v => v.shopId).sort();
+  ok('상점 탈것과 목록이 일치한다', JSON.stringify(shopVeh) === JSON.stringify(listVeh));
+
+  ok('안 가진 탈것(null)은 기본 자동차', vehicleById(null).shopId === null);
+  ok('없는 id 도 기본 자동차로 떨어진다', vehicleById('없는것').shopId === null);
+  ok('고른 탈것의 속도로 달린다',
+     speedOf('car', vehicleById('vehicle-rocket')) === VEHICLES.find(v=>v.shopId==='vehicle-rocket').speed);
+  ok('걸을 땐 탈것과 무관하게 걷기 속도', speedOf('walk', vehicleById('vehicle-rocket')) === 7);
+  ok('탈것 안 줘도 기본 자동차 속도', speedOf('car') === VEHICLES[0].speed);
+}
+
+console.log(`\n실패 ${f}건`);
+process.exit(f ? 1 : 0);

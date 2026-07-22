@@ -84,6 +84,10 @@ export default function ShopPage() {
         key: 'play', title: '🎮 놀이 아이템',
         desc: '술래잡기에서 쓰면 없어져요. 없어도 노는 데는 지장 없어요!',
       },
+      {
+        key: 'vehicle', title: '🚗 탈것',
+        desc: '마을에서 학교 밖으로 나갈 때 타요. 한 번 사면 계속 타요.',
+      },
       { key: 'hat', title: '🎩 모자', desc: '머리에 하나만 쓸 수 있어요' },
       { key: 'accessory', title: '✨ 액세서리', desc: '하나만 낄 수 있어요' },
     ];
@@ -221,6 +225,11 @@ export default function ShopPage() {
               selected.category === 'stamp' ? (
                 <div className="rounded-xl p-3 text-sm mb-4" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
                   숙제 검사할 때 이 도장을 찍어줄 수 있어요 💮
+                </div>
+              ) : selected.category === 'vehicle' ? (
+                /* 탈것은 마을에서 골라 탄다 — 여러 대를 두고 그때그때 바꾸므로 여기서 착용하지 않는다 */
+                <div className="rounded-xl p-3 text-sm mb-4" style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}>
+                  🏘️ 마을에 나가면 &lsquo;바꾸기&rsquo;로 골라 탈 수 있어요
                 </div>
               ) : (
                 <button

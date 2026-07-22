@@ -27,7 +27,11 @@ export interface UserDoc {
   pendingClassRequest: string | null;
   avatarId: string | null;
   /** 착용 중인 상점 아이템 id. 서버(/api/shop)만 바꾼다 — 보유하지 않은 걸 낄 수 없어야 한다. */
-  avatarCustom: { hat: string | null; accessory: string | null };
+  /**
+   * 착용 중인 것. 서버(/api/shop)만 바꾼다 — 가진 것만 낄 수 있어야 한다.
+   * `vehicle` 은 아바타가 아니라 마을에서 타는 탈것 id(없으면 기본 자동차).
+   */
+  avatarCustom: { hat: string | null; accessory: string | null; vehicle?: string | null };
   /** 옷·머리 색 (프리셋 위에 덧입힌다). 사고파는 게 아니라 본인이 고른다. */
   avatarTint?: { shirt: string | null; hair: string | null };
   /** 보유 도장 수. 서버만 바꾼다 — 클라이언트가 고칠 수 있으면 무한히 찍어낼 수 있다. */

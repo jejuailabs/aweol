@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { VEHICLES } from '@/lib/village-travel';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
 import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
@@ -58,6 +59,38 @@ export default function VillagePage() {
   const [village, setVillage] = useState<VillageData | null>(null);
   /** 순간이동 목록에 '학교' 대신 진짜 이름이 뜨게 하려고 받아둔다 */
   const [schoolName, setSchoolName] = useState('학교');
+
+  /** 이 아이가 산 탈것 id 들. 인벤토리에서 vehicle-* 만 골라 온다. */
+  const [ownedVehicles, setOwnedVehicles] = useState<string[]>([]);
+  /** 지금 고른 탈것. 착용 정보(avatarCustom.vehicle)에서 온다. */
+  const vehicleId = userDoc?.avatarCustom?.vehicle ?? null;
+
+  useEffect(() => {
+    if (!db || !user) { setOwnedVehicles([]); return; }
+    const known = new Set(VEHICLES.map((v) => v.shopId).filter(Boolean) as string[]);
+    getDocs(collection(db, 'users', user.uid, 'inventory'))
+      .then((snap) => setOwnedVehicles(snap.docs.map((d) => d.id).filter((id) => known.has(id))))
+      .catch(() => setOwnedVehicles([]));
+  }, [user]);
+
+  /**
+   * 탈것 바꾸기 — **서버가 착용을 확정한다**(가진 것만 낄 수 있다).
+   * 모자·액세서리와 같은 길(`/api/shop` equip)이라 검증이 이미 있다.
+   */
+  const pickVehicle = async (id: string | null) => {
+    if (!user) return;
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      await fetch('/api/shop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ action: 'equip', slot: 'vehicle', itemId: id }),
+      });
+      // auth-context 의 userDoc 이 onSnapshot 으로 따라오므로 여기서 따로 안 고친다
+    } catch {
+      // 실패해도 조용히 — 다음에 다시 누르면 된다
+    }
+  };
   const [tried, setTried] = useState(false);
 
   useEffect(() => {
@@ -102,6 +135,9 @@ export default function VillagePage() {
           avatarCustom={userDoc?.avatarCustom}
           avatarTint={userDoc?.avatarTint}
           onEnterSchool={() => router.push(`/school/${schoolId}`)}
+          ownedVehicles={ownedVehicles}
+          vehicleId={vehicleId}
+          onPickVehicle={pickVehicle}
         />
       ) : (
         <VillageScene

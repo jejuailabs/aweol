@@ -11,7 +11,7 @@ import {
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
 import {
-  nextTravelMode, speedOf, warpTargets, type TravelMode, type WarpTarget,
+  nextTravelMode, speedOf, warpTargets, vehicleById, VEHICLES, type TravelMode, type WarpTarget,
 } from '@/lib/village-travel';
 
 const PI = Math.PI;
@@ -168,20 +168,35 @@ function Areas({ list }: { list: VillageData['a'] }) {
  * 그래서 아바타는 그대로 두고 차 위에 서 있는 모양으로 간다 — 아이들 게임에서
  * 흔한 방식이고, 아바타 꾸미기(모자·색)가 계속 보인다는 게 크다.
  */
-function Car({ show }: { show: boolean }) {
+/** 탈것 종류마다 색을 달리해 눈에 구별된다 */
+const VEHICLE_COLORS: Record<string, { body: string; roof: string }> = {
+  car: { body: '#E8604C', roof: '#F7C8C0' },
+  'vehicle-scooter': { body: '#3BAF9F', roof: '#BFE8E0' },
+  'vehicle-rocket': { body: '#7B4B94', roof: '#D8C4E4' },
+};
+
+function Car({ show, vehicleId }: { show: boolean; vehicleId: string | null }) {
   if (!show) return null;
+  const c = VEHICLE_COLORS[vehicleId ?? 'car'] ?? VEHICLE_COLORS.car;
   return (
     <group position={[0, 0.02, 0]}>
       {/* 몸통 */}
       <mesh position={[0, 0.32, 0]} castShadow>
         <boxGeometry args={[1.25, 0.42, 2.1]} />
-        <meshStandardMaterial color="#E8604C" roughness={0.55} />
+        <meshStandardMaterial color={c.body} roughness={0.55} />
       </mesh>
       {/* 지붕 */}
       <mesh position={[0, 0.68, -0.12]} castShadow>
         <boxGeometry args={[1.0, 0.36, 1.0]} />
-        <meshStandardMaterial color="#F7C8C0" roughness={0.5} />
+        <meshStandardMaterial color={c.roof} roughness={0.5} />
       </mesh>
+      {/* 로켓카는 뒤에 불꽃 */}
+      {vehicleId === 'vehicle-rocket' && (
+        <mesh position={[0, 0.3, 1.2]} rotation={[PI * 0.5, 0, 0]}>
+          <coneGeometry args={[0.22, 0.6, 8]} />
+          <meshStandardMaterial color="#FF8A3C" emissive="#FF6B00" emissiveIntensity={0.7} />
+        </mesh>
+      )}
       {/* 바퀴 — 좌우 앞뒤 네 개 */}
       {([[-0.62, 0.7], [0.62, 0.7], [-0.62, -0.7], [0.62, -0.7]] as const).map(([x, z]) => (
         <mesh key={`${x},${z}`} position={[x, 0.2, z]} rotation={[0, 0, PI * 0.5]}>
@@ -195,11 +210,12 @@ function Car({ show }: { show: boolean }) {
 
 /** 차를 아바타 자리에 붙여 따라다니게 한다 (아바타와 같은 위치·같은 방향) */
 function CarRig({
-  avatarPos, avatarYaw, show,
+  avatarPos, avatarYaw, show, vehicleId,
 }: {
   avatarPos: React.RefObject<THREE.Vector3>;
   avatarYaw: React.RefObject<number>;
   show: boolean;
+  vehicleId: string | null;
 }) {
   const g = useRef<THREE.Group>(null);
   useFrame(() => {
@@ -208,7 +224,7 @@ function CarRig({
     g.current.position.set(p.x, 0, p.z);
     g.current.rotation.y = avatarYaw.current ?? 0;
   });
-  return <group ref={g}><Car show={show} /></group>;
+  return <group ref={g}><Car show={show} vehicleId={vehicleId} /></group>;
 }
 
 /**
@@ -238,6 +254,7 @@ function TravelWatcher({
 
 export default function VillageMapScene({
   data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool,
+  ownedVehicles = [], vehicleId = null, onPickVehicle,
 }: {
   data: VillageData;
   schoolId: string;
@@ -247,6 +264,12 @@ export default function VillageMapScene({
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
   onEnterSchool: () => void;
+  /** 이 아이가 가진 탈것 id 들(기본 자동차 말고 산 것) */
+  ownedVehicles?: string[];
+  /** 지금 고른 탈것 id. null 이면 기본 자동차. */
+  vehicleId?: string | null;
+  /** 탈것을 바꾸면 부른다. 저장은 부모(서버 호출)가 한다. */
+  onPickVehicle?: (id: string | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 30));
@@ -330,6 +353,9 @@ export default function VillageMapScene({
 
   /** 지금 차를 타고 있나 — 손으로 켰거나, 멀어져서 저절로 탔거나 */
   const riding = forceCar || mode === 'car';
+  /** 지금 고른 탈것. 속도·색이 여기서 나온다. */
+  const vehicle = vehicleById(vehicleId);
+  const [vehOpen, setVehOpen] = useState(false);
 
   const R = data.r;
 
@@ -402,13 +428,13 @@ export default function VillageMapScene({
 
         {/* 손으로 켰으면 거리를 안 본다 */}
         {!forceCar && <TravelWatcher avatarPos={avatarPos} mode={mode} onMode={setMode} />}
-        <CarRig avatarPos={avatarPos} avatarYaw={avatarYaw} show={riding} />
+        <CarRig avatarPos={avatarPos} avatarYaw={avatarYaw} show={riding} vehicleId={vehicleId} />
 
         <WalkerAvatar
           avatarPos={avatarPos}
           bounds={{ xMin: -R, xMax: R, zMin: -R, zMax: R }}
           start={[0, 0, 30]}
-          maxSpeed={speedOf(riding ? 'car' : 'walk')}
+          maxSpeed={speedOf(riding ? 'car' : 'walk', vehicle)}
           avatarId={avatarId}
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
@@ -459,7 +485,55 @@ export default function VillageMapScene({
         >
           {forceCar ? '🚶 내리기' : '🚗 타기'}
         </button>
+
+        {/*
+          탈것 고르기 — 산 게 있을 때만 나온다.
+          기본 자동차뿐이면 고를 게 없으니 버튼도 안 만든다(빈 화면이 낫다).
+        */}
+        {ownedVehicles.length > 0 && (
+          <button
+            onClick={() => setVehOpen(true)}
+            className="rounded-full px-5 py-2.5 text-[14px] font-bold"
+            style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+          >
+            {vehicle.emoji} {vehicle.label} 바꾸기
+          </button>
+        )}
       </div>
+
+      {/* 탈것 고르는 시트 */}
+      {vehOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center"
+          style={{ background: 'rgba(24,20,16,0.45)' }}
+          onClick={() => setVehOpen(false)}
+        >
+          <div
+            className="w-full max-w-[420px] rounded-t-3xl p-4 pad-bottom-safe"
+            style={{ background: '#FAF5EA' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[15px] font-black mb-3" style={{ color: '#3A3226' }}>🚗 무엇을 탈까?</div>
+            <div className="flex flex-col gap-2">
+              {VEHICLES.filter((v) => v.shopId === null || ownedVehicles.includes(v.shopId)).map((v) => {
+                const on = (v.shopId ?? null) === vehicleId;
+                return (
+                  <button
+                    key={v.shopId ?? 'car'}
+                    onClick={() => { onPickVehicle?.(v.shopId); setVehOpen(false); }}
+                    className="flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
+                    style={on ? { background: 'var(--color-primary)', color: 'white' } : { background: 'white', color: '#3A3226' }}
+                  >
+                    <span className="text-[26px]">{v.emoji}</span>
+                    <span className="flex-1 text-[15px] font-black">{v.label}</span>
+                    {on && <span className="text-[14px] font-bold">타는 중</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 워프한 직후 */}
       {warpedTo && (

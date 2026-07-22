@@ -7,10 +7,45 @@
 
 export type TravelMode = 'walk' | 'car';
 
+/**
+ * 탈것 종류.
+ *
+ * **속도는 여기 표 하나에서만 갈린다.** 탈것이 늘어도 고칠 데가 이 표뿐이다 —
+ * 화면은 '지금 뭘 타는가' 만 알면 되고 얼마나 빠른지는 안 물어본다.
+ *
+ * `id` 는 상점 아이템 id 와 같다(`vehicle-*`). `null` 은 기본 자동차(공짜).
+ */
+export interface Vehicle {
+  /** 상점 아이템 id. 기본 차는 없다. */
+  shopId: string | null;
+  label: string;
+  emoji: string;
+  /** 자동차 모드일 때 이 속도로 달린다 */
+  speed: number;
+}
+
 /** 걸어다니는 속도 (m/s 에 가깝다) */
 export const WALK_SPEED = 7;
-/** 자동차 속도. 학교 근처를 벗어나면 걸어서는 너무 멀다. */
-export const CAR_SPEED = 18;
+
+/**
+ * 탈것 목록. 위가 기본, 아래로 갈수록 빠르다.
+ *
+ * 걷기는 탈것이 아니다 — 학교 근처에서는 늘 걷는다(아래 `nextTravelMode`).
+ * 탈것은 학교에서 멀어졌을 때, 또는 손으로 켰을 때만 쓰인다.
+ */
+export const VEHICLES: Vehicle[] = [
+  { shopId: null, label: '자동차', emoji: '🚗', speed: 18 },
+  { shopId: 'vehicle-scooter', label: '킥보드', emoji: '🛴', speed: 24 },
+  { shopId: 'vehicle-rocket', label: '로켓카', emoji: '🚀', speed: 34 },
+];
+
+/** 기본 자동차 속도(탈것을 안 골랐을 때) */
+export const CAR_SPEED = VEHICLES[0].speed;
+
+/** 가진 탈것 중 **고른 것**을 찾는다. 없으면 기본 자동차. */
+export function vehicleById(shopId: string | null | undefined): Vehicle {
+  return VEHICLES.find((v) => v.shopId === shopId) ?? VEHICLES[0];
+}
 
 /**
  * 마을 경계.
@@ -34,8 +69,15 @@ export function nextTravelMode(distanceFromSchool: number, current: TravelMode):
   return distanceFromSchool < CAR_OFF_M ? 'walk' : 'car';
 }
 
-export function speedOf(mode: TravelMode): number {
-  return mode === 'car' ? CAR_SPEED : WALK_SPEED;
+/**
+ * 지금 속도.
+ *
+ * 걸으면 걷기 속도, 차를 타면 **그 탈것의** 속도. 탈것을 안 주면 기본 자동차다.
+ * 속도가 갈리는 곳은 여기 하나뿐이다.
+ */
+export function speedOf(mode: TravelMode, vehicle?: Vehicle): number {
+  if (mode !== 'car') return WALK_SPEED;
+  return (vehicle ?? VEHICLES[0]).speed;
 }
 
 export interface WarpTarget {
