@@ -35,6 +35,9 @@ export interface VillageData {
  * 좌표는 이미 '학교를 원점으로 한 미터' 라서 그대로 3D 에 꽂으면 된다.
  */
 
+/** 꾸민 건물 지붕에 쓰는 색. 이름을 씨앗 삼아 고른다. */
+const ROOF_COLORS = ['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'];
+
 /** 건물 바닥 다각형을 세운다 */
 function Buildings({ list }: { list: VillageData['b'] }) {
   const geos = useMemo(
@@ -54,20 +57,79 @@ function Buildings({ list }: { list: VillageData['b'] }) {
   // 지오메트리는 컴포넌트가 사라질 때 직접 버려야 한다 (three 는 GC 를 안 탄다)
   useEffect(() => () => geos.forEach((g) => g.dispose()), [geos]);
 
+  /**
+   * 이름 있는 건물 몇 채만 꾸민다.
+   *
+   * 수백 채를 다 꾸미면 프레임이 떨어진다. 이름 있는 곳은 어차피 몇 안 되고
+   * 눈길이 가는 곳이라, **거기에만** 지붕·창문·간판을 얹는다.
+   * 나머지는 상자 그대로 배경처럼 둔다.
+   */
+  const decor = useMemo(
+    () =>
+      list.map((b) => {
+        if (!b.n) return null;
+        const xs = b.p.map((p) => p[0]);
+        const zs = b.p.map((p) => p[1]);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+        return {
+          cx: (minX + maxX) / 2,
+          cz: (minZ + maxZ) / 2,
+          w: maxX - minX,
+          d: maxZ - minZ,
+          // 이름을 씨앗 삼아 색을 고른다 — 같은 건물은 늘 같은 색
+          hue: [...b.n].reduce((a, c) => a + c.charCodeAt(0), 0) % ROOF_COLORS.length,
+        };
+      }),
+    [list]
+  );
+
   return (
     <group>
       {geos.map((geo, i) => {
         const b = list[i];
-        // 이름 있는 건물은 눈에 띄게. 나머지는 배경처럼.
         const named = !!b.n;
+        const d = decor[i];
         return (
           <group key={i}>
             <mesh geometry={geo} castShadow receiveShadow>
               <meshStandardMaterial
-                color={named ? '#F0DFC0' : '#E4DDD0'}
+                color={named ? '#F4E8D0' : '#E4DDD0'}
                 roughness={0.9}
               />
             </mesh>
+
+            {named && d && (
+              <group position={[d.cx, 0, d.cz]}>
+                {/* 지붕 — 건물 위에 얹는 판 */}
+                <mesh position={[0, b.h + 0.12, 0]} castShadow>
+                  <boxGeometry args={[d.w + 0.5, 0.35, d.d + 0.5]} />
+                  <meshStandardMaterial color={ROOF_COLORS[d.hue]} roughness={0.75} />
+                </mesh>
+                {/* 창문 두 줄 — 앞면에 붙인다 */}
+                {([0.35, 0.62] as const).map((fy) =>
+                  ([-0.28, 0.28] as const).map((fx) => (
+                    <mesh
+                      key={`${fy}-${fx}`}
+                      position={[fx * d.w, b.h * fy, d.d / 2 + 0.05]}
+                    >
+                      <planeGeometry args={[Math.min(1.1, d.w * 0.26), 1]} />
+                      <meshStandardMaterial
+                        color="#9FD4EE"
+                        emissive="#9FD4EE"
+                        emissiveIntensity={0.25}
+                      />
+                    </mesh>
+                  ))
+                )}
+                {/* 문 */}
+                <mesh position={[0, b.h * 0.16, d.d / 2 + 0.05]}>
+                  <planeGeometry args={[Math.min(1.2, d.w * 0.28), b.h * 0.32]} />
+                  <meshStandardMaterial color="#8A5A3B" />
+                </mesh>
+              </group>
+            )}
+
             {named && (
               <Html
                 position={[b.p[0][0], b.h + 2, b.p[0][1]]}
