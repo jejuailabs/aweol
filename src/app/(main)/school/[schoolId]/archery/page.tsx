@@ -276,7 +276,16 @@ export default function ArcheryPage() {
               className="w-full mt-2 rounded-2xl py-4 text-[16px] font-black text-white"
               style={{ background: 'var(--color-primary)' }}
             >
-              {phase === 'done' ? '한 번 더' : '시작하기'}
+              {phase === 'done' ? '한 번 더' : '혼자 연습'}
+            </button>
+
+            {/* 둘이 번갈아 쏘는 대결 */}
+            <button
+              onClick={() => router.push(`/school/${schoolId}/archery-duel`)}
+              className="w-full mt-2 rounded-2xl py-3.5 text-[15px] font-bold"
+              style={{ background: '#FFF1D6', color: '#A6762A', border: '2px solid #F0D9A8' }}
+            >
+              ⚔️ 친구와 대결하기
             </button>
 
             {board.length > 0 && (
