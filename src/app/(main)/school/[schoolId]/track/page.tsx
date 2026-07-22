@@ -235,20 +235,29 @@ export default function TrackPage() {
         onFoul={foul}
       />
 
-      {/* 나가기 */}
+      {/*
+        달리는 동안 보이는 것들은 **fixed** 로 붙인다.
+        `absolute` 는 페이지가 조금이라도 스크롤되면 화면 밖으로 올라가 버린다 —
+        실제로 달리는 내내 시계가 화면 위로 사라져 안 보였다.
+      */}
       <button
-        onClick={() => router.push(`/school/${schoolId}`)}
-        className="absolute left-4 top-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
-        style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+        onClick={() => router.push(`/school/${schoolId}/playground`)}
+        className="ac-btn pos-top-safe fixed left-4 z-30 px-3.5 py-2 text-sm"
       >
         ← 운동장으로
       </button>
 
-      {/* 시계 */}
+      {/*
+        시계 — 달리는 동안 가장 중요한 것이라 크게, 화면 가운데 위에 둔다.
+        구석에 작게 두면 달리면서 못 본다.
+      */}
       {(phase === 'running' || phase === 'done') && (
         <div
-          className="absolute right-4 top-4 z-30 rounded-2xl px-4 py-2.5 text-lg font-black tabular-nums"
-          style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB' }}
+          className="pos-top-safe fixed left-1/2 -translate-x-1/2 z-30 rounded-2xl px-6 py-2.5 text-[32px] font-black tabular-nums"
+          style={{
+            background: 'rgba(255,248,231,0.96)', color: '#6B5B43',
+            border: '3px solid #EFE3CB', boxShadow: '0 5px 0 #E3D5B8',
+          }}
         >
           ⏱ {formatTime(result?.ms ?? elapsed)}
         </div>
@@ -277,11 +286,14 @@ export default function TrackPage() {
         </div>
       )}
 
-      {/* 달리는 중 안내 */}
+      {/* 달리는 중 안내 — 시계 바로 아래에 고정 */}
       {phase === 'running' && (
         <div
-          className="pos-top-safe absolute left-1/2 -translate-x-1/2 z-30 rounded-full px-4 py-2 text-[13px] font-bold"
-          style={{ background: 'rgba(255,248,231,0.92)', color: '#6B5B43' }}
+          className="fixed left-1/2 -translate-x-1/2 z-30 rounded-full px-4 py-2 text-[13px] font-bold"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 5.2rem)',
+            background: 'rgba(255,248,231,0.92)', color: '#6B5B43',
+          }}
         >
 흰 선을 밟으면 출발선으로 돌아가요! 한 바퀴 돌아 들어오세요
         </div>
