@@ -15,23 +15,32 @@ ok('같은 씨앗·같은 시각 → 같은 자리',
 console.log('--- 흔들림 ---');
 {
   const s = shotSetup(7,0);
-  // 한 바퀴가 3.5초쯤이라 넉넉히 4초를 훑는다 (짧게 잡았다가 한쪽만 나왔다)
-  const pts = Array.from({length:41},(_,k)=>aimAt(s,k*100));
+  // 한 바퀴가 3.5초쯤이라 넉넉히 4초를 훑는다
+  const pts = Array.from({length:81},(_,k)=>aimAt(s,k*50));
   ok('가만히 있지 않는다', new Set(pts.map(p=>p.x.toFixed(2))).size > 3);
-  ok('좌우로 다 간다',
-     pts.some(p=>p.x>0) && pts.some(p=>p.x<0));
-  ok('폭 안에서만 움직인다',
-     pts.every(p=>Math.abs(p.x)<=s.swayX+1e-9 && Math.abs(p.y)<=s.swayY+1e-9));
-  // 가로세로 빠르기가 같으면 대각선만 그린다 — 어긋나 있어야 한다
-  const ratios = pts.filter(p=>Math.abs(p.x)>1).map(p=>(p.y/p.x).toFixed(2));
-  ok('대각선으로만 왔다갔다하지 않는다', new Set(ratios).size > 2);
+  ok('중앙 대칭이다 (한쪽으로 안 치우친다)',
+     pts.some(p=>p.x>1) && pts.some(p=>p.x<-1) || pts.some(p=>p.y>1) && pts.some(p=>p.y<-1));
+  ok('흔드는 길이(reach) 안에서만 움직인다',
+     pts.every(p=>Math.hypot(p.x,p.y) <= s.reach+1e-9));
+
+  // **정중앙을 지나야 요령이 생긴다** — 예전엔 리사주 곡선이라 한 번도 안 지났다
+  const near = pts.filter(p=>Math.hypot(p.x,p.y) < 3).length;
+  ok(`4초 안에 정중앙 근처를 여러 번 지난다 (${near}번)`, near >= 2);
+
+  // 한 직선 위를 오간다 — 기울기가 늘 같아야 한다(부호 빼고)
+  const slopes = pts.filter(p=>Math.hypot(p.x,p.y)>3).map(p=>(Math.atan2(p.y,p.x)+Math.PI)%Math.PI);
+  const spread = Math.max(...slopes) - Math.min(...slopes);
+  ok(`한 직선 위를 오간다 (기울기 퍼짐 ${spread.toFixed(3)})`, spread < 0.05);
 }
 {
+  // 화살마다 흔드는 선의 기울기가 다르다 — 늘 같은 자리를 노릴 수 없다
+  const angles = Array.from({length:SHOTS},(_,i)=>shotSetup(3,i).angle);
+  ok('화살마다 기울기가 다르다', new Set(angles.map(a=>a.toFixed(2))).size >= SHOTS-1);
   let harder = true;
   for (let i=1;i<SHOTS;i++) {
-    if (shotSetup(3,i).swayX <= shotSetup(3,i-1).swayX - 20) harder = false;
+    if (shotSetup(3,i).reach <= shotSetup(3,i-1).reach - 30) harder = false;
   }
-  ok('뒤로 갈수록 대체로 어려워진다', harder);
+  ok('뒤로 갈수록 대체로 어려워진다(선이 길어짐)', harder);
 }
 
 console.log('--- 바람 ---');
@@ -73,10 +82,14 @@ ok('음수 시각은 0점', scoreRound(5,[-1,-999]).shots.slice(0,2).every(v=>v=
 ok('NaN·Infinity 는 0점', scoreRound(5,[NaN,Infinity,-Infinity]).shots.slice(0,3).every(v=>v===0));
 ok('화살을 더 보내도 5발만 센다', scoreRound(5,Array(50).fill(100)).shots.length===SHOTS);
 {
-  // 아무 시각이나 넣어도 만점이 나오면 안 된다 (게임이 안 된다)
-  let perfects=0;
-  for (let t=0;t<2000;t+=7) if (scoreRound(5,Array(SHOTS).fill(t)).total===PERFECT) perfects++;
-  ok(`아무 때나 쏴서 만점이 나오진 않는다 (${perfects}/286)`, perfects===0);
+  /*
+    이제 조준점이 중앙을 지나므로 만점이 **가능**하다(그게 목적이다).
+    다만 아무 때나 눌러서 다섯 발이 다 중앙일 확률은 낮아야 한다 —
+    타이밍을 맞춰야 나오는 것이지 연타로 나오면 안 된다.
+  */
+  let perfects=0, total=0;
+  for (let t=0;t<2000;t+=7){ total++; if (scoreRound(5,Array(SHOTS).fill(t)).total===PERFECT) perfects++; }
+  ok(`연타로는 만점이 드물다 (${perfects}/${total})`, perfects < total * 0.05);
 }
 {
   // 그래도 잘 맞히면 높은 점수가 가능해야 한다

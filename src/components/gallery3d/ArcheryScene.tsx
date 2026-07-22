@@ -70,10 +70,51 @@ function Target({ hits }: { hits: { x: number; y: number }[] }) {
 }
 
 /**
- * 활과 시위.
+ * 조준 십자선 — **지금 어디를 겨누는지**를 과녁 위에 보여준다.
  *
- * 겨누는 동안 시위가 당겨진 채로 있고, 조준점을 따라 활 전체가 흔들린다.
- * 쏘면 시위가 튕겨 돌아간다 — 그 순간이 있어야 '쐈다' 는 느낌이 난다.
+ * 이게 없으면 아이가 감으로만 쏘게 되어 요령이 안 생긴다. 십자선은
+ * `aimAt`(중앙 0 을 기준으로 흔들린다)을 그대로 따라가므로, 아이는 그게
+ * 한가운데로 올 때를 노리면 된다. 바람은 여기 안 더한다 — 겨눈 자리를 보고
+ * 바람 반대쪽으로 살짝 옮겨 쏘는 게 이 게임의 요령이다.
+ */
+function Reticle({ setup, startedAt }: { setup: ShotSetup | null; startedAt: number }) {
+  const g = useRef<THREE.Group>(null);
+  useFrame(() => {
+    if (!g.current || !setup) return;
+    const p = aimAt(setup, performance.now() - startedAt);
+    g.current.position.x = p.x * K;
+    g.current.position.y = -p.y * K;
+  });
+  if (!setup) return null;
+  return (
+    <group position={[0, TARGET_Y, -RANGE + 0.15]}>
+      <group ref={g}>
+        {/* 가로·세로 선 + 가운데 점 */}
+        <mesh>
+          <boxGeometry args={[0.7, 0.06, 0.02]} />
+          <meshBasicMaterial color="#1F6FEB" />
+        </mesh>
+        <mesh>
+          <boxGeometry args={[0.06, 0.7, 0.02]} />
+          <meshBasicMaterial color="#1F6FEB" />
+        </mesh>
+        <mesh>
+          <ringGeometry args={[0.16, 0.22, 20]} />
+          <meshBasicMaterial color="#1F6FEB" />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+/**
+ * 활 — **손에 든 것처럼 화면 아래 앞에** 둔다.
+ *
+ * 전에는 과녁 앞에 거대한 활이 떠 있었다. 카메라 바로 앞에 세로로 세워
+ * 1인칭으로 활을 든 느낌을 낸다. 화면 왼쪽 아래에 살짝 치우쳐 과녁을 안 가린다.
+ *
+ * 흔들림은 조준 십자선(`Reticle`)이 맡는다. 활은 그 흔들림에 맞춰 **아주 조금만**
+ * 같이 움직여 손떨림처럼 보인다 — 활까지 크게 흔들면 과녁이 안 보인다.
  */
 function Bow({ setup, startedAt, shooting }: {
   setup: ShotSetup | null;
@@ -86,31 +127,38 @@ function Bow({ setup, startedAt, shooting }: {
   useFrame(() => {
     if (!g.current || !setup) return;
     const p = aimAt(setup, performance.now() - startedAt);
-    // 조준점이 움직이는 만큼 활이 흔들린다. 화면 앞쪽이라 조금만 움직여도 크게 보인다.
-    g.current.position.x = p.x * K * 0.42;
-    g.current.position.y = 1.9 - p.y * K * 0.42;
+    // 손떨림 정도로만. 십자선은 크게 돌아도 활은 살짝.
+    g.current.position.x = -1.15 + p.x * K * 0.06;
+    g.current.position.y = 1.5 - p.y * K * 0.06;
     if (string.current) {
-      // 쏜 직후에는 시위가 앞으로 튕긴다
-      string.current.position.z = shooting ? 0.06 : -0.34;
+      // 쏜 직후 시위가 앞으로 튕긴다
+      string.current.position.x = shooting ? 0.12 : -0.28;
     }
   });
 
+  if (!setup) return null;
+
   return (
-    <group ref={g} position={[0, 1.9, 3.6]}>
-      {/* 활채 */}
-      <mesh rotation={[0, 0, 0]}>
-        <torusGeometry args={[0.62, 0.045, 8, 24, PI * 1.15]} />
+    <group ref={g} position={[-1.15, 1.5, 5.6]}>
+      {/* 활채 — 세로로 세운 반달. 시위 쪽(오른쪽)이 열리게 돌린다. */}
+      <mesh rotation={[0, 0, -PI * 0.5]}>
+        <torusGeometry args={[0.62, 0.05, 10, 28, PI * 1.1]} />
         <meshStandardMaterial color="#8A5A3B" roughness={0.7} />
       </mesh>
-      {/* 시위 */}
-      <mesh ref={string} position={[0, 0, -0.34]} rotation={[PI * 0.5, 0, 0]}>
-        <cylinderGeometry args={[0.012, 0.012, 1.2, 6]} />
+      {/* 손잡이 */}
+      <mesh>
+        <cylinderGeometry args={[0.07, 0.07, 0.3, 8]} />
+        <meshStandardMaterial color="#5C3E26" roughness={0.6} />
+      </mesh>
+      {/* 시위 — 세로 줄, 당겨져 있다 */}
+      <mesh ref={string} position={[-0.28, 0, 0]}>
+        <boxGeometry args={[0.02, 1.15, 0.02]} />
         <meshStandardMaterial color="#FBF7EE" />
       </mesh>
       {/* 메긴 화살 — 쏘는 중에는 감춘다 */}
       {!shooting && (
-        <mesh position={[0, 0, -0.1]} rotation={[PI * 0.5, 0, 0]}>
-          <cylinderGeometry args={[0.028, 0.028, 1.1, 8]} />
+        <mesh position={[0.15, 0, 0]} rotation={[0, 0, PI * 0.5]}>
+          <cylinderGeometry args={[0.026, 0.026, 1.1, 8]} />
           <meshStandardMaterial color="#C8A860" />
         </mesh>
       )}
@@ -181,7 +229,8 @@ export default function ArcheryScene({
   flight: { x: number; y: number } | null;
   hits: { x: number; y: number }[];
 }) {
-  const from = useMemo(() => new THREE.Vector3(0, 1.9, 3.6), []);
+  // 활이 있는 자리(왼쪽 아래 앞)에서 화살이 출발한다
+  const from = useMemo(() => new THREE.Vector3(-1.15, 1.5, 5.6), []);
   const to = useMemo(
     () => (flight ? new THREE.Vector3(flight.x * K, TARGET_Y - flight.y * K, -RANGE) : new THREE.Vector3()),
     [flight]
@@ -233,6 +282,8 @@ export default function ArcheryScene({
         ))}
 
         <Target hits={hits} />
+        {/* 날아가는 중에는 십자선을 감춘다 — 이미 쏜 뒤라 겨눌 게 없다 */}
+        {!flight && <Reticle setup={setup} startedAt={startedAt} />}
         <Bow setup={setup} startedAt={startedAt} shooting={shooting} />
         {/* key 를 바꿔 새 화살을 만든다 — 진행도가 0 부터 다시 간다 */}
         {flight && <FlyingArrow key={`${flight.x},${flight.y}`} from={from} to={to} />}

@@ -30,10 +30,16 @@ function hash(seed: number, i: number): number {
 }
 
 export interface ShotSetup {
-  /** 좌우 흔들림 폭 */
-  swayX: number;
-  /** 위아래 흔들림 폭 */
-  swayY: number;
+  /**
+   * 흔들리는 **선의 길이**(중앙에서 한쪽 끝까지).
+   *
+   * 조준점은 한 직선 위를 오간다 — 그래서 **반 주기마다 정중앙을 지난다.**
+   * 그 순간에 쏘면 만점이다. 요령이 생기려면 중앙을 실제로 지나야 한다.
+   * (예전엔 x·y 를 따로 흔들어 리사주 곡선을 그렸고, 정중앙을 한 번도 안 지났다)
+   */
+  reach: number;
+  /** 흔들리는 선의 기울기(rad). 화살마다 달라 늘 같은 자리를 노릴 수 없다. */
+  angle: number;
   /** 흔들리는 빠르기 (rad/s) */
   speed: number;
   /** 바람 — 화살이 날아가는 동안 옆으로 밀리는 양 */
@@ -51,8 +57,10 @@ export function shotSetup(seed: number, i: number): ShotSetup {
   const c = hash(seed, i * 3 + 2);
   const step = i / Math.max(1, SHOTS - 1); // 0 → 1
   return {
-    swayX: 26 + a * 22 + step * 16,
-    swayY: 14 + b * 16 + step * 10,
+    // 뒤로 갈수록 선이 길어져(멀리까지 흔들려) 타이밍 잡기가 어려워진다
+    reach: 34 + a * 26 + step * 24,
+    // 기울기는 화살마다 다르다 — 한 바퀴 어디로든
+    angle: b * Math.PI * 2,
     speed: 1.7 + c * 1.1 + step * 0.5,
     // 바람은 좌우 어느 쪽이든 분다
     wind: (hash(seed, i * 3 + 7) - 0.5) * (16 + step * 14),
@@ -67,9 +75,11 @@ export function shotSetup(seed: number, i: number): ShotSetup {
  */
 export function aimAt(setup: ShotSetup, tMs: number): { x: number; y: number } {
   const t = tMs / 1000;
+  // 한 직선 위를 오간다. sin 이 0 일 때(반 주기마다) 정중앙을 지난다.
+  const along = Math.sin(t * setup.speed) * setup.reach;
   return {
-    x: Math.sin(t * setup.speed) * setup.swayX,
-    y: Math.sin(t * setup.speed * 1.37 + 1.1) * setup.swayY,
+    x: Math.cos(setup.angle) * along,
+    y: Math.sin(setup.angle) * along,
   };
 }
 
