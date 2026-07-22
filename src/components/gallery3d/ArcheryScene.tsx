@@ -40,17 +40,35 @@ function Target({ hits }: { hits: { x: number; y: number }[] }) {
         <meshStandardMaterial color="#8A5A3B" roughness={0.9} />
       </mesh>
 
+      {/*
+        10점부터 1점까지, **바깥 큰 고리부터** 그린다(작은 게 위에 남는다).
+        실제 양궁 색: 노랑(10·9) · 빨강(8·7) · 파랑(6·5) · 검정(4·3) · 흰색(2·1).
+        가장 안쪽 10점은 노랑 안에 **한 겹 더** 있어야 눈에 띈다 —
+        점수 칸이 열 개인데 색은 다섯 쌍이라, 같은 색 안의 안/바깥을 테두리로 가른다.
+      */}
       {rings.map((ring, i) => {
         const r = (11 - ring) * (R3 / 10);
         const fill =
-          ring >= 9 ? '#F6D65B' : ring >= 7 ? '#E8604C' : ring >= 5 ? '#6FA8DC' : ring >= 3 ? '#3A3226' : '#FBF7EE';
+          ring >= 9 ? '#F6D65B' : ring >= 7 ? '#E8604C' : ring >= 5 ? '#6FA8DC' : ring >= 3 ? '#2B2B2B' : '#FBF7EE';
         return (
-          <mesh key={ring} position={[0, 0, i * 0.004]}>
-            <circleGeometry args={[r, 48]} />
-            <meshStandardMaterial color={fill} roughness={0.85} />
-          </mesh>
+          <group key={ring}>
+            {/* 얇은 테두리(살짝 큰 검은 원)로 칸을 가른다 */}
+            <mesh position={[0, 0, i * 0.006]}>
+              <circleGeometry args={[r + 0.015, 48]} />
+              <meshStandardMaterial color="#3A3226" roughness={0.9} />
+            </mesh>
+            <mesh position={[0, 0, i * 0.006 + 0.001]}>
+              <circleGeometry args={[r, 48]} />
+              <meshStandardMaterial color={fill} roughness={0.85} />
+            </mesh>
+          </group>
         );
       })}
+      {/* 정중앙 10점 — 노랑 안의 작은 원. 여기 맞으면 만점이라는 걸 눈으로 안다. */}
+      <mesh position={[0, 0, 0.09]}>
+        <circleGeometry args={[R3 / 10 * 0.55, 32]} />
+        <meshStandardMaterial color="#E8A33C" roughness={0.8} />
+      </mesh>
 
       {/* 꽂힌 화살 — 계산이 준 자리 그대로 */}
       {hits.map((h, i) => (

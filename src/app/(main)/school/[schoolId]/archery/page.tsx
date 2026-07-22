@@ -7,7 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import dynamic from 'next/dynamic';
-import { PERFECT, SHOTS, aimAt, shotSetup, type ShotSetup } from '@/lib/archery';
+import { PERFECT, SHOTS, aimAt, ringScore, shotSetup, type ShotSetup } from '@/lib/archery';
 
 /** 3D 경기장. 화면이 뜨기 전에 받아올 이유가 없다. */
 const ArcheryScene = dynamic(() => import('@/components/gallery3d/ArcheryScene'), { ssr: false });
@@ -46,6 +46,14 @@ export default function ArcheryPage() {
   const [flight, setFlight] = useState<{ x: number; y: number } | null>(null);
   /** 겨누기 시작한 시각. 3D 가 이걸로 흔들림을 그린다. */
   const [startedAt, setStartedAt] = useState(0);
+  /**
+   * 지금까지 화면에서 센 발별 점수. **표시용**이다 — 최종 점수는 서버가 낸다.
+   * 발마다 바로 보여주려면 화면도 세야 한다. 서버 값과 같은 함수(ringScore·landing)를
+   * 쓰므로 어긋나지 않는다.
+   */
+  const [shotScores, setShotScores] = useState<number[]>([]);
+  /** 방금 쏜 발 점수 — 화면 위에 잠깐 크게 띄운다 */
+  const [flash, setFlash] = useState<number | null>(null);
 
   /** 이 화살을 쏘기까지 흐른 시간을 재는 기준 */
   const shotStart = useRef(0);
@@ -64,7 +72,7 @@ export default function ArcheryPage() {
 
   const start = async () => {
     if (!user) { setErr('로그인하면 쏠 수 있어요'); return; }
-    setErr(''); setResult(null); setHits([]); times.current = [];
+    setErr(''); setResult(null); setHits([]); setShotScores([]); setFlash(null); times.current = [];
     try {
       const token = await auth?.currentUser?.getIdToken();
       const res = await fetch('/api/archery', {
@@ -121,18 +129,23 @@ export default function ArcheryPage() {
 
     const p = aimAt(setup, t);
     const land = { x: p.x + setup.wind, y: p.y };
+    // 화면에서 미리 세는 점수. 서버와 같은 함수라 최종값과 어긋나지 않는다.
+    const shotScore = ringScore(land.x, land.y);
     setFlight(land);
     playSound('tap');
 
-    // 날아가는 시간만큼 기다렸다가 꽂고 다음 발로
+    // 날아가는 시간만큼 기다렸다가 꽂고 점수를 띄운 뒤 다음 발로
     setTimeout(() => {
-      setHits((h) => [...h, { ...land, score: 0 }]);
+      setHits((h) => [...h, { ...land, score: shotScore }]);
+      setShotScores((s) => [...s, shotScore]);
+      setFlash(shotScore);
       setFlight(null);
-      playSound('like');
+      playSound(shotScore >= 9 ? 'success' : 'like');
 
       const next = shotIdx + 1;
       if (next >= SHOTS) {
-        send(times.current);
+        // 마지막 발 점수를 잠깐 보여주고 서버로
+        setTimeout(() => send(times.current), 900);
         return;
       }
       setShotIdx(next);
@@ -142,7 +155,15 @@ export default function ArcheryPage() {
     }, FLIGHT_MS);
   };
 
+  // 방금 쏜 점수는 잠깐만 크게 보인다
+  useEffect(() => {
+    if (flash === null) return;
+    const t = setTimeout(() => setFlash(null), 850);
+    return () => clearTimeout(t);
+  }, [flash]);
+
   const wind = setup?.wind ?? 0;
+  const runningTotal = shotScores.reduce((a, b) => a + b, 0);
 
   return (
     /*
@@ -176,6 +197,37 @@ export default function ArcheryPage() {
         </div>
       )}
 
+      {/*
+        누적 점수 — 판이 도는 동안 화면 위 가운데에 늘 떠 있다.
+        한꺼번에 매겨 보여주지 말고 발마다 쌓이는 게 보여야 한다는 요청.
+      */}
+      {(phase === 'aiming' || phase === 'sending') && shotScores.length > 0 && (
+        <div
+          className="pos-top-safe absolute left-1/2 -translate-x-1/2 z-30 rounded-2xl px-5 py-2 text-[22px] font-black tabular-nums"
+          style={{ background: 'rgba(255,248,231,0.95)', color: '#2E8B57', border: '3px solid #EFE3CB' }}
+        >
+          {runningTotal}점
+          <span className="text-[13px] font-bold ml-1" style={{ color: '#8A7A5F' }}>
+            ({shotScores.join('·')})
+          </span>
+        </div>
+      )}
+
+      {/* 방금 쏜 발 점수 — 화면 한가운데에 잠깐 크게 */}
+      {flash !== null && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+          <div
+            className="text-[80px] font-black"
+            style={{
+              color: flash >= 9 ? '#F6D65B' : flash >= 7 ? '#E8604C' : flash === 0 ? '#B02A37' : 'white',
+              textShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            }}
+          >
+            {flash === 0 ? '빗나감!' : `${flash}점`}
+          </div>
+        </div>
+      )}
+
       {/* 아래쪽 — 쏘기 / 시작 / 결과 */}
       <div className="pos-above-nav absolute left-4 right-4 z-30 mx-auto max-w-[420px]">
         {phase === 'aiming' && (
@@ -194,7 +246,7 @@ export default function ArcheryPage() {
             className="rounded-2xl py-4 text-center text-[15px] font-bold"
             style={{ background: 'rgba(255,248,231,0.95)', color: '#6B5B43' }}
           >
-            점수를 매기는 중...
+            점수를 합치는 중...
           </div>
         )}
 
