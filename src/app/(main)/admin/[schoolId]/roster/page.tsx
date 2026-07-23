@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { canAccessAdmin, isSchoolManager } from '@/lib/auth-helpers';
+import { assignLoginNames, normalizeName } from '@/lib/student-login';
 
 
 interface StudentRow {
@@ -40,12 +41,40 @@ export default function RosterPage() {
   const [issuing, setIssuing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  /**
+   * 학생 로그인 비밀번호 — **반에 하나**.
+   *
+   * 아이마다 다르게 주면 잊어버리고, 잊어버리면 수업 시간에 선생님이 스무 번
+   * 다시 알려주게 된다. 하나면 칠판에 적어두면 끝이다. 누가 누구인지는 이름이 가른다.
+   * 담임만 읽을 수 있는 딸린 문서에 있다(반 문서는 공개 읽기라 거기 두면 안 된다).
+   */
+  const [classPassword, setClassPassword] = useState<string | null>(null);
+  const [pwInput, setPwInput] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+
   const studentsCol = useCallback(() => {
     if (!db) return null;
     return collection(db, 'schools', schoolId, 'classes', selectedClass, 'students');
   }, [selectedClass]);
 
   const nextNumber = students.length > 0 ? Math.max(...students.map((s) => s.number)) + 1 : 1;
+
+  /**
+   * 이름이 겹치는 아이들만 추려 **아이가 칠 이름**을 만든다.
+   * 판정은 서버(`assignLoginNames`)와 같은 함수를 쓴다 — 두 벌이면
+   * 화면에는 김민준A 라고 적혀 있는데 서버는 다르게 부르는 일이 생긴다.
+   */
+  const loginNames = (() => {
+    const rows = students.map((s) => ({ id: String(s.number), number: s.number, name: s.name }));
+    const assigned = assignLoginNames(rows);
+    const out: Record<string, string[]> = {};
+    for (const r of rows) {
+      const given = assigned[r.id];
+      if (!given || given === normalizeName(r.name)) continue;
+      (out[normalizeName(r.name)] ||= []).push(given);
+    }
+    return out;
+  })();
 
   // 새 명부에 없는 기존 학생을 교사가 확인 후 직접 삭제
   const handleDeleteOrphans = async () => {
@@ -112,6 +141,40 @@ export default function RosterPage() {
     }
     fetchStudents();
   }, [selectedClass, refreshKey]);
+
+  // 반 비밀번호 읽기 — 규칙이 담임에게만 열어둔다
+  useEffect(() => {
+    if (!db || !selectedClass) return;
+    getDoc(doc(db, 'schools', schoolId, 'classes', selectedClass, 'settings', 'studentLogin'))
+      .then((s) => setClassPassword(s.exists() ? String(s.data()?.password ?? '') : null))
+      .catch(() => setClassPassword(null));
+  }, [schoolId, selectedClass, refreshKey]);
+
+  /**
+   * 비밀번호 정하기 — **쓰기는 서버만 한다.** 규칙이 이 문서의 클라이언트 쓰기를
+   * 막아뒀다. 열려 있으면 아이가 자기 반 비밀번호를 바꿔놓을 수 있다.
+   * 비워 두고 누르면 서버가 아이도 옮겨 칠 수 있는 값으로 만들어준다.
+   */
+  const saveClassPassword = async (password?: string) => {
+    setPwBusy(true); setMessage('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/student-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ schoolId, classId: selectedClass, password: password ?? '' }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setMessage(json.error || '비밀번호를 정하지 못했어요.'); return; }
+      setClassPassword(json.password);
+      setPwInput('');
+      setMessage(`학생 로그인 비밀번호를 ${password ? '바꿨어요' : '만들었어요'}.`);
+    } catch {
+      setMessage('비밀번호를 정하지 못했어요.');
+    } finally {
+      setPwBusy(false);
+    }
+  };
 
   // 코드 발급은 서버를 거친다 (역인덱스를 클라이언트가 못 만지게 하려고)
   const issueCodes = async (regenerate = false) => {
@@ -492,6 +555,60 @@ export default function RosterPage() {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-surface-soft)' }}>
+          {/*
+            학생 로그인 — 아이는 **이름 + 이 비밀번호**로 들어온다.
+            학생코드(가입 연결)와 다른 것이다: 코드는 계정을 반에 잇는 것이고,
+            이건 계정 자체가 없는 아이가 들어오는 길이다.
+          */}
+          <div className="px-4 py-3" style={{ background: '#FFF3E0', borderBottom: '1px solid var(--color-surface)' }}>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="text-sm font-bold" style={{ color: '#A6762A' }}>
+                🎒 학생 로그인 비밀번호
+              </div>
+              {classPassword ? (
+                <div
+                  className="rounded-lg px-3 py-1.5 text-[15px] font-black tracking-wide"
+                  style={{ background: 'white', color: '#A6762A' }}
+                >
+                  {classPassword}
+                </div>
+              ) : (
+                <button
+                  onClick={() => saveClassPassword()}
+                  disabled={pwBusy}
+                  className="rounded-lg px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50"
+                  style={{ background: '#E8A33C' }}
+                >
+                  {pwBusy ? '만드는 중...' : '비밀번호 만들기'}
+                </button>
+              )}
+            </div>
+            {classPassword && (
+              <div className="flex gap-1.5 mb-1.5">
+                <input
+                  value={pwInput}
+                  onChange={(e) => setPwInput(e.target.value)}
+                  placeholder="새 비밀번호로 바꾸기"
+                  className="flex-1 min-w-0 rounded-lg px-3 py-1.5 text-[13px] outline-none"
+                  style={{ background: 'white', color: 'var(--color-text-main)' }}
+                />
+                <button
+                  onClick={() => saveClassPassword(pwInput.trim())}
+                  disabled={pwBusy || pwInput.trim().length < 4}
+                  className="shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-40"
+                  style={{ background: '#E8A33C' }}
+                >
+                  바꾸기
+                </button>
+              </div>
+            )}
+            <div className="text-[12px] leading-relaxed" style={{ color: '#9A7C4A' }}>
+              반 전체가 <b>같은 비밀번호</b>를 씁니다. 칠판에 적어두세요.
+              아이는 <b>자기 이름</b>과 이 비밀번호로 들어옵니다 — 계정을 따로 만들지 않아요.
+              <b> 아이가 다른 곳에서 쓰는 비밀번호는 넣지 마세요.</b>
+            </div>
+          </div>
+
           {/* 학생코드 안내 + 발급 */}
           <div className="px-4 py-3" style={{ background: '#EAF4FF', borderBottom: '1px solid var(--color-surface)' }}>
             <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -534,6 +651,20 @@ export default function RosterPage() {
             <div className="w-24">코드</div>
             <div className="w-16 text-right">관리</div>
           </div>
+          {/*
+            동명이인이 있으면 아이가 칠 이름이 달라진다(김민준A). 선생님이 그걸
+            모르면 아이는 자기 이름을 정확히 치고도 못 들어간다 — 그래서 여기 적어준다.
+            한 명뿐인 이름에는 아무것도 안 붙으므로 대부분의 반에는 이 줄이 안 뜬다.
+          */}
+          {Object.keys(loginNames).length > 0 && (
+            <div
+              className="px-4 py-2 text-[12px] leading-relaxed border-t"
+              style={{ background: '#FFF8E7', borderColor: 'var(--color-surface)', color: '#8A6D2F' }}
+            >
+              이름이 같은 친구가 있어요. 이 아이들은 <b>이름 뒤에 글자를 붙여</b> 들어옵니다 —{' '}
+              {Object.entries(loginNames).map(([n, v]) => `${n} → ${v.join(', ')}`).join(' · ')}
+            </div>
+          )}
           {students.map((s) => (
             <div
               key={s.number}

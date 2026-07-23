@@ -350,6 +350,18 @@ service cloud.firestore {
           allow read, write: if isTeacherOf(schoolId, classId);
         }
 
+        /**
+         * 반 설정 — 지금은 **학생 로그인 비밀번호** 하나가 들어 있다.
+         *
+         * 반 문서(`classes/{id}`)는 `allow read: if true` 라 여기 두면 안 된다.
+         * 담임만 읽고, **쓰기는 서버(`/api/student-password`)만** 한다 —
+         * 열려 있으면 아이가 자기 반 비밀번호를 바꿔놓을 수 있다.
+         */
+        match /settings/{settingId} {
+          allow read: if isTeacherOf(schoolId, classId);
+          allow write: if false;
+        }
+
         // 알림판 (알림장·급식·숙제·퀴즈) — 읽기는 공개, 작성은 교직원만
         match /notices/{noticeId} {
           allow read: if true;

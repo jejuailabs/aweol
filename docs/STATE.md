@@ -17,6 +17,24 @@
    `jwks-rsa@4 → jose@6`(ESM)가 서버리스에서 `require() of ES Module` 로 터져
    해당 API 전체가 500이 된다. 토큰 검증은 `lib/firebase-admin.ts` 가 jose로 직접 한다.
    Firestore 쪽(`firebase-admin/firestore`)은 안전하다.
+
+   **2026-07-23 재확인 — 아직도 유효하다.** 확인용 라우트를 배포해 직접 재봤다:
+   ```
+   배포본(Vercel, Node v24.18.0): importedAuth=false
+   ERR_REQUIRE_ESM: require() of ES Module
+     /var/task/node_modules/jose/dist/webapi/index.js
+     from /var/task/node_modules/jwks-rsa/src/utils.js not supported
+   ```
+   Node 22.12+ 부터 `require(ESM)` 이 정식 지원이라 이제 괜찮지 않을까 싶었는데 아니다.
+   **로컬 프로덕션 빌드(Node 22.19)에서는 통과하고 배포본에서만 터진다** —
+   로컬에서는 Turbopack 이 번들에 넣어버리고, Vercel 에서는 firebase-admin 을
+   **외부 모듈로 두고 런타임에 raw `require`** 하기 때문이다
+   (오류 메시지의 `Failed to load external module` 이 그 증거).
+   그래서 Node 를 올려도 해결되지 않는다. `jose@6` 은 `exports.require` 가 아예 없다.
+
+   **커스텀 토큰(아이 로그인)도 이 규칙에 걸린다.** `createCustomToken` 이
+   `firebase-admin/auth` 에 있기 때문이다. 커스텀 토큰은 결국 서비스 계정 키로 서명한
+   JWT 하나라, `lib/firebase-admin.ts` 의 `createStudentToken` 이 jose 로 직접 만든다.
 2. **`server-only` 을 Route Handler 경로에서 import 하지 말 것.** 같은 이유로 500.
 3. **로컬 통과 = 배포 통과가 아니다.** 위 두 문제 모두 로컬 dev에서는 재현되지 않았다.
    서버 API를 건드렸으면 반드시 배포 후 프로덕션에서 검증한다:

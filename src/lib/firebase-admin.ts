@@ -55,6 +55,49 @@ async function verifyIdToken(token: string) {
 }
 
 /**
+ * 아이용 커스텀 토큰을 만든다 (이름 + 반 비밀번호 로그인).
+ *
+ * **`firebase-admin/auth` 의 `createCustomToken` 을 쓰면 안 된다** — 이 파일 맨 위
+ * 주의 2번과 같은 이유다. 2026-07-23 에 배포본에서 직접 재확인했다(Node v24.18.0):
+ * `jwks-rsa`(CJS)가 `jose@6`(ESM)를 require 해서 `ERR_REQUIRE_ESM` 이 난다.
+ * **로컬에서는 통과한다** — 로컬은 번들에 넣고 Vercel 은 외부 모듈로 두기 때문이라
+ * Node 를 올려도 해결되지 않는다.
+ *
+ * 커스텀 토큰은 결국 **서비스 계정 키로 서명한 JWT** 하나다. 이 파일이 이미
+ * jose 로 토큰을 *검증*하고 있으니, 서명도 같은 방식으로 직접 한다.
+ *
+ * 아이에게 이메일 주소를 만들어 주지 않으려고 이 길을 택했다. 초등학생에게
+ * 이메일은 아무 의미가 없고, 만드는 순간 관리할 것만 늘어난다.
+ */
+export async function createStudentToken(uid: string): Promise<string> {
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || '';
+  const pk = (process.env.FIREBASE_ADMIN_PRIVATE_KEY || '')
+    .replace(/^"|"$/g, '')
+    .replace(/\\n/g, '\n');
+  if (!clientEmail || !pk) throw new Error('서비스 계정 설정이 없습니다');
+
+  const key = await importPKCS8(pk, 'RS256');
+  const now = Math.floor(Date.now() / 1000);
+  return new SignJWT({
+    uid,
+    // 이 계정이 어디서 왔는지 남긴다 (구글 로그인과 구분)
+    claims: { via: 'roster' },
+  })
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuer(clientEmail)
+    .setSubject(clientEmail)
+    .setAudience('https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit')
+    .setIssuedAt(now)
+    /**
+     * 커스텀 토큰의 상한은 1시간이고, 이건 **교환권**이라 짧아도 된다.
+     * 한 번 교환하면 그 뒤로는 Firebase 가 알아서 세션을 이어간다 —
+     * 그래서 한 번 로그인한 기기는 계속 로그인 상태로 남는다.
+     */
+    .setExpirationTime(now + 3600)
+    .sign(key);
+}
+
+/**
  * 요청 헤더에서 클라이언트 IP를 뽑는다.
  * Vercel은 x-forwarded-for 맨 앞이 실제 클라이언트 IP다.
  */

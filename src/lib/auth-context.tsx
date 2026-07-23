@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut } from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithPopup, signInWithCustomToken, GoogleAuthProvider, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserDoc, UserRole } from './firestore-schema';
@@ -23,6 +23,10 @@ interface AuthState {
   viewAs: ViewAs | null;
   setViewAs: (v: ViewAs | null) => void;
   signInWithGoogle: () => Promise<void>;
+  /** 아이 로그인 (이름 + 반 비밀번호). 이메일 계정을 만들지 않는다. */
+  signInAsStudent: (input: {
+    schoolId: string; classId: string; name: string; password: string;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -35,6 +39,7 @@ const AuthContext = createContext<AuthState>({
   viewAs: null,
   setViewAs: () => {},
   signInWithGoogle: async () => {},
+  signInAsStudent: async () => {},
   signOut: async () => {},
 });
 
@@ -155,6 +160,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!auth) return;
           const provider = new GoogleAuthProvider();
           await signInWithPopup(auth, provider);
+        },
+        /**
+         * 아이 로그인 — 이름과 반 비밀번호를 서버에 보내고 **교환권(커스텀 토큰)** 을 받는다.
+         *
+         * 아이에게는 이메일도 아이디도 없다. 확인은 전부 서버가 한다 —
+         * 명부는 클라이언트가 읽을 수 없기 때문이다(미성년자 이름 목록이라 그래야 한다).
+         *
+         * 한 번 들어오면 **그 기기는 계속 로그인 상태로 남는다.** Firebase 가 세션을
+         * 브라우저에 저장하는 것이 기본값이라 따로 만들 것이 없다.
+         */
+        signInAsStudent: async (input) => {
+          if (!auth) throw new Error('로그인을 쓸 수 없어요');
+          const res = await fetch('/api/student-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.token) throw new Error(json.error || '들어가지 못했어요');
+          await signInWithCustomToken(auth, json.token);
         },
         signOut: async () => {
           if (!auth) return;

@@ -1,11 +1,19 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import StudentLoginPanel from '@/components/auth/StudentLoginPanel';
 
 function LoginInner() {
   const { user, role, loading, signInWithGoogle } = useAuth();
+  /**
+   * 아이용 칸을 펼쳤나.
+   *
+   * **아이를 기본으로 두지 않았다.** 이 화면에 오는 사람의 대부분은 선생님·학부모이고,
+   * 아이는 선생님이 "학생 로그인 눌러" 라고 한마디 하면 찾는다.
+   */
+  const [asStudent, setAsStudent] = useState(false);
   const router = useRouter();
   // 보던 화면으로 돌려보낸다. 한라산에서 로그인했는데 지도로 튕기면 길을 잃는다.
   const back = useSearchParams().get('from') || '/';
@@ -42,6 +50,26 @@ function LoginInner() {
         </p>
       </div>
 
+      {asStudent ? (
+        <>
+          <StudentLoginPanel onDone={() => router.replace(back)} />
+          <button
+            onClick={() => setAsStudent(false)}
+            className="mt-5 text-[13px] underline"
+            style={{ color: 'var(--color-text-sub)' }}
+          >
+            선생님·학부모로 로그인하기
+          </button>
+        </>
+      ) : (
+      <>
+      <button
+        onClick={() => setAsStudent(true)}
+        className="mb-3 flex items-center gap-2 rounded-full px-8 py-3 font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
+        style={{ background: 'var(--color-primary)', color: 'white' }}
+      >
+        🎒 학생 로그인
+      </button>
       <button
         onClick={signInWithGoogle}
         className="flex items-center gap-3 rounded-full bg-white px-8 py-3 font-medium shadow-lg transition-transform hover:scale-105 active:scale-95"
@@ -55,6 +83,12 @@ function LoginInner() {
         </svg>
         Google로 로그인
       </button>
+      <p className="mt-4 text-[13px] text-center" style={{ color: 'var(--color-text-sub)' }}>
+        아이는 <b>학생 로그인</b>으로 들어가요.<br />
+        이름과 우리 반 비밀번호만 있으면 돼요.
+      </p>
+      </>
+      )}
     </div>
   );
 }
