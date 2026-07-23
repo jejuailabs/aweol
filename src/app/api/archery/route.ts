@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb, verifyRequestUser } from '@/lib/firebase-admin';
 import { PERFECT, SHOTS, asLevel, scoreRound } from '@/lib/archery';
+import { weekKeyKST } from '@/lib/week';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -106,27 +107,50 @@ export async function PATCH(req: NextRequest) {
   }
 
   // 여기서만 점수가 정해진다. 클라이언트가 보낸 점수는 아예 읽지 않는다.
-  const { shots, total } = scoreRound(r.seed, times, asLevel(r.level));
+  // 난이도는 **판을 시작할 때 적어둔 것**을 되짚는다 (화면이 낼 때 우겨도 안 통한다)
+  const level = asLevel(r.level);
+  const { shots, total } = scoreRound(r.seed, times, level);
 
   // 판을 닫는다 — 같은 판을 다시 내서 점수를 고를 수 없다
   await roundRef.update({ done: true });
 
   /**
-   * 최고 기록만 남긴다. 이번이 더 낮으면 그대로 둔다 —
+   * 그 주 최고 기록만 남긴다. 이번이 더 낮으면 그대로 둔다 —
    * 잘 쏜 날을 나중에 못 쏜 날이 덮으면 아이가 억울하다.
+   *
+   * 기록은 **난이도마다 따로, 그리고 한 주마다 새로** 센다.
+   *
+   * 예전에는 사람당 한 줄에 최고 점수 하나였다. 그래서 두 가지가 어그러졌다:
+   * - 쉬움에서 낸 점수와 어려움에서 낸 점수가 한 표에 섞였다. 어려움은
+   *   같은 실력으로도 점수가 낮으니, **어려움을 고르면 순위가 떨어진다** —
+   *   어려운 걸 고를 이유가 없어진다.
+   * - 한 번 잘 쏜 아이가 학기 내내 1등이라 나머지는 볼 이유가 없어진다.
+   *
+   * 문서 열쇠를 `{uid}_{난이도}` 로 두고 **주(week)를 안에 적는다.**
+   * 주마다 새 문서를 만들면 사람 × 난이도 × 주만큼 늘어나지만, 이렇게 하면
+   * **사람 × 난이도**로 묶인다 — 지난주 줄은 그 아이가 다시 쏠 때 덮인다.
    */
-  const bestRef = db.doc(`schools/${schoolId}/archeryRecords/${user.uid}`);
+  const week = weekKeyKST();
+  const bestRef = db.doc(`schools/${schoolId}/archeryRecords/${user.uid}_${level}`);
   const best = await bestRef.get();
-  const prev = best.exists ? ((best.data()?.total as number) ?? -1) : -1;
+  const cur = best.data();
+  // 지난주 기록은 견주지 않는다 — 이번 주는 처음부터 다시다
+  const prev = best.exists && cur?.week === week ? ((cur?.total as number) ?? -1) : -1;
+
   if (total > prev) {
     await bestRef.set({
       uid: user.uid,
       name: user.displayName,
+      level,
+      week,
       total,
       shots,
       at: FieldValue.serverTimestamp(),
     });
   }
 
-  return NextResponse.json({ shots, total, perfect: PERFECT, best: Math.max(prev, total) });
+  return NextResponse.json({
+    shots, total, perfect: PERFECT, level, week,
+    best: Math.max(prev, total),
+  });
 }

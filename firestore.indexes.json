@@ -49,6 +49,15 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "visibility", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "archeryRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "week", "order": "ASCENDING" },
+        { "fieldPath": "level", "order": "ASCENDING" },
+        { "fieldPath": "total", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

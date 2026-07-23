@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import dynamic from 'next/dynamic';
 import { LEVELS, PERFECT, SHOTS, aimAt, ringScore, shotSetup, type Level, type ShotSetup } from '@/lib/archery';
+import { weekKeyKST, nextResetKST } from '@/lib/week';
 
 /** 3D 경기장. 화면이 뜨기 전에 받아올 이유가 없다. */
 const ArcheryScene = dynamic(() => import('@/components/gallery3d/ArcheryScene'), { ssr: false });
@@ -38,6 +39,16 @@ export default function ArcheryPage() {
   const [seed, setSeed] = useState(0);
   /** 고른 난이도. 판을 시작할 때 서버로 보내고, 화면 흔들림도 이걸로 그린다. */
   const [level, setLevel] = useState<Level>('normal');
+  /**
+   * 이번 주. 화면이 켜져 있는 동안 바뀔 일이 거의 없어 한 번만 잡는다 —
+   * 자정에 걸쳐 있어도 다시 들어오면 새 주로 보인다.
+   */
+  const week = useMemo(() => weekKeyKST(), []);
+  /** 언제 표가 새로 시작하는지 — '월요일' 만으로는 이번 주인지 다음 주인지 모른다 */
+  const resetLabel = useMemo(() => {
+    const d = nextResetKST();
+    return `${d.getMonth() + 1}월 ${d.getDate()}일(월)`;
+  }, []);
   const [shotIdx, setShotIdx] = useState(0);
   const [setup, setSetup] = useState<ShotSetup | null>(null);
   const [hits, setHits] = useState<Hit[]>([]);
@@ -62,15 +73,29 @@ export default function ArcheryPage() {
   /** 쏜 시각들 — 이것만 서버로 간다 */
   const times = useRef<number[]>([]);
 
-  // 순위표
+  /**
+   * 순위표 — **이번 주, 고른 난이도**만.
+   *
+   * 예전에는 전부 한 표에 섞었다. 그런데 어려움은 같은 실력으로도 점수가 낮으니
+   * **어려운 걸 고르면 순위가 떨어졌다** — 그러면 아무도 어려움을 안 고른다.
+   * 그리고 한 번 잘 쏜 아이가 학기 내내 1등이라 나머지는 볼 이유가 없었다.
+   *
+   * 난이도를 바꾸면 순위표도 따라 바뀐다(그 표가 지금 내가 겨루는 판이다).
+   */
   useEffect(() => {
     if (!db || !schoolId) return;
     return onSnapshot(
-      query(collection(db, `schools/${schoolId}/archeryRecords`), orderBy('total', 'desc'), limit(5)),
+      query(
+        collection(db, `schools/${schoolId}/archeryRecords`),
+        where('week', '==', week),
+        where('level', '==', level),
+        orderBy('total', 'desc'),
+        limit(5)
+      ),
       (snap) => setBoard(snap.docs.map((d) => d.data() as { name: string; total: number })),
       () => setBoard([])
     );
-  }, [schoolId]);
+  }, [schoolId, week, level]);
 
   const start = async () => {
     if (!user) { setErr('로그인하면 쏠 수 있어요'); return; }
@@ -308,11 +333,27 @@ export default function ArcheryPage() {
               ⚔️ 친구와 대결하기
             </button>
 
-            {board.length > 0 && (
-              <div className="mt-3">
-                <div className="text-[13px] font-black mb-1.5" style={{ color: '#3A3226' }}>
-                  🏆 우리 학교 기록
+            {/*
+              **무슨 표인지 적어준다.** 난이도를 바꾸면 순위가 통째로 바뀌는데
+              그냥 '우리 학교 기록' 이라고만 쓰여 있으면 아이는 자기 기록이
+              사라진 줄 안다. 언제 새로 시작하는지도 같이 말해준다 —
+              모르면 월요일에 표가 비어 있는 걸 보고 고장난 줄 안다.
+            */}
+            <div className="mt-3">
+              <div className="text-[13px] font-black mb-0.5" style={{ color: '#3A3226' }}>
+                🏆 이번 주 {LEVELS[level].label} 기록
+              </div>
+              <div className="text-[12px] mb-1.5" style={{ color: '#A89880' }}>
+                {resetLabel}에 새로 시작해요 · 난이도마다 따로 겨뤄요
+              </div>
+              {board.length === 0 && (
+                <div className="text-[13px]" style={{ color: '#A89880' }}>
+                  아직 이번 주 기록이 없어요. 첫 기록을 남겨보세요!
                 </div>
+              )}
+            </div>
+            {board.length > 0 && (
+              <div className="mt-1">
                 <div className="flex flex-col gap-1">
                   {board.slice(0, 3).map((b, i) => (
                     <div key={`${b.name}-${i}`} className="flex items-center gap-2 text-[13px]">
