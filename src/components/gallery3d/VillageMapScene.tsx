@@ -12,7 +12,7 @@ import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import { civicKindOf } from '@/lib/civic-places';
-import { sitesOfSchool } from '@/lib/local-sites';
+import { walkableSites } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
@@ -437,7 +437,14 @@ export default function VillageMapScene({
    */
   const [mePos, setMePos] = useState({ x: 0, z: 0, yaw: 0 });
   /** 이 학교 마을에 뜨는 유적 (표에서 학교로 걸러온다) */
-  const sites = useMemo(() => sitesOfSchool(schoolId), [schoolId]);
+  /**
+   * **걸어서 갈 수 있는 곳만** 세운다.
+   *
+   * 조사할 곳은 읍 전체에 흩어져 있다 — 항파두리는 4km, 빌레못동굴은 7km.
+   * 그걸 400m 짜리 마을 지도에 그리면 거짓말이 된다. 먼 곳은 읍 지도에서
+   * 방위와 거리로 본다.
+   */
+  const sites = useMemo(() => walkableSites(schoolId), [schoolId]);
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
 
@@ -488,13 +495,11 @@ export default function VillageMapScene({
        * 30m 도 안 떨어져 있어 그 규칙에 걸려 사라진다. 학교 바로 옆인 것이
        * 이 유적의 요점이므로, 여기서는 규칙보다 사실이 먼저다.
        */
-      ...sites.map((s) => ({
-        id: `site-${s.id}`,
-        name: s.name,
-        x: s.x,
-        z: s.z,
-        dist: Math.hypot(s.x, s.z),
-      })),
+      ...sites.map((s) => {
+        // 마을 좌표는 미터, 표의 거리는 km — 걸어갈 곳이라 학교 옆에 붙인다
+        const at = { x: -26, z: 18 };
+        return { id: `site-${s.id}`, name: s.name, x: at.x, z: at.z, dist: Math.hypot(at.x, at.z) };
+      }),
     ],
     [buildingPois, data.poi, schoolName, sites]
   );
@@ -594,7 +599,7 @@ export default function VillageMapScene({
           그 자리가 맞아서 여기 둔다.
         */}
         {sites.map((s) => (
-          <group key={s.id} position={[s.x, 0, s.z]}>
+          <group key={s.id} position={[-26, 0, 18]}>
             {/* 남아 있는 성벽 한 자락 — 실제로 북성 일부가 남아 있다 */}
             <mesh position={[0, 1.6, 0]} castShadow receiveShadow>
               <boxGeometry args={[10, 3.2, 1.4]} />

@@ -7,6 +7,8 @@ import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { VEHICLES } from '@/lib/village-travel';
+import { useProgress } from '@/lib/use-progress';
+import { openQuests } from '@/lib/village-rpg';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
 import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
@@ -41,6 +43,11 @@ export default function VillagePage() {
 
   // 내가 속한 학교로 데려간다. 없으면 애월초.
   const schoolId = userDoc?.schoolIds?.[0] || FALLBACK_SCHOOL;
+
+  /** 지금 할 일이 몇 개인가 — 수첩 단추에 뜬다 */
+  const { done } = useProgress();
+  const grade = Number(userDoc?.classIds?.[0]?.split('-')[0]) || undefined;
+  const todoCount = openQuests(done, grade).length;
 
   const me = user && userDoc ? {
     uid: user.uid,
@@ -163,6 +170,27 @@ export default function VillagePage() {
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         ← 지도로
+      </button>
+
+      {/*
+        조사 수첩 — **지금 할 일이 몇 개인지 여기서 보인다.**
+        마을에 들어와서 '뭘 하지?' 하고 멈추면 거기서 끝난다.
+        빨간 숫자 하나가 아이를 움직인다.
+      */}
+      <button
+        onClick={() => router.push(`/school/${schoolId}/notebook`)}
+        className="pos-top-safe absolute right-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
+        style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+      >
+        📓 수첩
+        {todoCount > 0 && (
+          <span
+            className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-black text-white"
+            style={{ background: '#E8604C' }}
+          >
+            {todoCount}
+          </span>
+        )}
       </button>
 
       {/*
