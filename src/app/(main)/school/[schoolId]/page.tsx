@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { collection, query, where, getDocs, getDoc, doc, type DocumentSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, limit, getDocs, getDoc, doc, type DocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
@@ -75,6 +75,40 @@ export default function SchoolPage() {
     fetchClasses();
   }, [schoolId]);
 
+  /**
+   * 전시관 배너에 걸 **작품 한 점**씩.
+   *
+   * 이름만 걸면 문을 열기 전까지 무슨 전시인지 알 수 없다. 그래서 그 전시실에
+   * 실제로 걸린 것 하나를 보여준다.
+   *
+   * **배너는 최대 넷**이라 질의도 넷이다(반마다 `limit(1)`). 학교 전체 작품을
+   * 긁어와서 고르면 반이 늘수록 읽기가 곱으로 커진다.
+   * 학교 화면(`kind === 'school'`)에서는 아예 안 부른다 — 거기엔 배너가 없다.
+   */
+  const [covers, setCovers] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!db || kind !== 'gallery' || classes.length === 0) return;
+    const targets = classes.slice(0, 4).map((c) => c.id);
+    Promise.all(
+      targets.map(async (classId) => {
+        try {
+          const snap = await getDocs(query(
+            collectionGroup(db!, 'artworks'),
+            where('classId', '==', classId),
+            where('status', '==', 'approved'),
+            where('visibility', '==', 'school'),
+            limit(1)
+          ));
+          const v = snap.docs[0]?.data();
+          return [classId, (v?.thumbnailUrl as string) || (v?.imageUrl as string) || ''] as const;
+        } catch {
+          // 못 읽어도 화면은 그대로 뜬다 — 사진만 안 걸린다
+          return [classId, ''] as const;
+        }
+      })
+    ).then((pairs) => setCovers(Object.fromEntries(pairs.filter(([, url]) => url))));
+  }, [kind, classes]);
+
   // 학교 동물은 한 번만 읽는다. 기분은 시각으로 계산하니 다시 안 읽어도 된다.
   useEffect(() => {
     loadPet(schoolId).then(setPet).catch(() => setPet(null));
@@ -119,12 +153,24 @@ export default function SchoolPage() {
    * 학년·반 번호는 그대로 둔다 — 경로도 규칙도 그걸 쓴다.
    */
   const classButtons = classes.length > 0
-    ? classes.map((cls) => ({
-        id: cls.id,
-        label: (cls as ClassDoc & { displayName?: string }).displayName?.trim()
-          || `${cls.grade}-${cls.classNumber}`,
-      }))
-    : ['3-1', '3-2', '3-3', '3-4'].map((label) => ({ id: label, label }));
+    ? classes.map((cls) => {
+        const topic = (cls as ClassDoc & { displayName?: string }).displayName?.trim() || '';
+        return {
+          id: cls.id,
+          /**
+           * **전시관에서는 반 번호로 되돌리지 않는다.**
+           * 전시 주제를 아직 안 정했으면 빈 이름으로 두고, 그러면 배너가 안 걸린다.
+           * '3-1' 을 대신 걸면 전시관이 학교처럼 보이고, 관람객에게 그 숫자는
+           * 아무 뜻도 없다. 학교는 종전대로 반 번호를 쓴다 — 거기서는 그게 이름이다.
+           */
+          label: kind === 'gallery' ? topic : (topic || `${cls.grade}-${cls.classNumber}`),
+          coverUrl: covers[cls.id],
+        };
+      })
+    // 반이 하나도 없을 때 보여주는 맛보기. 전시관에는 지어낸 이름을 걸지 않는다.
+    : kind === 'gallery'
+      ? []
+      : ['3-1', '3-2', '3-3', '3-4'].map((label) => ({ id: label, label }));
 
   return (
     <div className="scene-page">

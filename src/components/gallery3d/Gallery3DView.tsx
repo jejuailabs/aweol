@@ -378,12 +378,14 @@ function WallArtwork({
         )}
       </group>
 
-      {/* 근접 시 "!" 큐 + 동숲식 이름표 */}
-      {near && (
-        <Html position={[0, (frameH * 0.5) + 0.5, 0.15]} center zIndexRange={[30, 0]}>
-          <div className="ac-alert">!</div>
-        </Html>
-      )}
+      {/*
+        가까이 가면 이름표가 뜬다.
+
+        예전에는 액자 **위에도** 노란 '!' 를 띄웠는데, 바로 아래 이름표가 이미
+        '눌러서 감상하기' 라고 말하고 있어서 **같은 말을 두 번** 하는 것이었다.
+        게다가 액자 중심에서 0.5 위에 떠 있어 액자와 떨어져 보였다 — 무엇을
+        가리키는 표시인지 알 수 없는 표시는 없느니만 못하다.
+      */}
       {near && (
         <Html position={[0, -(frameH * 0.5) - 0.45, 0.15]} center zIndexRange={[30, 0]}>
           <div className="ac-tag" onClick={onClick}>

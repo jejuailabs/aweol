@@ -253,7 +253,16 @@ function Ground() {
 
 export interface SchoolClassItem {
   id: string;
+  /**
+   * 문패·배너에 적을 이름.
+   *
+   * **전시관에서는 비어 있을 수 있다.** 전시 주제를 아직 안 정한 것이고,
+   * 그때는 배너를 아예 안 건다 — '3-1' 같은 반 번호를 대신 걸면 전시관이
+   * 학교처럼 보이고, 관람객에게는 아무 뜻도 없는 숫자다.
+   */
   label: string;
+  /** 그 전시실에 실제로 걸린 작품 한 점 (전시관 배너용) */
+  coverUrl?: string;
 }
 
 /**
@@ -264,9 +273,11 @@ export interface SchoolClassItem {
  * 눌러도 교실이 아니라 **전시실로 바로** 간다.
  */
 function ExhibitBanner({
-  label, onClick, delay = 0, x, y,
+  label, coverUrl, onClick, delay = 0, x, y,
 }: {
   label: string;
+  /** 그 전시실에 실제로 걸린 작품 한 점. 없으면 천만 걸린다. */
+  coverUrl?: string;
   onClick: () => void;
   delay?: number;
   x: number;
@@ -299,7 +310,7 @@ function ExhibitBanner({
         </mesh>
       ))}
 
-      {/* 주제 — 세로로 길게 */}
+      {/* 주제 — 세로로 길게. 그 아래 실제로 걸린 작품 한 점 */}
       <Html position={[0, 0, 0.2]} transform scale={0.3} zIndexRange={[18, 0]} pointerEvents="none">
         <div
           style={{
@@ -309,6 +320,23 @@ function ExhibitBanner({
           }}
         >
           {label}
+          {/*
+            안에 무엇이 걸려 있는지 한 점 보여준다. 이름만 있으면 문을 열기 전까지
+            무슨 전시인지 알 수 없다. **작품이 아직 없으면 아무것도 안 건다** —
+            빈 액자를 걸면 텅 빈 전시로 보인다.
+          */}
+          {coverUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverUrl}
+              alt=""
+              style={{
+                width: '116px', height: '116px', objectFit: 'cover', marginTop: '12px',
+                borderRadius: '4px', border: '5px solid #FFFFFF',
+                boxShadow: '0 3px 10px rgba(0,0,0,0.25)',
+              }}
+            />
+          )}
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#A6762A', marginTop: '10px' }}>
             {pressed ? '들어가는 중...' : '전시 보러 가기 ›'}
           </div>
@@ -501,7 +529,7 @@ function SchoolBuilding({
         전시 배너 — 전시관일 때만. 창문 슬롯과 달리 앞면에 고르게 편다.
         네 개까지만 건다. 더 걸면 서로 겹쳐서 읽히지 않는다.
       */}
-      {kind === 'gallery' && classes.slice(0, 4).map((cls, i, arr) => {
+      {kind === 'gallery' && classes.filter((c) => c.label.trim()).slice(0, 4).map((cls, i, arr) => {
         const span = bodyW * 0.72;
         const gapX = arr.length > 1 ? span / (arr.length - 1) : 0;
         const x = arr.length > 1 ? -span / 2 + gapX * i : 0;
@@ -509,6 +537,7 @@ function SchoolBuilding({
           <group key={cls.id} position={[0, 0, bodyD * 0.5 + 0.06]}>
             <ExhibitBanner
               label={cls.label}
+              coverUrl={cls.coverUrl}
               onClick={() => onClassSelect(cls.id)}
               delay={i * 0.35}
               x={x}

@@ -84,10 +84,21 @@ r = await call('PATCH', { schoolId: SCHOOL });
 ok('끝난 판은 다시 못 냄', r.status === 409, `HTTP ${r.status}`);
 
 console.log('\n[정상 기록]');
-// 출발 시각을 20초 전으로 돌려 정상 완주를 흉내낸다
+/**
+ * 출발 시각을 20초 전으로 돌려 정상 완주를 흉내낸다.
+ *
+ * **이 PC 시계로 계산하면 안 된다.** 시간은 서버가 재는데(그게 이 기능의 요점이다)
+ * 기준점을 로컬 시각으로 써넣으면, 두 시계가 어긋난 만큼 그대로 오차가 된다.
+ * 실제로 이 컴퓨터는 서버보다 **8초 빨라서** 20초를 넣었는데 13초로 측정됐다.
+ * 코드는 멀쩡한데 검증만 빨간 상태 — 그런 실패는 진짜 고장을 가린다.
+ *
+ * 그래서 **서버가 방금 찍어준 출발 시각**을 읽어와 거기서 20초를 뺀다.
+ */
 await call('POST', { schoolId: SCHOOL });
-await adb.doc(`schools/${SCHOOL}/trackRuns/${KID}`).set({
-  uid: KID, startedAt: new Date(Date.now() - 20000), finished: false,
+const runRef = adb.doc(`schools/${SCHOOL}/trackRuns/${KID}`);
+const serverStart = (await runRef.get()).data()?.startedAt?.toDate?.() ?? new Date();
+await runRef.set({
+  uid: KID, startedAt: new Date(serverStart.getTime() - 20000), finished: false,
 });
 r = await call('PATCH', { schoolId: SCHOOL });
 j = await r.json();

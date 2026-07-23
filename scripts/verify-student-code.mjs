@@ -42,8 +42,15 @@ const STU_A = 'zz-sc-studentA';
 const STU_B = 'zz-sc-studentB';
 const PARENT = 'zz-sc-parent';
 
-// 준비: 교사/학생/학부모 계정 + 명부 한 줄
-await adb.collection('users').doc(TEACHER).set({ displayName: '코드검증교사', role: 'teacher', schoolIds: [SCHOOL], classIds: [], children: [] });
+/**
+ * 준비: 교사/학생/학부모 계정 + 명부 한 줄.
+ *
+ * **교사에게 `classIds` 를 꼭 준다.** 코드 발급은 `isTeacherOfClass`(= 이 반 담임인가)를
+ * 보는데, 학교 소속만 주고 반을 안 주면 첫 줄부터 403 이 나고 그 뒤가 전부 무너진다.
+ * 권한을 '담당 반' 안으로 좁힌 뒤로 이 스크립트가 그 상태였다 —
+ * **코드는 멀쩡한데 검증만 빨간** 실패는 진짜 고장을 가린다.
+ */
+await adb.collection('users').doc(TEACHER).set({ displayName: '코드검증교사', role: 'teacher', schoolIds: [SCHOOL], classIds: [CLASS], children: [] });
 await adb.collection('users').doc(STU_A).set({ displayName: '학생A', role: 'student', classIds: [], children: [] });
 await adb.collection('users').doc(STU_B).set({ displayName: '학생B', role: 'student', classIds: [], children: [] });
 await adb.collection('users').doc(PARENT).set({ displayName: '학부모', role: 'parent', classIds: [], children: [] });

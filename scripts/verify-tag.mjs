@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import { initializeApp as initAdmin, cert } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminDb } from 'firebase-admin/firestore';
+import { getDatabase as getAdminRtdb } from 'firebase-admin/database';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import { getDatabase, ref, set, update, get, remove, goOffline } from 'firebase/database';
@@ -22,6 +23,8 @@ initAdmin({
     clientEmail: env.FIREBASE_ADMIN_CLIENT_EMAIL,
     privateKey: env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/^"|"$/g, '').replace(/\\n/g, '\n'),
   }),
+  // 판을 치우는 데 필요하다 (아래 wipeRoom 참고)
+  databaseURL: env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
 });
 const adb = getAdminDb();
 const clientApp = initializeApp({
@@ -64,8 +67,20 @@ const asUser = async (uid) => {
   await signInWithCustomToken(cauth, await getAdminAuth().createCustomToken(uid));
 };
 
-// 지난 검증 흔적 지우기
-await set(ref(rdb, `games/${SCHOOL}/${ROOM}`), null).catch(() => {});
+/**
+ * 지난 검증 흔적 지우기 — **반드시 관리자 권한으로.**
+ *
+ * 예전에는 클라이언트로 지웠는데, 그 시점에는 아직 로그인 전이라 규칙
+ * (`auth != null`)에 막혀 **조용히 실패했다**(`.catch(() => {})`).
+ * 그러면 지난 판의 술래(`it`)가 남고, 규칙이 `!data.exists() || data.val() === auth.uid`
+ * 이므로 다음 실행은 첫 줄부터 PERMISSION_DENIED 로 무너진다.
+ *
+ * **한 번 중간에 끊기면 그 뒤로는 영원히 실패한다.** 실제로 그렇게 됐었다 —
+ * 배치로 돌리다 타임아웃으로 끊긴 실행이 `it: 'zz-tag-c'` 를 남겼다.
+ * 그래서 치우기는 규칙을 타지 않는 관리자 권한으로 한다.
+ */
+const wipeRoom = () => getAdminRtdb().ref(`games/${SCHOOL}/${ROOM}`).remove();
+await wipeRoom();
 
 console.log('[비로그인]');
 try { await set(itRef, A); ok('비로그인은 술래를 못 정함', false, 'BAD'); }
@@ -109,7 +124,8 @@ try { await update(scoreRef(A), { n: 'A', c: 1, evil: 'x' }); ok('정해진 칸 
 catch { ok('정해진 칸 외에는 못 씀', true); }
 
 console.log('MARKER_END');
-await set(ref(rdb, `games/${SCHOOL}/${ROOM}`), null).catch(() => {});
+// 끝나고도 **관리자 권한으로** 치운다 — 남기면 다음 실행이 첫 줄부터 막힌다
+await getAdminRtdb().ref(`games/${SCHOOL}/${ROOM}`).remove().catch(() => {});
 await signOut(cauth).catch(() => {});
 goOffline(rdb);
 

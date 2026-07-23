@@ -11,7 +11,7 @@ import {
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
 import {
-  nextTravelMode, speedOf, warpTargets, vehicleById, VEHICLES, type TravelMode, type WarpTarget,
+  speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
 
 const PI = Math.PI;
@@ -169,7 +169,14 @@ function Roads({ list }: { list: VillageData['rd'] }) {
         const len = Math.sqrt(dx * dx + dz * dz);
         if (len < 0.5) continue;
         out.push({
-          pos: [(x0 + x1) / 2, 0, (z0 + z1) / 2],
+          /**
+           * **바닥(y=0)과 같은 높이에 두면 안 된다.**
+           * 두 면이 정확히 겹치면 깊이 버퍼가 어느 쪽이 앞인지 못 정해서
+           * 카메라가 움직일 때마다 길이 **깜박거린다**(z-fighting).
+           * 물·공원(`Areas`)이 0.02 에 있으므로 길은 그 위 0.04 에 깐다 —
+           * 길이 공원을 가로지르는 것이 실제 모습이기도 하다.
+           */
+          pos: [(x0 + x1) / 2, 0.04, (z0 + z1) / 2],
           rot: Math.atan2(dx, dz),
           // 이음매가 벌어지지 않게 살짝 길게
           len: len * 1.06,
@@ -289,30 +296,13 @@ function CarRig({
   return <group ref={g}><Car show={show} vehicleId={vehicleId} /></group>;
 }
 
-/**
- * 학교에서 얼마나 멀어졌는지 지켜보다가 걷기↔자동차를 바꾼다.
- *
- * 매 프레임 세면 1초에 60번 판단하게 되니 **네 프레임에 한 번**만 본다.
- * 어차피 사람이 그 사이에 20m 를 가지 못한다.
- */
-function TravelWatcher({
-  avatarPos, mode, onMode,
-}: {
-  avatarPos: React.RefObject<THREE.Vector3>;
-  mode: TravelMode;
-  onMode: (m: TravelMode) => void;
-}) {
-  const tick = useRef(0);
-  useFrame(() => {
-    tick.current += 1;
-    if (tick.current % 4 !== 0) return;
-    const p = avatarPos.current;
-    if (!p) return;
-    const next = nextTravelMode(Math.hypot(p.x, p.z), mode);
-    if (next !== mode) onMode(next);
-  });
-  return null;
-}
+/*
+  거리를 보고 걷기↔자동차를 저절로 바꾸던 `TravelWatcher` 는 지웠다.
+
+  **편의로 넣은 자동 판단이 사람이 누른 것을 되돌렸다** — 멀리 나가서 '내리기' 를
+  눌러도 다음 프레임에 거리 감시자가 다시 태워서 영영 못 내렸다.
+  타고 내리는 것은 아이가 정한다.
+*/
 
 export default function VillageMapScene({
   data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool,
@@ -339,15 +329,17 @@ export default function VillageMapScene({
   /** 워프할 자리. WalkerAvatar 가 다음 프레임에 집어간다. */
   const teleport = useRef<THREE.Vector3 | null>(null);
   const [schoolHot, setSchoolHot] = useState(false);
-  /** 걷는 중인가 차를 탔는가. 학교에서 멀어지면 저절로 차를 탄다. */
-  const [mode, setMode] = useState<TravelMode>('walk');
   /**
-   * 손으로 켠 자동차.
+   * 차를 탔나 — **버튼이 정한다. 그게 전부다.**
    *
-   * 학교에서 멀어지면 저절로 타지지만, 그 전에 **걷기 싫은 아이도 있다.**
-   * 켜두면 거리와 상관없이 차를 탄다 — 끄면 다시 자동으로 돌아간다.
+   * 예전에는 학교에서 멀어지면 저절로 타지게 해뒀는데, 그 자동 판단이
+   * 사람이 누른 것을 계속 되돌렸다: 멀리 나가서 '내리기' 를 눌러도 다음 프레임에
+   * 거리 감시자가 다시 차를 태워서 **영영 못 내렸다.**
+   *
+   * 편의로 넣은 것이 사람 뜻을 이기면 그건 편의가 아니다. 타고 내리는 것은
+   * 아이가 정한다 — 멀리서 걷고 싶으면 걷는 것이다.
    */
-  const [forceCar, setForceCar] = useState(false);
+  const [riding, setRiding] = useState(false);
   const [warpOpen, setWarpOpen] = useState(false);
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
@@ -413,8 +405,6 @@ export default function VillageMapScene({
     return attachCameraControls(el, { minDist: 6, maxDist: 40 });
   }, []);
 
-  /** 지금 차를 타고 있나 — 손으로 켰거나, 멀어져서 저절로 탔거나 */
-  const riding = forceCar || mode === 'car';
   /** 지금 고른 탈것. 속도·색이 여기서 나온다. */
   const vehicle = vehicleById(vehicleId);
   const [vehOpen, setVehOpen] = useState(false);
@@ -494,8 +484,6 @@ export default function VillageMapScene({
           </Html>
         ))}
 
-        {/* 손으로 켰으면 거리를 안 본다 */}
-        {!forceCar && <TravelWatcher avatarPos={avatarPos} mode={mode} onMode={setMode} />}
         <CarRig avatarPos={avatarPos} avatarYaw={avatarYaw} show={riding} vehicleId={vehicleId} />
 
         <WalkerAvatar
@@ -537,21 +525,12 @@ export default function VillageMapScene({
         전에는 차 타기 버튼이 조이스틱 밑에 깔려 아예 안 보였다.
       */}
       <div className="pos-above-nav absolute right-4 z-30 flex flex-col items-end gap-2">
-        {/* 왜 빨라졌는지 — 짧게. 길게 쓰면 세 줄로 터져 화면을 덮는다 */}
-        {!forceCar && mode === 'car' && (
-          <div
-            className="rounded-full px-3 py-1.5 text-[13px] font-bold whitespace-nowrap"
-            style={{ background: 'rgba(255,248,231,0.95)', color: '#8A7A5F' }}
-          >
-            🚗 멀어져서 빨라졌어요
-          </div>
-        )}
         <button
-          onClick={() => setForceCar((v) => !v)}
+          onClick={() => setRiding((v) => !v)}
           className="rounded-full px-5 py-3 text-[15px] font-bold"
           style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
         >
-          {forceCar ? '🚶 내리기' : '🚗 타기'}
+          {riding ? '🚶 내리기' : '🚗 타기'}
         </button>
 
         {/*

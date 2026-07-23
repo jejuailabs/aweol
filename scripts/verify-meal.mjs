@@ -74,9 +74,16 @@ ok('두 번째는 캐시에서 (NEIS 안 부름)', j.cached===true, String(j.cac
 const saved=(await adb.doc(`schools/${SCHOOL}`).get()).data();
 ok('학교 문서에 NEIS 코드가 저장됨', !!saved?.neis?.school, JSON.stringify(saved?.neis));
 ok('급식이 학교 문서에 저장됨', !!saved?.meal?.date, String(saved?.meal?.date));
+/**
+ * 지워야 하는 것은 **알레르기 번호**(`(5.6.10.13)`)이지 괄호 자체가 아니다.
+ *
+ * 예전에는 "괄호가 하나도 없어야 한다" 로 봤는데, `과일(사,배,바)샐러드` 처럼
+ * **음식 이름에 든 괄호**가 나오는 날이면 멀쩡한 코드가 빨갛게 됐다.
+ * 그런 실패는 진짜 고장을 가린다. 서버가 지우는 것과 **같은 모양**으로만 본다.
+ */
 ok('알레르기 번호가 지워짐',
-  (saved?.meal?.dishes||[]).every(d=>!/[()]/.test(d)),
-  (saved?.meal?.dishes||[]).slice(0,2).join(' / '));
+  (saved?.meal?.dishes||[]).every(d=>!/\([0-9.,\s]+\)/.test(d)),
+  (saved?.meal?.dishes||[]).join(' / ').slice(0, 60));
 
 await signOut(cauth).catch(()=>{});
 const logs=await adb.collection('accessLogs').where('uid','==',KID).get();
