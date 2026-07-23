@@ -8,6 +8,7 @@ import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { isTeacherOfClass } from '@/lib/auth-helpers';
 import { scopeFromPath, visibilityOf } from '@/lib/exhibit-scope';
+import { normalizeName, studentUidOf } from '@/lib/student-login';
 import { youtubeId, youtubeThumb } from '@/lib/youtube';
 
 interface Props {
@@ -71,23 +72,52 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
    */
   const isTeacher = isTeacherOfClass(role, userDoc?.classIds, classId);
 
-  // 교사용: 학급 명부를 불러와 이름 자동완성에 쓴다 (타이핑 대신 선택)
+  /**
+   * 교사용: 학급 명부를 불러온다. 이름 자동완성에도 쓰지만, **더 중요한 것은
+   * 그 이름이 어느 아이인지 아는 것**이다.
+   *
+   * 선생님이 올린 작품에는 그동안 이름만 남았다(`artistUid` 가 빈 문자열). 그러면
+   * 나중에 아이별로 모을 때 동명이인·개명·오타에 그대로 무너진다.
+   * 이제 명부에서 고른 이름은 **그 아이의 uid 로 매단다** — 아이가 아직 한 번도
+   * 로그인하지 않았어도 uid 는 명부 자리에서 정해지므로 미리 알 수 있다.
+   */
+  const [rosterRows, setRosterRows] = useState<{ id: string; name: string; linkedUid: string | null }[]>([]);
   useEffect(() => {
     if (!isTeacher || !db || !schoolId || !classId) return;
     (async () => {
       try {
         const snap = await getDocs(collection(db, 'schools', schoolId, 'classes', classId, 'students'));
-        const names = snap.docs
-          .map((d) => ({ number: (d.data().number as number) || 0, name: (d.data().name as string) || '' }))
+        const rows = snap.docs
+          .map((d) => ({
+            id: d.id,
+            number: (d.data().number as number) || 0,
+            name: (d.data().name as string) || '',
+            linkedUid: (d.data().linkedUid as string) || null,
+          }))
           .filter((s) => s.name)
-          .sort((a, b) => a.number - b.number)
-          .map((s) => s.name);
-        setRoster(names);
+          .sort((a, b) => a.number - b.number);
+        setRosterRows(rows);
+        setRoster(rows.map((s) => s.name));
       } catch {
+        setRosterRows([]);
         setRoster([]);
       }
     })();
   }, [isTeacher, schoolId, classId]);
+
+  /**
+   * 적힌 이름이 명부의 누구인지 찾아 uid 를 준다. 못 찾으면 빈 문자열 —
+   * **억지로 매달지 않는다.** 명부에 없는 이름(전학생, 손님 작품)을 아무에게나
+   * 붙이면 남의 작품이 그 아이 것이 된다.
+   * 동명이인이면 누구인지 알 수 없으므로 역시 안 매단다.
+   */
+  const artistUidFor = (typedName: string): string => {
+    const key = normalizeName(typedName);
+    if (!key) return '';
+    const hit = rosterRows.filter((s) => normalizeName(s.name) === key);
+    if (hit.length !== 1) return '';
+    return studentUidOf(schoolId, classId, hit[0]);
+  };
 
   /**
    * 학생·학부모 본인 업로드면 이름을 대신 채워준다.
@@ -222,7 +252,8 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
       await setDoc(doc(db, collectionPath, artworkId), {
         title: it.title.trim(),
         artistName: nameFor(it.artistName),
-        artistUid: isTeacher ? '' : user.uid,
+        // 선생님이 올려도 **작품은 아이 것이다** — 명부에서 찾아 매단다
+        artistUid: isTeacher ? artistUidFor(it.artistName) : user.uid,
         imageUrl,
         thumbnailUrl,
         type: it.type,
@@ -259,7 +290,7 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
       await setDoc(doc(db, collectionPath, artworkId), {
         title: vTitle.trim(),
         artistName: nameFor(vArtist),
-        artistUid: isTeacher ? '' : user.uid,
+        artistUid: isTeacher ? artistUidFor(vArtist) : user.uid,
         imageUrl: thumb,
         thumbnailUrl: thumb,
         videoId: vid,

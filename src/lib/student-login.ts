@@ -90,3 +90,22 @@ export function isUsablePassword(raw: string): boolean {
 export function rosterUid(schoolId: string, classId: string, studentId: string): string {
   return `stu-${schoolId}-${classId}-${studentId}`.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 120);
 }
+
+/**
+ * 명부 한 줄이 가리키는 **아이의 uid**.
+ *
+ * 아이가 아직 한 번도 로그인하지 않았어도 알 수 있다 — uid 가 명부 자리에서
+ * 정해지기 때문이다. 그래서 **선생님이 작품을 올릴 때 이미 아이에게 매달 수 있다.**
+ * 이게 없으면 작품에 이름만 남아서, 나중에 아이별로 모을 때 동명이인·개명·오타에
+ * 그대로 무너진다.
+ *
+ * 이미 구글 계정을 연결한 아이는 그 uid 를 쓴다. **판정이 로그인 API 와 같아야 한다** —
+ * 어긋나면 같은 아이의 작품이 두 계정으로 갈라진다.
+ */
+export function studentUidOf(
+  schoolId: string,
+  classId: string,
+  student: { id: string; linkedUid?: string | null }
+): string {
+  return student.linkedUid || rosterUid(schoolId, classId, student.id);
+}

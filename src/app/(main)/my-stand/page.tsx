@@ -112,13 +112,27 @@ export default function MyStandPage() {
           <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
             작품 {stats.artworks}개 · 전시 중 {stats.approved}개 · 배지 {earnedBadges.length}개
           </p>
-          <button
-            onClick={() => router.push('/avatar-select')}
-            className="mt-2 rounded-full px-3 py-1 text-[12px] font-bold"
-            style={{ background: 'var(--color-primary)', color: 'white' }}
-          >
-            아바타 바꾸기
-          </button>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button
+              onClick={() => router.push('/avatar-select')}
+              className="rounded-full px-3 py-1 text-[12px] font-bold"
+              style={{ background: 'var(--color-primary)', color: 'white' }}
+            >
+              아바타 바꾸기
+            </button>
+            {/*
+              **내 전시실** — 여기 목록은 작품을 '세어' 보여주는 곳이고,
+              저기는 반을 가로질러 한 방에 **걸어** 보여주는 곳이다.
+              졸업할 때 아이에게 남는 것은 반이 아니라 자기가 만든 것들이다.
+            */}
+            <button
+              onClick={() => user && router.push(`/student/${user.uid}`)}
+              className="rounded-full px-3 py-1 text-[12px] font-bold"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
+            >
+              🎒 내 전시실 열기
+            </button>
+          </div>
         </div>
       </div>
 
