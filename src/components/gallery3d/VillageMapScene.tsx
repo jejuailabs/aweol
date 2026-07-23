@@ -432,7 +432,7 @@ export default function VillageMapScene({
    * (읽는 시점마다 값이 달라 화면이 어긋난다). 지도는 어차피 멈춘 그림이므로
    * 여는 순간 한 번 베껴 둔다.
    */
-  const [mePos, setMePos] = useState({ x: 0, z: 0 });
+  const [mePos, setMePos] = useState({ x: 0, z: 0, yaw: 0 });
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
 
@@ -732,7 +732,12 @@ export default function VillageMapScene({
         onClick={() => {
           // 누른 순간의 자리를 베낀다 — 이벤트 안에서 ref 를 읽는 건 안전하다
           if (!warpOpen) {
-            setMePos({ x: avatarPos.current?.x ?? 0, z: avatarPos.current?.z ?? 0 });
+            setMePos({
+              x: avatarPos.current?.x ?? 0,
+              z: avatarPos.current?.z ?? 0,
+              // 보는 쪽까지 베낀다 — 점 하나만 있으면 어느 쪽으로 걸어야 할지 모른다
+              yaw: avatarYaw.current ?? 0,
+            });
           }
           setWarpOpen((v) => !v);
         }}
@@ -756,6 +761,7 @@ export default function VillageMapScene({
           radius={data.r}
           roads={data.rd}
           buildings={data.b}
+          areas={data.a}
           me={mePos}
           targets={targets}
           civicIds={civicIds}
