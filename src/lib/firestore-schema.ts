@@ -39,6 +39,14 @@ export interface UserDoc {
    */
   classIds: string[];
   children: { studentUid: string; classId: string; name: string }[];
+  /**
+   * 학부모의 자녀 반을 **평평하게** 적은 것. 서버(/api/student-code)만 쓴다.
+   *
+   * `children` 과 같은 내용인데 왜 또 두느냐 — **보안 규칙은 객체 배열에서
+   * classId 만 뽑아낼 수 없다.** 이게 없으면 '우리 반만 보기' 전시실에서
+   * 학부모만 자녀 작품을 못 본다.
+   */
+  childClassIds?: string[];
   pendingClassRequest: string | null;
   avatarId: string | null;
   /** 착용 중인 상점 아이템 id. 서버(/api/shop)만 바꾼다 — 보유하지 않은 걸 낄 수 없어야 한다. */
@@ -311,12 +319,23 @@ export interface ClassDoc {
   memberUids: string[];
 }
 
+/**
+ * 전시실을 누가 보는가.
+ *
+ * - `school` — 학교 전체가 본다. 전체 갤러리에도 걸린다.
+ * - `class` — **우리 반만.** 갤러리에서 빠지고, 다른 반 사람은 작품을 못 읽는다.
+ *
+ * 없으면 `school` 로 친다. 이 기능 이전에 만든 전시실이 갑자기 숨으면 안 된다.
+ */
+export type ExhibitVisibility = 'school' | 'class';
+
 export interface ActivityDoc {
   title: string;
   date: Timestamp;
   description: string;
   thumbnailUrl: string;
   order: number;
+  visibility?: ExhibitVisibility;
 }
 
 export interface ArtworkDoc {
@@ -332,6 +351,22 @@ export interface ArtworkDoc {
   videoId?: string | null;
   type: 'flat' | 'sculpture';
   artistComment: string;
+  /**
+   * 이 작품이 **어느 반 어느 학교의 것인가.**
+   *
+   * 경로에 이미 들어 있는 값을 굳이 문서에도 적는 이유는 **규칙 때문**이다.
+   * 전체 갤러리는 `collectionGroup('artworks')` 로 긁는데, 그 자리의 규칙
+   * (`match /{path=**}/artworks/{id}`)에서는 **경로를 쪼갤 수 없다.**
+   * 문서에 반이 적혀 있지 않으면 '우리 반만 보기' 를 화면에서만 숨기게 되고,
+   * 그건 숨긴 게 아니다.
+   *
+   * 없을 수 있다 — 이 필드 이전에 올라온 작품. `scripts/backfill-artwork-scope.mjs`
+   * 로 채운다. 규칙은 없는 경우를 '학교 공개' 로 친다.
+   */
+  schoolId?: string;
+  classId?: string;
+  /** 전시실의 공개 범위를 **베껴 둔 것.** 전시실 설정을 바꾸면 함께 갱신된다. */
+  visibility?: ExhibitVisibility;
   uploadedBy: string;
   uploadedByRole: 'student' | 'parent' | 'teacher';
   uploadedAt: Timestamp;

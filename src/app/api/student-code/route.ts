@@ -68,6 +68,15 @@ export async function POST(req: NextRequest) {
           classId: info.classId,
           name: info.name,
         }),
+        /**
+         * 자녀 반을 **평평한 목록으로도** 남긴다.
+         *
+         * 보안 규칙은 `children` 같은 객체 배열에서 `classId` 만 뽑아낼 수 없다.
+         * 그래서 '우리 반만 보기' 전시실을 반 목록으로 판정하면 **학부모만 자녀
+         * 전시에서 밀려난다.** `classIds` 에 그냥 넣지 않는 이유는 그게 '내가 속한 반'
+         * 이라 아이·교사용 판정에 함께 걸리기 때문이다 — 학부모는 따로 센다.
+         */
+        childClassIds: FieldValue.arrayUnion(info.classId),
       },
       { merge: true }
     );

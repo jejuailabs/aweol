@@ -70,10 +70,42 @@ service cloud.firestore {
                 && classId in userData().get('classIds', [])));
     }
 
+    /**
+     * 전시실 공개 범위 — **작품에 베껴둔 값으로 판정한다.**
+     *
+     * 여기(collectionGroup 자리)서는 경로를 쪼갤 수 없어서 어느 반 것인지 알 수 없고,
+     * 전시실 문서를 `get()` 하면 작품 수만큼 읽기가 든다. 그래서 작품 문서가
+     * `classId` 와 `visibility` 를 함께 지닌다.
+     *
+     * **`resource.data.get('visibility', 'school')` 로 쓰면 안 된다.**
+     * 문서 하나를 읽을 때는 제대로 먹는데 **질의 판정에는 안 걸려서 그냥 통과시킨다**
+     * (실측: 잠긴 작품이 비로그인 collectionGroup 조회에 그대로 딸려 왔다).
+     * 기본값 있는 `get()` 은 질의의 `where` 와 맞춰볼 수 없기 때문으로 보인다.
+     * 그래서 **필드를 직접 비교한다** — 대신 필드가 없는 문서는 평가가 실패해 막히므로
+     * `scripts/backfill-artwork-scope.mjs` 로 옛 작품을 먼저 채워야 한다.
+     */
+    /**
+     * 이 반 사람인가 — 아이·담임은 `classIds`, **학부모는 `childClassIds`**.
+     * 규칙은 `children` 같은 객체 배열에서 classId 만 뽑아낼 수 없어서
+     * 서버가 평평한 목록을 따로 적어준다(/api/student-code).
+     */
+    function inMyClasses(classId) {
+      return isSignedIn()
+             && (classId in userData().get('classIds', [])
+                 || classId in userData().get('childClassIds', []));
+    }
+
+    function exhibitOpen() {
+      return resource.data.visibility == 'school'
+             || inMyClasses(resource.data.classId);
+    }
+
     // ---------- 작품 (collectionGroup 조회용 — /gallery, /my-stand) ----------
-    // 승인된 작품은 누구나(비로그인 포함) 조회 가능
+    // 승인 + 공개 범위를 통과한 작품은 누구나(비로그인 포함) 조회 가능.
+    // **조회 조건이 이 규칙과 정확히 같아야 한다** — 규칙이 열어준 것보다 넓게 물으면
+    // 문서 하나가 막히는 순간 질의 전체가 실패한다(/gallery 참고).
     match /{path=**}/artworks/{artworkId} {
-      allow read: if resource.data.status == 'approved'
+      allow read: if (resource.data.status == 'approved' && exhibitOpen())
                   || (isSignedIn()
                       && (resource.data.uploadedBy == request.auth.uid
                           || resource.data.artistUid == request.auth.uid))
@@ -458,8 +490,17 @@ service cloud.firestore {
           allow write: if isTeacherOf(schoolId, classId);
 
           match /artworks/{artworkId} {
-            // 승인된 작품은 공개, 미승인은 작성자(업로더/작가)와 교사만
-            allow read: if resource.data.status == 'approved'
+            /**
+             * 승인된 작품은 공개, 미승인은 작성자(업로더/작가)와 교사만.
+             *
+             * **'우리 반만' 전시실은 여기서도 막아야 한다.** 위 collectionGroup 규칙만
+             * 조이면 주소를 아는 사람은 전시실을 그대로 열 수 있다 — 규칙은 하나라도
+             * 통과하면 허용이라, 두 자리를 같이 닫지 않으면 닫은 게 아니다.
+             * 여기서는 경로에 반이 있으므로 반 사람인지 바로 볼 수 있다.
+             */
+            allow read: if (resource.data.status == 'approved'
+                            && (resource.data.visibility == 'school'
+                                || inMyClasses(classId)))
                         || isTeacherOf(schoolId, classId)
                         || (isSignedIn()
                             && (resource.data.uploadedBy == request.auth.uid

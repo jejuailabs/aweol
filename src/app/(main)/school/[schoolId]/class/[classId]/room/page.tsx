@@ -36,6 +36,8 @@ export default function ClassRoomPage() {
   const [showList, setShowList] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  /** 새 전시실의 공개 범위. 기본은 학교 전체 — 지금까지의 동작과 같다. */
+  const [newVis, setNewVis] = useState<'school' | 'class'>('school');
   const [newDesc, setNewDesc] = useState('');
   const [saving, setSaving] = useState(false);
   const [addErr, setAddErr] = useState('');
@@ -221,10 +223,12 @@ export default function ClassRoomPage() {
         date: serverTimestamp(),
         thumbnailUrl: '',
         order: activities.length,
+        visibility: newVis,
       });
       setShowAdd(false);
       setNewTitle('');
       setNewDesc('');
+      setNewVis('school');
       fetchActivities();
     } catch {
       /**
@@ -241,7 +245,7 @@ export default function ClassRoomPage() {
       // 성공하든 실패하든 반드시 푼다
       setSaving(false);
     }
-  }, [newTitle, newDesc, schoolId, classId, activities.length, fetchActivities, myClass]);
+  }, [newTitle, newDesc, newVis, schoolId, classId, activities.length, fetchActivities, myClass]);
 
   const isTeacher = myClass;
   // 항상 실데이터만 표시 — 가짜 활동은 클릭하면 빈 전시실로 가므로 쓰지 않는다
@@ -478,7 +482,7 @@ export default function ClassRoomPage() {
               />
             </div>
 
-            <div className="mb-5">
+            <div className="mb-4">
               <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>한 줄 소개 (선택)</div>
               <input
                 type="text"
@@ -488,6 +492,34 @@ export default function ClassRoomPage() {
                 className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                 style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
               />
+            </div>
+
+            {/*
+              공개 범위 — **만들 때 정한다.** 나중에 바꾸려면 이미 걸린 작품까지
+              전부 따라 고쳐야 해서, 처음에 묻는 것이 서로에게 싸다.
+              (바꾸는 길도 전시실 화면에 열어뒀다)
+            */}
+            <div className="mb-5">
+              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>누가 볼까요?</div>
+              <div className="flex gap-2">
+                {(['school', 'class'] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setNewVis(v)}
+                    className="flex-1 rounded-xl px-3 py-2.5 text-[13px] font-bold"
+                    style={newVis === v
+                      ? { background: 'var(--color-primary)', color: 'white' }
+                      : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+                  >
+                    {v === 'school' ? '🏫 학교 전체' : '🔒 우리 반만'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[12px] mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+                {newVis === 'school'
+                  ? '전체 갤러리에도 걸려서 다른 반 친구들도 볼 수 있어요.'
+                  : '전체 갤러리에서 빠지고, 우리 반 사람만 볼 수 있어요.'}
+              </p>
             </div>
 
             {!myClass && (

@@ -101,9 +101,12 @@ export function myClassIds(userDoc: {
   role?: UserRole | null;
   classIds?: string[];
   children?: { classId: string }[];
+  childClassIds?: string[];
 } | null | undefined): string[] {
   if (!userDoc) return [];
   const fromChildren = (userDoc.children ?? []).map((c) => c.classId).filter(Boolean);
+  // 규칙이 보는 평평한 목록. `children` 과 같은 내용이지만 옛 계정에는 한쪽만 있을 수 있다.
+  const flatChildren = userDoc.childClassIds ?? [];
   const fromSelf = userDoc.classIds ?? [];
-  return [...new Set([...fromSelf, ...fromChildren])];
+  return [...new Set([...fromSelf, ...fromChildren, ...flatChildren])];
 }

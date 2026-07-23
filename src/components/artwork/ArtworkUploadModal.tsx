@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { resizeImage } from '@/lib/client-image';
-import { doc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { isTeacherOfClass } from '@/lib/auth-helpers';
+import { scopeFromPath, visibilityOf } from '@/lib/exhibit-scope';
 import { youtubeId, youtubeThumb } from '@/lib/youtube';
 
 interface Props {
@@ -45,9 +46,24 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
   const vid = youtubeId(vUrl);
 
   // collectionPath: schools/{schoolId}/classes/{classId}/activities/{activityId}/artworks
-  const pathParts = collectionPath.split('/');
-  const schoolId = pathParts[1];
-  const classId = pathParts[3];
+  const { schoolId, classId, activityId } = scopeFromPath(collectionPath);
+
+  /**
+   * 이 전시실의 공개 범위. **작품에 베껴 넣어야 한다** — 전체 갤러리 조회는
+   * 작품만 보고 걸러야 하는데(collectionGroup), 거기서는 전시실 문서를 못 본다.
+   * 올릴 때 한 번 읽는다. 못 읽으면 학교 공개로 친다(숨기려던 것이 열리는 쪽보다
+   * 열려 있던 것이 그대로인 쪽이 놀라움이 적다).
+   */
+  const [visibility, setVisibility] = useState<'school' | 'class'>('school');
+  useEffect(() => {
+    if (!db || !schoolId || !classId || !activityId) return;
+    getDoc(doc(db, 'schools', schoolId, 'classes', classId, 'activities', activityId))
+      .then((s) => setVisibility(visibilityOf(s.data()?.visibility)))
+      .catch(() => {});
+  }, [schoolId, classId, activityId]);
+
+  /** 작품 문서에 함께 적는 소속. 규칙이 이걸 보고 갤러리 노출을 정한다. */
+  const scopeFields = { schoolId, classId, visibility };
 
   /**
    * **이 반** 담임인가. 여기서 갈리는 게 명부·일괄도구만이 아니라
@@ -73,12 +89,16 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
     })();
   }, [isTeacher, schoolId, classId]);
 
-  // 학생/학부모 본인 업로드면 이름 자동 채움
-  useEffect(() => {
-    if (!isTeacher && userDoc?.displayName) {
-      setItems((prev) => prev.map((it) => (it.artistName ? it : { ...it, artistName: userDoc.displayName })));
-    }
-  }, [isTeacher, userDoc]);
+  /**
+   * 학생·학부모 본인 업로드면 이름을 대신 채워준다.
+   *
+   * 파일을 고를 때(`defaultName`) 이미 넣지만, 계정 정보가 늦게 오면 그때는 비어 있다.
+   * 예전에는 effect 안에서 목록을 통째로 다시 써서 메웠는데, **그리는 중에 상태를
+   * 고치는 것**이라 렌더가 연쇄된다. 어차피 이름이 필요한 순간은 낼 때뿐이라
+   * 낼 때 메운다.
+   */
+  const nameFor = (typed: string) =>
+    typed.trim() || (!isTeacher ? userDoc?.displayName || '' : '');
 
   useEffect(() => {
     return () => {
@@ -201,12 +221,13 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
 
       await setDoc(doc(db, collectionPath, artworkId), {
         title: it.title.trim(),
-        artistName: it.artistName.trim(),
+        artistName: nameFor(it.artistName),
         artistUid: isTeacher ? '' : user.uid,
         imageUrl,
         thumbnailUrl,
         type: it.type,
         artistComment: '',
+        ...scopeFields,
         uploadedBy: user.uid,
         uploadedByRole: isTeacher ? 'teacher' : role === 'parent' ? 'parent' : 'student',
         uploadedAt: serverTimestamp(),
@@ -237,13 +258,14 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
       const thumb = youtubeThumb(vid);
       await setDoc(doc(db, collectionPath, artworkId), {
         title: vTitle.trim(),
-        artistName: vArtist.trim(),
+        artistName: nameFor(vArtist),
         artistUid: isTeacher ? '' : user.uid,
         imageUrl: thumb,
         thumbnailUrl: thumb,
         videoId: vid,
         type: 'flat',
         artistComment: '',
+        ...scopeFields,
         uploadedBy: user.uid,
         uploadedByRole: isTeacher ? 'teacher' : role === 'parent' ? 'parent' : 'student',
         uploadedAt: serverTimestamp(),
