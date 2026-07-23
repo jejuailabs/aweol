@@ -59,7 +59,14 @@ export default function PlazaPage() {
    * 그리는 중에 ref 를 읽게 된다 — 그러면 값이 바뀌어도 화면이 안 따라온다.
    */
   const [skew, setSkew] = useState(0);
-  const [tick, setTick] = useState(0);
+  /**
+   * 서버 기준 지금.
+   *
+   * **그리는 중에 `Date.now()` 를 부르지 않는다** — 그리기는 같은 값에 같은
+   * 그림이 나와야 하는데 시계는 부를 때마다 다르다. 상태에 담아두고
+   * 아래 타이머가 갈아 끼운다.
+   */
+  const [now, setNow] = useState(0);
 
   const me = user?.uid ?? '';
   const amOut = !!room && room.out.includes(me);
@@ -79,12 +86,9 @@ export default function PlazaPage() {
 
   // 남은 시간을 보여주려면 계속 다시 그려야 한다
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 200);
+    const t = setInterval(() => setNow(Date.now() + skew), 200);
     return () => clearInterval(t);
-  }, []);
-
-  /** 서버 기준 지금 */
-  const now = () => Date.now() + skew;
+  }, [skew]);
 
   const call = useCallback(async (action: string, extra: Record<string, unknown> = {}) => {
     const token = await auth?.currentUser?.getIdToken();
@@ -116,7 +120,7 @@ export default function PlazaPage() {
    */
   useEffect(() => {
     if (!db || !user || !room || room.status !== 'asking' || !amAlive || !side) return;
-    if (now() >= room.endsAt) return;
+    if (Date.now() + skew >= room.endsAt) return;
     setDoc(
       doc(db, 'schools', schoolId, 'oxRooms', ROOM, 'picks', user.uid),
       { v: side, round: room.round },
@@ -157,9 +161,9 @@ export default function PlazaPage() {
   // ── 화면 위에 얹는 것 ──────────────────────────────────
   const asking = room?.status === 'asking';
   const revealing = room?.status === 'reveal';
-  const left = room ? Math.max(0, Math.ceil((room.endsAt - now()) / 1000)) : 0;
-  const locked = !!room && asking && now() >= room.endsAt;
-  void tick; // 남은 시간을 다시 그리려고 둔다
+  const left = room && now ? Math.max(0, Math.ceil((room.endsAt - now) / 1000)) : 0;
+  // 시계를 아직 못 받았으면(now === 0) 잠긴 것으로 보지 않는다
+  const locked = !!room && asking && now > 0 && now >= room.endsAt;
 
   const hud = (
     <>

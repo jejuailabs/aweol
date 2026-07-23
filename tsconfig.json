@@ -9,6 +9,9 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // 검증 스크립트가 lib 을 그대로 불러 쓴다(node --experimental-strip-types).
+    // 노드는 확장자를 안 붙이면 못 찾으므로, lib 끼리는 `./x.ts` 로 적는다.
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",

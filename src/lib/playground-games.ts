@@ -86,6 +86,15 @@ export const PLAYGROUND_GAMES: PlaygroundGame[] = [
     color: '#E8A33C',
   },
   {
+    key: 'goldenbell',
+    label: '도전 골든벨',
+    emoji: '🔔',
+    desc: '자리에 앉아 판에 적어요, 서른 자리',
+    trains: '아는 것',
+    path: 'goldenbell',
+    color: '#7A5B3A',
+  },
+  {
     /*
       짝맞추기는 반 안(교실 게임 칸)에서 한다. 운동장 카드에는 안 띄우지만
       랭킹에는 올린다 — 아이가 '내가 뭘 잘하나' 를 한자리에서 봐야 한다.

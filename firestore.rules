@@ -366,6 +366,39 @@ service cloud.firestore {
       }
 
       /**
+       * 골든벨 자리 — 다 같이 보는 판. 광장(oxRooms)과 같은 얼개다.
+       */
+      match /bellRooms/{roomKey} {
+        allow read: if true;
+        allow write: if false;
+
+        match /players/{uid} {
+          allow read: if true;
+          allow write: if isSignedIn() && request.auth.uid == uid;
+        }
+
+        /**
+         * 판에 적은 답.
+         *
+         * **시간이 지나면 못 고친다.** 골든벨에서 답을 바꿀 수 있으면
+         * 놀이가 아니다. 객관식은 번호, 주관식은 글이라 값의 종류는
+         * 서버가 채점할 때 본다 — 여기서는 **길이만** 막는다
+         * (긴 글을 밀어 넣어 저장소를 채우는 것을 막으려는 것이다).
+         */
+        match /answers/{uid} {
+          allow read: if true;
+          allow write: if isSignedIn()
+                       && request.auth.uid == uid
+                       && request.resource.data.round ==
+                          get(/databases/$(database)/documents/schools/$(schoolId)/bellRooms/$(roomKey)).data.round
+                       && request.time.toMillis() <
+                          get(/databases/$(database)/documents/schools/$(schoolId)/bellRooms/$(roomKey)).data.endsAt
+                       && (request.resource.data.v is int
+                           || (request.resource.data.v is string && request.resource.data.v.size() <= 60));
+        }
+      }
+
+      /**
        * 양궁 대결 방.
        *
        * 둘이 화면을 실시간으로 같이 보므로 **읽기는 로그인하면 열어둔다**
