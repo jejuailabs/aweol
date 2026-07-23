@@ -444,10 +444,20 @@ function SchoolBuilding({
         <boxGeometry args={[5.2, 0.9, 2]} />
         <meshStandardMaterial color={palette.roofDark} roughness={0.6} />
       </mesh>
-      {/* 현관문 — 누르면 '우리 학교' 창이 열린다 */}
+      {/*
+        현관문 — 누르면 '우리 학교' 창이 열린다.
+
+        **전시관에서는 잠가둔다.** 그 안은 학교 소개·급식·건의함이라 전시관에는
+        하나도 맞지 않는다(전시 보러 온 사람에게 급식을 보여주는 꼴이다).
+        문은 그대로 두고 눌리지만 않게 한다 — 벽으로 막으면 건물이 이상해진다.
+        전시관에 어울리는 것이 생기면 그때 다시 연다.
+      */}
       <group
-        onClick={hallDoor.press}
-        onPointerOver={(e) => { e.stopPropagation(); setDoorHot(true); document.body.style.cursor = 'pointer'; }}
+        onClick={kind === 'gallery' ? undefined : hallDoor.press}
+        onPointerOver={(e) => {
+          if (kind === 'gallery') return;
+          e.stopPropagation(); setDoorHot(true); document.body.style.cursor = 'pointer';
+        }}
         onPointerOut={() => { setDoorHot(false); document.body.style.cursor = 'auto'; }}
       >
         <mesh position={[0, 1.25, bodyD * 0.5 + 1.32]}>

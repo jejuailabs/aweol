@@ -46,12 +46,22 @@ export default function LobbyPage() {
       .then((s) => {
         if (!s.exists()) return;
         const v = s.data();
+        /**
+         * **전시관에는 현관이 없다.** 여기 있는 것은 학교 소개·급식·건의함이라
+         * 전시 보러 온 사람에게는 하나도 맞지 않는다.
+         * 3D 에서 문을 잠가뒀지만, 주소를 바로 치면 그대로 열린다 —
+         * **화면만 막고 길을 안 막으면 막은 게 아니다.**
+         */
+        if (v.kind === 'gallery') {
+          router.replace(`/school/${schoolId}`);
+          return;
+        }
         setSchoolName((v.name as string) || '우리 학교');
         setEmblemUrl((v.emblemUrl as string) || '');
         setProfile(v.profile as SchoolProfile | undefined);
       })
       .catch(() => {});
-  }, [schoolId]);
+  }, [schoolId, router]);
 
   /**
    * 게시판 배지 숫자.
