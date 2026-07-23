@@ -141,6 +141,7 @@ export default function VillagePage() {
            * 학교마다 방을 따로 만들지 않는다.
            */
           onEnterPlace={(kind) => router.push(`/school/${schoolId}/place/${kind}`)}
+          onEnterSite={(siteId) => router.push(`/school/${schoolId}/site/${siteId}`)}
           ownedVehicles={ownedVehicles}
           vehicleId={vehicleId}
           onPickVehicle={pickVehicle}

@@ -185,6 +185,19 @@ service cloud.firestore {
       }
 
       /**
+       * 마을 심부름 — 어디를 다녀왔고 무엇을 알아봤나.
+       *
+       * **본인만 쓴다.** 도장·잔액과 달리 이건 값어치가 아니라 진행 표시라서
+       * 서버를 거칠 이유가 없다. 스스로 '다녀왔다' 로 적어봤자 얻는 것은
+       * 다음 이야기를 볼 수 있다는 것뿐이다.
+       * 담임은 볼 수 있어야 한다 — 아이가 무엇을 했는지 보려면.
+       */
+      match /quests/{questId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
+        allow write: if isSignedIn() && request.auth.uid == uid;
+      }
+
+      /**
        * 선생님이 직접 만든 도장 도안.
        *
        * 본인만 만들고 지운다. 아이는 여기를 안 읽는다 — 찍는 순간 제출물 쪽으로

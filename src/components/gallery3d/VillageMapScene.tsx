@@ -12,6 +12,7 @@ import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import { civicKindOf } from '@/lib/civic-places';
+import { sitesOfSchool } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
@@ -387,7 +388,7 @@ function CarRig({
 */
 
 export default function VillageMapScene({
-  data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace,
+  data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace, onEnterSite,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
 }: {
   data: VillageData;
@@ -400,6 +401,8 @@ export default function VillageMapScene({
   onEnterSchool: () => void;
   /** 관공서 문을 눌렀을 때 (우체국·읍사무소 …) */
   onEnterPlace?: (kind: string) => void;
+  /** 우리 고장 유적을 눌렀을 때 (애월진성 …) */
+  onEnterSite?: (siteId: string) => void;
   /** 이 아이가 가진 탈것 id 들(기본 자동차 말고 산 것) */
   ownedVehicles?: string[];
   /** 지금 고른 탈것 id. null 이면 기본 자동차. */
@@ -433,6 +436,8 @@ export default function VillageMapScene({
    * 여는 순간 한 번 베껴 둔다.
    */
   const [mePos, setMePos] = useState({ x: 0, z: 0, yaw: 0 });
+  /** 이 학교 마을에 뜨는 유적 (표에서 학교로 걸러온다) */
+  const sites = useMemo(() => sitesOfSchool(schoolId), [schoolId]);
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
 
@@ -474,9 +479,24 @@ export default function VillageMapScene({
   );
 
   const targets: WarpTarget[] = useMemo(
-    // 건물을 먼저 넣는다 — 가까운 것부터 고르므로, 같은 자리라면 이름 있는 건물이 남는다
-    () => warpTargets([...buildingPois, ...data.poi], schoolName),
-    [buildingPois, data.poi, schoolName]
+    () => [
+      // 건물을 먼저 넣는다 — 가까운 것부터 고르므로, 같은 자리라면 이름 있는 건물이 남는다
+      ...warpTargets([...buildingPois, ...data.poi], schoolName),
+      /**
+       * 유적은 **고르기를 거치지 않고 그냥 넣는다.**
+       * `warpTargets` 는 서로 너무 가까운 곳을 솎아내는데, 애월진성은 학교에서
+       * 30m 도 안 떨어져 있어 그 규칙에 걸려 사라진다. 학교 바로 옆인 것이
+       * 이 유적의 요점이므로, 여기서는 규칙보다 사실이 먼저다.
+       */
+      ...sites.map((s) => ({
+        id: `site-${s.id}`,
+        name: s.name,
+        x: s.x,
+        z: s.z,
+        dist: Math.hypot(s.x, s.z),
+      })),
+    ],
+    [buildingPois, data.poi, schoolName, sites]
   );
 
   /**
@@ -491,8 +511,10 @@ export default function VillageMapScene({
       const t = targets.find((x) => x.name === (b.n as string).trim());
       if (t) s.add(t.id);
     }
+    // 유적도 들어가 볼 수 있는 곳이다
+    for (const site of sites) s.add(`site-${site.id}`);
     return s;
-  }, [data.b, targets]);
+  }, [data.b, targets, sites]);
 
   /**
    * 워프 — 아바타를 그 자리로 **옮기기만** 한다.
@@ -565,6 +587,39 @@ export default function VillageMapScene({
         <Areas list={data.a} />
         <Roads list={data.rd} />
         <Buildings list={data.b} onEnterPlace={onEnterPlace} />
+
+        {/*
+          우리 고장 유적 — **학교 바로 옆에 선다.**
+          애월초는 실제로 애월진성 터에 세워졌다. 지어낸 자리가 아니라
+          그 자리가 맞아서 여기 둔다.
+        */}
+        {sites.map((s) => (
+          <group key={s.id} position={[s.x, 0, s.z]}>
+            {/* 남아 있는 성벽 한 자락 — 실제로 북성 일부가 남아 있다 */}
+            <mesh position={[0, 1.6, 0]} castShadow receiveShadow>
+              <boxGeometry args={[10, 3.2, 1.4]} />
+              <meshStandardMaterial color="#9A9188" roughness={1} />
+            </mesh>
+            <mesh position={[0, 3.3, 0]} castShadow>
+              <boxGeometry args={[10.4, 0.3, 1.7]} />
+              <meshStandardMaterial color="#867D74" roughness={1} />
+            </mesh>
+            <Html position={[0, 5.2, 0]} center style={{ pointerEvents: 'auto' }} zIndexRange={[5, 0]}>
+              <div
+                onClick={() => onEnterSite?.(s.id)}
+                style={{
+                  background: '#FFF1D6', color: '#5B4A3B', fontWeight: 800, fontSize: '14px',
+                  padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
+                  fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+                  border: '2px solid #B08860', cursor: 'pointer',
+                }}
+              >
+                {s.emoji} {s.name}
+                <span style={{ color: '#A6762A', marginLeft: '6px', fontSize: '12px' }}>알아보기 ›</span>
+              </div>
+            </Html>
+          </group>
+        ))}
 
         {/* 학교 자리 — 원점이 곧 학교다. 여기를 눌러 들어간다. */}
         <group

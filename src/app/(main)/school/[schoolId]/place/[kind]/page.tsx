@@ -1,9 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { civicByKind } from '@/lib/civic-places';
+import { sitesOfSchool } from '@/lib/local-sites';
 
 const CivicPlaceScene = dynamic(() => import('@/components/gallery3d/CivicPlaceScene'), { ssr: false });
 
@@ -19,9 +23,88 @@ export default function CivicPlacePage() {
   const params = useParams();
   const schoolId = params.schoolId as string;
   const kind = params.kind as string;
-  const { userDoc } = useAuth();
+  const { user, userDoc } = useAuth();
 
   const place = civicByKind(kind);
+
+  /**
+   * 이 곳 이야기를 이미 다 들었나.
+   *
+   * **아이 자기 문서에 남긴다**(`users/{uid}/quests/{kind}`). 심부름은 값어치가
+   * 아니라 진행 표시라 서버를 거칠 이유가 없다 — 스스로 적어봤자 얻는 것은
+   * 다음 이야기를 볼 수 있다는 것뿐이다.
+   * 로그인 안 한 아이도 이야기는 들을 수 있다. 다만 남지 않는다.
+   */
+  const [guideDone, setGuideDone] = useState(false);
+  useEffect(() => {
+    if (!db || !user || !kind) return;
+    getDoc(doc(db, 'users', user.uid, 'quests', `place-${kind}`))
+      .then((s) => setGuideDone(s.exists() && s.data()?.done === true))
+      .catch(() => {});
+  }, [user, kind]);
+
+  const markDone = () => {
+    setGuideDone(true);
+    if (!db || !user) return;
+    setDoc(
+      doc(db, 'users', user.uid, 'quests', `place-${kind}`),
+      { done: true, kind, at: serverTimestamp() },
+      { merge: true }
+    ).catch(() => {
+      // 못 남겨도 아이 화면은 그대로 진행된다 — 진행 표시 때문에 놀이가 막히면 안 된다
+    });
+  };
+
+  /**
+   * 밖으로 나가는 심부름이 어디까지 왔나.
+   *
+   * **두 군데를 본다** — 유적 쪽 기록(`site-{id}`, 다녀왔나)과
+   * 이 기관 쪽 기록(`mission-{id}`, 상을 받았나). 다녀온 것과 알린 것은 다른 일이라
+   * 한 칸으로는 못 적는다.
+   *
+   * 그리고 **그 유적이 이 학교 마을에 있어야** 심부름이 뜬다. 없는 곳으로
+   * 보내면 아이는 마을을 헤맨다.
+   */
+  const mission = place?.mission;
+  const hasSite = !!mission && sitesOfSchool(schoolId).some((s) => s.id === mission.siteId);
+
+  /** 다녀왔나 / 상을 받았나 — 두 가지만 담고, 보여줄 상태는 아래에서 계산한다 */
+  const [visited, setVisited] = useState(false);
+  const [claimed, setClaimed] = useState(false);
+
+  useEffect(() => {
+    if (!db || !user || !mission || !hasSite) return;
+    const uid = user.uid;
+    Promise.all([
+      getDoc(doc(db, 'users', uid, 'quests', `site-${mission.siteId}`)),
+      getDoc(doc(db, 'users', uid, 'quests', `mission-${mission.siteId}`)),
+    ])
+      .then(([v, c]) => {
+        setVisited(v.exists() && v.data()?.done === true);
+        setClaimed(c.exists() && c.data()?.done === true);
+      })
+      .catch(() => {
+        // 못 읽으면 아직 안 다녀온 것으로 본다 — 심부름이 사라지는 것보다 낫다
+      });
+  }, [user, mission, hasSite]);
+
+  /**
+   * 로그인 안 한 아이에게도 심부름은 보인다. 다만 다녀온 것이 남지 않아
+   * 늘 `todo` 다 — 놀이를 막을 이유는 없다.
+   */
+  const missionState: 'hidden' | 'todo' | 'ready' | 'done' =
+    !hasSite ? 'hidden' : claimed ? 'done' : visited ? 'ready' : 'todo';
+
+  const claimMission = () => {
+    if (!mission) return;
+    setClaimed(true);
+    if (!db || !user) return;
+    setDoc(
+      doc(db, 'users', user.uid, 'quests', `mission-${mission.siteId}`),
+      { done: true, siteId: mission.siteId, kind, at: serverTimestamp() },
+      { merge: true }
+    ).catch(() => {});
+  };
 
   // 모르는 곳이면 지어내지 않는다 — 마을로 돌려보낸다
   if (!place) {
@@ -50,9 +133,12 @@ export default function CivicPlacePage() {
         avatarCustom={userDoc?.avatarCustom}
         avatarTint={userDoc?.avatarTint}
         onExit={() => router.push('/village')}
+        guideDone={guideDone}
+        onGuideDone={markDone}
+        missionState={missionState}
+        onGoSite={() => mission && router.push(`/school/${schoolId}/site/${mission.siteId}`)}
+        onClaimMission={claimMission}
       />
-      {/* schoolId 는 주소에만 쓰인다 — 어느 학교에서 들어왔는지 돌아갈 때 쓴다 */}
-      <span className="hidden">{schoolId}</span>
     </div>
   );
 }
