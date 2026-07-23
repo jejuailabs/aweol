@@ -6,7 +6,7 @@
 //   토큰 검증은 아래에서 jose로 직접 한다. (firestore 쪽은 이 체인을 타지 않아 안전)
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from 'jose';
 
 let app: App | null = null;
 
