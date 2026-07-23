@@ -26,7 +26,10 @@ export default function JoinRequestPage() {
       .catch(() => setSchools([]));
   }, []);
 
-  const waiting = userDoc?.pendingRole === 'teacher';
+  const waiting = userDoc?.pendingRole === 'teacher' || userDoc?.pendingRole === 'school_admin';
+  /** 학교관리자는 담임이 아닐 수 있어서 학년·반을 묻지 않는다 */
+  const needsSchool = selectedRole === 'teacher' || selectedRole === 'school_admin';
+  const needsClass = selectedRole === 'teacher';
 
   useEffect(() => {
     if (!user) {
@@ -49,11 +52,13 @@ export default function JoinRequestPage() {
       >
         <div className="text-6xl mb-4">⏳</div>
         <h1 className="text-lg font-bold mb-2" style={{ color: 'var(--color-text-main)' }}>
-          선생님 확인을 기다리는 중이에요
+          확인을 기다리는 중이에요
         </h1>
         <p className="text-sm max-w-[320px] leading-relaxed mb-8" style={{ color: 'var(--color-text-sub)' }}>
-          아이들 명부를 다루는 권한이라 총관리자가 한 번 확인해요.
-          승인되면 바로 선생님 화면이 열립니다.
+          {userDoc?.pendingRole === 'school_admin'
+            ? '학교 전체를 다루는 권한이라 총관리자가 한 번 확인해요.'
+            : '아이들 명부를 다루는 권한이라 학교관리자가 한 번 확인해요.'}
+          {' '}승인되면 바로 선생님 화면이 열립니다.
         </p>
         <button
           onClick={() => router.replace('/')}
@@ -67,7 +72,10 @@ export default function JoinRequestPage() {
   }
 
   const roles: { value: UserRole; label: string; icon: string; desc: string }[] = [
-    { value: 'teacher', label: '선생님', icon: '👩‍🏫', desc: '반 만들기, 수업(활동) 등록, 작품 승인' },
+    // 반 만들기는 여기서 빠졌다 — 학교관리자 몫이다. 적어두지 않으면
+    // 선생님이 반부터 만들려다 막히고 나서야 알게 된다.
+    { value: 'teacher', label: '선생님', icon: '👩‍🏫', desc: '우리 반 수업(활동)·숙제·작품 승인' },
+    { value: 'school_admin', label: '학교관리자', icon: '🏫', desc: '반 만들기, 우리 학교 선생님 승인' },
     { value: 'student', label: '학생', icon: '🎒', desc: '내 반에 작품 올리기, 감상평 쓰기' },
     { value: 'parent', label: '학부모', icon: '👨‍👩‍👧', desc: '아이 작품 관람, 감상평 쓰기' },
   ];
@@ -133,7 +141,7 @@ export default function JoinRequestPage() {
             ))}
           </div>
 
-          {selectedRole === 'teacher' && (
+          {needsSchool && (
             <div className="mt-4 w-full max-w-[320px]">
               <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
                 어느 학교 선생님이신가요?
@@ -159,32 +167,46 @@ export default function JoinRequestPage() {
                   ))
                 )}
               </div>
-              <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
-                맡으신 학년과 반
-              </div>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="number" min={1} max={6} value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  placeholder="학년"
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-main)' }}
-                />
-                <input
-                  type="number" min={1} max={20} value={classNumber}
-                  onChange={(e) => setClassNumber(e.target.value)}
-                  placeholder="반"
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-main)' }}
-                />
-              </div>
+              {needsClass && (
+                <>
+                  <div className="text-[13px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                    맡으신 학년과 반
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      type="number" min={1} max={6} value={grade}
+                      onChange={(e) => setGrade(e.target.value)}
+                      placeholder="학년"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-main)' }}
+                    />
+                    <input
+                      type="number" min={1} max={20} value={classNumber}
+                      onChange={(e) => setClassNumber(e.target.value)}
+                      placeholder="반"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text-main)' }}
+                    />
+                  </div>
+                </>
+              )}
               <div
                 className="rounded-xl px-4 py-3 text-[13px] leading-relaxed"
                 style={{ background: 'rgba(255,255,255,0.85)', color: 'var(--color-text-sub)' }}
               >
-                ⏳ 선생님은 아이들 명부를 다루기 때문에 <b>총관리자 확인</b>을 거쳐요.
-                권한은 <b>맡으신 반 안에서만</b> 쓸 수 있어요 — 같은 학교라도 다른 반은
-                보거나 고칠 수 없습니다.
+                {selectedRole === 'school_admin' ? (
+                  <>
+                    ⏳ 학교관리자는 <b>총관리자 확인</b>을 거쳐요.
+                    우리 학교의 <b>반을 만들고</b>, 선생님 신청을 <b>승인</b>합니다.
+                    권한은 <b>이 학교 안에서만</b> 통해요.
+                  </>
+                ) : (
+                  <>
+                    ⏳ 선생님은 아이들 명부를 다루기 때문에 <b>학교관리자 확인</b>을 거쳐요.
+                    권한은 <b>맡으신 반 안에서만</b> 쓸 수 있어요 — 같은 학교라도 다른 반은
+                    보거나 고칠 수 없습니다. 반이 아직 없으면 학교관리자에게 요청해 주세요.
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -204,12 +226,16 @@ export default function JoinRequestPage() {
             onClick={handleRoleNext}
             disabled={
               !selectedRole || loading ||
-              (selectedRole === 'teacher' && (!schoolId || !grade || !classNumber))
+              (needsSchool && !schoolId) ||
+              (needsClass && (!grade || !classNumber))
             }
             className="mt-8 rounded-full px-8 py-3 font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100"
             style={{ background: 'var(--color-primary)' }}
           >
-            {loading ? '처리 중...' : selectedRole === 'teacher' ? '선생님으로 신청하기' : '다음으로'}
+            {loading ? '처리 중...'
+              : selectedRole === 'teacher' ? '선생님으로 신청하기'
+              : selectedRole === 'school_admin' ? '학교관리자로 신청하기'
+              : '다음으로'}
           </button>
 
           {error && (

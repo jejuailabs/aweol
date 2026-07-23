@@ -316,7 +316,7 @@ function ExhibitBanner({
       </Html>
 
       {/* 흔들리는 느낌 — 정지한 천은 판자처럼 보인다 */}
-      <Html position={[0, 3.1, 0.2]} center pointerEvents="none" zIndexRange={[6, 0]}>
+      <Html position={[0, 3.1, 0.2]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
         <div style={{ fontSize: '15px', animationDelay: `${delay}s` }} className="float-slow">🎨</div>
       </Html>
     </group>
@@ -437,7 +437,7 @@ function SchoolBuilding({
         </mesh>
         {/* 눌러도 되는 곳이라는 표시. 가리켰을 때, 그리고 누른 직후 */}
         {(doorHot || hallDoor.pressed) && (
-          <Html position={[0, 2.85, bodyD * 0.5 + 1.4]} center pointerEvents="none" zIndexRange={[6, 0]}>
+          <Html position={[0, 2.85, bodyD * 0.5 + 1.4]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
             <div
               style={{
                 background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '16px',
@@ -638,7 +638,7 @@ function SidePlace({
       </Html>
 
       {(hot || pressed) && (
-        <Html position={[0, 3.9, 1.8]} center pointerEvents="none" zIndexRange={[6, 0]}>
+        <Html position={[0, 3.9, 1.8]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
           <div
             style={{
               background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',

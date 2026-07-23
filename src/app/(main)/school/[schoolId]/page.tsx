@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { ClassDoc } from '@/lib/firestore-schema';
 import { playSound } from '@/lib/sound';
 import { useAuth } from '@/lib/auth-context';
-import { myClassIds } from '@/lib/auth-helpers';
+import { isStaff, myClassIds } from '@/lib/auth-helpers';
 import { useDailyHint } from '@/lib/daily-hint';
 import ShareButton from '@/components/common/ShareButton';
 import Mascot from '@/components/mascot/Mascot';
@@ -52,7 +52,7 @@ export default function SchoolPage() {
 
   // 동물을 들이는 건 그 학교 교직원만. 아이마다 들이면 매일 동물이 바뀐다.
   const isSchoolStaff = role === 'super_admin'
-    || (role === 'teacher' && (userDoc?.schoolIds ?? []).includes(schoolId));
+    || (isStaff(role) && (userDoc?.schoolIds ?? []).includes(schoolId));
   /**
    * 학교 안내는 **하루 한 번**만. 전에는 교실에 갔다 돌아올 때마다 다시 떠서
    * 걸리적거렸다. 문구는 날마다 바뀐다 — 같은 말이 매일 나오면 읽지 않게 된다.
@@ -127,7 +127,7 @@ export default function SchoolPage() {
     : ['3-1', '3-2', '3-3', '3-4'].map((label) => ({ id: label, label }));
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       {/*
         3D 학교 전경 — 창문 문패 클릭으로 반 입장.
         운동장 문은 게임 고르는 곳으로 간다. 곧장 달리기가 뜨면 양궁을 못 찾는다.

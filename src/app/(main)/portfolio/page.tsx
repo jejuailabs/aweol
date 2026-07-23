@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { collectionGroup, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { isStaff } from '@/lib/auth-helpers';
 
 interface Row {
   id: string;
@@ -32,14 +33,14 @@ export default function PortfolioPage() {
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState('');
 
-  const isStaff = userDoc?.role === 'teacher' || userDoc?.role === 'super_admin';
+  const staff = isStaff(userDoc?.role ?? null);
 
   useEffect(() => {
-    if (!loading && (!user || !isStaff)) router.replace('/');
-  }, [loading, user, isStaff, router]);
+    if (!loading && (!user || !staff)) router.replace('/');
+  }, [loading, user, staff, router]);
 
   useEffect(() => {
-    if (!db || !user || !isStaff) return;
+    if (!db || !user || !staff) return;
     getDocs(query(collectionGroup(db, 'archives'), where('archivedBy', '==', user.uid)))
       .then((snap) =>
         setRows(
@@ -53,7 +54,7 @@ export default function PortfolioPage() {
       )
       .catch(() => setErr('기록을 불러오지 못했어요'))
       .finally(() => setBusy(false));
-  }, [user, isStaff]);
+  }, [user, staff]);
 
   const total = rows.reduce(
     (acc, r) => ({

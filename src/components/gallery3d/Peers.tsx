@@ -84,7 +84,7 @@ function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
       {isIt && <ItRing />}
 
       {/* 이름표 — 누가 누군지 알아야 같이 노는 맛이 난다 */}
-      <Html position={[0, 1.3, 0]} center pointerEvents="none" zIndexRange={[4, 0]}>
+      <Html position={[0, 1.3, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[4, 0]}>
         <div
           style={{
             background: 'rgba(255,248,231,0.92)', color: '#6B5B43',

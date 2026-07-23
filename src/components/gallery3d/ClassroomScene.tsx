@@ -389,7 +389,7 @@ function Desks() {
               </mesh>
               {/* 앉으라는 표시 — 가리키기 전에는 안 띄운다 (8개가 다 떠 있으면 지저분하다) */}
               {hovered === `${x},${z}` && (
-                <Html position={[0, 1.15, 0.5]} center pointerEvents="none" zIndexRange={[6, 0]}>
+                <Html position={[0, 1.15, 0.5]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
                   <div
                     style={{
                       background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',

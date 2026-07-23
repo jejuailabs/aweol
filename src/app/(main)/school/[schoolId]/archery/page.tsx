@@ -172,7 +172,7 @@ export default function ArcheryPage() {
       달리기와 같은 짜임 — **경기장이 화면을 가득 채우고** 조작·기록은 그 위에 얹는다.
       전에는 3D 를 작은 네모 안에 넣었더니 운동장이 아니라 그림 한 장처럼 보였다.
     */
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       <ArcheryScene
         setup={phase === 'aiming' ? setup : null}
         startedAt={startedAt}

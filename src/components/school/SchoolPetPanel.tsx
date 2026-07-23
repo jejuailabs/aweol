@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { isStaff } from '@/lib/auth-helpers';
 import { playSound } from '@/lib/sound';
 import { CARE_LABEL, PET_KINDS, petLine, petMood } from '@/lib/school-pet';
 import type { PetKind } from '@/lib/firestore-schema';
@@ -42,7 +43,7 @@ export default function SchoolPetPanel({
   const [newName, setNewName] = useState(pet.name);
   const pressedBackdrop = useRef(false);
 
-  const isStaff = (userDoc?.role === 'teacher' || userDoc?.role === 'super_admin')
+  const staff = isStaff(userDoc?.role ?? null)
     && (userDoc?.role === 'super_admin' || (userDoc?.schoolIds ?? []).includes(schoolId));
 
   const mood = petMood(pet.fedAt, pet.wateredAt, pet.pettedAt);
@@ -198,7 +199,7 @@ export default function SchoolPetPanel({
           {err && <div className="text-[12px] font-bold mt-2 text-center" style={{ color: '#C0392B' }}>{err}</div>}
 
           {/* 선생님만 이름 바꾸기 */}
-          {isStaff && (
+          {staff && (
             renaming ? (
               <div className="flex gap-1.5 mt-3">
                 <input

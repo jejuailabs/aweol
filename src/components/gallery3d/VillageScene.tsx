@@ -101,7 +101,7 @@ function Building({
       </group>
 
       {/* 간판 */}
-      <Html position={[0, b.h + 1.7, 0]} center pointerEvents="none" zIndexRange={[5, 0]}>
+      <Html position={[0, b.h + 1.7, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[5, 0]}>
         <div
           style={{
             background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '17px',
@@ -115,7 +115,7 @@ function Building({
       </Html>
 
       {hot && (
-        <Html position={[0, 2.7, b.d / 2 + 0.3]} center pointerEvents="none" zIndexRange={[6, 0]}>
+        <Html position={[0, 2.7, b.d / 2 + 0.3]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
           <div
             style={{
               background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',

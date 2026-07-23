@@ -224,7 +224,7 @@ export default function TrackPage() {
   const myBest = records.find((r) => r.uid === user?.uid);
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       <TrackScene
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}

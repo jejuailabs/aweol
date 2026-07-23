@@ -134,7 +134,7 @@ function Buildings({ list }: { list: VillageData['b'] }) {
               <Html
                 position={[b.p[0][0], b.h + 2, b.p[0][1]]}
                 center
-                pointerEvents="none"
+                style={{ pointerEvents: 'none' }}
                 zIndexRange={[4, 0]}
               >
                 <div
@@ -453,7 +453,13 @@ export default function VillageMapScene({
             <circleGeometry args={[8, 32]} />
             <meshStandardMaterial color={schoolHot ? '#FFE9A8' : '#FFF4D0'} roughness={0.9} />
           </mesh>
-          <Html position={[0, 9, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
+          {/*
+            간판은 **학교 자리 바로 위**에 뜬다. 그래서 탭을 삼키면
+            "학교 자리를 누르면 들어가요" 가 간판을 누른 사람에게는 거짓말이 된다.
+            drei 의 `pointerEvents` prop 은 `transform` 모드에서만 먹는다 —
+            `center` 모드에서는 **아무 일도 안 한다.** 그래서 style 로 직접 준다.
+          */}
+          <Html position={[0, 9, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
             <div
               style={{
                 background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '17px',
@@ -474,7 +480,7 @@ export default function VillageMapScene({
           이름이 길면 잘라 쓴다(영문 병기까지 다 쓰면 화면을 가로지른다).
         */}
         {labelSpots.map((p, i) => (
-          <Html key={i} position={[p.x, 3, p.z]} center pointerEvents="none" zIndexRange={[3, 0]}>
+          <Html key={i} position={[p.x, 3, p.z]} center style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]}>
             <div
               style={{
                 background: 'rgba(255,255,255,0.85)', color: '#6B5B43',

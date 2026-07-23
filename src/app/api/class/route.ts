@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, isStaffOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, getClientIp, isSchoolAdminOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -36,8 +36,18 @@ export async function POST(req: NextRequest) {
 
   const schoolId = (body.schoolId || '').trim();
   if (!schoolId) return NextResponse.json({ error: '학교가 필요합니다' }, { status: 400 });
-  if (!isStaffOfSchool(user, schoolId)) {
-    return NextResponse.json({ error: '이 학교의 선생님만 반을 만들 수 있습니다' }, { status: 403 });
+  /**
+   * **반 만들기는 학교관리자만.**
+   *
+   * 예전에는 그 학교 교직원이면 누구나 만들 수 있었다. 그래서 담임 한 명이
+   * 임의로 반을 늘릴 수 있었고, 학년·반 구성이 실제 학교와 어긋났다.
+   * 반이 필요한 선생님은 학교관리자에게 요청한다 — 그래서 문구도 그렇게 적는다.
+   */
+  if (!isSchoolAdminOfSchool(user, schoolId)) {
+    return NextResponse.json(
+      { error: '반 만들기는 학교관리자만 할 수 있어요. 학교관리자 선생님께 요청해 주세요.' },
+      { status: 403 }
+    );
   }
 
   // 숫자가 아닌 값·범위 밖 값을 여기서 잡는다. 화면 검사만 믿으면 안 된다.
@@ -108,36 +118,38 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const isSuper = user.role === 'super_admin';
-
+  /**
+   * **만든 사람이 담임이 되지 않는다.**
+   *
+   * 예전에는 선생님이 자기 반을 직접 만들었으니 만든 사람 = 담임이었다.
+   * 이제는 관리자가 학교의 반을 한꺼번에 세우는 자리라, 만든 사람을 담임으로
+   * 박아두면 학교관리자가 온 학교의 담임이 되어버린다.
+   * 담임은 교사 승인 때 채워진다(`/api/role` PATCH — 빈 반에만 넣는다).
+   */
   await classRef.create({
     schoolId,
     grade: String(grade),
     classNumber,
     year: String(new Date().getFullYear()),
-    // 총관리자가 만든 반은 담임을 비워 둔다. 선생님이 만들면 그 사람이 담임이다.
-    teacherUid: isSuper ? '' : user.uid,
-    teacherName: isSuper ? '' : (user.displayName || '선생님'),
+    teacherUid: '',
+    teacherName: '',
     motto: (body.motto || '').trim().slice(0, 40) || '함께 웃고, 함께 자라자',
     introText: '',
     isArchived: false,
-    memberUids: isSuper ? [] : [user.uid],
+    memberUids: [],
   });
 
-  /**
-   * 만든 사람이 그 반을 실제로 관리할 수 있게 담당 반에 넣어준다.
-   *
-   * 이게 없으면 반은 생겼는데 만든 본인도 명부·숙제를 못 건드린다
-   * (규칙이 `classId in classIds` 로 판정하기 때문).
-   * **이미 있는 반은 위에서 막았으므로, 이 경로로 남의 반을 가져갈 수는 없다.**
-   * users 문서는 클라이언트가 못 쓰는 필드라 서버에서만 넣을 수 있다.
-   */
-  if (!isSuper) {
-    await db.collection('users').doc(user.uid).set(
-      { classIds: FieldValue.arrayUnion(classId) },
-      { merge: true }
-    );
-  }
+  await db.collection('accessLogs').add({
+    uid: user.uid,
+    displayName: user.displayName,
+    role: user.role,
+    action: '반 만들기',
+    classId,
+    detail: `${schoolId} ${grade}학년 ${classNumber}반`,
+    ip: getClientIp(req.headers),
+    userAgent: req.headers.get('user-agent') || 'unknown',
+    createdAt: FieldValue.serverTimestamp(),
+  });
 
   return NextResponse.json({ ok: true, classId });
 }

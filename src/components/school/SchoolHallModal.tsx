@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { isStaff } from '@/lib/auth-helpers';
 import { playSound } from '@/lib/sound';
 import type { SchoolProfile } from '@/lib/firestore-schema';
 
@@ -68,8 +69,8 @@ export default function SchoolHallModal({
 
   const pressedBackdrop = useRef(false);
 
-  const isStaff = userDoc?.role === 'teacher' || userDoc?.role === 'super_admin';
-  const canWriteNotice = isStaff && (userDoc?.schoolIds ?? []).includes(schoolId);
+  const staff = isStaff(userDoc?.role ?? null);
+  const canWriteNotice = staff && (userDoc?.schoolIds ?? []).includes(schoolId);
   const canManageAll = userDoc?.role === 'super_admin' || canWriteNotice;
 
   /**

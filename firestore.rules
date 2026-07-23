@@ -25,7 +25,9 @@ service cloud.firestore {
      * 민감한 데이터에는 쓰지 말 것 — 아래 isStaffOf 를 쓴다.
      */
     function isStaff() {
-      return userRole() == 'teacher' || userRole() == 'super_admin';
+      return userRole() == 'teacher'
+        || userRole() == 'school_admin'
+        || userRole() == 'super_admin';
     }
 
     /**
@@ -37,7 +39,22 @@ service cloud.firestore {
     function isStaffOf(schoolId) {
       return isSignedIn()
         && (isSuper()
-            || (userRole() == 'teacher' && schoolId in userData().get('schoolIds', [])));
+            || ((userRole() == 'teacher' || userRole() == 'school_admin')
+                && schoolId in userData().get('schoolIds', [])));
+    }
+
+    /**
+     * 이 학교의 **관리자**인가 (학교관리자 또는 총관리자).
+     *
+     * 교직원 판정보다 좁다. 반을 만들고 지우는 것처럼 **학교 전체 구성을 바꾸는 일**은
+     * 담임 한 명이 정할 것이 아니다 — 한 사람이 3-4 반을 임의로 만들면
+     * 실제 학교와 어긋나고, 이미 있는 반과 부딪힌다.
+     */
+    function isSchoolAdminOf(schoolId) {
+      return isSignedIn()
+        && (isSuper()
+            || (userRole() == 'school_admin'
+                && schoolId in userData().get('schoolIds', [])));
     }
 
     /**
@@ -48,7 +65,7 @@ service cloud.firestore {
     function isTeacherOf(schoolId, classId) {
       return isSignedIn()
         && (isSuper()
-            || (userRole() == 'teacher'
+            || ((userRole() == 'teacher' || userRole() == 'school_admin')
                 && schoolId in userData().get('schoolIds', [])
                 && classId in userData().get('classIds', [])));
     }
@@ -86,9 +103,20 @@ service cloud.firestore {
 
     // ---------- 사용자 ----------
     match /users/{uid} {
-      // 본인 문서와 총관리자만. 교사에게 열어주면 남의 학교 아이·학부모 정보까지 다 보인다.
-      // 교사가 실제로 필요한 건 학교별 students 명부이고, 그건 아래에서 학교 단위로 열어준다.
-      allow read: if isSignedIn() && (request.auth.uid == uid || isSuper());
+      /**
+       * 본인 문서와 총관리자만. 교사에게 열어주면 남의 학교 아이·학부모 정보까지 다 보인다.
+       * 교사가 실제로 필요한 건 학교별 students 명부이고, 그건 아래에서 학교 단위로 열어준다.
+       *
+       * **예외 하나: 우리 학교에 교사 신청을 낸 사람.** 학교관리자가 승인하려면
+       * 누가 신청했는지는 봐야 한다. 여는 범위는 딱 그만큼이다 —
+       * `pendingRole == 'teacher'` 이고 신청 학교가 내 학교인 문서. 승인되면
+       * pendingRole 이 지워지므로 **그 순간 다시 안 보인다.**
+       */
+      allow read: if isSignedIn()
+                  && (request.auth.uid == uid
+                      || isSuper()
+                      || (resource.data.get('pendingRole', null) == 'teacher'
+                          && isSchoolAdminOf(resource.data.get('pendingSchoolId', ''))));
       // 첫 로그인에 만드는 문서. 여기서 role 을 못 막으면 승인 게이트를 우회해
       // 처음부터 'teacher' 로 계정을 만들어버릴 수 있다.
       allow create: if isSignedIn() && request.auth.uid == uid
@@ -273,9 +301,17 @@ service cloud.firestore {
 
       match /classes/{classId} {
         allow read: if true;
-        // 반 정보 수정은 담임만. 반을 새로 만드는 건 아래 create 로 학교 교직원에게 열어둔다.
-        allow update, delete: if isTeacherOf(schoolId, classId);
-        allow create: if isStaffOf(schoolId);
+        // 반 정보(급훈·소개)는 담임이, 반 번호·보관 같은 구성은 학교관리자가 손본다.
+        // 같은 문서라 필드로 못 가르므로 둘 다 열어둔다.
+        allow update: if isTeacherOf(schoolId, classId) || isSchoolAdminOf(schoolId);
+        /**
+         * **반을 만들고 지우는 건 학교관리자만.**
+         * 예전에는 학교 교직원 아무나 만들 수 있었다(create: isStaffOf). 그래서
+         * 담임 한 명이 임의로 반을 늘릴 수 있었고, 실제 학교 구성과 어긋났다.
+         * 반이 필요한 선생님은 학교관리자에게 요청한다.
+         * (실제 만들기는 `/api/class` 가 하고, 여기 규칙은 그 우회로를 막는다)
+         */
+        allow create, delete: if isSchoolAdminOf(schoolId);
 
         // 학생 명부 — 미성년자 개인정보이므로 교직원만 열람·수정
         match /students/{studentId} {

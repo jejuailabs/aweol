@@ -7,6 +7,7 @@ import { UserRole } from '@/lib/firestore-schema';
 
 const ROLE_LABEL: Record<UserRole, string> = {
   super_admin: '총관리자',
+  school_admin: '학교관리자',
   teacher: '선생님',
   student: '학생',
   parent: '학부모',
@@ -14,6 +15,8 @@ const ROLE_LABEL: Record<UserRole, string> = {
 
 const ROLE_COLOR: Record<UserRole, string> = {
   super_admin: '#7B4B94',
+  // 총관리자(보라)와 선생님(주황) 사이. 한눈에 '중간' 으로 읽혀야 한다.
+  school_admin: '#C2622C',
   teacher: '#E8604C',
   student: '#3BAF9F',
   parent: '#4A90D9',

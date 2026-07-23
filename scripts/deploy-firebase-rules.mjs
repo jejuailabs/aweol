@@ -87,10 +87,52 @@ async function deployFieldOverride(collectionGroup, fieldPath) {
   return false;
 }
 
+/**
+ * 복합 인덱스 (`firestore.indexes.json` 의 `indexes`).
+ *
+ * **예전에는 이 파일을 아무도 안 읽었다.** 필드 오버라이드만 코드에 박아 배포하고
+ * 있어서, indexes 에 적어둔 것은 배포되지 않는 장식이었다.
+ * 등호가 둘 이상인 질의는 Firestore 가 단일 필드 색인을 합쳐 쓰는 것이 보통이지만,
+ * 합치기가 안 되면 **화면에서 그 목록만 조용히 비어 보인다.**
+ */
+async function deployCompositeIndexes() {
+  let spec;
+  try {
+    spec = JSON.parse(readFileSync('firestore.indexes.json', 'utf8'));
+  } catch (e) {
+    console.error('✗ firestore.indexes.json 을 읽지 못했습니다:', String(e).slice(0, 120));
+    return false;
+  }
+  let all = true;
+  for (const idx of spec.indexes ?? []) {
+    const url = `${FS_BASE}/collectionGroups/${idx.collectionGroup}/indexes`;
+    const body = {
+      queryScope: idx.queryScope || 'COLLECTION',
+      fields: (idx.fields ?? []).map((f) => (
+        f.arrayConfig ? { fieldPath: f.fieldPath, arrayConfig: f.arrayConfig }
+                      : { fieldPath: f.fieldPath, order: f.order || 'ASCENDING' }
+      )),
+    };
+    const label = `${idx.collectionGroup}(${body.fields.map((f) => f.fieldPath).join(', ')})`;
+    const res = await api('POST', url, body);
+    if (res.status === 200) {
+      // 만들어 두면 끝이 아니다 — 색인이 다 만들어질 때까지 그 질의는 실패한다
+      console.log(`✓ 복합 인덱스 생성: ${label} (만들어지는 데 몇 분 걸립니다)`);
+    } else if (res.status === 409) {
+      console.log(`· 복합 인덱스 이미 있음: ${label}`);
+    } else {
+      console.error(`✗ 복합 인덱스 실패 ${label}:`, res.status, JSON.stringify(res.json).slice(0, 300));
+      all = false;
+    }
+  }
+  return all;
+}
+
 console.log(`프로젝트: ${projectId}, 버킷: ${bucket}`);
 let ok = true;
 ok = (await deployRuleset('firestore.rules', 'cloud.firestore')) && ok;
 ok = (await deployRuleset('storage.rules', `firebase.storage/${bucket}`)) && ok;
 ok = (await deployFieldOverride('artworks', 'status')) && ok;
 ok = (await deployFieldOverride('artworks', 'artistUid')) && ok;
+ok = (await deployCompositeIndexes()) && ok;
 process.exit(ok ? 0 : 1);

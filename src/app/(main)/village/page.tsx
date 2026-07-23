@@ -120,7 +120,7 @@ export default function VillagePage() {
   };
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       {!tried ? (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#BFE8F5' }}>
           <div className="text-sm font-bold" style={{ color: '#6B5B43' }}>동네를 여는 중...</div>
@@ -152,14 +152,19 @@ export default function VillagePage() {
 
       <button
         onClick={() => router.push('/')}
-        className="absolute left-4 top-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
+        className="pos-top-safe absolute left-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
         ← 지도로
       </button>
 
+      {/*
+        말풍선은 **3층(`.pos-hint`)** 이다. `bottom-24` 로 두면 조이스틱과
+        '타기' 버튼 사이에 끼어 글자가 양쪽에 가려진다(실제로 그랬다).
+        폭도 화면 안으로 묶는다 — 길어지면 좌우로 삐져나간다.
+      */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 bottom-24 z-20 rounded-full px-4 py-2 text-[13px] font-bold pointer-events-none"
+        className="pos-hint absolute left-1/2 -translate-x-1/2 z-20 max-w-[calc(100%-1.5rem)] rounded-full px-4 py-2 text-center text-[13px] font-bold pointer-events-none"
         style={{ background: 'rgba(255,248,231,0.9)', color: '#6B5B43' }}
       >
         {village ? '우리 동네예요. 학교 자리를 누르면 들어가요' : '걸어다니다 문을 눌러보세요'}

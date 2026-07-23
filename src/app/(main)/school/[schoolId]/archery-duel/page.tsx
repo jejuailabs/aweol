@@ -203,7 +203,7 @@ export default function ArcheryDuelPage() {
 
   // ---- 대결 중 / 끝 ----
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       {/* 지금 쏘는 사람의 자국을 보여준다. 내 차례일 때만 활·조준선이 뜬다. */}
       <ArcheryScene
         setup={setup}

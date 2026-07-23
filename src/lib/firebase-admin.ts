@@ -100,7 +100,22 @@ export function isStaffOfSchool(
   schoolId: string
 ): boolean {
   if (user.role === 'super_admin') return true;
-  return user.role === 'teacher' && user.schoolIds.includes(schoolId);
+  return (user.role === 'teacher' || user.role === 'school_admin')
+    && user.schoolIds.includes(schoolId);
+}
+
+/**
+ * 이 학교의 **관리자**인가 (학교관리자 또는 총관리자).
+ *
+ * 교직원 판정(`isStaffOfSchool`)보다 좁다. 반 만들기·교사 승인처럼
+ * **학교 전체에 영향을 주는 일**은 담임 한 명이 정할 것이 아니다.
+ */
+export function isSchoolAdminOfSchool(
+  user: { role: string | null; schoolIds: string[] },
+  schoolId: string
+): boolean {
+  if (user.role === 'super_admin') return true;
+  return user.role === 'school_admin' && user.schoolIds.includes(schoolId);
 }
 
 /**
@@ -116,8 +131,9 @@ export function isTeacherOfClass(
   classId: string
 ): boolean {
   if (user.role === 'super_admin') return true;
+  // 학교관리자도 맡은 반 안에서만 담임과 같다 (겸직하는 경우)
   return (
-    user.role === 'teacher' &&
+    (user.role === 'teacher' || user.role === 'school_admin') &&
     user.schoolIds.includes(schoolId) &&
     user.classIds.includes(classId)
   );
@@ -125,5 +141,5 @@ export function isTeacherOfClass(
 
 /** 학교를 특정하지 않는 자리에서만 쓴다 (예: 도장 도안 구입) */
 export function isStaffRole(role: string | null): boolean {
-  return role === 'teacher' || role === 'super_admin';
+  return role === 'teacher' || role === 'school_admin' || role === 'super_admin';
 }

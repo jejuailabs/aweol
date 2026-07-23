@@ -56,7 +56,7 @@ export default function PlaygroundPage() {
   }, [schoolId, user]);
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       {/*
         운동장을 흐리게 깔아둔다. 고르는 동안 배경이 움직이면 어지러우니
         `running={false}` 로 세워두고, 눌리지도 않게 막는다.

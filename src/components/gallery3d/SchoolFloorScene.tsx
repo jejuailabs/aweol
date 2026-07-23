@@ -213,7 +213,7 @@ function Stairs({
           />
         </mesh>
       ))}
-      <Html position={[0, 2.2, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
+      <Html position={[0, 2.2, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
         <div
           style={{
             background: '#FFF8E7', color: '#5B4A3B', fontWeight: 900, fontSize: '18px',

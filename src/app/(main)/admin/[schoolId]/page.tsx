@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { collection, collectionGroup, getDocs, getDoc, query, where, doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { canAccessAdmin } from '@/lib/auth-helpers';
+import { canAccessAdmin, canApproveTeacher, canCreateClass, isSchoolManager } from '@/lib/auth-helpers';
 import { UserRole } from '@/lib/firestore-schema';
 import SchoolSettingsModal, { type SchoolSettings } from '@/components/admin/SchoolSettingsModal';
 import ClassAdminBox from '@/components/admin/ClassAdminBox';
@@ -110,6 +110,14 @@ export default function AdminPage() {
   const [villageMsg, setVillageMsg] = useState('');
 
   const isSuper = role === 'super_admin';
+  /**
+   * 학교 단위 관리자(학교관리자·총관리자)인가.
+   *
+   * 학교 전체 현황·반 손보기·반 만들기는 **담임 한 명이 아니라 학교가** 하는 일이다.
+   * 여기서 `isSuper` 만 보면 학교관리자가 자기 학교를 못 본다.
+   */
+  const isManager = isSchoolManager(role);
+  const canCreate = canCreateClass(role);
 
   /**
    * 고른 학년에 이미 있는 반 번호.
@@ -235,7 +243,7 @@ export default function AdminPage() {
        * (총관리자는 전부 본다)
        */
       const mine = userDoc?.classIds || [];
-      const targetClasses = role === 'super_admin'
+      const targetClasses = isSchoolManager(role)
         ? classSnap.docs
         : classSnap.docs.filter((c) => mine.includes(c.id) || c.data().teacherUid === user?.uid);
 
@@ -283,7 +291,7 @@ export default function AdminPage() {
           const u = d.data();
           const name = (u.displayName as string) || '(이름 없음)';
           const r = u.role as UserRole | null;
-          if (r === 'teacher' || r === 'super_admin') m.teachers.push({ name, uid: d.id });
+          if (r === 'teacher' || r === 'school_admin' || r === 'super_admin') m.teachers.push({ name, uid: d.id });
           else if (r === 'student') m.students.push({ name, classIds: (u.classIds as string[]) || [] });
           else if (r === 'parent') m.parents.push({ name, childCount: ((u.children as unknown[]) || []).length });
           else m.pending += 1;
@@ -314,12 +322,12 @@ export default function AdminPage() {
    */
   const myClassIds = userDoc?.classIds || [];
   const myClasses = classes.filter((c) => myClassIds.includes(c.id) || c.teacherUid === user?.uid);
-  const noOwnedClass = !isSuper && myClasses.length === 0;
+  const noOwnedClass = !isManager && myClasses.length === 0;
   /**
    * 담당 반이 없다고 전체 반을 보여주면 안 된다.
    * 규칙이 남의 반 명부·제출물을 막고 있어서 화면만 깨지고, 애초에 보여줄 이유도 없다.
    */
-  const visibleClasses = isSuper ? classes : myClasses;
+  const visibleClasses = isManager ? classes : myClasses;
 
   // 작품 수(-1)는 아직 안 읽은 반이라 합계에서 뺀다
   const totals = visibleClasses.reduce(
@@ -343,11 +351,11 @@ export default function AdminPage() {
   return (
     <div className="px-4 pt-6 pb-24 mx-auto max-w-[860px]">
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-main)' }}>
-        {isSuper ? '🏫 학교 관리자 대시보드' : '👩‍🏫 우리 반 관리'}
+        {isManager ? '🏫 학교 관리자 대시보드' : '👩‍🏫 우리 반 관리'}
       </h1>
       <div className="flex items-center gap-2 mb-5">
         <p className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
-          {isSuper
+          {isManager
             ? `${school?.name || schoolId} 전체 현황을 한눈에 봅니다`
             : '학생·학부모와 전시 내용을 관리합니다'}
         </p>
@@ -377,14 +385,14 @@ export default function AdminPage() {
           style={{ background: '#FFF6E5', border: '1px solid #F0D9A8', color: '#8A6D2F' }}
         >
           담당 반으로 지정된 학급이 없어 학교 전체를 표시하고 있어요.
-          &lsquo;+ 반 만들기&rsquo;로 직접 만든 반은 자동으로 담당 반이 됩니다.
+          맡으실 반이 정해지면 <b>학교관리자 선생님</b>께 담임 배정을 요청해 주세요.
         </div>
       )}
 
       {/* ===== 요약 ===== */}
       <div className="grid grid-cols-3 gap-2.5 mb-3">
         {[
-          { label: isSuper ? '학급' : '내 반', value: visibleClasses.length, icon: '🏫' },
+          { label: isManager ? '학급' : '내 반', value: visibleClasses.length, icon: '🏫' },
           { label: '학생(명부)', value: totals.students, icon: '🎒' },
           { label: '전시실', value: totals.activities, icon: '🖼️' },
         ].map((s) => (
@@ -416,7 +424,7 @@ export default function AdminPage() {
       {/* ===== 구성원 현황 ===== */}
       <div className="flex items-center justify-between mb-2.5">
         <h2 className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
-          {isSuper ? '👥 구성원 현황' : '👥 우리 반 구성원'}
+          {isManager ? '👥 구성원 현황' : '👥 우리 반 구성원'}
         </h2>
       </div>
       {!members.readable ? (
@@ -502,15 +510,21 @@ export default function AdminPage() {
       {/* ===== 학급 / 전시 내용 관리 ===== */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>
-          {isSuper ? '📚 학년·반 현황' : '📚 전시 내용 관리'}
+          {isManager ? '📚 학년·반 현황' : '📚 전시 내용 관리'}
         </h2>
-        <button
-          onClick={() => { setCreateMsg(null); setShowCreate(true); }}
-          className="rounded-full px-4 py-1.5 text-sm font-bold text-white shadow-md transition-transform hover:scale-105"
-          style={{ background: 'var(--color-primary)' }}
-        >
-          + 반 만들기
-        </button>
+        {/*
+          **반 만들기는 학교관리자만.** 담임에게 버튼을 보여주면 눌렀다가 403 을 맞는다 —
+          화면과 서버가 같은 선을 봐야 한다(이 프로젝트에서 반복해서 밟은 함정).
+        */}
+        {canCreate && (
+          <button
+            onClick={() => { setCreateMsg(null); setShowCreate(true); }}
+            className="rounded-full px-4 py-1.5 text-sm font-bold text-white shadow-md transition-transform hover:scale-105"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            + 반 만들기
+          </button>
+        )}
       </div>
 
       {fetched && visibleClasses.length === 0 && (
@@ -518,14 +532,23 @@ export default function AdminPage() {
           className="rounded-2xl p-8 text-center text-sm leading-relaxed"
           style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
         >
-          아직 만든 반이 없어요. &lsquo;+ 반 만들기&rsquo;로 첫 교실을 만들어보세요!<br />
-          반을 만들면 학교 건물 창문에 문패가 걸리고 빈 교실이 생깁니다.
+          {canCreate ? (
+            <>
+              아직 만든 반이 없어요. &lsquo;+ 반 만들기&rsquo;로 첫 교실을 만들어보세요!<br />
+              반을 만들면 학교 건물 창문에 문패가 걸리고 빈 교실이 생깁니다.
+            </>
+          ) : (
+            <>
+              아직 맡으신 반이 없어요.<br />
+              반을 만드는 것은 <b>학교관리자</b> 몫이에요 — 학교관리자 선생님께 요청해 주세요.
+            </>
+          )}
         </div>
       )}
 
       {Object.entries(byGrade).map(([grade, list]) => (
         <div key={grade} className="mb-4">
-          {isSuper && (
+          {isManager && (
             <div className="text-[13px] font-bold mb-1.5 px-1" style={{ color: 'var(--color-text-sub)' }}>
               {grade}학년 · {list.length}개 반
             </div>
@@ -602,11 +625,11 @@ export default function AdminPage() {
                     </div>
 
                     {/*
-                      반 손보기 — 총관리자만. 담임에게는 안 보인다.
-                      규칙(isTeacherOf)은 담임에게도 열려 있지만, 자기 반을 통째로
-                      지우는 건 실수로 일어나기 쉬워서 화면에서는 막아둔다.
+                      반 손보기 — 학교 관리자만. 담임에게는 안 보인다.
+                      자기 반을 통째로 지우는 건 실수로 일어나기 쉽고, 반 구성은
+                      학교가 정하는 것이라 규칙에서도 담임에게는 delete 를 닫았다.
                     */}
-                    {isSuper && (
+                    {isManager && (
                       <div className="mb-3">
                         <ClassAdminBox
                           schoolId={schoolId}
@@ -678,19 +701,22 @@ export default function AdminPage() {
             직접 입력 / 엑셀 등록
           </div>
         </button>
+        {/* 선생님 승인은 학교관리자도 한다 — 우리 학교 신청만 보인다 */}
+        {canApproveTeacher(actualRole) && (
+          <button
+            onClick={() => router.push('/admin/teachers')}
+            className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
+            style={{ background: 'var(--color-surface-soft)' }}
+          >
+            <div className="text-2xl mb-2">👩‍🏫</div>
+            <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>선생님 승인</div>
+            <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+              교사 신청 확인 후 권한 부여
+            </div>
+          </button>
+        )}
         {actualRole === 'super_admin' && (
           <>
-            <button
-              onClick={() => router.push('/admin/teachers')}
-              className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
-              style={{ background: 'var(--color-surface-soft)' }}
-            >
-              <div className="text-2xl mb-2">👩‍🏫</div>
-              <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>선생님 승인</div>
-              <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
-                교사 신청 확인 후 권한 부여
-              </div>
-            </button>
             <button
               onClick={() => router.push('/admin/logs')}
               className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"

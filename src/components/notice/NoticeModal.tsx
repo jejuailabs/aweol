@@ -273,7 +273,7 @@ export default function NoticeModal({
                   >
                     <div className="text-[13px] font-bold" style={{ color: '#3A3226' }}>
                       {c.authorName}
-                      {(c.authorRole === 'teacher' || c.authorRole === 'super_admin') && (
+                      {(c.authorRole === 'teacher' || c.authorRole === 'school_admin' || c.authorRole === 'super_admin') && (
                         <span className="ml-1.5 rounded-full px-1.5 py-px text-[8px] text-white" style={{ background: '#E8604C' }}>
                           선생님
                         </span>

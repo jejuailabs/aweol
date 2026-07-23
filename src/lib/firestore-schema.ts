@@ -1,6 +1,21 @@
 import { Timestamp } from 'firebase/firestore';
 
-export type UserRole = 'super_admin' | 'teacher' | 'student' | 'parent';
+/**
+ * 권한은 넷이 아니라 **다섯**이다.
+ *
+ * `school_admin`(학교관리자)은 **한 학교 안의 중간관리자**다.
+ * 반을 만들고, 그 학교 교사 신청을 승인하고, 학교 공용공간을 연다.
+ * 이걸 나눈 이유는 두 가지다.
+ * 1) **반 만들기를 아무 선생님이나 하면 안 된다.** 학년·반 구성은 학교가 정하는
+ *    것이고, 담임 한 명이 3-4 반을 임의로 만들면 실제 학교와 어긋난다.
+ * 2) 지금까지 교사 승인이 전부 총관리자에게 몰려 있었다. 학교가 늘면 감당이 안 되고,
+ *    애초에 "이 사람이 우리 학교 선생님이 맞는가" 는 그 학교가 제일 잘 안다.
+ *
+ * 학교관리자는 **자기 학교 안에서만** 통한다(`schoolIds`). 학교를 새로 만들거나
+ * 다른 학교를 건드리는 것은 여전히 총관리자만이다.
+ * 담임을 겸할 수 있다 — `classIds` 에 반이 있으면 그 반에서는 담임과 똑같다.
+ */
+export type UserRole = 'super_admin' | 'school_admin' | 'teacher' | 'student' | 'parent';
 
 export interface UserDoc {
   displayName: string;

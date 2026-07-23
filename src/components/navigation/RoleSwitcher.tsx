@@ -10,7 +10,9 @@ import { UserRole } from '@/lib/firestore-schema';
 import { LEGACY_SCHOOL_ID } from '@/lib/paths';
 
 const MODES: { role: UserRole; label: string; icon: string; desc: string; color: string }[] = [
-  { role: 'teacher', label: '선생님', icon: '👩‍🏫', desc: '반 만들기·수업 등록·작품 승인', color: '#E8604C' },
+  { role: 'school_admin', label: '학교관리자', icon: '🏫', desc: '반 만들기·우리 학교 선생님 승인', color: '#C2622C' },
+  // 반 만들기는 여기서 빠졌다 — 학교관리자 몫이다
+  { role: 'teacher', label: '선생님', icon: '👩‍🏫', desc: '우리 반 수업 등록·작품 승인', color: '#E8604C' },
   { role: 'student', label: '학생', icon: '🎒', desc: '우리 반 바로가기·작품 올리기', color: '#3BAF9F' },
   { role: 'parent', label: '학부모', icon: '👨‍👩‍👧', desc: '자녀 반 바로가기·관람', color: '#4A90D9' },
 ];
@@ -47,7 +49,8 @@ export default function RoleSwitcher() {
   if (actualRole !== 'super_admin') return null;
 
   const apply = (role: UserRole) => {
-    if (!classId && role !== 'teacher') return;
+    // 선생님·학교관리자는 반을 고르지 않아도 된다 (담임이 아닐 수 있다)
+    if (!classId && role !== 'teacher' && role !== 'school_admin') return;
     setViewAs({ role, classId });
     setOpen(false);
     router.push('/');
@@ -61,8 +64,15 @@ export default function RoleSwitcher() {
 
   return (
     <>
-      {/* 현재 모드 배지 + 플로팅 토글 (화면 요소와 겹치지 않게 우측 하단에 모아둔다) */}
-      <div className="fixed right-4 z-[60] flex flex-col items-end gap-1.5" style={{ bottom: '5.5rem' }}>
+      {/*
+        현재 모드 배지 + 플로팅 토글 (화면 요소와 겹치지 않게 우측 하단에 모아둔다)
+
+        **높이를 숫자로 박으면 안 된다.** `5.5rem`(88px) 은 홈바가 있는 아이폰의
+        하단 메뉴(60 + 안전영역 34 = 94px)보다 낮아서, 이 버튼이 z-60 으로
+        메뉴의 '더보기' 칸 위에 올라앉아 탭을 삼켰다.
+        3D 화면에서는 '타기' 버튼(1층)·조이스틱과도 겹치므로 그 위층에 둔다.
+      */}
+      <div className="pos-hint fixed right-4 z-[60] flex flex-col items-end gap-1.5">
         {viewAs && (
           <div
             className="flex items-center gap-1.5 rounded-full pl-2.5 pr-1.5 py-1 shadow-lg"

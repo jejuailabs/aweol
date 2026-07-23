@@ -66,7 +66,7 @@ export default function LobbyPage() {
   }, [schoolId]);
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       <SchoolLobbyScene
         schoolName={schoolName}
         emblemUrl={emblemUrl}

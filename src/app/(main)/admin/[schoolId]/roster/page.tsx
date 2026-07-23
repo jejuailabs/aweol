@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { canAccessAdmin } from '@/lib/auth-helpers';
+import { canAccessAdmin, isSchoolManager } from '@/lib/auth-helpers';
 
 
 interface StudentRow {
@@ -81,7 +81,7 @@ export default function RosterPage() {
       const mine = userDoc?.classIds ?? [];
       const list = snap.docs
         .map((d) => ({ id: d.id, label: `${d.data().grade}-${d.data().classNumber}반` }))
-        .filter((c) => role === 'super_admin' || mine.includes(c.id))
+        .filter((c) => isSchoolManager(role) || mine.includes(c.id))
         .sort((a, b) => a.id.localeCompare(b.id));
       setClasses(list);
       if (list.length > 0 && !list.some((c) => c.id === selectedClass)) {

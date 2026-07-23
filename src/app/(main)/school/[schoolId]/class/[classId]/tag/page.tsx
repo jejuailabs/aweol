@@ -200,7 +200,7 @@ export default function TagPage() {
     .sort((a, b) => b.count - a.count);
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="scene-page">
       <PlaygroundScene
         schoolId={schoolId}
         roomKey={roomKey}

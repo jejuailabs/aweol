@@ -91,7 +91,7 @@ function TagBot({
         <cylinderGeometry args={[0.03, 0.03, 0.26, 6]} />
         <meshStandardMaterial color="#6B7482" />
       </mesh>
-      <Html position={[0, 2.1, 0]} center pointerEvents="none" zIndexRange={[8, 0]}>
+      <Html position={[0, 2.1, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[8, 0]}>
         <div
           style={{
             background: '#3A3226', color: '#FFF8E7', fontWeight: 800, fontSize: '13px',

@@ -11,7 +11,46 @@ import type { UserRole } from './firestore-schema';
  * 반 안에서는 아래 `isTeacherOfClass` 를 쓸 것.
  */
 export function canManageClass(role: UserRole | null): boolean {
-  return role === 'super_admin' || role === 'teacher';
+  return role === 'super_admin' || role === 'school_admin' || role === 'teacher';
+}
+
+/**
+ * **반을 새로 만들 수 있는가** — 학교관리자와 총관리자만.
+ *
+ * 일반 교사에게 열어두면 담임 한 명이 3-4 반을 임의로 만들어 실제 학교와 어긋난다.
+ * 학년·반 구성은 학교가 정하는 것이다.
+ * 반이 없어서 못 들어가는 선생님은 **학교관리자에게 요청**하면 된다.
+ */
+export function canCreateClass(role: UserRole | null): boolean {
+  return role === 'super_admin' || role === 'school_admin';
+}
+
+/**
+ * 교직원인가 (선생님·학교관리자·총관리자).
+ *
+ * 화면 곳곳에 `role === 'teacher' || role === 'super_admin'` 이 흩어져 있었다.
+ * 등급이 하나 늘 때마다 그걸 전부 찾아 고쳐야 하고, 하나 빠뜨리면
+ * **어떤 화면에서는 교직원이고 어떤 화면에서는 아닌** 상태가 된다.
+ * 그래서 한 군데로 모은다. `canManageClass` 와 같은 판정이지만 이름이 사실에 맞다.
+ */
+export function isStaff(role: UserRole | null): boolean {
+  return role === 'super_admin' || role === 'school_admin' || role === 'teacher';
+}
+
+/** 학교 단위 관리자인가 (그 학교의 중간관리자 또는 총관리자) */
+export function isSchoolManager(role: UserRole | null): boolean {
+  return role === 'super_admin' || role === 'school_admin';
+}
+
+/**
+ * 교사 신청을 승인할 수 있는가.
+ *
+ * 예전에는 총관리자 한 사람에게 전부 몰렸다. "이 사람이 우리 학교 선생님이 맞는가" 는
+ * 그 학교가 제일 잘 알고, 학교가 늘면 총관리자가 감당할 수 없다.
+ * 학교관리자는 **자기 학교 신청만** 볼 수 있다(서버가 학교로 거른다).
+ */
+export function canApproveTeacher(role: UserRole | null): boolean {
+  return role === 'super_admin' || role === 'school_admin';
 }
 
 /**
@@ -27,16 +66,20 @@ export function isTeacherOfClass(
   classId: string
 ): boolean {
   if (role === 'super_admin') return true;
-  return role === 'teacher' && (classIds ?? []).includes(classId);
+  // 학교관리자도 **맡은 반 안에서만** 담임과 같다. 학교 관리자라고 남의 반 숙제를
+  // 고칠 수 있으면 안 된다 — 학교 단위 권한과 반 단위 권한은 다른 것이다.
+  return (role === 'teacher' || role === 'school_admin')
+    && (classIds ?? []).includes(classId);
 }
 
 export function canUploadArtwork(role: UserRole | null): boolean {
   // 교사는 아이들 작품 사진을 촬영해 직접 올린다
-  return role === 'student' || role === 'parent' || role === 'teacher' || role === 'super_admin';
+  return role === 'student' || role === 'parent' || role === 'teacher'
+    || role === 'school_admin' || role === 'super_admin';
 }
 
 export function canApproveArtwork(role: UserRole | null): boolean {
-  return role === 'super_admin' || role === 'teacher';
+  return role === 'super_admin' || role === 'school_admin' || role === 'teacher';
 }
 
 export function canWriteComment(role: UserRole | null): boolean {
@@ -44,7 +87,7 @@ export function canWriteComment(role: UserRole | null): boolean {
 }
 
 export function canAccessAdmin(role: UserRole | null): boolean {
-  return role === 'super_admin' || role === 'teacher';
+  return role === 'super_admin' || role === 'school_admin' || role === 'teacher';
 }
 
 /**

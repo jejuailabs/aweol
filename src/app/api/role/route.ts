@@ -16,9 +16,16 @@ export const maxDuration = 30;
  * - 교사: pendingRole 로 접수만 하고, 슈퍼관리자가 승인해야 role 이 된다.
  */
 
-/** 학생·학부모는 즉시 부여, 교사는 승인 대기 */
+/** 학생·학부모는 즉시 부여, 교사·학교관리자는 승인 대기 */
 const SELF_SERVE = new Set(['student', 'parent']);
-const NEEDS_APPROVAL = new Set(['teacher']);
+const NEEDS_APPROVAL = new Set(['teacher', 'school_admin']);
+
+/**
+ * 학교관리자는 **반을 밝히지 않는다.** 담임이 아니라 학교 단위 관리자라서
+ * 맡은 반이 없을 수 있다(교감·정보부장 같은 자리를 생각하면 된다).
+ * 그래서 신청에 학년·반을 요구하지 않고, 승인 때도 `classIds` 를 비운다.
+ */
+const NEEDS_CLASS = new Set(['teacher']);
 
 /** 본인 역할 신청 */
 export async function POST(req: NextRequest) {
@@ -65,32 +72,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '없는 학교예요' }, { status: 404 });
   }
 
-  const grade = Number(body.grade);
-  const classNumber = Number(body.classNumber);
-  if (!Number.isInteger(grade) || grade < 1 || grade > 6
-      || !Number.isInteger(classNumber) || classNumber < 1 || classNumber > 20) {
-    return NextResponse.json({ error: '맡으신 학년과 반을 알려주세요' }, { status: 400 });
-  }
-  const classId = `${grade}-${classNumber}`;
+  let classId = '';
+  let takenBy = '';
 
-  const classSnap = await db
-    .collection('schools').doc(schoolId)
-    .collection('classes').doc(classId).get();
-  if (!classSnap.exists) {
-    return NextResponse.json(
-      { error: `${grade}학년 ${classNumber}반이 아직 없어요. 총관리자에게 문의해 주세요.` },
-      { status: 404 }
-    );
+  if (NEEDS_CLASS.has(role)) {
+    const grade = Number(body.grade);
+    const classNumber = Number(body.classNumber);
+    if (!Number.isInteger(grade) || grade < 1 || grade > 6
+        || !Number.isInteger(classNumber) || classNumber < 1 || classNumber > 20) {
+      return NextResponse.json({ error: '맡으신 학년과 반을 알려주세요' }, { status: 400 });
+    }
+    classId = `${grade}-${classNumber}`;
+
+    const classSnap = await db
+      .collection('schools').doc(schoolId)
+      .collection('classes').doc(classId).get();
+    if (!classSnap.exists) {
+      return NextResponse.json(
+        { error: `${grade}학년 ${classNumber}반이 아직 없어요. 학교관리자 선생님께 문의해 주세요.` },
+        { status: 404 }
+      );
+    }
+    // 이미 다른 선생님이 맡고 있으면 알려준다 (막지는 않는다 — 전담·교체가 있다)
+    takenBy = (classSnap.data()?.teacherUid as string) || '';
   }
-  // 이미 다른 선생님이 맡고 있으면 알려준다 (막지는 않는다 — 전담·교체가 있다)
-  const takenBy = (classSnap.data()?.teacherUid as string) || '';
 
   await ref.set(
     {
       role: null,
       pendingRole: role,
       pendingSchoolId: schoolId,
-      pendingClassId: classId,
+      pendingClassId: classId || null,
       schoolIds: [],
       classIds: [],
     },
@@ -101,23 +113,31 @@ export async function POST(req: NextRequest) {
     uid: user.uid,
     displayName: user.displayName,
     role: null,
-    action: '교사 신청',
+    action: role === 'school_admin' ? '학교관리자 신청' : '교사 신청',
     classId: null,
-    detail: `${user.displayName} → ${schoolId} ${classId}${takenBy ? ' (담임 있음)' : ''}`,
+    detail: `${user.displayName} → ${schoolId}${classId ? ` ${classId}` : ''}${takenBy ? ' (담임 있음)' : ''}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  return NextResponse.json({ ok: true, role: null, pending: true, classId });
+  return NextResponse.json({ ok: true, role: null, pending: true, classId: classId || null });
 }
 
-/** 슈퍼관리자의 승인 / 거절 */
+/**
+ * 승인 / 거절.
+ *
+ * **누가 누구를 승인하는지가 등급으로 갈린다.**
+ * - 교사 신청 → 그 학교의 **학교관리자**(또는 총관리자). "우리 학교 선생님이 맞나" 는
+ *   그 학교가 제일 잘 알고, 학교가 늘면 총관리자 한 사람이 감당할 수 없다.
+ * - 학교관리자 신청 → **총관리자만.** 학교관리자가 학교관리자를 임명할 수 있으면
+ *   한 번 뚫린 학교는 계속 늘어난다.
+ */
 export async function PATCH(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
-  if (user.role !== 'super_admin') {
-    return NextResponse.json({ error: '총관리자만 할 수 있습니다' }, { status: 403 });
+  if (user.role !== 'super_admin' && user.role !== 'school_admin') {
+    return NextResponse.json({ error: '관리자만 할 수 있습니다' }, { status: 403 });
   }
 
   let body: { uid?: string; approve?: boolean; reject?: boolean };
@@ -144,12 +164,35 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: '신청 중인 계정이 아닙니다' }, { status: 409 });
   }
 
-  const granted = body.approve === true ? (target.pendingRole as string) : null;
+  const wanted = target.pendingRole as string;
   const schoolId = (target.pendingSchoolId as string) || '';
   const classId = (target.pendingClassId as string) || '';
-  if (granted && (!schoolId || !classId)) {
+
+  /**
+   * 학교관리자는 **자기 학교의 교사 신청만** 다룬다.
+   * 화면에서 남의 학교 신청을 안 보여주는 것으로는 부족하다 — 요청 본문에
+   * uid 만 바꿔 보내면 그만이라 여기서 막아야 한다.
+   */
+  if (user.role === 'school_admin') {
+    if (wanted !== 'teacher') {
+      return NextResponse.json(
+        { error: '학교관리자 임명은 총관리자만 할 수 있습니다' },
+        { status: 403 }
+      );
+    }
+    if (!schoolId || !user.schoolIds.includes(schoolId)) {
+      return NextResponse.json({ error: '우리 학교 신청이 아닙니다' }, { status: 403 });
+    }
+  }
+
+  const granted = body.approve === true ? wanted : null;
+  if (granted === 'teacher' && (!schoolId || !classId)) {
     // 학교·반 없이 교사가 되면 권한 범위가 없거나 전역이 된다
     return NextResponse.json({ error: '신청에 학교·반 정보가 없습니다' }, { status: 409 });
+  }
+  if (granted === 'school_admin' && !schoolId) {
+    // 학교 없이 학교관리자가 되면 어느 학교의 관리자인지가 없다
+    return NextResponse.json({ error: '신청에 학교 정보가 없습니다' }, { status: 409 });
   }
 
   await ref.set(
@@ -160,14 +203,15 @@ export async function PATCH(req: NextRequest) {
           pendingSchoolId: null,
           pendingClassId: null,
           schoolIds: [schoolId],
-          classIds: [classId],
+          // 학교관리자는 맡은 반이 없을 수 있다 — 담임을 겸하면 나중에 채워진다
+          classIds: classId ? [classId] : [],
         }
       : { pendingRole: null, pendingSchoolId: null, pendingClassId: null },
     { merge: true }
   );
 
   // 담임이 비어 있으면 채워준다. 이미 있으면 건드리지 않는다(빼앗으면 안 된다).
-  if (granted) {
+  if (granted && classId) {
     const classRef = db
       .collection('schools').doc(schoolId)
       .collection('classes').doc(classId);
@@ -180,13 +224,14 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  const what = wanted === 'school_admin' ? '학교관리자' : '교사';
   await db.collection('accessLogs').add({
     uid: user.uid,
     displayName: user.displayName,
     role: user.role,
-    action: granted ? '교사 승인' : '교사 거절',
+    action: granted ? `${what} 승인` : `${what} 거절`,
     classId: null,
-    detail: `${target.displayName || uid}${granted ? ` → ${schoolId} ${classId}` : ''}`,
+    detail: `${target.displayName || uid}${granted ? ` → ${schoolId}${classId ? ` ${classId}` : ''}` : ''}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),

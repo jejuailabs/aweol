@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRequestUser } from '@/lib/firebase-admin';
+import { isStaffRole, verifyRequestUser } from '@/lib/firebase-admin';
 
 /**
  * 수업자료에서 게임 재료(낱말 쌍)를 뽑는다.
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
    * (총관리자는 통과 — 학교 전체를 돌본다)
    */
   const allowed = user.role === 'super_admin'
-    || (user.role === 'teacher' && user.classIds.includes(classId));
+    || (isStaffRole(user.role) && user.classIds.includes(classId));
   if (!allowed) {
     return NextResponse.json({ error: '이 반의 게임을 만들 권한이 없어요' }, { status: 403 });
   }

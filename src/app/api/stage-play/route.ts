@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, verifyRequestUser } from '@/lib/firebase-admin';
+import { adminDb, isStaffOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
 import { scoreMatchRun, type WordPair } from '@/lib/wordset';
 
 export const runtime = 'nodejs';
@@ -35,8 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 이 반 사람만 논다. 총관리자·교직원은 통과(둘러보기).
-  const isStaff = user.role === 'super_admin'
-    || (user.role === 'teacher' && user.schoolIds.includes(schoolId));
+  const isStaff = isStaffOfSchool(user, schoolId);
   if (!isStaff && !user.classIds.includes(classId)) {
     return NextResponse.json({ error: '이 반의 게임이 아니에요' }, { status: 403 });
   }

@@ -269,7 +269,7 @@ export default function SchoolPet({
 
       {/* 이름표와 기분 — 가리키거나 뭔가 필요할 때만 띄운다 */}
       {say && (
-        <Html position={[0, 1.28, 0]} center pointerEvents="none" zIndexRange={[7, 0]}>
+        <Html position={[0, 1.28, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[7, 0]}>
           <div
             style={{
               background: 'white', color: '#3A3226', fontWeight: 800, fontSize: '16px',
@@ -284,7 +284,7 @@ export default function SchoolPet({
       )}
 
       {(hot || needEmoji) && !say && (
-        <Html position={[0, 1.05, 0]} center pointerEvents="none" zIndexRange={[6, 0]}>
+        <Html position={[0, 1.05, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[6, 0]}>
           <div
             style={{
               background: '#FFF8E7', color: '#6B5B43', fontWeight: 800, fontSize: '15px',
