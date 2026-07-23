@@ -86,14 +86,23 @@ export async function POST(req: NextRequest) {
   const found = roster.filter((s) => loginNames[s.id] === name);
 
   if (found.length !== 1) {
-    // 0명이면 없는 이름, 2명 이상이면 A·B 를 안 붙이고 친 경우다.
     await new Promise((r) => setTimeout(r, 400));
-    return NextResponse.json(
-      found.length > 1
-        ? { error: `이름이 같은 친구가 있어요. ${name}A 처럼 뒤에 글자를 붙여주세요.` }
-        : { error: WRONG },
-      { status: 401 }
-    );
+    /**
+     * **못 찾았을 때 '이름이 겹쳐서' 인지를 따로 봐야 한다.**
+     *
+     * 동명이인의 로그인 이름은 '김민준A'·'김민준B' 라서, 아이가 그냥 '김민준' 이라고
+     * 치면 일치하는 것이 **0개**다. 이걸 '없는 이름' 으로 뭉뚱그리면 아이는 자기
+     * 이름을 정확히 치고도 "이름이나 비밀번호가 달라요" 만 보게 된다.
+     * (여기까지 왔다는 건 반 비밀번호는 이미 맞혔다는 뜻이라, 알려줘도 새는 것이 없다)
+     */
+    const sameName = roster.filter((s) => normalizeName(s.name) === name);
+    if (sameName.length > 1) {
+      return NextResponse.json(
+        { error: `이름이 같은 친구가 ${sameName.length}명 있어요. ${name}A 처럼 뒤에 글자를 붙여주세요.` },
+        { status: 401 }
+      );
+    }
+    return NextResponse.json({ error: WRONG }, { status: 401 });
   }
 
   const student = found[0];
