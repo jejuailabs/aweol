@@ -9,6 +9,7 @@ import {
   type Obstacle, type AvatarCustom, type AvatarTint,
 } from './walker';
 import Peers from './Peers';
+import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
@@ -22,7 +23,12 @@ type XZ = [number, number];
 export interface VillageData {
   c: [number, number];
   r: number;
-  b: { p: XZ[]; h: number; n?: string }[];
+  /**
+   * 건물. `k` 는 **무엇인가** — OSM 의 amenity·historic·tourism
+   * (townhall, post_office, police, memorial …). 없을 수 있다.
+   * 나중에 관공서에 들어가 하는 일을 배우는 기능의 재료다.
+   */
+  b: { p: XZ[]; h: number; n?: string; k?: string }[];
   rd: { p: XZ[]; w: number }[];
   a: { p: XZ[]; k: 'water' | 'park' }[];
   poi: { x: number; z: number; k: string; n?: string }[];
@@ -341,6 +347,14 @@ export default function VillageMapScene({
    */
   const [riding, setRiding] = useState(false);
   const [warpOpen, setWarpOpen] = useState(false);
+  /**
+   * 지도를 연 **그 순간의 내 자리**.
+   *
+   * 아바타 좌표는 매 프레임 바뀌는 ref 라 그리는 중에 읽으면 안 된다
+   * (읽는 시점마다 값이 달라 화면이 어긋난다). 지도는 어차피 멈춘 그림이므로
+   * 여는 순간 한 번 베껴 둔다.
+   */
+  const [mePos, setMePos] = useState({ x: 0, z: 0 });
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
 
@@ -595,50 +609,38 @@ export default function VillageMapScene({
 
       {/* 워프 열기 */}
       <button
-        onClick={() => setWarpOpen((v) => !v)}
+        onClick={() => {
+          // 누른 순간의 자리를 베낀다 — 이벤트 안에서 ref 를 읽는 건 안전하다
+          if (!warpOpen) {
+            setMePos({ x: avatarPos.current?.x ?? 0, z: avatarPos.current?.z ?? 0 });
+          }
+          setWarpOpen((v) => !v);
+        }}
         className="pos-above-joystick absolute right-4 z-30 rounded-full px-5 py-3 text-[15px] font-bold"
         style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
       >
-        {warpOpen ? '✕ 닫기' : '🗺️ 순간이동'}
+        {warpOpen ? '✕ 닫기' : '🗺️ 지도 보기'}
       </button>
 
+      {/*
+        전체 지도 — **글자 목록이 아니라 지도다.**
+
+        예전에는 '한담해변 · 320m' 처럼 이름과 거리를 적어줬는데, 아이는 그 이름이
+        어디쯤인지 모른다. 자기가 지금 어디 서 있는지도 모르는 채로 이름만 골랐다.
+        동네가 800m 로 넓어지면서 더 심해졌다.
+
+        마을을 그리려고 **이미 손에 든 좌표**를 한 번 더 그릴 뿐이라 새로 받는 것이 없다.
+      */}
       {warpOpen && (
-        <div
-          className="absolute inset-0 z-30"
-          style={{ background: 'rgba(24,20,16,0.45)' }}
-          onClick={() => setWarpOpen(false)}
-        >
-          <div
-            className="pos-above-nav absolute left-4 right-4 rounded-3xl p-4 mx-auto max-w-[420px]"
-            style={{ background: 'rgba(255,250,240,0.97)', border: '3px solid rgba(255,255,255,0.7)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-[15px] font-black mb-1" style={{ color: '#3A3226' }}>
-              🗺️ 어디로 갈까?
-            </div>
-            <p className="text-[13px] mb-3 leading-relaxed" style={{ color: '#8A7A5F' }}>
-              누르면 그 자리로 바로 이동해요. 걸어서 돌아올 수도 있어요.
-            </p>
-            <div className="flex flex-col gap-2 max-h-[42vh] overflow-y-auto">
-              {targets.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => warpTo(t)}
-                  className="flex items-center gap-2 rounded-2xl px-4 py-3 text-left"
-                  style={{ background: 'white' }}
-                >
-                  <span className="text-lg">{t.id === 'school' ? '🏫' : '📍'}</span>
-                  <span className="flex-1 min-w-0 truncate text-[15px] font-bold" style={{ color: '#3A3226' }}>
-                    {t.name}
-                  </span>
-                  <span className="text-[13px] shrink-0" style={{ color: '#A89880' }}>
-                    {t.dist < 1 ? '여기' : `${Math.round(t.dist)}m`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <VillageMiniMap
+          radius={data.r}
+          roads={data.rd}
+          buildings={data.b}
+          me={mePos}
+          targets={targets}
+          onWarp={warpTo}
+          onClose={() => setWarpOpen(false)}
+        />
       )}
     </div>
   );

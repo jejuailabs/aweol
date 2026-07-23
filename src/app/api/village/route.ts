@@ -40,7 +40,8 @@ export interface VillageData {
   c: [number, number];
   r: number;
   /** 건물: 바닥 다각형 + 높이 + 이름 */
-  b: { p: XZ[]; h: number; n?: string }[];
+  /** `k` = 무엇인가 (amenity·historic·tourism). 관공서 학습 기능의 재료다. */
+  b: { p: XZ[]; h: number; n?: string; k?: string }[];
   /** 길: 폴리라인 + 폭 */
   rd: { p: XZ[]; w: number }[];
   /** 물·공원 */
@@ -84,6 +85,8 @@ export async function POST(req: NextRequest) {
   way["natural"="water"](around:${RADIUS},${lat},${lng});
   way["leisure"](around:${RADIUS},${lat},${lng});
   node["amenity"](around:${RADIUS},${lat},${lng});
+  node["historic"](around:${RADIUS},${lat},${lng});
+  node["tourism"](around:${RADIUS},${lat},${lng});
 );
 out geom;`;
 
@@ -151,9 +154,11 @@ out geom;`;
   for (const e of elements) {
     const t = e.tags ?? {};
     if (e.type === 'node') {
-      if (t.amenity && e.lat != null && e.lon != null) {
+      // 행정기관(amenity)·유적지(historic)·관광지(tourism) 를 한 자리에 모은다
+      const kind = t.amenity || t.historic || t.tourism;
+      if (kind && e.lat != null && e.lon != null) {
         const [x, z] = toXZ(e.lat, e.lon);
-        if (inside([x, z])) data.poi.push({ x, z, k: t.amenity, ...(t.name ? { n: t.name } : {}) });
+        if (inside([x, z])) data.poi.push({ x, z, k: kind, ...(t.name ? { n: t.name } : {}) });
       }
       continue;
     }
@@ -163,10 +168,23 @@ out geom;`;
     if (t.building) {
       if (!pts.some(inside)) continue;
       const levels = Number(t['building:levels']);
+      /**
+       * **건물이 무엇인지도 함께 남긴다.**
+       *
+       * 예전에는 이름만 남기고 종류를 버렸다. 그래서 '애월읍사무소' 는
+       * 이름만 있는 상자였다 — 실제로는 `amenity=townhall` 이 붙어 있는데도.
+       * 우체국·경찰서·읍사무소에 들어가 하는 일을 배우게 하려면 **무엇인지**를
+       * 알아야 하고, 그건 여기서 안 남기면 나중에 전 학교를 다시 구워야 한다.
+       *
+       * 종류는 세 군데에 흩어져 있다: 행정기관은 `amenity`, 유적지는 `historic`,
+       * 관광지는 `tourism`. 없으면 아예 안 적는다(빈 값은 용량만 먹는다).
+       */
+      const kind = t.amenity || t.historic || t.tourism || '';
       data.b.push({
         p: simplify(pts),
         h: Number.isFinite(levels) && levels > 0 ? Math.min(30, levels * 3) : 6,
         ...(t.name ? { n: t.name } : {}),
+        ...(kind ? { k: kind } : {}),
       });
     } else if (t.highway) {
       const big = ['primary', 'secondary', 'tertiary', 'trunk'].includes(t.highway);
