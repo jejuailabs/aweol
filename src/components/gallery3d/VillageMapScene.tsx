@@ -95,6 +95,33 @@ function Buildings({ list, onEnterPlace }: {
     [list]
   );
 
+  /**
+   * 지붕 — **건물 모양 그대로** 얹는다.
+   *
+   * 예전에는 건물을 감싸는 사각형으로 덮었다. 그런데 실제 건물은 ㄷ자·ㄱ자가 흔하다:
+   * 애월읍사무소는 점이 16개인데 가로 50.7m × 세로 27.1m 상자로 덮으면
+   * **실제 넓이가 그 상자의 71% 뿐이라 나머지 29% 가 허공에 뜬 빨간 판**으로 남는다.
+   * 실제로 마을에 그렇게 떠 있었다.
+   *
+   * 그래서 건물과 같은 다각형을 얇게 뽑아 얹는다. 처마(살짝 넓게)는 포기했다 —
+   * 임의의 다각형을 바깥으로 넓히는 건 이 화면이 감당할 계산이 아니고,
+   * **허공에 뜬 판보다 처마 없는 지붕이 낫다.**
+   */
+  const roofs = useMemo(
+    () =>
+      list.map((b) => {
+        if (!b.n) return null;
+        const shape = new THREE.Shape();
+        b.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
+        shape.closePath();
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false });
+        geo.rotateX(-PI / 2);
+        return geo;
+      }),
+    [list]
+  );
+  useEffect(() => () => roofs.forEach((g) => g?.dispose()), [roofs]);
+
   return (
     <group>
       {geos.map((geo, i) => {
@@ -116,13 +143,15 @@ function Buildings({ list, onEnterPlace }: {
               />
             </mesh>
 
+            {/* 지붕은 건물 좌표계 그대로다 — 아래 group 안에 넣으면 두 번 옮겨진다 */}
+            {named && roofs[i] && (
+              <mesh geometry={roofs[i]!} position={[0, b.h + 0.12, 0]} castShadow>
+                <meshStandardMaterial color={ROOF_COLORS[d?.hue ?? 0]} roughness={0.75} />
+              </mesh>
+            )}
+
             {named && d && (
               <group position={[d.cx, 0, d.cz]}>
-                {/* 지붕 — 건물 위에 얹는 판 */}
-                <mesh position={[0, b.h + 0.12, 0]} castShadow>
-                  <boxGeometry args={[d.w + 0.5, 0.35, d.d + 0.5]} />
-                  <meshStandardMaterial color={ROOF_COLORS[d.hue]} roughness={0.75} />
-                </mesh>
                 {/* 창문 두 줄 — 앞면에 붙인다 */}
                 {([0.35, 0.62] as const).map((fy) =>
                   ([-0.28, 0.28] as const).map((fx) => (
@@ -168,10 +197,20 @@ function Buildings({ list, onEnterPlace }: {
               <Html
                 position={[b.p[0][0], b.h + 2, b.p[0][1]]}
                 center
-                style={{ pointerEvents: 'none' }}
+                /**
+                 * **간판이 곧 버튼이다.**
+                 *
+                 * 처음에는 간판을 장식으로 두고(`pointerEvents: 'none'`) 건물 앞면의
+                 * 작은 문만 눌리게 했다. 그런데 간판에 '들어가기 ›' 라고 써 붙였으니
+                 * 누구나 간판을 누른다 — 그리고 아무 일도 안 일어났다.
+                 * 문은 건물 뒤편에 있으면 보이지도 않는다.
+                 * **눌러보라고 적힌 것은 눌려야 한다.**
+                 */
+                style={{ pointerEvents: civicKind && onEnterPlace ? 'auto' : 'none' }}
                 zIndexRange={[4, 0]}
               >
                 <div
+                  onClick={civicKind && onEnterPlace ? () => onEnterPlace(civicKind) : undefined}
                   style={{
                     background: civicKind ? '#FFF1D6' : 'rgba(255,248,231,0.94)',
                     color: '#5B4A3B',
@@ -179,6 +218,7 @@ function Buildings({ list, onEnterPlace }: {
                     borderRadius: '999px', whiteSpace: 'nowrap',
                     fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
                     border: civicKind ? '2px solid #E8A33C' : 'none',
+                    cursor: civicKind ? 'pointer' : 'default',
                   }}
                 >
                   {b.n}
@@ -407,10 +447,52 @@ export default function VillageMapScene({
     [data.poi]
   );
 
-  const targets: WarpTarget[] = useMemo(
-    () => warpTargets(data.poi, schoolName),
-    [data.poi, schoolName]
+  /**
+   * **이름 있는 건물도 갈 곳이다.**
+   *
+   * 워프 목록을 `poi`(OSM 노드)에서만 만들었더니, 정작 **들어갈 수 있는 곳이
+   * 지도에 없었다** — 애월읍사무소는 건물(way)이라 poi 에 안 들어 있다.
+   * 지도를 열면 은행·도서관만 뜨고 읍사무소가 없으니 찾아갈 방법이 없었다.
+   *
+   * 건물은 다각형이므로 **가운데 점**을 자리로 삼는다.
+   */
+  const buildingPois = useMemo(
+    () =>
+      data.b
+        .filter((b) => (b.n ?? '').trim())
+        .map((b) => {
+          const xs = b.p.map((p) => p[0]);
+          const zs = b.p.map((p) => p[1]);
+          return {
+            x: (Math.min(...xs) + Math.max(...xs)) / 2,
+            z: (Math.min(...zs) + Math.max(...zs)) / 2,
+            k: civicKindOf(b) ?? 'building',
+            n: b.n as string,
+          };
+        }),
+    [data.b]
   );
+
+  const targets: WarpTarget[] = useMemo(
+    // 건물을 먼저 넣는다 — 가까운 것부터 고르므로, 같은 자리라면 이름 있는 건물이 남는다
+    () => warpTargets([...buildingPois, ...data.poi], schoolName),
+    [buildingPois, data.poi, schoolName]
+  );
+
+  /**
+   * 그중 **들어갈 수 있는 곳**. 지도에서 다르게 보여준다 —
+   * 갈 수만 있는 곳과 들어갈 수 있는 곳은 아이에게 다른 이야기다.
+   */
+  const civicIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const b of data.b) {
+      const kind = civicKindOf(b);
+      if (!kind || !b.n) continue;
+      const t = targets.find((x) => x.name === (b.n as string).trim());
+      if (t) s.add(t.id);
+    }
+    return s;
+  }, [data.b, targets]);
 
   /**
    * 워프 — 아바타를 그 자리로 **옮기기만** 한다.
@@ -676,6 +758,7 @@ export default function VillageMapScene({
           buildings={data.b}
           me={mePos}
           targets={targets}
+          civicIds={civicIds}
           onWarp={warpTo}
           onClose={() => setWarpOpen(false)}
         />

@@ -22,6 +22,8 @@ interface Props {
   /** 지금 내가 선 자리 */
   me: { x: number; z: number };
   targets: WarpTarget[];
+  /** 그중 **들어가 볼 수 있는** 곳(우체국·읍사무소 …). 다르게 그린다. */
+  civicIds?: Set<string>;
   onWarp: (t: WarpTarget) => void;
   onClose: () => void;
 }
@@ -30,7 +32,7 @@ interface Props {
 const SIZE = 1000;
 
 export default function VillageMiniMap({
-  radius, roads, buildings, me, targets, onWarp, onClose,
+  radius, roads, buildings, me, targets, civicIds, onWarp, onClose,
 }: Props) {
   /** 미터 → 판 좌표. 학교가 한가운데다. */
   const toXY = useMemo(() => {
@@ -116,6 +118,12 @@ export default function VillageMiniMap({
           {targets.map((t) => {
             const [tx, ty] = toXY(t.x, t.z);
             const isSchool = t.id === 'school';
+            /**
+             * **들어갈 수 있는 곳은 다르게 그린다.**
+             * 그냥 갈 수만 있는 곳(은행 앞)과 안에 들어가 배울 수 있는 곳(읍사무소)은
+             * 아이에게 전혀 다른 이야기다. 같은 흰 점으로 그리면 구별할 길이 없다.
+             */
+            const civic = !isSchool && !!civicIds?.has(t.id);
             return (
               <g
                 key={t.id}
@@ -126,9 +134,9 @@ export default function VillageMiniMap({
                 <circle
                   cx={tx}
                   cy={ty}
-                  r={isSchool ? 16 : 12}
-                  fill={isSchool ? '#E8A33C' : '#FFFFFF'}
-                  stroke={isSchool ? '#B87A22' : '#8A7A5F'}
+                  r={isSchool ? 16 : civic ? 14 : 12}
+                  fill={isSchool ? '#E8A33C' : civic ? '#8FA9C9' : '#FFFFFF'}
+                  stroke={isSchool ? '#B87A22' : civic ? '#4A6FA5' : '#8A7A5F'}
                   strokeWidth={4}
                 />
                 <text
@@ -158,7 +166,9 @@ export default function VillageMiniMap({
 
         <div className="px-4 py-3 text-[12px] leading-relaxed" style={{ color: '#8A7A5F' }}>
           <b style={{ color: '#3BAF9F' }}>●</b> 지금 나 ·{' '}
-          <b style={{ color: '#E8A33C' }}>●</b> 학교 · 흰 점을 누르면 그 자리로 가요
+          <b style={{ color: '#E8A33C' }}>●</b> 학교 ·{' '}
+          <b style={{ color: '#4A6FA5' }}>●</b> 들어가 볼 수 있는 곳 ·{' '}
+          <b style={{ color: '#8A7A5F' }}>●</b> 그 자리로 가기
         </div>
       </div>
     </div>
