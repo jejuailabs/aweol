@@ -11,6 +11,7 @@ import {
 import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
+import { civicKindOf } from '@/lib/civic-places';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
@@ -45,7 +46,11 @@ export interface VillageData {
 const ROOF_COLORS = ['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'];
 
 /** 건물 바닥 다각형을 세운다 */
-function Buildings({ list }: { list: VillageData['b'] }) {
+function Buildings({ list, onEnterPlace }: {
+  list: VillageData['b'];
+  /** 관공서 문을 눌렀을 때 (우체국·읍사무소 …). 없으면 문이 안 눌린다. */
+  onEnterPlace?: (kind: string) => void;
+}) {
   const geos = useMemo(
     () =>
       list.map((b) => {
@@ -96,6 +101,12 @@ function Buildings({ list }: { list: VillageData['b'] }) {
         const b = list[i];
         const named = !!b.n;
         const d = decor[i];
+        /**
+         * 들어가 볼 수 있는 기관인가.
+         * 태그(`k`)가 없으면 **이름으로도 알아본다** — 한국 OSM 은 태그가 성겨서
+         * '애월읍사무소' 가 이름만 있는 상자로 들어와 있는 경우가 흔하다.
+         */
+        const civicKind = civicKindOf(b);
         return (
           <group key={i}>
             <mesh geometry={geo} castShadow receiveShadow>
@@ -128,10 +139,27 @@ function Buildings({ list }: { list: VillageData['b'] }) {
                     </mesh>
                   ))
                 )}
-                {/* 문 */}
-                <mesh position={[0, b.h * 0.16, d.d / 2 + 0.05]}>
+                {/*
+                  문 — **우체국·읍사무소 같은 곳은 진짜로 열린다.**
+                  나머지 건물은 그림일 뿐이다. 아무 문이나 눌리면 아이가
+                  모든 건물을 눌러보다 지친다.
+                */}
+                <mesh
+                  position={[0, b.h * 0.16, d.d / 2 + 0.05]}
+                  onClick={civicKind && onEnterPlace
+                    ? (e) => { e.stopPropagation(); onEnterPlace(civicKind); }
+                    : undefined}
+                  onPointerOver={civicKind ? (e) => {
+                    e.stopPropagation(); document.body.style.cursor = 'pointer';
+                  } : undefined}
+                  onPointerOut={civicKind ? () => { document.body.style.cursor = 'auto'; } : undefined}
+                >
                   <planeGeometry args={[Math.min(1.2, d.w * 0.28), b.h * 0.32]} />
-                  <meshStandardMaterial color="#8A5A3B" />
+                  <meshStandardMaterial
+                    color={civicKind ? '#B5793F' : '#8A5A3B'}
+                    emissive={civicKind ? '#E8A33C' : '#000000'}
+                    emissiveIntensity={civicKind ? 0.35 : 0}
+                  />
                 </mesh>
               </group>
             )}
@@ -145,13 +173,21 @@ function Buildings({ list }: { list: VillageData['b'] }) {
               >
                 <div
                   style={{
-                    background: 'rgba(255,248,231,0.94)', color: '#5B4A3B',
+                    background: civicKind ? '#FFF1D6' : 'rgba(255,248,231,0.94)',
+                    color: '#5B4A3B',
                     fontWeight: 800, fontSize: '14px', padding: '3px 10px',
                     borderRadius: '999px', whiteSpace: 'nowrap',
                     fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+                    border: civicKind ? '2px solid #E8A33C' : 'none',
                   }}
                 >
                   {b.n}
+                  {/* 들어갈 수 있는 곳은 그렇다고 말해준다 — 안 그러면 아무도 안 누른다 */}
+                  {civicKind && (
+                    <span style={{ color: '#A6762A', marginLeft: '6px', fontSize: '12px' }}>
+                      들어가기 ›
+                    </span>
+                  )}
                 </div>
               </Html>
             )}
@@ -311,7 +347,7 @@ function CarRig({
 */
 
 export default function VillageMapScene({
-  data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool,
+  data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
 }: {
   data: VillageData;
@@ -322,6 +358,8 @@ export default function VillageMapScene({
   avatarCustom?: AvatarCustom | null;
   avatarTint?: AvatarTint | null;
   onEnterSchool: () => void;
+  /** 관공서 문을 눌렀을 때 (우체국·읍사무소 …) */
+  onEnterPlace?: (kind: string) => void;
   /** 이 아이가 가진 탈것 id 들(기본 자동차 말고 산 것) */
   ownedVehicles?: string[];
   /** 지금 고른 탈것 id. null 이면 기본 자동차. */
@@ -444,7 +482,7 @@ export default function VillageMapScene({
 
         <Areas list={data.a} />
         <Roads list={data.rd} />
-        <Buildings list={data.b} />
+        <Buildings list={data.b} onEnterPlace={onEnterPlace} />
 
         {/* 학교 자리 — 원점이 곧 학교다. 여기를 눌러 들어간다. */}
         <group

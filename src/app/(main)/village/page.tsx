@@ -135,6 +135,12 @@ export default function VillagePage() {
           avatarCustom={userDoc?.avatarCustom}
           avatarTint={userDoc?.avatarTint}
           onEnterSchool={() => router.push(`/school/${schoolId}`)}
+          /**
+           * 우체국·읍사무소 같은 곳에 들어간다.
+           * **주소가 기관 종류다** — 우체국은 어느 동네에 있든 하는 일이 같아서
+           * 학교마다 방을 따로 만들지 않는다.
+           */
+          onEnterPlace={(kind) => router.push(`/school/${schoolId}/place/${kind}`)}
           ownedVehicles={ownedVehicles}
           vehicleId={vehicleId}
           onPickVehicle={pickVehicle}
