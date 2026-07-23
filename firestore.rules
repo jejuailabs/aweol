@@ -281,8 +281,18 @@ service cloud.firestore {
       /**
        * 양궁 최고 기록 — 순위표라 읽기는 공개, 쓰기는 서버만.
        * 점수는 서버가 씨앗으로 다시 계산해서 낸다(/api/archery).
+       * 문서 이름이 `{uid}_{난이도}` 라 아이 하나가 여러 줄을 가진다.
        */
-      match /archeryRecords/{uid} {
+      match /archeryRecords/{recordId} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      /**
+       * 타자 기록 — 순위표라 읽기는 공개, **쓰기는 서버만**.
+       * 타수는 서버가 친 낱말로 다시 센다(/api/typing) — 화면이 보낸 숫자는 안 읽는다.
+       */
+      match /typingRecords/{recordId} {
         allow read: if true;
         allow write: if false;
       }

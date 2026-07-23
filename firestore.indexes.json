@@ -58,6 +58,16 @@
         { "fieldPath": "level", "order": "ASCENDING" },
         { "fieldPath": "total", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "typingRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "week", "order": "ASCENDING" },
+        { "fieldPath": "mode", "order": "ASCENDING" },
+        { "fieldPath": "level", "order": "ASCENDING" },
+        { "fieldPath": "cpm", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

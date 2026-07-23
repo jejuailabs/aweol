@@ -60,6 +60,18 @@ export const PLAYGROUND_GAMES: PlaygroundGame[] = [
     formatBest: (v) => (typeof v.total === 'number' ? `${v.total}점` : null),
   },
   {
+    key: 'typing',
+    label: '타자 연습',
+    emoji: '⌨️',
+    desc: '떨어지는 낱말을 쳐서 없애요',
+    trains: '손놀림',
+    path: 'typing',
+    color: '#4A90D9',
+    recordCol: 'typingRecords',
+    rankBy: { field: 'cpm', dir: 'desc' },
+    formatBest: (v) => (typeof v.cpm === 'number' ? `${v.cpm}타` : null),
+  },
+  {
     /*
       짝맞추기는 반 안(교실 게임 칸)에서 한다. 운동장 카드에는 안 띄우지만
       랭킹에는 올린다 — 아이가 '내가 뭘 잘하나' 를 한자리에서 봐야 한다.
