@@ -77,6 +77,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '이름과 위치가 필요합니다' }, { status: 400 });
   }
 
+  /**
+   * 학교냐 전시관이냐 — **만들 때 정한다.**
+   *
+   * 예전에는 이 값을 만들 때 못 정했다. 그래서 전시관을 열려면
+   * **이미 있는 학교를 골라 종류를 바꾸는 길밖에 없었고**, 실제로
+   * 그러다 애월초등학교가 전시관으로 바뀌어 버렸다(2026-07-23).
+   * 없는 길을 만들지 않으면 사람은 있는 길로 간다 — 그 길이 남의 학교였다.
+   */
+  const kind = String(form.get('kind')) === 'gallery' ? 'gallery' : 'school';
+
   const tagline = String(form.get('tagline') || '').trim().slice(0, 60);
   const gradeCount = Math.max(1, Math.min(6, parseInt(String(form.get('gradeCount')), 10) || 6));
   const classPerGrade = Math.max(1, Math.min(12, parseInt(String(form.get('classPerGrade')), 10) || 4));
@@ -142,6 +152,7 @@ export async function POST(req: NextRequest) {
 
   await schoolRef.set({
     name,
+    kind,
     lat,
     lng,
     tagline,
@@ -191,7 +202,7 @@ export async function POST(req: NextRequest) {
     uid: user.uid,
     displayName: user.displayName,
     role: user.role,
-    action: '학교 생성',
+    action: kind === 'gallery' ? '전시관 생성' : '학교 생성',
     classId: null,
     detail: `${name} (${gradeCount}학년 × ${classPerGrade}반)`,
     ip: getClientIp(req.headers),
@@ -240,6 +251,7 @@ export async function PATCH(req: NextRequest) {
   if (!snap.exists) return NextResponse.json({ error: '학교를 찾을 수 없습니다' }, { status: 404 });
   const cur = snap.data() as {
     gradeCount?: number; classPerGrade?: number; name?: string; imageUrl?: string; emblemUrl?: string;
+    kind?: 'school' | 'gallery';
   };
 
   const patch: Record<string, unknown> = {};
@@ -395,13 +407,27 @@ export async function PATCH(req: NextRequest) {
 
   await schoolRef.set(patch, { merge: true });
 
+  /**
+   * **무엇이 바뀌었는지 로그에 남긴다.**
+   *
+   * 애월초가 전시관으로 바뀐 것을 뒤늦게 알아냈을 때, 로그에는
+   * '학교 정보 수정 · 애월초등학교' 라고만 적혀 있어 **이름이 바뀌었는지
+   * 종류가 바뀌었는지 알 수 없었다.** 되돌리려면 무엇이 바뀌었는지부터 알아야 한다.
+   */
+  const changes: string[] = [];
+  if (patch.name && patch.name !== cur.name) changes.push(`이름 ${cur.name} → ${patch.name}`);
+  if (patch.kind && patch.kind !== (cur.kind ?? 'school')) {
+    changes.push(`종류 ${cur.kind ?? 'school'} → ${patch.kind}`);
+  }
+  if (addedClasses) changes.push(`반 ${addedClasses}개 추가`);
+
   await db.collection('accessLogs').add({
     uid: user.uid,
     displayName: user.displayName,
     role: user.role,
-    action: '학교 정보 수정',
+    action: patch.kind && patch.kind !== (cur.kind ?? 'school') ? '학교 종류 변경' : '학교 정보 수정',
     classId: null,
-    detail: `${cur.name || schoolId}${addedClasses ? ` · 반 ${addedClasses}개 추가` : ''}`,
+    detail: `${cur.name || schoolId}${changes.length ? ` · ${changes.join(' · ')}` : ''}`,
     ip: getClientIp(req.headers),
     userAgent: req.headers.get('user-agent') || 'unknown',
     createdAt: FieldValue.serverTimestamp(),

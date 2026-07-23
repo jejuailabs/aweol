@@ -77,7 +77,68 @@ const s3 = await patchKind(SUPER,'school');
 ok(`다시 학교로 되돌릴 수 있다 (${s3})`, s3===200);
 ok('되돌아갔다', (await adb.doc(`schools/${G}`).get()).data().kind==='school');
 
+/**
+ * **만들 때 종류를 정할 수 있어야 한다.**
+ *
+ * 애월초등학교가 전시관으로 바뀌어 있던 사고(2026-07-23)의 원인이 이것이었다 —
+ * 만드는 화면에 종류 칸이 없어서, 전시관을 열려면 **이미 있는 학교를 골라
+ * 바꾸는 길밖에 없었다.** 그 길밖에 없으면 사람은 그 길로 간다.
+ */
+const createSchool = async (uid, name, kind) => {
+  await signOut(cauth).catch(()=>{});
+  await signInWithCustomToken(cauth, await getAdminAuth().createCustomToken(uid));
+  const t = await cauth.currentUser.getIdToken();
+  const form = new FormData();
+  form.set('name', name);
+  form.set('lat', '33.46'); form.set('lng', '126.33');
+  form.set('gradeCount', '1'); form.set('classPerGrade', '1');
+  if (kind) form.set('kind', kind);
+  const res = await fetch(`${BASE}/api/school`, {
+    method:'POST', headers:{ Authorization:`Bearer ${t}` }, body: form });
+  return { status: res.status, json: await res.json().catch(()=>({})) };
+};
+
+const made = [];
+const c1 = await createSchool(SUPER, `zz-kind-new-gallery-${Date.now()}`, 'gallery');
+ok(`전시관을 새로 만들 수 있다 (${c1.status})`, c1.status===200 && !!c1.json.schoolId);
+if (c1.json.schoolId) {
+  made.push(c1.json.schoolId);
+  const d = await adb.doc(`schools/${c1.json.schoolId}`).get();
+  ok('만들자마자 kind 가 gallery 다', d.data()?.kind==='gallery');
+}
+
+const c2 = await createSchool(SUPER, `zz-kind-new-school-${Date.now()}`, null);
+ok(`종류를 안 주면 학교다 (${c2.status})`, c2.status===200);
+if (c2.json.schoolId) {
+  made.push(c2.json.schoolId);
+  ok('kind 가 school 이다', (await adb.doc(`schools/${c2.json.schoolId}`).get()).data()?.kind==='school');
+}
+
+// 담임이 전시관을 만들려 해도 막혀야 한다 (만드는 것 자체가 총관리자 권한)
+const c3 = await createSchool(TEA, `zz-kind-teacher-${Date.now()}`, 'gallery');
+ok(`담임은 아예 못 만든다 (${c3.status})`, c3.status===403);
+if (c3.json.schoolId) made.push(c3.json.schoolId);
+
+/**
+ * **로그만 보고 무엇이 바뀌었는지 알 수 있어야 한다.**
+ * 사고 당시 로그에는 '학교 정보 수정 · 애월초등학교' 라고만 적혀 있어서
+ * 이름이 바뀐 건지 종류가 바뀐 건지 알 수 없었다.
+ */
+await patchKind(SUPER, 'gallery');
+const logs = await adb.collection('accessLogs').where('uid','==',SUPER).get();
+const kindLog = logs.docs.map(d=>d.data()).find(l=>l.action==='학교 종류 변경');
+ok('종류를 바꾸면 로그가 그렇게 말한다', !!kindLog);
+ok('로그에 무엇이 어떻게 바뀌었는지 적혀 있다',
+  !!kindLog && /종류 school → gallery/.test(kindLog.detail || ''));
+const madeLog = logs.docs.map(d=>d.data()).find(l=>l.action==='전시관 생성');
+ok('전시관을 만들면 로그도 전시관이라고 적는다', !!madeLog);
+
 await signOut(cauth).catch(()=>{});
+for (const id of made) {
+  const cs = await adb.collection(`schools/${id}/classes`).get();
+  for (const d of cs.docs) await d.ref.delete();
+  await adb.doc(`schools/${id}`).delete();
+}
 await adb.doc(`schools/${G}`).delete();
 for (const u of [SUPER,TEA]) {
   const l = await adb.collection('accessLogs').where('uid','==',u).get();

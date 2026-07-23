@@ -183,7 +183,24 @@ export default function SchoolSettingsModal({
                 <button
                   key={k}
                   type="button"
-                  onClick={() => setKind(k)}
+                  /**
+                   * **이미 있는 곳의 종류를 바꾸는 것은 한 번 물어본다.**
+                   *
+                   * 애월초등학교가 전시관으로 바뀌어 있던 적이 있다(2026-07-23).
+                   * 새 전시관을 열려던 것이었는데, 그때는 만드는 화면에 종류 고르는
+                   * 칸이 없어서 **남의 학교 설정을 열어 바꾸는 것 말고는 길이 없었다.**
+                   * 만드는 쪽 길은 열어뒀고(SchoolCreateModal), 여기서는
+                   * 이름을 대며 한 번 더 묻는다 — 아이들이 쓰던 곳이니까.
+                   */
+                  onClick={() => {
+                    const cur = school.kind === 'gallery' ? 'gallery' : 'school';
+                    if (k !== cur && !window.confirm(
+                      `'${school.name}' 을(를) ${k === 'gallery' ? '전시관' : '학교'}으로 바꿀까요?\n\n`
+                      + '건물 앞면과 눌렀을 때 가는 곳이 통째로 달라집니다.\n'
+                      + '새로 만들려던 것이라면 지도에서 "새로 만들기" 를 쓰세요.'
+                    )) return;
+                    setKind(k);
+                  }}
                   className="flex-1 rounded-xl px-3 py-2.5 text-left"
                   style={
                     kind === k

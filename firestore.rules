@@ -316,6 +316,56 @@ service cloud.firestore {
       }
 
       /**
+       * 광장 OX 퀴즈 · 골든벨의 **진행 중인 판.**
+       *
+       * 문제와 **정답이 통째로 들어 있어서 아예 안 보여준다.**
+       * 실시간 판(RTDB)에는 문제 글만 올라가고, 정답은 시간이 지난 뒤
+       * 서버가 올린다. 반 전체가 하는 놀이에서 한 명이 답을 미리 보면
+       * 놀이 자체가 끝난다 — 양궁 씨앗과 같은 이유다.
+       */
+      match /oxGames/{roomKey} {
+        allow read, write: if false;
+      }
+
+      /**
+       * 광장 — 다 같이 보는 판.
+       *
+       * 문제 글·남은 사람·정답(열린 뒤)이 여기 있다. 읽기는 다 열고
+       * **쓰기는 서버만** — 화면이 '나는 안 떨어졌다' 고 쓸 수 있으면 안 된다.
+       */
+      match /oxRooms/{roomKey} {
+        allow read: if true;
+        allow write: if false;
+
+        /** 판에 들어와 있는 아이. 자기 이름만 적는다. */
+        match /players/{uid} {
+          allow read: if true;
+          allow write: if isSignedIn() && request.auth.uid == uid;
+        }
+
+        /**
+         * 어느 쪽에 서 있나.
+         *
+         * **시간이 지나면 못 쓴다.** 정답이 열린 뒤에 슬쩍 옮겨 적는 것을
+         * 막는 건 화면이 아니라 여기여야 한다. 그리고 **지금 문제에만** 쓸 수 있다 —
+         * 지난 문제 답이 남아 있으면 가만히 있어도 계속 살아남는다.
+         */
+        match /picks/{uid} {
+          allow read: if true;
+          allow write: if isSignedIn()
+                       && request.auth.uid == uid
+                       && request.resource.data.v in ['O', 'X']
+                       && request.resource.data.round ==
+                          get(/databases/$(database)/documents/schools/$(schoolId)/oxRooms/$(roomKey)).data.round
+                       && request.time.toMillis() <
+                          get(/databases/$(database)/documents/schools/$(schoolId)/oxRooms/$(roomKey)).data.endsAt;
+        }
+      }
+      match /bellGames/{roomKey} {
+        allow read, write: if false;
+      }
+
+      /**
        * 양궁 대결 방.
        *
        * 둘이 화면을 실시간으로 같이 보므로 **읽기는 로그인하면 열어둔다**
