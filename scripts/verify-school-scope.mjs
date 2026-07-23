@@ -58,16 +58,24 @@ await adb.doc(`schools/${HOME}/classes/${CLASS}/students/zz-s2`).set({
   number: 99, name: '우리반학생', code: 'YYYYYY', linkedUid: null, linkedAt: null,
 });
 
-const mk = (uid, name, role, schoolIds) =>
+/**
+ * `classIds` 를 꼭 채운다.
+ *
+ * 명부·퀴즈 같은 **반 단위** 자료는 규칙이 `isTeacherOf`(= 이 반 담임인가)를 본다.
+ * 학교 소속만 주고 반을 안 주면 '우리 학교인데도 막힌다' 는 결과가 나오는데,
+ * 그건 학교 범위가 잘못된 게 아니라 **검증이 반을 안 준 것**이다.
+ * (이 스크립트가 한동안 그 상태로 4건씩 실패하고 있었다)
+ */
+const mk = (uid, name, role, schoolIds, classIds = []) =>
   adb.collection('users').doc(uid).set({
     displayName: name, role, pendingRole: null, pendingSchoolId: null,
-    schoolIds, classIds: [], children: [], stamps: 0,
+    schoolIds, classIds, children: [], stamps: 0,
     avatarCustom: { hat: null, accessory: null }, avatarId: null,
     preferences: { theme: 'light' },
   });
 
-await mk(HOME_TEACHER, '우리학교교사', 'teacher', [HOME]);
-await mk(OTHER_TEACHER, '남의학교교사', 'teacher', [OTHER]);
+await mk(HOME_TEACHER, '우리학교교사', 'teacher', [HOME], [CLASS]);
+await mk(OTHER_TEACHER, '남의학교교사', 'teacher', [OTHER], [CLASS]);
 await mk(SA, '총관리자', 'super_admin', []);
 
 const tokenFor = async (uid) => {
@@ -191,7 +199,11 @@ ok('없는 학교로 신청 불가', r.status === 404, `HTTP ${r.status}`);
 r = await fetch(`${BASE}/api/role`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${appToken}` },
-  body: JSON.stringify({ role: 'teacher', schoolId: OTHER }),
+  // 교사 신청에는 학교와 함께 **맡을 반**도 온다 (권한이 그 반 안에서만 통한다)
+  body: JSON.stringify({
+    role: 'teacher', schoolId: OTHER,
+    grade: Number(CLASS.split('-')[0]), classNumber: Number(CLASS.split('-')[1]),
+  }),
 });
 ok('학교를 고르면 신청됨', r.ok, `HTTP ${r.status}`);
 

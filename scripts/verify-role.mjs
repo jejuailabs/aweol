@@ -104,7 +104,17 @@ const newToken = await tokenFor(NEW);
 let r = await role('POST', newToken, { role: 'super_admin' });
 ok('총관리자는 신청 못 함', r.status === 400, `HTTP ${r.status}`);
 
-r = await role('POST', newToken, { role: 'teacher' });
+/**
+ * 교사 신청에는 **학교와 반**이 함께 와야 한다.
+ * 권한이 그 반 안에서만 통하므로, 반이 없으면 승인해도 할 수 있는 일이 없다.
+ * (이 스크립트가 한동안 학교·반을 안 보내서 400 만 맞고 있었다)
+ */
+r = await role('POST', newToken, {
+  role: 'teacher',
+  schoolId: SCHOOL,
+  grade: Number(CLASS.split('-')[0]),
+  classNumber: Number(CLASS.split('-')[1]),
+});
 let j = await r.json();
 ok('교사 신청 접수됨', r.ok && j.pending === true, `pending=${j.pending}`);
 ok('신청만으로는 권한 없음 (role=null)', (await roleOf(NEW)) === null, `role=${await roleOf(NEW)}`);
@@ -138,7 +148,17 @@ try {
 await signOut(cauth);
 
 console.log('\n[중복·재신청]');
-r = await role('POST', newToken, { role: 'teacher' });
+/**
+ * 교사 신청에는 **학교와 반**이 함께 와야 한다.
+ * 권한이 그 반 안에서만 통하므로, 반이 없으면 승인해도 할 수 있는 일이 없다.
+ * (이 스크립트가 한동안 학교·반을 안 보내서 400 만 맞고 있었다)
+ */
+r = await role('POST', newToken, {
+  role: 'teacher',
+  schoolId: SCHOOL,
+  grade: Number(CLASS.split('-')[0]),
+  classNumber: Number(CLASS.split('-')[1]),
+});
 ok('이미 역할 있으면 재신청 거부', r.status === 409, `HTTP ${r.status}`);
 
 r = await role('PATCH', saToken, { uid: NEW, approve: true });

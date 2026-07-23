@@ -98,10 +98,10 @@ export async function POST(req: NextRequest) {
       hint = '다른 반 번호를 골라주세요.';
     } else if (cur.teacherName) {
       message = `${where}은 이미 있어요. 담임으로 ${cur.teacherName}이 적혀 있는데 계정과 연결되어 있지 않아요.`;
-      hint = '이 반을 맡으시려면 총관리자에게 담임 배정을 요청해 주세요.';
+      hint = '이 반을 맡으시려면 학교관리자에게 담임 배정을 요청해 주세요.';
     } else {
       message = `${where}은 이미 있어요. 아직 담임이 없는 반이에요.`;
-      hint = '이 반을 맡으시려면 총관리자에게 담임 배정을 요청해 주세요.';
+      hint = '이 반을 맡으시려면 학교관리자에게 담임 배정을 요청해 주세요.';
     }
 
     return NextResponse.json(
