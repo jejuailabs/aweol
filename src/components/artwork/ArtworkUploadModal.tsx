@@ -414,8 +414,8 @@ export default function ArtworkUploadModal({ collectionPath, onClose, onUploaded
               </span>
               <span className="text-[12px] text-center px-6 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
                 {isTeacher
-                  ? '여러 장을 한 번에 고를 수 있어요 · AI가 선예도·조명을 자동 보정합니다'
-                  : 'AI가 선예도·조명을 자동 보정해요'}
+                  ? '여러 장을 한 번에 고를 수 있어요 · 책상 배경을 잘라내고 조명·선예도를 보정합니다'
+                  : '책상 배경을 잘라내고 조명·선예도를 보정해요'}
               </span>
             </button>
           ) : (
