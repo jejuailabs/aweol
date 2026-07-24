@@ -11,8 +11,8 @@ import {
 import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
-import { civicKindOf } from '@/lib/civic-places';
-import { walkableSites } from '@/lib/local-sites';
+import { civicKindOf, type CivicPlace } from '@/lib/civic-places';
+import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
@@ -47,10 +47,12 @@ export interface VillageData {
 const ROOF_COLORS = ['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'];
 
 /** 건물 바닥 다각형을 세운다 */
-function Buildings({ list, onEnterPlace }: {
+function Buildings({ list, onEnterPlace, places }: {
   list: VillageData['b'];
   /** 관공서 문을 눌렀을 때 (우체국·읍사무소 …). 없으면 문이 안 눌린다. */
   onEnterPlace?: (kind: string) => void;
+  /** 이 학교의 기관들 — 학교가 새로 만든 곳도 문이 열려야 한다 */
+  places?: CivicPlace[];
 }) {
   const geos = useMemo(
     () =>
@@ -134,7 +136,7 @@ function Buildings({ list, onEnterPlace }: {
          * 태그(`k`)가 없으면 **이름으로도 알아본다** — 한국 OSM 은 태그가 성겨서
          * '애월읍사무소' 가 이름만 있는 상자로 들어와 있는 경우가 흔하다.
          */
-        const civicKind = civicKindOf(b);
+        const civicKind = civicKindOf(b, places);
         return (
           <group key={i}>
             <mesh geometry={geo} castShadow receiveShadow>
@@ -389,6 +391,7 @@ function CarRig({
 
 export default function VillageMapScene({
   data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace, onEnterSite,
+  localSites, localPlaces,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
 }: {
   data: VillageData;
@@ -403,6 +406,10 @@ export default function VillageMapScene({
   onEnterPlace?: (kind: string) => void;
   /** 우리 고장 유적을 눌렀을 때 (애월진성 …) */
   onEnterSite?: (siteId: string) => void;
+  /** 이 학교의 유적·명소 (학교가 고쳤을 수 있다) */
+  localSites?: LocalSite[];
+  /** 이 학교의 기관들 */
+  localPlaces?: CivicPlace[];
   /** 이 아이가 가진 탈것 id 들(기본 자동차 말고 산 것) */
   ownedVehicles?: string[];
   /** 지금 고른 탈것 id. null 이면 기본 자동차. */
@@ -444,7 +451,10 @@ export default function VillageMapScene({
    * 그걸 400m 짜리 마을 지도에 그리면 거짓말이 된다. 먼 곳은 읍 지도에서
    * 방위와 거리로 본다.
    */
-  const sites = useMemo(() => walkableSites(schoolId), [schoolId]);
+  const sites = useMemo(
+    () => (localSites ?? []).filter((s) => s.km <= WALKABLE_KM),
+    [localSites]
+  );
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
 
@@ -511,7 +521,7 @@ export default function VillageMapScene({
   const civicIds = useMemo(() => {
     const s = new Set<string>();
     for (const b of data.b) {
-      const kind = civicKindOf(b);
+      const kind = civicKindOf(b, localPlaces);
       if (!kind || !b.n) continue;
       const t = targets.find((x) => x.name === (b.n as string).trim());
       if (t) s.add(t.id);
@@ -519,7 +529,7 @@ export default function VillageMapScene({
     // 유적도 들어가 볼 수 있는 곳이다
     for (const site of sites) s.add(`site-${site.id}`);
     return s;
-  }, [data.b, targets, sites]);
+  }, [data.b, targets, sites, localPlaces]);
 
   /**
    * 워프 — 아바타를 그 자리로 **옮기기만** 한다.
@@ -591,7 +601,7 @@ export default function VillageMapScene({
 
         <Areas list={data.a} />
         <Roads list={data.rd} />
-        <Buildings list={data.b} onEnterPlace={onEnterPlace} />
+        <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
 
         {/*
           우리 고장 유적 — **학교 바로 옆에 선다.**

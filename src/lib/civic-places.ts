@@ -49,6 +49,14 @@ export interface CivicPlace {
    * 이 차이를 뭉개면 '동네에 있는 큰 건물은 다 관공서' 라고 배운다.
    */
   notPublic?: string;
+  /**
+   * 마을 지도에서 **이 이름이 들어간 건물**을 이 기관으로 알아본다.
+   *
+   * 학교가 새 기관을 만들면 이게 없으면 **마을에 문이 안 생긴다** —
+   * 어드민에서 만들어 놓고 아이가 못 들어가는 일이 생긴다.
+   * 아래 `NAME_HINTS` 는 기본 기관들의 것이고, 여기 적으면 그것에 더해진다.
+   */
+  nameHints?: string[];
 }
 
 /**
@@ -489,12 +497,22 @@ const NAME_HINTS: { kind: string; words: string[] }[] = [
  * **아무거나 갖다 붙이지 않는다.** 모르는 건물은 그냥 배경이다 —
  * 은행을 우체국이라고 알려주면 안 배우느니만 못하다.
  */
-export function civicKindOf(b: { n?: string; k?: string }): string | null {
-  if (b.k && civicByKind(b.k)) return b.k;
+export function civicKindOf(
+  b: { n?: string; k?: string },
+  /** 이 학교의 기관들. 안 주면 기본 기관만 본다. */
+  places: CivicPlace[] = CIVIC_PLACES
+): string | null {
+  const known = new Set(places.map((p) => p.kind));
+  if (b.k && known.has(b.k)) return b.k;
   const name = (b.n ?? '').replace(/\s+/g, '');
   if (!name) return null;
+
+  // 학교가 적어 둔 이름이 먼저다 — 그 동네를 제일 잘 아는 쪽이 적은 것이다
+  for (const p of places) {
+    if (p.nameHints?.some((w) => w && name.includes(w))) return p.kind;
+  }
   for (const h of NAME_HINTS) {
-    if (h.words.some((w) => name.includes(w))) return h.kind;
+    if (known.has(h.kind) && h.words.some((w) => name.includes(w))) return h.kind;
   }
   return null;
 }

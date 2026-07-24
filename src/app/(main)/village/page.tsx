@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { VEHICLES } from '@/lib/village-travel';
 import { useProgress } from '@/lib/use-progress';
 import { openQuests } from '@/lib/village-rpg';
+import { useRpgContent } from '@/lib/use-rpg-content';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
 import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
@@ -46,8 +47,9 @@ export default function VillagePage() {
 
   /** 지금 할 일이 몇 개인가 — 수첩 단추에 뜬다 */
   const { done } = useProgress();
+  const rpg = useRpgContent(schoolId);
   const grade = Number(userDoc?.classIds?.[0]?.split('-')[0]) || undefined;
-  const todoCount = openQuests(done, grade).length;
+  const todoCount = openQuests(rpg.quests, done, grade).length;
 
   const me = user && userDoc ? {
     uid: user.uid,
@@ -149,6 +151,8 @@ export default function VillagePage() {
            */
           onEnterPlace={(kind) => router.push(`/school/${schoolId}/place/${kind}`)}
           onEnterSite={(siteId) => router.push(`/school/${schoolId}/site/${siteId}`)}
+          localSites={rpg.sites}
+          localPlaces={rpg.places}
           ownedVehicles={ownedVehicles}
           vehicleId={vehicleId}
           onPickVehicle={pickVehicle}

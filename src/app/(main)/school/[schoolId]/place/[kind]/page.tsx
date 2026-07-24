@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { civicByKind } from '@/lib/civic-places';
+import { useRpgContent } from '@/lib/use-rpg-content';
 import { useProgress } from '@/lib/use-progress';
 import { placeKey, questKey, type Quest } from '@/lib/village-rpg';
 
@@ -26,8 +26,10 @@ export default function CivicPlacePage() {
   const kind = params.kind as string;
   const { userDoc } = useAuth();
   const { done, mark } = useProgress();
+  const rpg = useRpgContent(schoolId);
 
-  const place = civicByKind(kind);
+  // **학교가 고친 내용**을 본다. 기본값은 그 안에 이미 깔려 있다.
+  const place = rpg.places.find((x) => x.kind === kind);
   const grade = Number(userDoc?.classIds?.[0]?.split('-')[0]) || undefined;
 
   // 모르는 곳이면 지어내지 않는다 — 마을로 돌려보낸다
@@ -73,6 +75,7 @@ export default function CivicPlacePage() {
         onGuideDone={() => mark(placeKey(kind), { kind })}
         progress={done}
         grade={grade}
+        quests={rpg.quests}
         onFinishQuest={finish}
         onGoTo={goTo}
       />

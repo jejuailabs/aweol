@@ -4,14 +4,12 @@ import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useProgress } from '@/lib/use-progress';
-import { civicByKind } from '@/lib/civic-places';
+import { DIR_LABEL, howFar, siteXZ, type LocalSite } from '@/lib/local-sites';
 import {
-  DIR_LABEL, howFar, sitesOfSchool, siteXZ, timelineOf, type LocalSite,
-} from '@/lib/local-sites';
-import {
-  CHAPTERS, QUESTS, badgesOf, chapterProgress, doneQuests, openQuests,
-  questState, questTarget, rankOf, siteKey, toNextRank, type Quest,
+  CHAPTERS, badgesOf, chapterProgress, doneQuests, openQuests,
+  questState, questTarget, rankForSchool, siteKey, toNextRank, type Quest,
 } from '@/lib/village-rpg';
+import { useRpgContent } from '@/lib/use-rpg-content';
 
 /**
  * 조사 수첩 — **지금 할 일과, 지금까지 알아낸 것.**
@@ -38,17 +36,22 @@ export default function NotebookPage() {
   const schoolId = String(params.schoolId ?? '');
   const { userDoc } = useAuth();
   const { done, signedIn } = useProgress();
+  const rpg = useRpgContent(schoolId);
   const [tab, setTab] = useState<Tab>('todo');
 
   const grade = Number(userDoc?.classIds?.[0]?.split('-')[0]) || undefined;
 
-  const open = useMemo(() => openQuests(done, grade), [done, grade]);
-  const fin = useMemo(() => doneQuests(done), [done]);
-  const badges = useMemo(() => badgesOf(done), [done]);
-  const rank = rankOf(fin.length);
+  const open = useMemo(() => openQuests(rpg.quests, done, grade), [rpg.quests, done, grade]);
+  const fin = useMemo(() => doneQuests(rpg.quests, done), [rpg.quests, done]);
+  const badges = useMemo(() => badgesOf(rpg.quests, done), [rpg.quests, done]);
+  // 등급은 **그 학교의 심부름 수**에 맞춘다 — 학교가 늘리거나 줄일 수 있으니까
+  const rank = rankForSchool(fin.length, rpg.quests.length);
   const next = toNextRank(fin.length);
-  const sites = useMemo(() => sitesOfSchool(schoolId), [schoolId]);
-  const timeline = useMemo(() => timelineOf(schoolId), [schoolId]);
+  const sites = rpg.sites;
+  const timeline = useMemo(
+    () => rpg.sites.filter((s) => s.era).sort((a, b) => a.era!.order - b.era!.order),
+    [rpg.sites]
+  );
 
   const goQuest = (q: Quest) => {
     const st = questState(q, done);
@@ -78,7 +81,7 @@ export default function NotebookPage() {
           <div className="min-w-0">
             <div className="text-[18px] font-black" style={{ color: '#5B4A3B' }}>{rank.label}</div>
             <div className="text-[13px]" style={{ color: '#8A7A5F' }}>
-              심부름 {fin.length} / {QUESTS.length} 개
+              심부름 {fin.length} / {rpg.quests.length} 개
               {next && ` · ${next.label}까지 ${next.left}개`}
             </div>
           </div>
@@ -86,7 +89,7 @@ export default function NotebookPage() {
         <div className="mt-2.5 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.08)' }}>
           <div
             className="h-full rounded-full"
-            style={{ width: `${(fin.length / QUESTS.length) * 100}%`, background: '#E8A33C' }}
+            style={{ width: `${rpg.quests.length ? (fin.length / rpg.quests.length) * 100 : 0}%`, background: '#E8A33C' }}
           />
         </div>
       </div>
@@ -115,21 +118,29 @@ export default function NotebookPage() {
         ))}
       </div>
 
-      {tab === 'todo' && <TodoTab open={open} onGo={goQuest} done={done} />}
+      {tab === 'todo' && <TodoTab open={open} onGo={goQuest} done={done} quests={rpg.quests} places={rpg.places} />}
       {tab === 'timeline' && <TimelineTab sites={timeline} done={done} schoolId={schoolId} />}
       {tab === 'map' && <MapTab sites={sites} done={done} schoolId={schoolId} />}
-      {tab === 'badge' && <BadgeTab badges={badges} done={done} />}
+      {tab === 'badge' && <BadgeTab badges={badges} done={done} quests={rpg.quests} />}
     </div>
   );
 }
 
 // ───────────────────────────────────────────────────────────
 
-function TodoTab({ open, onGo, done }: {
+function TodoTab({ open, onGo, done, quests, places }: {
   open: Quest[];
   onGo: (q: Quest) => void;
   done: ReadonlySet<string>;
+  quests: Quest[];
+  places: { kind: string; label: string; emoji: string; people: { name: string }[] }[];
 }) {
+  /**
+   * 학교가 새로 만든 심부름이 우리가 모르는 이야기(에피소드)에 속할 수 있다.
+   * 그런 것도 **빠뜨리지 않고** 아래 '그 밖의 심부름' 에 모은다.
+   */
+  const known = new Set(CHAPTERS.map((c) => c.id));
+  const others = open.filter((q) => !known.has(q.chapter));
   if (open.length === 0) {
     return (
       <div className="rounded-3xl p-6 text-center" style={{ background: 'var(--color-surface)' }}>
@@ -145,12 +156,21 @@ function TodoTab({ open, onGo, done }: {
     );
   }
 
+  const groups: { id: string; title: string; emoji: string; blurb: string }[] = [
+    ...CHAPTERS,
+    ...(others.length
+      ? [{ id: '__other', title: '그 밖의 심부름', emoji: '📎', blurb: '우리 학교에서 만든 심부름이에요.' }]
+      : []),
+  ];
+
   return (
     <div className="grid gap-2">
-      {CHAPTERS.map((ch) => {
-        const mine = open.filter((q) => q.chapter === ch.id);
+      {groups.map((ch) => {
+        const mine = ch.id === '__other' ? others : open.filter((q) => q.chapter === ch.id);
         if (mine.length === 0) return null;
-        const prog = chapterProgress(ch.id, done);
+        const prog = ch.id === '__other'
+          ? { done: 0, total: others.length }
+          : chapterProgress(quests, ch.id, done);
         return (
           <div key={ch.id} className="rounded-3xl p-4" style={{ background: 'var(--color-surface)' }}>
             <div className="flex items-center gap-2 mb-1">
@@ -165,7 +185,7 @@ function TodoTab({ open, onGo, done }: {
             <div className="grid gap-1.5">
               {mine.map((q) => {
                 const st = questState(q, done);
-                const giver = civicByKind(q.giver.placeKind);
+                const giver = places.find((x) => x.kind === q.giver.placeKind);
                 return (
                   <button
                     key={q.id}
@@ -348,11 +368,12 @@ function MapTab({ sites, done, schoolId }: {
   );
 }
 
-function BadgeTab({ badges, done }: {
+function BadgeTab({ badges, done, quests }: {
   badges: { emoji: string; label: string }[];
   done: ReadonlySet<string>;
+  quests: Quest[];
 }) {
-  const all = QUESTS.filter((q) => q.badge);
+  const all = quests.filter((q) => q.badge);
   return (
     <div>
       <div className="text-[13px] mb-2.5" style={{ color: 'var(--color-text-sub)' }}>

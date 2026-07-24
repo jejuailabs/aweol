@@ -328,6 +328,27 @@ service cloud.firestore {
       }
 
       /**
+       * 마을 조사대 내용 — 이 학교가 고친 유적·기관·심부름.
+       *
+       * **읽기는 열려 있다.** 아이 화면이 이걸 읽어 마을을 그린다.
+       * **쓰기는 서버만**(`/api/rpg`) — 저장 전에 **막다른 심부름**을
+       * 검사해야 하는데, 그 검사는 전체를 다 봐야 할 수 있는 일이라
+       * 규칙으로는 못 한다. 화면에서만 막으면 막은 게 아니다.
+       */
+      match /rpgSites/{siteId} {
+        allow read: if true;
+        allow write: if false;
+      }
+      match /rpgPlaces/{placeKind} {
+        allow read: if true;
+        allow write: if false;
+      }
+      match /rpgQuests/{questId} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      /**
        * 광장 — 다 같이 보는 판.
        *
        * 문제 글·남은 사람·정답(열린 뒤)이 여기 있다. 읽기는 다 열고

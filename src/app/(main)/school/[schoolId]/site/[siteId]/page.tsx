@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProgress } from '@/lib/use-progress';
 import { playSound } from '@/lib/sound';
-import { howFar, siteById } from '@/lib/local-sites';
-import { QUESTS, questState, siteKey } from '@/lib/village-rpg';
+import { howFar } from '@/lib/local-sites';
+import { questState, siteKey } from '@/lib/village-rpg';
+import { useRpgContent } from '@/lib/use-rpg-content';
 
 /**
  * 우리 고장 유적·명소 — 읽고, 보고, 돌아간다.
@@ -27,8 +28,10 @@ export default function LocalSitePage() {
   const schoolId = String(params.schoolId ?? '');
   const siteId = String(params.siteId ?? '');
   const { done, mark } = useProgress();
+  const rpg = useRpgContent(schoolId);
 
-  const site = siteById(siteId);
+  // **학교가 고친 내용**을 본다. 기본값은 그 안에 이미 깔려 있다.
+  const site = rpg.sites.find((s) => s.id === siteId);
 
   const [page, setPage] = useState(0);
   /**
@@ -126,7 +129,7 @@ export default function LocalSitePage() {
    * 조사를 마쳐도 어디로 가야 할지 모르면 마을에서 헤맨다.
    * 이 곳을 시킨 심부름을 찾아 그 사람이 있는 기관으로 보내준다.
    */
-  const backTo = QUESTS.find(
+  const backTo = rpg.quests.find(
     (q) => q.need.some((c) => c.kind === 'site' && c.siteId === siteId)
       && questState(q, done) !== 'done'
   );

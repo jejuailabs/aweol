@@ -347,7 +347,7 @@ function Clerk({
 
 export default function CivicPlaceScene({
   place, avatarId, avatarCustom, avatarTint, onExit, onGuideDone, guideDone,
-  progress, grade, onFinishQuest, onGoTo,
+  progress, grade, quests, onFinishQuest, onGoTo,
 }: {
   place: CivicPlace;
   avatarId?: string | null;
@@ -364,6 +364,8 @@ export default function CivicPlaceScene({
    */
   progress: ReadonlySet<string>;
   grade?: number;
+  /** 이 학교의 심부름 목록 (학교가 고쳤을 수 있다) */
+  quests: Quest[];
   /** 심부름을 마치고 알렸을 때 */
   onFinishQuest?: (q: Quest) => void;
   /** 심부름이 보내는 곳으로 데려다줄 때 */
@@ -402,8 +404,8 @@ export default function CivicPlaceScene({
    * 마을 담당은 유적 조사를 시킨다. 그리고 앞 심부름을 안 했으면 아예 안 뜬다.
    */
   const questAt = useMemo(
-    () => place.people.map((_, i) => questOfPerson(place.kind, i, progress, grade)),
-    [place.kind, place.people, progress, grade]
+    () => place.people.map((_, i) => questOfPerson(quests, place.kind, i, progress, grade)),
+    [quests, place.kind, place.people, progress, grade]
   );
 
   /** 창을 보는 동안에는 아바타가 움직이면 안 된다 — 읽는 중에 걸어가 버린다 */

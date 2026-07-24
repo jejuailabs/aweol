@@ -701,6 +701,22 @@ export default function AdminPage() {
             직접 입력 / 엑셀 등록
           </div>
         </button>
+        {/*
+          마을 조사대 — **고장 이야기는 그 고장 선생님이 제일 잘 안다.**
+          학교 상징(교훈·교화)에서 이미 같은 결론을 냈다.
+        */}
+        <button
+          onClick={() => router.push(`/admin/${schoolId}/village`)}
+          className="rounded-2xl p-4 text-left transition-transform hover:scale-[1.02]"
+          style={{ background: 'var(--color-surface-soft)' }}
+        >
+          <div className="text-2xl mb-2">🧭</div>
+          <div className="text-sm font-bold" style={{ color: 'var(--color-text-main)' }}>마을 조사대</div>
+          <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+            유적 · 기관 · 심부름 고치기
+          </div>
+        </button>
+
         {/* 선생님 승인은 학교관리자도 한다 — 우리 학교 신청만 보인다 */}
         {canApproveTeacher(actualRole) && (
           <button

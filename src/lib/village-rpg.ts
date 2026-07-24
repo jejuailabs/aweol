@@ -625,9 +625,15 @@ export function questState(q: Quest, done: Progress): QuestState {
   return q.need.every((c) => met(c, done)) ? 'ready' : 'todo';
 }
 
-/** 이 기관에서 만날 수 있는 심부름들 (안 뜬 것은 뺀다) */
-export function questsAtPlace(placeKind: string, done: Progress, grade?: number): Quest[] {
-  return QUESTS
+/**
+ * 이 기관에서 만날 수 있는 심부름들 (안 뜬 것은 뺀다).
+ *
+ * **심부름 목록을 밖에서 받는다.** 학교가 어드민에서 고칠 수 있게 되면서
+ * `QUESTS` 는 더 이상 '진짜 목록' 이 아니라 **기본값**이 되었다
+ * (`rpg-content.ts`). 화면은 그 학교 것을 받아 넘겨준다.
+ */
+export function questsAtPlace(quests: Quest[], placeKind: string, done: Progress, grade?: number): Quest[] {
+  return quests
     .filter((q) => q.giver.placeKind === placeKind)
     .filter((q) => !q.minGrade || !grade || grade >= q.minGrade)
     .filter((q) => questState(q, done) !== 'locked')
@@ -636,12 +642,13 @@ export function questsAtPlace(placeKind: string, done: Progress, grade?: number)
 
 /** 이 사람이 지금 줄 수 있는 심부름 하나 (없으면 `null`) */
 export function questOfPerson(
+  quests: Quest[],
   placeKind: string,
   at: number,
   done: Progress,
   grade?: number
 ): Quest | null {
-  const mine = questsAtPlace(placeKind, done, grade).filter((q) => q.giver.at === at);
+  const mine = questsAtPlace(quests, placeKind, done, grade).filter((q) => q.giver.at === at);
   // **알릴 것이 먼저다.** 상 받을 게 있는데 새 심부름을 주면 아이가 헷갈린다
   return mine.find((q) => questState(q, done) === 'ready')
     ?? mine.find((q) => questState(q, done) === 'todo')
@@ -650,8 +657,8 @@ export function questOfPerson(
 }
 
 /** 지금 해야 할 일들 — 조사 수첩에 뜬다 */
-export function openQuests(done: Progress, grade?: number): Quest[] {
-  return QUESTS
+export function openQuests(quests: Quest[], done: Progress, grade?: number): Quest[] {
+  return quests
     .filter((q) => !q.minGrade || !grade || grade >= q.minGrade)
     .filter((q) => {
       const s = questState(q, done);
@@ -659,16 +666,16 @@ export function openQuests(done: Progress, grade?: number): Quest[] {
     });
 }
 
-export const doneQuests = (done: Progress): Quest[] =>
-  QUESTS.filter((q) => done.has(questKey(q.id)));
+export const doneQuests = (quests: Quest[], done: Progress): Quest[] =>
+  quests.filter((q) => done.has(questKey(q.id)));
 
 /** 모은 뱃지 */
-export const badgesOf = (done: Progress) =>
-  doneQuests(done).map((q) => q.badge).filter((b): b is NonNullable<typeof b> => !!b);
+export const badgesOf = (quests: Quest[], done: Progress) =>
+  doneQuests(quests, done).map((q) => q.badge).filter((b): b is NonNullable<typeof b> => !!b);
 
 /** 에피소드가 어디까지 왔나 */
-export function chapterProgress(chapterId: string, done: Progress) {
-  const all = QUESTS.filter((q) => q.chapter === chapterId);
+export function chapterProgress(quests: Quest[], chapterId: string, done: Progress) {
+  const all = quests.filter((q) => q.chapter === chapterId);
   const fin = all.filter((q) => done.has(questKey(q.id)));
   return { total: all.length, done: fin.length, complete: all.length > 0 && fin.length === all.length };
 }
@@ -683,4 +690,16 @@ export function questTarget(q: Quest): { kind: 'site'; id: string } | { kind: 'p
 }
 
 export const questById = (id: string) => QUESTS.find((q) => q.id === id);
+
+/**
+ * 등급은 **그 학교의 심부름 수**에 맞춘다.
+ *
+ * 학교가 심부름을 늘리거나 줄이면 스무 개 기준이 안 맞는다.
+ * 그래서 비율로 잰다 — 다 하면 어디서나 마을 박사가 된다.
+ */
+export function rankForSchool(doneCount: number, total: number) {
+  if (total <= 0) return RANKS[0];
+  const scaled = Math.round((doneCount / total) * RANKS[RANKS.length - 1].need);
+  return rankOf(scaled);
+}
 export const chapterById = (id: string) => CHAPTERS.find((c) => c.id === id);
