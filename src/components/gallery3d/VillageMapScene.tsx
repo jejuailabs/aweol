@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
   type Obstacle, type AvatarCustom, type AvatarTint,
@@ -45,6 +46,14 @@ export interface VillageData {
 
 /** 꾸민 건물 지붕에 쓰는 색. 이름을 씨앗 삼아 고른다. */
 const ROOF_COLORS = ['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'];
+
+/**
+ * 배경 건물 벽색.
+ * 수백 채가 전부 같은 베이지면 설계도처럼 보인다 — 미묘하게 다른
+ * 흙·모래 계열 몇 가지를 돌려 쓰면 동네처럼 보인다. 비용은 0이다
+ * (어차피 건물마다 재질이 하나씩이다).
+ */
+const WALL_COLORS = ['#EFE5D3', '#E6DAC5', '#E9DFCE', '#DFD3BE', '#F0E7D6', '#E2D8C8'];
 
 /** 건물 바닥 다각형을 세운다 */
 function Buildings({ list, onEnterPlace, places }: {
@@ -125,8 +134,39 @@ function Buildings({ list, onEnterPlace, places }: {
   );
   useEffect(() => () => roofs.forEach((g) => g?.dispose()), [roofs]);
 
+  /**
+   * 이름 없는 배경 건물에도 지붕을 얹는다 — **전부 합쳐 메시 하나로.**
+   *
+   * 지붕이 없으면 위에서 볼 때 벽색 그대로 잘린 상자라 설계도처럼 보인다.
+   * 그렇다고 수백 채에 메시를 하나씩 더하면 드로우콜이 두 배가 된다.
+   * 색이 다 같아도 되는 배경 지붕이므로 지오메트리를 병합해 한 번에 그린다.
+   */
+  const plainRoofs = useMemo(() => {
+    const parts: THREE.BufferGeometry[] = [];
+    for (const b of list) {
+      if (b.n) continue;
+      const shape = new THREE.Shape();
+      b.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
+      shape.closePath();
+      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
+      g.rotateX(-PI / 2);
+      g.translate(0, b.h + 0.02, 0);
+      parts.push(g);
+    }
+    if (!parts.length) return null;
+    const merged = mergeGeometries(parts);
+    parts.forEach((g) => g.dispose());
+    return merged;
+  }, [list]);
+  useEffect(() => () => { plainRoofs?.dispose(); }, [plainRoofs]);
+
   return (
     <group>
+      {plainRoofs && (
+        <mesh geometry={plainRoofs} castShadow>
+          <meshStandardMaterial color="#B7A78D" roughness={0.9} />
+        </mesh>
+      )}
       {geos.map((geo, i) => {
         const b = list[i];
         const named = !!b.n;
@@ -141,7 +181,7 @@ function Buildings({ list, onEnterPlace, places }: {
           <group key={i}>
             <mesh geometry={geo} castShadow receiveShadow>
               <meshStandardMaterial
-                color={named ? '#F4E8D0' : '#E4DDD0'}
+                color={named ? '#F7ECD8' : WALL_COLORS[i % WALL_COLORS.length]}
                 roughness={0.9}
               />
             </mesh>
@@ -157,22 +197,30 @@ function Buildings({ list, onEnterPlace, places }: {
               const bType = civicKind || b.k || '';
               return (
               <group position={[d.cx, 0, d.cz]}>
-                {/* 창문 두 줄 — 앞면에 붙인다 */}
+                {/* 창문 두 줄 — 틀을 두르고 유리를 끼운다. 틀이 없으면 벽에 뚫린 구멍 같다. */}
                 {([0.35, 0.62] as const).map((fy) =>
                   ([-0.28, 0.28] as const).map((fx) => (
-                    <mesh
-                      key={`${fy}-${fx}`}
-                      position={[fx * d.w, b.h * fy, d.d / 2 + 0.05]}
-                    >
-                      <planeGeometry args={[Math.min(1.1, d.w * 0.26), 1]} />
-                      <meshStandardMaterial
-                        color="#9FD4EE"
-                        emissive="#9FD4EE"
-                        emissiveIntensity={0.25}
-                      />
-                    </mesh>
+                    <group key={`${fy}-${fx}`} position={[fx * d.w, b.h * fy, d.d / 2 + 0.05]}>
+                      <mesh position={[0, 0, -0.01]}>
+                        <planeGeometry args={[Math.min(1.3, d.w * 0.3), 1.2]} />
+                        <meshStandardMaterial color="#8C7A60" roughness={0.85} />
+                      </mesh>
+                      <mesh>
+                        <planeGeometry args={[Math.min(1.1, d.w * 0.26), 1]} />
+                        <meshStandardMaterial
+                          color="#BEE6F7"
+                          emissive="#9FD4EE"
+                          emissiveIntensity={0.35}
+                        />
+                      </mesh>
+                    </group>
                   ))
                 )}
+                {/* 문틀 */}
+                <mesh position={[0, b.h * 0.16, d.d / 2 + 0.04]}>
+                  <planeGeometry args={[Math.min(1.45, d.w * 0.33), b.h * 0.36]} />
+                  <meshStandardMaterial color="#6E5335" roughness={0.85} />
+                </mesh>
                 <mesh
                   position={[0, b.h * 0.16, d.d / 2 + 0.05]}
                   onClick={civicKind && onEnterPlace
@@ -190,6 +238,18 @@ function Buildings({ list, onEnterPlace, places }: {
                     emissiveIntensity={civicKind ? 0.35 : 0}
                   />
                 </mesh>
+                {/* 현관 계단 — 문 앞에 낮은 단이 있으면 문이 '진짜 입구'처럼 읽힌다 */}
+                <mesh position={[0, 0.09, d.d / 2 + 0.45]} castShadow receiveShadow>
+                  <boxGeometry args={[Math.min(1.8, d.w * 0.4), 0.18, 0.8]} />
+                  <meshStandardMaterial color="#C9BCA4" roughness={0.9} />
+                </mesh>
+                {/* 들어갈 수 있는 곳은 현관 지붕까지 — 눈에 띄어야 눌러본다 */}
+                {civicKind && (
+                  <mesh position={[0, b.h * 0.36, d.d / 2 + 0.55]} castShadow>
+                    <boxGeometry args={[Math.min(2.2, d.w * 0.45), 0.14, 1.1]} />
+                    <meshStandardMaterial color={ROOF_COLORS[d.hue]} roughness={0.75} />
+                  </mesh>
+                )}
 
                 {/* ── 건물 타입별 외관 특징 ── */}
                 {bType === 'post_office' && (
@@ -256,24 +316,30 @@ function Buildings({ list, onEnterPlace, places }: {
                     </mesh>
                   </>
                 )}
-                {bType === 'convenience' && (
-                  <mesh position={[0, b.h * 0.38, d.d / 2 + 0.6]} castShadow>
-                    <boxGeometry args={[Math.min(d.w * 0.9, 5), 0.12, 1.0]} />
-                    <meshStandardMaterial color="#3BA89F" roughness={0.7} />
-                  </mesh>
-                )}
-                {bType === 'cafe' && (
-                  <mesh position={[0, b.h * 0.38, d.d / 2 + 0.6]} castShadow>
-                    <boxGeometry args={[Math.min(d.w * 0.9, 5), 0.12, 1.0]} />
-                    <meshStandardMaterial color="#C97B4B" roughness={0.7} />
-                  </mesh>
-                )}
-                {(bType === 'restaurant' || bType === 'fast_food') && (
-                  <mesh position={[0, b.h * 0.38, d.d / 2 + 0.6]} castShadow>
-                    <boxGeometry args={[Math.min(d.w * 0.9, 5), 0.12, 1.0]} />
-                    <meshStandardMaterial color="#E8604C" roughness={0.7} />
-                  </mesh>
-                )}
+                {(bType === 'convenience' || bType === 'cafe'
+                  || bType === 'restaurant' || bType === 'fast_food') && (() => {
+                  const awnColor = bType === 'convenience' ? '#3BA89F'
+                    : bType === 'cafe' ? '#C97B4B' : '#E8604C';
+                  const awnW = Math.min(d.w * 0.9, 5);
+                  return (
+                    <>
+                      {/* 경사진 차양 — 평평한 판보다 가게처럼 보인다 */}
+                      <mesh
+                        position={[0, b.h * 0.4, d.d / 2 + 0.55]}
+                        rotation={[0.4, 0, 0]}
+                        castShadow
+                      >
+                        <boxGeometry args={[awnW, 0.1, 1.2]} />
+                        <meshStandardMaterial color={awnColor} roughness={0.7} />
+                      </mesh>
+                      {/* 차양 앞단 흰 줄 — 줄무늬 천의 인상만 낸다 */}
+                      <mesh position={[0, b.h * 0.4 - 0.24, d.d / 2 + 1.1]} rotation={[0.4, 0, 0]}>
+                        <boxGeometry args={[awnW, 0.11, 0.25]} />
+                        <meshStandardMaterial color="#FFF6E4" roughness={0.7} />
+                      </mesh>
+                    </>
+                  );
+                })()}
                 {bType === 'bank' && (
                   <>
                     <mesh position={[-d.w / 4, b.h + 0.4, 0]} castShadow>
@@ -374,6 +440,17 @@ function Roads({ list }: { list: VillageData['rd'] }) {
           <meshStandardMaterial color="#D6C9AE" roughness={0.95} />
         </mesh>
       ))}
+      {/* 큰길에만 중앙선을 긋는다 — 골목까지 그으면 온 동네가 도로가 된다 */}
+      {pieces.filter((p) => p.w >= 8).map((p, i) => (
+        <mesh
+          key={`c${i}`}
+          position={[p.pos[0], 0.05, p.pos[2]]}
+          rotation={[NEG_HALF_PI, 0, p.rot]}
+        >
+          <planeGeometry args={[0.3, p.len]} />
+          <meshStandardMaterial color="#FFF3D0" roughness={0.9} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -440,25 +517,43 @@ function VillageProps({ radius, buildings }: {
         <group key={i} position={[it.x, 0, it.z]} rotation={[0, it.r, 0]} scale={it.s}>
           {it.kind === 'tree' && (
             <>
-              <mesh position={[0, 2.5, 0]} castShadow>
-                <sphereGeometry args={[2.2, 8, 6]} />
-                <meshStandardMaterial color="#5CA84E" roughness={0.95} />
-              </mesh>
-              <mesh position={[0, 0.8, 0]} castShadow>
-                <cylinderGeometry args={[0.25, 0.35, 1.6, 6]} />
+              {/* 덩어리 하나면 사탕처럼 보인다 — 크기·색이 다른 세 덩어리를 겹친다 */}
+              <mesh position={[0, 0.9, 0]} castShadow>
+                <cylinderGeometry args={[0.22, 0.4, 1.8, 6]} />
                 <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+              </mesh>
+              <mesh position={[0, 2.4, 0]} castShadow>
+                <sphereGeometry args={[1.9, 8, 6]} />
+                <meshStandardMaterial color="#55A24B" roughness={0.95} />
+              </mesh>
+              <mesh position={[0.9, 3.1, 0.3]} castShadow>
+                <sphereGeometry args={[1.15, 7, 5]} />
+                <meshStandardMaterial color="#66B458" roughness={0.95} />
+              </mesh>
+              <mesh position={[-0.8, 3.3, -0.4]} castShadow>
+                <sphereGeometry args={[0.95, 7, 5]} />
+                <meshStandardMaterial color="#4C9443" roughness={0.95} />
               </mesh>
             </>
           )}
           {it.kind === 'palm' && (
             <>
-              <mesh position={[0, 3.5, 0]} castShadow>
-                <sphereGeometry args={[1.6, 6, 5]} />
-                <meshStandardMaterial color="#3D8B37" roughness={0.92} />
-              </mesh>
-              <mesh position={[0, 1.4, 0]} castShadow>
-                <cylinderGeometry args={[0.18, 0.28, 2.8, 6]} />
+              <mesh position={[0, 1.6, 0]} castShadow>
+                <cylinderGeometry args={[0.15, 0.3, 3.2, 6]} />
                 <meshStandardMaterial color="#A08060" roughness={0.9} />
+              </mesh>
+              {/* 잎 다섯 장을 바깥으로 눕혀 방사형으로 편다 */}
+              {[0, 1, 2, 3, 4].map((n) => (
+                <group key={n} rotation={[0, (n / 5) * PI * 2, 0]}>
+                  <mesh position={[0.85, 3.2, 0]} rotation={[0, 0, -1.05]} castShadow>
+                    <coneGeometry args={[0.42, 1.9, 4]} />
+                    <meshStandardMaterial color="#3D8B37" roughness={0.92} />
+                  </mesh>
+                </group>
+              ))}
+              <mesh position={[0, 3.25, 0]}>
+                <sphereGeometry args={[0.3, 6, 5]} />
+                <meshStandardMaterial color="#7A5C40" roughness={0.9} />
               </mesh>
             </>
           )}
@@ -599,12 +694,111 @@ function Areas({ list }: { list: VillageData['a'] }) {
       {geos.map((geo, i) => (
         <mesh key={i} geometry={geo} position={[0, 0.02, 0]} receiveShadow>
           <meshStandardMaterial
-            color={list[i].k === 'water' ? '#8FD3F0' : '#9FDD97'}
-            roughness={0.9}
+            color={list[i].k === 'water' ? '#6FC5E8' : '#9FDD97'}
+            roughness={list[i].k === 'water' ? 0.25 : 0.9}
           />
         </mesh>
       ))}
     </group>
+  );
+}
+
+/**
+ * 바닥 — 단색 대신 잔디 점이 찍힌 타일 텍스처를 깐다.
+ *
+ * 단색 초록 한 장은 게임이 아니라 도면처럼 보인다. 캔버스에 점을 찍어
+ * 작은 텍스처 하나를 만들고 반복해 깐다 — 파일도, 네트워크도 필요 없다.
+ */
+function Ground({ R }: { R: number }) {
+  const tex = useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#A8DDA0';
+    ctx.fillRect(0, 0, 256, 256);
+    const tones = ['#9ED596', '#B2E3AA', '#98CE90', '#ACDFA4'];
+    for (let i = 0; i < 1000; i++) {
+      ctx.fillStyle = tones[i % 4];
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2.5, 2.5);
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    // 타일 한 장 ≈ 12m — 걷는 눈높이에서 점이 보슬보슬 보이는 크기
+    t.repeat.set((R * 2 + 200) / 12, (R * 2 + 200) / 12);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [R]);
+  useEffect(() => () => { tex?.dispose(); }, [tex]);
+  return (
+    <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <planeGeometry args={[R * 2 + 200, R * 2 + 200]} />
+      {tex
+        ? <meshStandardMaterial map={tex} roughness={0.95} />
+        : <meshStandardMaterial color="#A8DDA0" roughness={0.95} />}
+    </mesh>
+  );
+}
+
+/**
+ * 지평선 — 마을 밖에 낮은 언덕들과 한라산을 세운다.
+ *
+ * 마을 끝에서 초록 판이 뚝 끊기면 세상의 끝처럼 보인다. 안개 속에
+ * 오름 능선이 비치면 '섬 마을'이 된다. 한라산은 남동쪽 — 애월에서
+ * 실제로 보이는 방향이다.
+ */
+function Horizon({ R }: { R: number }) {
+  const hills = useMemo(() => {
+    const out: { x: number; z: number; r: number; h: number }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * PI * 2 + 0.26;
+      const dist = R * (1.18 + (i % 3) * 0.12);
+      out.push({
+        x: Math.cos(a) * dist,
+        z: Math.sin(a) * dist,
+        r: R * 0.14 + (i % 4) * R * 0.04,
+        h: R * 0.045 + (i % 3) * R * 0.02,
+      });
+    }
+    return out;
+  }, [R]);
+  return (
+    <group>
+      {hills.map((h, i) => (
+        <mesh key={i} position={[h.x, h.h / 2 - 0.5, h.z]}>
+          <coneGeometry args={[h.r, h.h, 7]} />
+          <meshStandardMaterial color="#7FBF77" roughness={1} />
+        </mesh>
+      ))}
+      {/* 한라산 — 남동쪽 멀리, 안개 너머 실루엣으로 */}
+      <mesh position={[R * 0.9, R * 0.19, R * 1.7]}>
+        <coneGeometry args={[R * 0.85, R * 0.4, 9]} />
+        <meshStandardMaterial color="#6FA982" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * 박공지붕 — 상자 위에 얹는 삼각 프리즘.
+ * 납작한 판보다 '집'으로 읽힌다. 가상 관공서 건물에 쓴다.
+ */
+function GableRoof({ w, d, y, color }: { w: number; d: number; y: number; color: string }) {
+  const geo = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(-w / 2, 0);
+    s.lineTo(w / 2, 0);
+    s.lineTo(0, w * 0.3);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
+    g.translate(0, 0, -d / 2);
+    return g;
+  }, [w, d]);
+  useEffect(() => () => geo.dispose(), [geo]);
+  return (
+    <mesh geometry={geo} position={[0, y, 0]} castShadow>
+      <meshStandardMaterial color={color} roughness={0.8} />
+    </mesh>
   );
 }
 
@@ -914,14 +1108,32 @@ export default function VillageMapScene({
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
       >
-        <ambientLight intensity={0.85} />
-        <directionalLight position={[120, 200, 100]} intensity={0.95} color="#FFF4DC" />
+        {/*
+          하늘빛은 위에서 파랗게, 땅 반사광은 아래에서 초록으로 —
+          한 색으로 고르게 밝히는 ambient 만 쓰면 입체감이 죽는다.
+        */}
+        <hemisphereLight args={['#CFEFFF', '#9CC98F', 0.75]} />
+        <ambientLight intensity={0.3} />
+        <directionalLight
+          position={[120, 200, 100]}
+          intensity={1.05}
+          color="#FFF4DC"
+          castShadow
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+          shadow-camera-left={-220}
+          shadow-camera-right={220}
+          shadow-camera-top={220}
+          shadow-camera-bottom={-220}
+          shadow-camera-near={50}
+          shadow-camera-far={600}
+          shadow-bias={-0.0005}
+        />
+        {/* 멀리 갈수록 하늘색에 잠긴다 — 마을 끝이 뚝 끊겨 보이지 않는다 */}
+        <fog attach="fog" args={['#BFE8F5', R * 0.45, R * 2.4]} />
 
-        {/* 바닥 */}
-        <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
-          <planeGeometry args={[R * 2 + 200, R * 2 + 200]} />
-          <meshStandardMaterial color="#A8DDA0" roughness={0.95} />
-        </mesh>
+        <Ground R={R} />
+        <Horizon R={R} />
 
         <Areas list={data.a} />
         <Roads list={data.rd} />
@@ -975,11 +1187,8 @@ export default function VillageMapScene({
                 <boxGeometry args={[8, 6, 6]} />
                 <meshStandardMaterial color="#F4E8D0" roughness={0.9} />
               </mesh>
-              {/* 지붕 */}
-              <mesh position={[0, 6.15, 0]} castShadow>
-                <boxGeometry args={[8.4, 0.35, 6.4]} />
-                <meshStandardMaterial color={mp.place.color} roughness={0.75} />
-              </mesh>
+              {/* 박공지붕 — 납작한 판보다 '건물'로 읽힌다 */}
+              <GableRoof w={8.8} d={6.8} y={6} color={mp.place.color} />
               {/* 창문 2열 */}
               {([-1.8, 1.8] as const).map((wx) =>
                 ([2.5, 4.2] as const).map((wy) => (
