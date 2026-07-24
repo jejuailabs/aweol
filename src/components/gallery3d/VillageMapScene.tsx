@@ -153,7 +153,9 @@ function Buildings({ list, onEnterPlace, places }: {
               </mesh>
             )}
 
-            {named && d && (
+            {named && d && (() => {
+              const bType = civicKind || b.k || '';
+              return (
               <group position={[d.cx, 0, d.cz]}>
                 {/* 창문 두 줄 — 앞면에 붙인다 */}
                 {([0.35, 0.62] as const).map((fy) =>
@@ -171,11 +173,6 @@ function Buildings({ list, onEnterPlace, places }: {
                     </mesh>
                   ))
                 )}
-                {/*
-                  문 — **우체국·읍사무소 같은 곳은 진짜로 열린다.**
-                  나머지 건물은 그림일 뿐이다. 아무 문이나 눌리면 아이가
-                  모든 건물을 눌러보다 지친다.
-                */}
                 <mesh
                   position={[0, b.h * 0.16, d.d / 2 + 0.05]}
                   onClick={civicKind && onEnterPlace
@@ -193,8 +190,105 @@ function Buildings({ list, onEnterPlace, places }: {
                     emissiveIntensity={civicKind ? 0.35 : 0}
                   />
                 </mesh>
+
+                {/* ── 건물 타입별 외관 특징 ── */}
+                {bType === 'post_office' && (
+                  <mesh position={[d.w / 2 + 0.8, 0.7, d.d / 2 - 0.5]} castShadow>
+                    <cylinderGeometry args={[0.3, 0.3, 1.4, 8]} />
+                    <meshStandardMaterial color="#E8604C" roughness={0.6} />
+                  </mesh>
+                )}
+                {bType === 'police' && (
+                  <mesh position={[0, b.h + 0.7, 0]} castShadow>
+                    <cylinderGeometry args={[0.2, 0.2, 0.5, 8]} />
+                    <meshStandardMaterial color="#E8604C" emissive="#FF0000" emissiveIntensity={0.4} />
+                  </mesh>
+                )}
+                {bType === 'library' && (
+                  <>
+                    {([-d.d * 0.3, 0, d.d * 0.3] as const).map((bz) => (
+                      <mesh key={bz} position={[-d.w / 2 - 0.05, b.h * 0.5, bz]}>
+                        <planeGeometry args={[0.1, b.h * 0.6]} />
+                        <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.15} />
+                      </mesh>
+                    ))}
+                  </>
+                )}
+                {bType === 'health' && (
+                  <>
+                    <mesh position={[0, b.h * 0.75, d.d / 2 + 0.06]}>
+                      <planeGeometry args={[0.5, 1.2]} />
+                      <meshStandardMaterial color="#E8604C" />
+                    </mesh>
+                    <mesh position={[0, b.h * 0.75, d.d / 2 + 0.06]}>
+                      <planeGeometry args={[1.2, 0.5]} />
+                      <meshStandardMaterial color="#E8604C" />
+                    </mesh>
+                  </>
+                )}
+                {bType === 'nonghyup' && (
+                  <>
+                    <mesh position={[d.w / 2 + 0.6, 0.3, 0]} castShadow>
+                      <boxGeometry args={[0.8, 0.6, 0.6]} />
+                      <meshStandardMaterial color="#C9A46B" roughness={0.95} />
+                    </mesh>
+                    <mesh position={[d.w / 2 + 0.6, 0.75, 0]}>
+                      <sphereGeometry args={[0.22, 6, 4]} />
+                      <meshStandardMaterial color="#4CAF50" />
+                    </mesh>
+                  </>
+                )}
+                {bType === 'fuel' && (
+                  <>
+                    <mesh position={[0, b.h + 1.5, d.d / 2 + 3]} castShadow>
+                      <boxGeometry args={[Math.min(d.w * 0.8, 6), 0.25, 3.5]} />
+                      <meshStandardMaterial color="#EEEEEE" roughness={0.5} />
+                    </mesh>
+                    {([-1.5, 1.5] as const).map((px) => (
+                      <mesh key={px} position={[px, (b.h + 1.5) / 2, d.d / 2 + 3]} castShadow>
+                        <cylinderGeometry args={[0.12, 0.12, b.h + 1.5, 6]} />
+                        <meshStandardMaterial color="#AAAAAA" metalness={0.3} roughness={0.5} />
+                      </mesh>
+                    ))}
+                    <mesh position={[0, 0.9, d.d / 2 + 3]} castShadow>
+                      <boxGeometry args={[0.5, 1.6, 0.4]} />
+                      <meshStandardMaterial color="#E8A33C" roughness={0.6} />
+                    </mesh>
+                  </>
+                )}
+                {bType === 'convenience' && (
+                  <mesh position={[0, b.h * 0.38, d.d / 2 + 0.6]} castShadow>
+                    <boxGeometry args={[Math.min(d.w * 0.9, 5), 0.12, 1.0]} />
+                    <meshStandardMaterial color="#3BA89F" roughness={0.7} />
+                  </mesh>
+                )}
+                {bType === 'cafe' && (
+                  <mesh position={[0, b.h * 0.38, d.d / 2 + 0.6]} castShadow>
+                    <boxGeometry args={[Math.min(d.w * 0.9, 5), 0.12, 1.0]} />
+                    <meshStandardMaterial color="#C97B4B" roughness={0.7} />
+                  </mesh>
+                )}
+                {(bType === 'restaurant' || bType === 'fast_food') && (
+                  <mesh position={[0, b.h * 0.38, d.d / 2 + 0.6]} castShadow>
+                    <boxGeometry args={[Math.min(d.w * 0.9, 5), 0.12, 1.0]} />
+                    <meshStandardMaterial color="#E8604C" roughness={0.7} />
+                  </mesh>
+                )}
+                {bType === 'bank' && (
+                  <>
+                    <mesh position={[-d.w / 4, b.h + 0.4, 0]} castShadow>
+                      <boxGeometry args={[d.w * 0.3, 0.6, Math.min(d.d * 0.5, 2)]} />
+                      <meshStandardMaterial color="#2E5A88" roughness={0.6} />
+                    </mesh>
+                    <mesh position={[d.w / 4, b.h + 0.4, 0]} castShadow>
+                      <boxGeometry args={[d.w * 0.3, 0.6, Math.min(d.d * 0.5, 2)]} />
+                      <meshStandardMaterial color="#2E5A88" roughness={0.6} />
+                    </mesh>
+                  </>
+                )}
               </group>
-            )}
+              );
+            })()}
 
             {named && (
               <Html

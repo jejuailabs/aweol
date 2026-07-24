@@ -19,7 +19,7 @@ export const maxDuration = 120;
  */
 
 /** 학교를 중심으로 이만큼 (미터) */
-const RADIUS = 400;
+const RADIUS = 800;
 /** 이보다 촘촘한 점은 솎아낸다 — 2m 차이는 아이 눈에 안 보인다 */
 const SIMPLIFY_M = 2;
 
@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
   way["natural"="water"](around:${RADIUS},${lat},${lng});
   way["leisure"](around:${RADIUS},${lat},${lng});
   node["amenity"](around:${RADIUS},${lat},${lng});
+  node["shop"](around:${RADIUS},${lat},${lng});
   node["historic"](around:${RADIUS},${lat},${lng});
   node["tourism"](around:${RADIUS},${lat},${lng});
 );
@@ -155,7 +156,7 @@ out geom;`;
     const t = e.tags ?? {};
     if (e.type === 'node') {
       // 행정기관(amenity)·유적지(historic)·관광지(tourism) 를 한 자리에 모은다
-      const kind = t.amenity || t.historic || t.tourism;
+      const kind = t.amenity || t.shop || t.historic || t.tourism;
       if (kind && e.lat != null && e.lon != null) {
         const [x, z] = toXZ(e.lat, e.lon);
         if (inside([x, z])) data.poi.push({ x, z, k: kind, ...(t.name ? { n: t.name } : {}) });
@@ -179,7 +180,7 @@ out geom;`;
        * 종류는 세 군데에 흩어져 있다: 행정기관은 `amenity`, 유적지는 `historic`,
        * 관광지는 `tourism`. 없으면 아예 안 적는다(빈 값은 용량만 먹는다).
        */
-      const kind = t.amenity || t.historic || t.tourism || '';
+      const kind = t.amenity || t.shop || t.historic || t.tourism || '';
       data.b.push({
         p: simplify(pts),
         h: Number.isFinite(levels) && levels > 0 ? Math.min(30, levels * 3) : 6,
