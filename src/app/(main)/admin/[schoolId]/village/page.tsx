@@ -297,7 +297,7 @@ export default function VillageAdminPage() {
                   key={q.id}
                   emoji={q.badge?.emoji ?? '📜'}
                   title={q.title}
-                  sub={`${giver?.label ?? q.giver.placeKind} · ${giver?.people[q.giver.at]?.name ?? `${q.giver.at + 1}번째`}${q.quiz ? ' · 문제' : ''}`}
+                  sub={`${giver?.label ?? q.giver.placeKind} · ${giver?.people[q.giver.at]?.name ?? `${q.giver.at + 1}번째`}${q.quiz?.length ? ` · 문제 ${q.quiz.length}개` : ''}`}
                   custom={!baseIds.quests.has(q.id)}
                   onEdit={() => setDraft({ kind: 'quests', id: q.id, value: toQuestValue(q), isNew: false })}
                   onReset={baseIds.quests.has(q.id) ? () => reset('quests', q.id) : undefined}
@@ -730,47 +730,59 @@ function QuestForm({ value, onChange, places, sites, quests }: {
         <button
           type="button"
           onClick={() => set({
-            quiz: value.quiz ? undefined : { q: '', choices: ['', '', '', ''], correct: 0, why: '' },
+            quiz: value.quiz?.length ? undefined : [{ q: '', choices: ['', '', '', ''], correct: 0, why: '' }],
           })}
           className="rounded-xl px-3.5 py-2 text-[13px] font-bold"
-          style={value.quiz
+          style={value.quiz?.length
             ? { background: 'var(--color-primary)', color: 'white' }
             : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
         >
-          {value.quiz ? '문제 있음' : '문제 없음'}
+          {value.quiz?.length ? `문제 ${value.quiz.length}개` : '문제 없음'}
         </button>
       </Field>
 
-      {value.quiz && (
-        <div className="rounded-2xl p-3 mb-2.5" style={{ background: 'var(--color-surface-soft)' }}>
-          <input value={value.quiz.q} onChange={(e) => set({ quiz: { ...value.quiz!, q: e.target.value } })}
+      {value.quiz?.length ? value.quiz.map((qz, qi) => (
+        <div key={qi} className="rounded-2xl p-3 mb-2.5" style={{ background: 'var(--color-surface-soft)' }}>
+          {value.quiz!.length > 1 && (
+            <div className="text-[12px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+              문제 {qi + 1} / {value.quiz!.length}
+            </div>
+          )}
+          <input value={qz.q} onChange={(e) => {
+            const arr = [...value.quiz!]; arr[qi] = { ...arr[qi], q: e.target.value }; set({ quiz: arr });
+          }}
             placeholder="문제" className="w-full rounded-xl px-3 py-2 text-sm outline-none mb-2" style={{ background: 'white', color: '#3A3226' }} />
-          {value.quiz.choices.map((c, i) => (
+          {qz.choices.map((c, i) => (
             <div key={i} className="flex gap-1.5 mb-1.5">
-              <button type="button" onClick={() => set({ quiz: { ...value.quiz!, correct: i } })}
+              <button type="button" onClick={() => {
+                const arr = [...value.quiz!]; arr[qi] = { ...arr[qi], correct: i }; set({ quiz: arr });
+              }}
                 className="w-11 rounded-xl text-[13px] font-black"
-                style={value.quiz!.correct === i
+                style={qz.correct === i
                   ? { background: '#3BAF9F', color: 'white' }
                   : { background: 'white', color: '#8A7A5F' }}>
-                {value.quiz!.correct === i ? '정답' : i + 1}
+                {qz.correct === i ? '정답' : i + 1}
               </button>
               <input
                 value={c}
                 onChange={(e) => {
-                  const cs = [...value.quiz!.choices];
-                  cs[i] = e.target.value;
-                  set({ quiz: { ...value.quiz!, choices: cs } });
+                  const arr = [...value.quiz!];
+                  const cs = [...arr[qi].choices]; cs[i] = e.target.value;
+                  arr[qi] = { ...arr[qi], choices: cs };
+                  set({ quiz: arr });
                 }}
                 className="flex-1 rounded-xl px-3 py-2 text-sm outline-none"
                 style={{ background: 'white', color: '#3A3226' }}
               />
             </div>
           ))}
-          <textarea value={value.quiz.why} onChange={(e) => set({ quiz: { ...value.quiz!, why: e.target.value } })}
+          <textarea value={qz.why} onChange={(e) => {
+            const arr = [...value.quiz!]; arr[qi] = { ...arr[qi], why: e.target.value }; set({ quiz: arr });
+          }}
             placeholder="왜 그런지 (맞혔을 때, 그리고 두 번 틀렸을 때 보여줘요)" rows={2}
             className="w-full rounded-xl px-3 py-2 text-sm outline-none mt-1" style={{ background: 'white', color: '#3A3226' }} />
         </div>
-      )}
+      )) : null}
 
       <Field label="뱃지 (선택)">
         <div className="flex gap-2">

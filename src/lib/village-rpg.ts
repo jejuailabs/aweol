@@ -70,7 +70,7 @@ export interface Quest {
    * 다녀오는 것만이 심부름은 아니다. 아는지 물어보는 것도 심부름이다 —
    * 특히 '이사 오면 어디부터 가야 하나' 같은 건 갈 곳이 아니라 알 것이다.
    */
-  quiz?: { q: string; choices: string[]; correct: number; why: string };
+  quiz?: { q: string; choices: string[]; correct: number; why: string }[];
   /** 마치면 받는 뱃지 */
   badge?: { emoji: string; label: string };
   /** 이 학년쯤부터 */
@@ -196,12 +196,26 @@ export const QUESTS: Quest[] = [
     ask:
       '읍사무소, 우체국, 경찰서, 도서관.\n\n'
       + '네 곳을 다 돌아봤으면 마지막으로 하나만 물을게요.',
-    quiz: {
-      q: '이사를 왔을 때 가장 먼저 가야 하는 곳은 어디일까요?',
-      choices: ['우체국', '읍사무소(주민센터)', '경찰서', '도서관'],
-      correct: 1,
-      why: '읍사무소에 **전입신고**를 해야 우리 동네 사람으로 적혀요. 그래야 학교도 다니고 도움도 받아요.',
-    },
+    quiz: [
+      {
+        q: '이사를 왔을 때 가장 먼저 가야 하는 곳은 어디일까요?',
+        choices: ['우체국', '읍사무소(주민센터)', '경찰서', '도서관'],
+        correct: 1,
+        why: '읍사무소에 **전입신고**를 해야 우리 동네 사람으로 적혀요. 그래야 학교도 다니고 도움도 받아요.',
+      },
+      {
+        q: '위험한 일이 생겼을 때 바로 전화해야 하는 번호는?',
+        choices: ['110', '112', '114', '119'],
+        correct: 1,
+        why: '**112**는 경찰, **119**는 소방이에요. 위험하면 112, 불이 나면 119 — 꼭 외워 두세요.',
+      },
+      {
+        q: '도서관에서 빌린 책을 날짜에 맞춰 돌려줘야 하는 까닭은?',
+        choices: ['늦으면 벌금을 내야 해서', '다음 사람이 기다리고 있으니까', '책이 낡아지니까', '도서관이 문을 닫으니까'],
+        correct: 1,
+        why: '도서관 책은 **우리 모두의 것**이에요. 빌린 날짜를 지켜야 **다음 사람**이 읽을 수 있어요.',
+      },
+    ],
     need: [
       { kind: 'quest', questId: 'round-post' },
       { kind: 'quest', questId: 'round-police' },
@@ -279,12 +293,26 @@ export const QUESTS: Quest[] = [
     title: '연표를 완성했어요',
     unlock: [{ kind: 'quest', questId: 'time-oldest' }],
     ask: '네 곳을 다 조사했으면, 마지막으로 하나만 맞혀 보세요.',
-    quiz: {
-      q: '다음 중 가장 오래된 것은 무엇일까요?',
-      choices: ['애월진성', '항파두리 토성', '빌레못동굴', '곽지패총'],
-      correct: 2,
-      why: '빌레못동굴은 **7~8만 년 전** 화산으로 생겼어요. 사람이 만든 것보다 훨씬 옛날이에요.',
-    },
+    quiz: [
+      {
+        q: '다음 중 가장 오래된 것은 무엇일까요?',
+        choices: ['애월진성', '항파두리 토성', '빌레못동굴', '곽지패총'],
+        correct: 2,
+        why: '빌레못동굴은 **7~8만 년 전** 화산으로 생겼어요. 사람이 만든 것보다 훨씬 옛날이에요.',
+      },
+      {
+        q: '애월진성은 어느 시대에 쌓은 성일까요?',
+        choices: ['삼국 시대', '고려 시대', '조선 시대', '일제 강점기'],
+        correct: 2,
+        why: '애월진성은 **조선 시대**에 바다에서 오는 적(왜구)을 막으려고 쌓은 성이에요.',
+      },
+      {
+        q: '곽지패총에서 많이 나온 것은 무엇일까요?',
+        choices: ['금붙이', '토기 조각', '조개껍데기', '쇠붙이'],
+        correct: 2,
+        why: '**조개껍데기**가 이천 년 넘게 쌓인 곳이에요. 옛사람들이 바다에서 먹을 것을 구한 자취예요.',
+      },
+    ],
     need: [{ kind: 'quest', questId: 'time-oldest' }],
     reward:
       '연표가 완성됐어요! 조사 수첩에서 볼 수 있어요.\n\n'
@@ -352,17 +380,31 @@ export const QUESTS: Quest[] = [
     title: '왜 그랬는지 알겠어요?',
     unlock: [{ kind: 'quest', questId: 'life-water' }],
     ask: '소금밭, 밭담, 연못. 세 가지를 다 봤으면 이제 알 거예요.',
-    quiz: {
-      q: '돌염전·밭담·봉천수, 이 셋의 공통점은 무엇일까요?',
-      choices: [
-        '모두 나라에서 만들어 준 것이다',
-        '모두 제주의 땅과 날씨에 맞춰 사람들이 만든 것이다',
-        '모두 관광객을 위해 만든 것이다',
-        '모두 최근에 만들어진 것이다',
-      ],
-      correct: 1,
-      why: '현무암·바람·물이 잘 빠지는 땅. **제주라는 땅에 맞춰** 사람들이 스스로 찾아낸 방법이에요.',
-    },
+    quiz: [
+      {
+        q: '돌염전·밭담·봉천수, 이 셋의 공통점은 무엇일까요?',
+        choices: [
+          '모두 나라에서 만들어 준 것이다',
+          '모두 제주의 땅과 날씨에 맞춰 사람들이 만든 것이다',
+          '모두 관광객을 위해 만든 것이다',
+          '모두 최근에 만들어진 것이다',
+        ],
+        correct: 1,
+        why: '현무암·바람·물이 잘 빠지는 땅. **제주라는 땅에 맞춰** 사람들이 스스로 찾아낸 방법이에요.',
+      },
+      {
+        q: '밭담에 틈이 숭숭 뚫려 있는 까닭은?',
+        choices: ['돌이 모자라서', '바람을 흘려보내려고', '비를 잘 빠지게 하려고', '모양이 예뻐서'],
+        correct: 1,
+        why: '꽉 막으면 바람이 소용돌이쳐서 담이 넘어져요. **틈을 두어 흘려보내면** 힘이 빠져요.',
+      },
+      {
+        q: '제주에서 "봉천수"를 만든 까닭은?',
+        choices: ['물놀이를 하려고', '물고기를 키우려고', '빗물을 받아 두려고', '빨래를 하려고'],
+        correct: 2,
+        why: '제주는 땅이 물을 안 붙잡아요. **빗물을 받아 두는 못**을 만들어야 마을에 물이 있었어요.',
+      },
+    ],
     need: [{ kind: 'quest', questId: 'life-water' }],
     reward:
       '맞아요. 답은 늘 **제주라는 땅**으로 돌아와요.\n\n'
@@ -413,17 +455,31 @@ export const QUESTS: Quest[] = [
     title: '우리 읍 자연 조사',
     unlock: [{ kind: 'quest', questId: 'nature-oreum' }],
     ask: '숲과 오름을 다 봤으면 하나만 맞혀 보세요.',
-    quiz: {
-      q: '제주에 오름이 삼백 개가 넘는 까닭은 무엇일까요?',
-      choices: [
-        '사람들이 흙을 쌓아 만들어서',
-        '한라산이 무너져 내려서',
-        '여기저기서 화산이 여러 번 터져서',
-        '바닷물이 흙을 밀어 올려서',
-      ],
-      correct: 2,
-      why: '오름은 **작은 화산**이에요. 한 번 크게 터진 게 아니라 여기저기서 여러 번 터져 생겼어요.',
-    },
+    quiz: [
+      {
+        q: '제주에 오름이 삼백 개가 넘는 까닭은 무엇일까요?',
+        choices: [
+          '사람들이 흙을 쌓아 만들어서',
+          '한라산이 무너져 내려서',
+          '여기저기서 화산이 여러 번 터져서',
+          '바닷물이 흙을 밀어 올려서',
+        ],
+        correct: 2,
+        why: '오름은 **작은 화산**이에요. 한 번 크게 터진 게 아니라 여기저기서 여러 번 터져 생겼어요.',
+      },
+      {
+        q: '납읍 난대림이 지금까지 남아 있는 까닭은?',
+        choices: ['아무도 몰라서', '마을 사람들이 오래 지켜서', '나라에서 울타리를 쳐서', '나무가 너무 단단해서'],
+        correct: 1,
+        why: '제주 다른 곳의 숲은 밭과 집이 되면서 사라졌어요. **마을 사람들이 지켜서** 남은 거예요.',
+      },
+      {
+        q: '새별오름 들불축제에서 불을 놓는 진짜 이유는?',
+        choices: ['불꽃놀이를 보여주려고', '묵은 풀을 태워 새 풀이 돋게 하려고', '오름을 뜨겁게 하려고', '밤하늘을 밝히려고'],
+        correct: 1,
+        why: '묵은 풀을 태우면 **새 풀이 돋고 진드기가 줄어요.** 살림에서 나온 일이 축제가 된 거예요.',
+      },
+    ],
     need: [{ kind: 'quest', questId: 'nature-oreum' }],
     reward:
       '잘 알고 있네요!\n\n'
@@ -443,12 +499,12 @@ export const QUESTS: Quest[] = [
       '오늘 아침에 한 가족이 우리 동네로 이사 왔어요. 여러분 또래 친구도 있고요.\n\n'
       + '그 친구가 우리 동네에서 살려면 여러 곳을 거쳐야 해요.\n'
       + '**하나씩 같이 따라가 볼까요?** 먼저 우리 읍사무소부터.',
-    quiz: {
+    quiz: [{
       q: '이사를 오면 며칠 안에 전입신고를 해야 할까요?',
       choices: ['3일', '7일', '14일', '30일'],
       correct: 2,
       why: '**14일 안에** 전입신고를 해야 해요. 그래야 우리 동네 사람으로 적혀서 학교도 다니고 도움도 받아요.',
-    },
+    }],
     need: [],
     reward:
       '맞아요! 전입신고를 하면 **주소**가 생겨요.\n\n'
@@ -465,7 +521,7 @@ export const QUESTS: Quest[] = [
     ask:
       '새 주소가 생겼다고요? 그럼 이제 **편지가 올 수 있어요.**\n\n'
       + '그런데 편지가 제대로 오려면 꼭 있어야 하는 게 있어요.',
-    quiz: {
+    quiz: [{
       q: '편지가 제대로 도착하려면 봉투에 꼭 써야 하는 것은?',
       choices: [
         '보내는 사람의 나이',
@@ -475,7 +531,7 @@ export const QUESTS: Quest[] = [
       ],
       correct: 1,
       why: '전국에서 온 편지를 **주소를 보고** 동네별로 나눠요. 주소가 틀리면 갈 곳을 못 찾아요.',
-    },
+    }],
     need: [],
     reward:
       '정확해요!\n\n'
@@ -493,7 +549,7 @@ export const QUESTS: Quest[] = [
     ask:
       '새로 온 친구는 **길을 잘 몰라요.** 등하굣길이 낯설죠.\n\n'
       + '길에서 헤매는 친구에게 뭐라고 알려 주면 좋을까요?',
-    quiz: {
+    quiz: [{
       q: '길을 잃어서 무서울 때, 가장 먼저 할 일은?',
       choices: [
         '모르는 사람 차를 타고 간다',
@@ -503,7 +559,7 @@ export const QUESTS: Quest[] = [
       ],
       correct: 1,
       why: '**어른에게 도움을 청하는 건 부끄러운 일이 아니에요.** 경찰관, 가게 아저씨·아주머니 누구든 좋아요. 급하면 112.',
-    },
+    }],
     need: [],
     reward:
       '잘 알고 있어요.\n\n'
@@ -521,12 +577,12 @@ export const QUESTS: Quest[] = [
     ask:
       '그 친구가 책을 좋아한다고요? 잘됐네요.\n\n'
       + '우리 도서관에서 책을 빌리려면 뭐가 필요할까요?',
-    quiz: {
+    quiz: [{
       q: '도서관에서 책을 빌리려면 무엇이 필요할까요?',
       choices: ['돈', '회원증', '선생님 허락', '아무것도 필요 없다'],
       correct: 1,
       why: '**회원증**을 만들면 빌릴 수 있어요. 돈은 안 들어요 — 도서관은 **우리 모두의 것**이니까요.',
-    },
+    }],
     need: [],
     reward:
       '맞아요. 돈은 안 들어요.\n\n'
@@ -543,17 +599,31 @@ export const QUESTS: Quest[] = [
     ask:
       '그 친구네가 잘 자리 잡았다고 들었어요. 여러분 덕분이에요.\n\n'
       + '이 일을 하면서 뭘 느꼈나요?',
-    quiz: {
-      q: '한 가족이 이사 와서 자리를 잡는 데 여러 곳이 필요했어요. 왜 그럴까요?',
-      choices: [
-        '한 곳이 다 하면 힘드니까 일부러 나눈 것이다',
-        '기관마다 잘하는 일이 달라서, 나눠서 맡고 서로 이어 준다',
-        '옛날부터 그래서 이유는 없다',
-        '사람들을 여러 번 오게 하려고',
-      ],
-      correct: 1,
-      why: '주소는 읍사무소가, 편지는 우체국이, 안전은 경찰이, 책은 도서관이. **나눠 맡고 서로 이어 주는 것**이 우리 동네가 돌아가는 방식이에요.',
-    },
+    quiz: [
+      {
+        q: '한 가족이 이사 와서 자리를 잡는 데 여러 곳이 필요했어요. 왜 그럴까요?',
+        choices: [
+          '한 곳이 다 하면 힘드니까 일부러 나눈 것이다',
+          '기관마다 잘하는 일이 달라서, 나눠서 맡고 서로 이어 준다',
+          '옛날부터 그래서 이유는 없다',
+          '사람들을 여러 번 오게 하려고',
+        ],
+        correct: 1,
+        why: '주소는 읍사무소가, 편지는 우체국이, 안전은 경찰이, 책은 도서관이. **나눠 맡고 서로 이어 주는 것**이 우리 동네가 돌아가는 방식이에요.',
+      },
+      {
+        q: '이사를 오면 며칠 안에 전입신고를 해야 할까요?',
+        choices: ['3일', '7일', '14일', '30일'],
+        correct: 2,
+        why: '**14일 안에** 전입신고를 해야 해요. 그래야 학교도 다니고 도움도 받을 수 있어요.',
+      },
+      {
+        q: '길에서 무서울 때 가장 먼저 해야 할 일은?',
+        choices: ['혼자 찾아본다', '경찰관이나 가까운 어른에게 도움을 청한다', '그 자리에서 기다린다', '모르는 사람 차를 탄다'],
+        correct: 1,
+        why: '**도와달라고 말할 줄 아는 것**도 배워야 하는 일이에요. 경찰관, 가게 어른 누구든 좋아요.',
+      },
+    ],
     need: [{ kind: 'quest', questId: 'friend-library' }],
     reward:
       '그거예요.\n\n'
@@ -621,7 +691,7 @@ export function questState(q: Quest, done: Progress): QuestState {
   if (done.has(questKey(q.id))) return 'done';
   if (q.unlock && !q.unlock.every((c) => met(c, done))) return 'locked';
   // 묻고 가는 심부름은 답을 맞혀야 끝나므로 여기서 `ready` 가 되지 않는다
-  if (q.quiz) return 'todo';
+  if (q.quiz?.length) return 'todo';
   return q.need.every((c) => met(c, done)) ? 'ready' : 'todo';
 }
 
@@ -681,11 +751,11 @@ export function chapterProgress(quests: Quest[], chapterId: string, done: Progre
 }
 
 /** 심부름이 아이를 어디로 보내나 — 수첩에서 '가기' 버튼을 만들 때 쓴다 */
-export function questTarget(q: Quest): { kind: 'site'; id: string } | { kind: 'place'; id: string } | null {
-  const undoneFirst = q.need[0];
-  if (!undoneFirst) return null;
-  if (undoneFirst.kind === 'site') return { kind: 'site', id: undoneFirst.siteId };
-  if (undoneFirst.kind === 'guide') return { kind: 'place', id: undoneFirst.placeKind };
+export function questTarget(q: Quest, done?: Progress): { kind: 'site'; id: string } | { kind: 'place'; id: string } | null {
+  const cond = (done ? q.need.find((c) => !met(c, done)) : null) ?? q.need[0];
+  if (!cond) return null;
+  if (cond.kind === 'site') return { kind: 'site', id: cond.siteId };
+  if (cond.kind === 'guide') return { kind: 'place', id: cond.placeKind };
   return null;
 }
 

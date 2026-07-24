@@ -284,6 +284,206 @@ function Roads({ list }: { list: VillageData['rd'] }) {
   );
 }
 
+/**
+ * 마을 환경 에셋 — 나무·가로등·벤치·화단·돌담 등.
+ *
+ * 빈 풀밭 위에 건물 상자만 있으면 마을이 아니라 설계도다.
+ * 건물 사이에 나무가 서고, 길가에 가로등이 서야 동네 같아진다.
+ *
+ * 에셋은 씨앗으로 뿌린다 — 건물·길과 겹치지 않도록 건물 좌표를 피한다.
+ */
+function VillageProps({ radius, buildings }: {
+  radius: number;
+  buildings: { p: XZ[]; h: number }[];
+}) {
+  const items = useMemo(() => {
+    const bboxes = buildings.map((b) => {
+      const xs = b.p.map((p) => p[0]);
+      const zs = b.p.map((p) => p[1]);
+      return {
+        minX: Math.min(...xs) - 3, maxX: Math.max(...xs) + 3,
+        minZ: Math.min(...zs) - 3, maxZ: Math.max(...zs) + 3,
+      };
+    });
+    const blocked = (x: number, z: number) =>
+      bboxes.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ)
+      || (Math.abs(x) < 12 && Math.abs(z) < 12);
+
+    const seeded = (i: number) => {
+      let h = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
+      h ^= h >>> 13; h = Math.imul(h ^ 0x12345, 0xc2b2ae35); h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+
+    const out: { kind: string; x: number; z: number; r: number; s: number }[] = [];
+    const R = radius * 0.9;
+
+    for (let i = 0; i < 220; i++) {
+      const x = (seeded(i * 3) - 0.5) * R * 2;
+      const z = (seeded(i * 3 + 1) - 0.5) * R * 2;
+      if (blocked(x, z)) continue;
+      const roll = seeded(i * 3 + 2);
+      const r = seeded(i * 7) * PI * 2;
+      if (roll < 0.40) out.push({ kind: 'tree', x, z, r, s: 0.7 + seeded(i * 5) * 0.6 });
+      else if (roll < 0.52) out.push({ kind: 'palm', x, z, r, s: 0.8 + seeded(i * 5) * 0.5 });
+      else if (roll < 0.60) out.push({ kind: 'lamp', x, z, r, s: 1 });
+      else if (roll < 0.67) out.push({ kind: 'bench', x, z, r, s: 1 });
+      else if (roll < 0.73) out.push({ kind: 'flower', x, z, r, s: 0.8 + seeded(i * 5) * 0.4 });
+      else if (roll < 0.78) out.push({ kind: 'hydrant', x, z, r, s: 1 });
+      else if (roll < 0.83) out.push({ kind: 'rock', x, z, r, s: 0.6 + seeded(i * 5) * 0.8 });
+      else if (roll < 0.87) out.push({ kind: 'bush', x, z, r, s: 0.7 + seeded(i * 5) * 0.5 });
+      else if (roll < 0.90) out.push({ kind: 'sign', x, z, r, s: 1 });
+      else if (roll < 0.93) out.push({ kind: 'bin', x, z, r, s: 1 });
+      else if (roll < 0.96) out.push({ kind: 'fence', x, z, r, s: 1 });
+      else out.push({ kind: 'wall', x, z, r, s: 0.8 + seeded(i * 5) * 0.4 });
+    }
+    return out;
+  }, [radius, buildings]);
+
+  return (
+    <group>
+      {items.map((it, i) => (
+        <group key={i} position={[it.x, 0, it.z]} rotation={[0, it.r, 0]} scale={it.s}>
+          {it.kind === 'tree' && (
+            <>
+              <mesh position={[0, 2.5, 0]} castShadow>
+                <sphereGeometry args={[2.2, 8, 6]} />
+                <meshStandardMaterial color="#5CA84E" roughness={0.95} />
+              </mesh>
+              <mesh position={[0, 0.8, 0]} castShadow>
+                <cylinderGeometry args={[0.25, 0.35, 1.6, 6]} />
+                <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'palm' && (
+            <>
+              <mesh position={[0, 3.5, 0]} castShadow>
+                <sphereGeometry args={[1.6, 6, 5]} />
+                <meshStandardMaterial color="#3D8B37" roughness={0.92} />
+              </mesh>
+              <mesh position={[0, 1.4, 0]} castShadow>
+                <cylinderGeometry args={[0.18, 0.28, 2.8, 6]} />
+                <meshStandardMaterial color="#A08060" roughness={0.9} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'lamp' && (
+            <>
+              <mesh position={[0, 2.2, 0]} castShadow>
+                <cylinderGeometry args={[0.08, 0.12, 4.4, 6]} />
+                <meshStandardMaterial color="#7A7A7A" metalness={0.4} roughness={0.5} />
+              </mesh>
+              <mesh position={[0, 4.6, 0]}>
+                <sphereGeometry args={[0.35, 8, 6]} />
+                <meshStandardMaterial color="#FFFDE0" emissive="#FFFDE0" emissiveIntensity={0.3} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'bench' && (
+            <>
+              <mesh position={[0, 0.35, 0]} castShadow>
+                <boxGeometry args={[1.6, 0.12, 0.55]} />
+                <meshStandardMaterial color="#A07E55" roughness={0.85} />
+              </mesh>
+              {([-0.6, 0.6] as const).map((bx) => (
+                <mesh key={bx} position={[bx, 0.15, 0]} castShadow>
+                  <boxGeometry args={[0.12, 0.3, 0.45]} />
+                  <meshStandardMaterial color="#6B5B43" roughness={0.9} />
+                </mesh>
+              ))}
+            </>
+          )}
+          {it.kind === 'flower' && (
+            <>
+              <mesh position={[0, 0.2, 0]} castShadow>
+                <cylinderGeometry args={[0.5, 0.45, 0.4, 8]} />
+                <meshStandardMaterial color="#C9946B" roughness={0.9} />
+              </mesh>
+              {[0, 1.2, 2.4, 3.6, 4.8].map((a) => (
+                <mesh key={a} position={[Math.cos(a) * 0.3, 0.55, Math.sin(a) * 0.3]}>
+                  <sphereGeometry args={[0.18, 6, 4]} />
+                  <meshStandardMaterial color={['#E8604C', '#E8A33C', '#D86CB0', '#7B4B94', '#3BAF9F'][Math.floor(a / 1.2)]} />
+                </mesh>
+              ))}
+              <mesh position={[0, 0.45, 0]}>
+                <sphereGeometry args={[0.4, 6, 4]} />
+                <meshStandardMaterial color="#4CAF50" roughness={0.9} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'hydrant' && (
+            <>
+              <mesh position={[0, 0.35, 0]} castShadow>
+                <cylinderGeometry args={[0.15, 0.18, 0.7, 8]} />
+                <meshStandardMaterial color="#E8604C" roughness={0.6} />
+              </mesh>
+              <mesh position={[0, 0.75, 0]}>
+                <sphereGeometry args={[0.18, 8, 6]} />
+                <meshStandardMaterial color="#C0392B" roughness={0.6} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'rock' && (
+            <mesh position={[0, 0.3, 0]} castShadow>
+              <dodecahedronGeometry args={[0.6, 0]} />
+              <meshStandardMaterial color="#9A9188" roughness={1} />
+            </mesh>
+          )}
+          {it.kind === 'bush' && (
+            <mesh position={[0, 0.5, 0]} castShadow>
+              <sphereGeometry args={[0.8, 6, 5]} />
+              <meshStandardMaterial color="#4A8F40" roughness={0.95} />
+            </mesh>
+          )}
+          {it.kind === 'sign' && (
+            <>
+              <mesh position={[0, 0.7, 0]} castShadow>
+                <cylinderGeometry args={[0.05, 0.05, 1.4, 6]} />
+                <meshStandardMaterial color="#7A7A7A" roughness={0.6} />
+              </mesh>
+              <mesh position={[0, 1.5, 0]} castShadow>
+                <boxGeometry args={[0.6, 0.4, 0.06]} />
+                <meshStandardMaterial color="#3A6EA5" roughness={0.7} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'bin' && (
+            <mesh position={[0, 0.35, 0]} castShadow>
+              <cylinderGeometry args={[0.22, 0.25, 0.7, 8]} />
+              <meshStandardMaterial color="#5A7A5A" roughness={0.7} />
+            </mesh>
+          )}
+          {it.kind === 'fence' && (
+            <>
+              {([-0.7, 0, 0.7] as const).map((fx) => (
+                <mesh key={fx} position={[fx, 0.35, 0]} castShadow>
+                  <boxGeometry args={[0.08, 0.7, 0.08]} />
+                  <meshStandardMaterial color="#A07E55" roughness={0.85} />
+                </mesh>
+              ))}
+              <mesh position={[0, 0.55, 0]}>
+                <boxGeometry args={[1.6, 0.08, 0.06]} />
+                <meshStandardMaterial color="#C9A46B" roughness={0.85} />
+              </mesh>
+              <mesh position={[0, 0.35, 0]}>
+                <boxGeometry args={[1.6, 0.08, 0.06]} />
+                <meshStandardMaterial color="#C9A46B" roughness={0.85} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'wall' && (
+            <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+              <boxGeometry args={[2.5, 1, 0.5]} />
+              <meshStandardMaterial color="#9A9188" roughness={1} />
+            </mesh>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
+
 /** 물·공원 — 바닥에 색만 깐다 */
 function Areas({ list }: { list: VillageData['a'] }) {
   const geos = useMemo(
@@ -495,23 +695,49 @@ export default function VillageMapScene({
     [data.b]
   );
 
+  /**
+   * OSM 에 없는 관공서를 가상 건물로 세운다.
+   *
+   * 400m 반경 OSM 데이터에 우체국·도서관·경찰서가 없으면 미션에서
+   * "우체국에 가라"고 해도 지도에 우체국이 없어 헤맨다.
+   * 학교 주변 여러 자리에 간판 건물을 하나씩 세워 넣는다.
+   */
+  const missingPlaces = useMemo(() => {
+    if (!localPlaces?.length) return [];
+    const found = new Set<string>();
+    for (const b of data.b) {
+      const kind = civicKindOf(b, localPlaces);
+      if (kind) found.add(kind);
+    }
+    const slots: [number, number][] = [
+      [60, -40], [-60, -50], [80, 30], [-80, 20], [50, 70], [-50, -80],
+    ];
+    let si = 0;
+    return localPlaces
+      .filter((p) => !found.has(p.kind))
+      .map((p) => {
+        const [x, z] = slots[si % slots.length];
+        si++;
+        return { place: p, x, z };
+      });
+  }, [data.b, localPlaces]);
+
   const targets: WarpTarget[] = useMemo(
     () => [
-      // 건물을 먼저 넣는다 — 가까운 것부터 고르므로, 같은 자리라면 이름 있는 건물이 남는다
       ...warpTargets([...buildingPois, ...data.poi], schoolName),
-      /**
-       * 유적은 **고르기를 거치지 않고 그냥 넣는다.**
-       * `warpTargets` 는 서로 너무 가까운 곳을 솎아내는데, 애월진성은 학교에서
-       * 30m 도 안 떨어져 있어 그 규칙에 걸려 사라진다. 학교 바로 옆인 것이
-       * 이 유적의 요점이므로, 여기서는 규칙보다 사실이 먼저다.
-       */
       ...sites.map((s) => {
-        // 마을 좌표는 미터, 표의 거리는 km — 걸어갈 곳이라 학교 옆에 붙인다
         const at = { x: -26, z: 18 };
         return { id: `site-${s.id}`, name: s.name, x: at.x, z: at.z, dist: Math.hypot(at.x, at.z) };
       }),
+      ...missingPlaces.map((mp) => ({
+        id: `civic-${mp.place.kind}`,
+        name: mp.place.label,
+        x: mp.x,
+        z: mp.z,
+        dist: Math.hypot(mp.x, mp.z),
+      })),
     ],
-    [buildingPois, data.poi, schoolName, sites]
+    [buildingPois, data.poi, schoolName, sites, missingPlaces]
   );
 
   /**
@@ -526,10 +752,10 @@ export default function VillageMapScene({
       const t = targets.find((x) => x.name === (b.n as string).trim());
       if (t) s.add(t.id);
     }
-    // 유적도 들어가 볼 수 있는 곳이다
     for (const site of sites) s.add(`site-${site.id}`);
+    for (const mp of missingPlaces) s.add(`civic-${mp.place.kind}`);
     return s;
-  }, [data.b, targets, sites, localPlaces]);
+  }, [data.b, targets, sites, localPlaces, missingPlaces]);
 
   /**
    * 워프 — 아바타를 그 자리로 **옮기기만** 한다.
@@ -551,8 +777,8 @@ export default function VillageMapScene({
    * 아이가 벽에 살짝 못 붙는 정도지 걸어다니는 데는 지장이 없다.
    */
   const obstacles: Obstacle[] = useMemo(
-    () =>
-      data.b.map((b) => {
+    () => [
+      ...data.b.map((b) => {
         const xs = b.p.map((p) => p[0]);
         const zs = b.p.map((p) => p[1]);
         const minX = Math.min(...xs);
@@ -566,7 +792,11 @@ export default function VillageMapScene({
           halfD: (maxZ - minZ) / 2,
         };
       }),
-    [data.b]
+      ...missingPlaces.map((mp) => ({
+        x: mp.x, z: mp.z, halfW: 4, halfD: 3,
+      })),
+    ],
+    [data.b, missingPlaces]
   );
 
   useEffect(() => {
@@ -601,6 +831,7 @@ export default function VillageMapScene({
 
         <Areas list={data.a} />
         <Roads list={data.rd} />
+        <VillageProps radius={R} buildings={data.b} />
         <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
 
         {/*
@@ -635,6 +866,128 @@ export default function VillageMapScene({
             </Html>
           </group>
         ))}
+
+        {/*
+          OSM에 없는 관공서 — 간판 건물을 세운다.
+          실제 위치를 모르므로 학교 주변에 배치하되,
+          금색 문과 간판으로 들어갈 수 있음을 알린다.
+        */}
+        {missingPlaces.map((mp) => {
+          const k = mp.place.kind;
+          return (
+            <group key={k} position={[mp.x, 0, mp.z]}>
+              {/* 본관 */}
+              <mesh position={[0, 3, 0]} castShadow receiveShadow>
+                <boxGeometry args={[8, 6, 6]} />
+                <meshStandardMaterial color="#F4E8D0" roughness={0.9} />
+              </mesh>
+              {/* 지붕 */}
+              <mesh position={[0, 6.15, 0]} castShadow>
+                <boxGeometry args={[8.4, 0.35, 6.4]} />
+                <meshStandardMaterial color={mp.place.color} roughness={0.75} />
+              </mesh>
+              {/* 창문 2열 */}
+              {([-1.8, 1.8] as const).map((wx) =>
+                ([2.5, 4.2] as const).map((wy) => (
+                  <mesh key={`${wx}-${wy}`} position={[wx, wy, 3.05]}>
+                    <planeGeometry args={[1.2, 1.0]} />
+                    <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.25} />
+                  </mesh>
+                ))
+              )}
+              {/* 금색 문 */}
+              <mesh
+                position={[0, 1.5, 3.05]}
+                onClick={onEnterPlace ? (e) => { e.stopPropagation(); onEnterPlace(k); } : undefined}
+                onPointerOver={onEnterPlace ? (e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; } : undefined}
+                onPointerOut={onEnterPlace ? () => { document.body.style.cursor = 'auto'; } : undefined}
+              >
+                <planeGeometry args={[1.4, 2.4]} />
+                <meshStandardMaterial color="#B5793F" emissive="#E8A33C" emissiveIntensity={0.35} />
+              </mesh>
+              {/* 현관 지붕 */}
+              <mesh position={[0, 3.2, 3.6]} castShadow>
+                <boxGeometry args={[2.4, 0.2, 1.4]} />
+                <meshStandardMaterial color="#867D74" roughness={0.8} />
+              </mesh>
+              {/* 기관별 특징 */}
+              {k === 'post_office' && (
+                <>
+                  {/* 우체통 */}
+                  <mesh position={[4.8, 0.7, 3.2]} castShadow>
+                    <cylinderGeometry args={[0.35, 0.35, 1.4, 8]} />
+                    <meshStandardMaterial color="#E8604C" roughness={0.6} />
+                  </mesh>
+                  <mesh position={[4.8, 1.5, 3.2]}>
+                    <sphereGeometry args={[0.38, 8, 6]} />
+                    <meshStandardMaterial color="#C0392B" roughness={0.6} />
+                  </mesh>
+                </>
+              )}
+              {k === 'police' && (
+                <>
+                  {/* 경광등 */}
+                  <mesh position={[0, 6.8, 0]} castShadow>
+                    <cylinderGeometry args={[0.2, 0.2, 0.5, 8]} />
+                    <meshStandardMaterial color="#E8604C" emissive="#FF0000" emissiveIntensity={0.4} />
+                  </mesh>
+                </>
+              )}
+              {k === 'library' && (
+                <>
+                  {/* 옆면 서가 창 */}
+                  {([-2, 0, 2] as const).map((bz) => (
+                    <mesh key={bz} position={[-4.05, 3, bz]}>
+                      <planeGeometry args={[0.1, 4]} />
+                      <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.15} />
+                    </mesh>
+                  ))}
+                </>
+              )}
+              {k === 'health' && (
+                <>
+                  {/* 십자 마크 */}
+                  <mesh position={[0, 5, 3.06]}>
+                    <planeGeometry args={[0.6, 1.6]} />
+                    <meshStandardMaterial color="#E8604C" />
+                  </mesh>
+                  <mesh position={[0, 5, 3.06]}>
+                    <planeGeometry args={[1.6, 0.6]} />
+                    <meshStandardMaterial color="#E8604C" />
+                  </mesh>
+                </>
+              )}
+              {k === 'nonghyup' && (
+                <>
+                  {/* 수확물 상자 */}
+                  <mesh position={[4.5, 0.3, 1]} castShadow>
+                    <boxGeometry args={[1, 0.6, 0.8]} />
+                    <meshStandardMaterial color="#C9A46B" roughness={0.95} />
+                  </mesh>
+                  <mesh position={[4.5, 0.8, 1]}>
+                    <sphereGeometry args={[0.25, 6, 4]} />
+                    <meshStandardMaterial color="#4CAF50" />
+                  </mesh>
+                </>
+              )}
+              {/* 간판 */}
+              <Html position={[0, 8.5, 0]} center style={{ pointerEvents: 'auto' }} zIndexRange={[5, 0]}>
+                <div
+                  onClick={onEnterPlace ? () => onEnterPlace(k) : undefined}
+                  style={{
+                    background: '#FFF1D6', color: '#5B4A3B', fontWeight: 800, fontSize: '14px',
+                    padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
+                    fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+                    border: '2px solid #E8A33C', cursor: 'pointer',
+                  }}
+                >
+                  {mp.place.emoji} {mp.place.label}
+                  <span style={{ color: '#A6762A', marginLeft: '6px', fontSize: '12px' }}>들어가기 ›</span>
+                </div>
+              </Html>
+            </group>
+          );
+        })}
 
         {/* 학교 자리 — 원점이 곧 학교다. 여기를 눌러 들어간다. */}
         <group

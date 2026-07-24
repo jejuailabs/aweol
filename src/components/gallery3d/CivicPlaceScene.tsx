@@ -385,6 +385,8 @@ export default function CivicPlaceScene({
   const [picked, setPicked] = useState<number | null>(null);
   /** 몇 번 틀렸나 — 두 번 틀리면 힌트를 준다 */
   const [misses, setMisses] = useState(0);
+  /** 여러 문제 중 지금 몇 번째인가 */
+  const [quizIdx, setQuizIdx] = useState(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -392,6 +394,8 @@ export default function CivicPlaceScene({
     resetControls(0, 11);
     return attachCameraControls(el, { minDist: 6, maxDist: 20 });
   }, []);
+
+  useEffect(() => { setPicked(null); setMisses(0); setQuizIdx(0); }, [talking?.id]);
 
   const xs = deskXs(place.people.length);
   const guide = place.guide ?? [];
@@ -636,10 +640,12 @@ export default function CivicPlaceScene({
         const q = talking;
         const st = questState(q, progress);
         const who = place.people[q.giver.at];
-        const target = questTarget(q);
-        const rightAnswer = q.quiz ? picked === q.quiz.correct : false;
-        // 묻고 가는 심부름은 답을 맞히면 그 자리에서 끝난다
-        const canFinish = st === 'ready' || rightAnswer;
+        const target = questTarget(q, progress);
+        const quizLen = q.quiz?.length ?? 0;
+        const curQ = quizLen > 0 ? q.quiz![quizIdx] : null;
+        const curRight = curQ ? picked === curQ.correct : false;
+        const allQuizDone = quizLen > 0 && quizIdx >= quizLen - 1 && curRight;
+        const canFinish = st === 'ready' || allQuizDone;
         const body = st === 'done' ? q.reward : canFinish ? q.reward : q.ask;
 
         return (
@@ -675,53 +681,70 @@ export default function CivicPlaceScene({
                   )}
                 </div>
 
-                {/* 묻고 가는 심부름 — 아직 안 맞혔으면 문제를 낸다 */}
-                {q.quiz && st !== 'done' && !rightAnswer && (
+                {/* 묻고 가는 심부름 — 문제를 풀어야 끝난다 */}
+                {curQ && st !== 'done' && !allQuizDone && (
                   <div className="mt-3">
-                    <div className="text-[15px] font-black mb-2" style={{ color: '#3A3226' }}>
-                      {q.quiz.q}
-                    </div>
-                    <div className="grid gap-1.5">
-                      {q.quiz.choices.map((c, i) => (
-                        <button
-                          key={c}
-                          onClick={() => {
-                            setPicked(i);
-                            if (i !== q.quiz!.correct) setMisses((n) => n + 1);
-                          }}
-                          className="rounded-xl px-3 py-2.5 text-left text-[14px] font-bold"
-                          style={
-                            picked === i
-                              ? { background: '#F6D5CE', color: '#8A3A2A' }
-                              : { background: '#F0E6D2', color: '#5B4A3B' }
-                          }
-                        >
-                          <span className="opacity-60 mr-1.5">{i + 1}.</span>{c}
-                        </button>
-                      ))}
-                    </div>
-                    {picked !== null && (
-                      <div className="text-[13px] font-bold mt-2" style={{ color: '#C0392B' }}>
-                        음… 다시 생각해 볼까요?
+                    {quizLen > 1 && (
+                      <div className="text-[12px] font-bold mb-2" style={{ color: '#A89880' }}>
+                        문제 {quizIdx + 1} / {quizLen}
                       </div>
                     )}
-                    {/*
-                      **두 번 틀리면 힌트를 준다.**
-                      아이를 막아 세우는 게 목적이 아니다. 답을 몰라 못 나가면
-                      그때부터는 배우는 게 아니라 갇힌 것이다.
-                    */}
-                    {misses >= 2 && (
-                      <div className="text-[13px] leading-relaxed mt-2 rounded-xl p-2.5" style={{ background: '#FFF1D6', color: '#6B5B43' }}>
-                        💡 {q.quiz.why}
-                      </div>
+                    {!curRight ? (
+                      <>
+                        <div className="text-[15px] font-black mb-2" style={{ color: '#3A3226' }}>
+                          {curQ.q}
+                        </div>
+                        <div className="grid gap-1.5">
+                          {curQ.choices.map((c, i) => (
+                            <button
+                              key={c}
+                              onClick={() => {
+                                setPicked(i);
+                                if (i !== curQ.correct) setMisses((n) => n + 1);
+                              }}
+                              className="rounded-xl px-3 py-2.5 text-left text-[14px] font-bold"
+                              style={
+                                picked === i
+                                  ? { background: '#F6D5CE', color: '#8A3A2A' }
+                                  : { background: '#F0E6D2', color: '#5B4A3B' }
+                              }
+                            >
+                              <span className="opacity-60 mr-1.5">{i + 1}.</span>{c}
+                            </button>
+                          ))}
+                        </div>
+                        {picked !== null && (
+                          <div className="text-[13px] font-bold mt-2" style={{ color: '#C0392B' }}>
+                            음… 다시 생각해 볼까요?
+                          </div>
+                        )}
+                        {misses >= 2 && (
+                          <div className="text-[13px] leading-relaxed mt-2 rounded-xl p-2.5" style={{ background: '#FFF1D6', color: '#6B5B43' }}>
+                            💡 {curQ.why}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[13px] leading-relaxed rounded-xl p-2.5" style={{ background: '#EAF6EF', color: '#3A5A48' }}>
+                          ✅ {curQ.why}
+                        </div>
+                        <button
+                          onClick={() => { setQuizIdx((n) => n + 1); setPicked(null); setMisses(0); }}
+                          className="w-full mt-2 rounded-xl py-2.5 text-[14px] font-bold text-white"
+                          style={{ background: '#3BAF9F' }}
+                        >
+                          다음 문제 ›
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
 
-                {/* 맞혔을 때는 왜 그런지 한 번 더 */}
-                {q.quiz && rightAnswer && (
+                {/* 마지막 문제까지 다 맞혔을 때 */}
+                {curQ && allQuizDone && (
                   <div className="text-[13px] leading-relaxed mt-3 rounded-xl p-2.5" style={{ background: '#EAF6EF', color: '#3A5A48' }}>
-                    ✅ {q.quiz.why}
+                    ✅ {curQ.why}
                   </div>
                 )}
 

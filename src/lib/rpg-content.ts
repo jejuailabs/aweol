@@ -285,21 +285,23 @@ export function checkRpg(c: RpgContent): Problem[] {
     if (q.need?.some((cd) => cd.kind === 'quest' && cd.questId === q.id)) {
       p.push({ level: 'error', where: w, message: '자기 자신을 끝내는 조건으로 걸었어요' });
     }
-    if (!q.quiz && !(q.need?.length)) {
+    if (!q.quiz?.length && !(q.need?.length)) {
       p.push({ level: 'warn', where: w, message: '끝나는 조건도 문제도 없어요 — 받자마자 끝나요' });
     }
 
-    if (q.quiz) {
-      if ((q.quiz.choices?.length ?? 0) < 2) {
-        p.push({ level: 'error', where: w, message: '문제 보기가 두 개는 있어야 해요' });
-      } else if (new Set(q.quiz.choices).size !== q.quiz.choices.length) {
-        p.push({ level: 'warn', where: w, message: '문제 보기가 겹쳐요' });
+    if (q.quiz?.length) {
+      for (const qz of q.quiz) {
+        if ((qz.choices?.length ?? 0) < 2) {
+          p.push({ level: 'error', where: w, message: '문제 보기가 두 개는 있어야 해요' });
+        } else if (new Set(qz.choices).size !== qz.choices.length) {
+          p.push({ level: 'warn', where: w, message: '문제 보기가 겹쳐요' });
+        }
+        if (qz.correct < 0 || qz.correct >= (qz.choices?.length ?? 0)) {
+          p.push({ level: 'error', where: w, message: '정답 번호가 보기 밖이에요' });
+        }
+        if (!qz.q?.trim()) p.push({ level: 'error', where: w, message: '문제가 비어 있어요' });
+        if (!qz.why?.trim()) p.push({ level: 'warn', where: w, message: '왜 그런지 설명이 없어요' });
       }
-      if (q.quiz.correct < 0 || q.quiz.correct >= (q.quiz.choices?.length ?? 0)) {
-        p.push({ level: 'error', where: w, message: '정답 번호가 보기 밖이에요' });
-      }
-      if (!q.quiz.q?.trim()) p.push({ level: 'error', where: w, message: '문제가 비어 있어요' });
-      if (!q.quiz.why?.trim()) p.push({ level: 'warn', where: w, message: '왜 그런지 설명이 없어요' });
     }
   }
   if (c.quests.length !== questIds.size) {
@@ -325,7 +327,7 @@ export function checkRpg(c: RpgContent): Problem[] {
       const unlocked = (q.unlock ?? []).every((cd) => done.has(condKey(cd)));
       if (!unlocked) continue;
       const needed = (q.need ?? []).every((cd) => done.has(condKey(cd)));
-      if (needed || q.quiz) { done.add(`quest-${q.id}`); moved = true; }
+      if (needed || q.quiz?.length) { done.add(`quest-${q.id}`); moved = true; }
     }
   }
   for (const q of c.quests) {

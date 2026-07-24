@@ -126,59 +126,191 @@ function Reticle({ setup, startedAt }: { setup: ShotSetup | null; startedAt: num
 }
 
 /**
- * 활 — **손에 든 것처럼 화면 아래 앞에** 둔다.
+ * 두 점을 잇는 봉 하나(시위·스태빌라이저·화살 등).
  *
- * 전에는 과녁 앞에 거대한 활이 떠 있었다. 카메라 바로 앞에 세로로 세워
- * 1인칭으로 활을 든 느낌을 낸다. 화면 왼쪽 아래에 살짝 치우쳐 과녁을 안 가린다.
+ * 실린더는 기본으로 Y축을 따라 서 있다. 원하는 방향으로 눕히려면 회전을 직접
+ * 구해야 하는데, 부품마다 그 계산을 반복하면 지저분하다 — 여기서 한 번만 한다.
+ */
+function Strut({ a, b, r, color, metalness = 0.1, roughness = 0.6, seg = 10 }: {
+  a: [number, number, number];
+  b: [number, number, number];
+  r: number;
+  color: string;
+  metalness?: number;
+  roughness?: number;
+  seg?: number;
+}) {
+  const { pos, quat, len } = useMemo(() => {
+    const va = new THREE.Vector3(...a);
+    const vb = new THREE.Vector3(...b);
+    const dir = new THREE.Vector3().subVectors(vb, va);
+    const len = Math.max(dir.length(), 1e-5);
+    const pos = new THREE.Vector3().addVectors(va, vb).multiplyScalar(0.5);
+    const quat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      dir.clone().normalize()
+    );
+    return { pos: pos.toArray() as [number, number, number], quat: quat.toArray() as [number, number, number, number], len };
+  }, [a, b]);
+  return (
+    <mesh position={pos} quaternion={quat}>
+      <cylinderGeometry args={[r, r, len, seg]} />
+      <meshStandardMaterial color={color} metalness={metalness} roughness={roughness} />
+    </mesh>
+  );
+}
+
+/**
+ * 활 — **손에 든 것처럼 화면 왼쪽 아래 앞에** 둔다.
+ *
+ * 전에는 반달 토러스 하나라 굵은 갈색 활처럼 보였다. 실제 올림픽 리커브 활의
+ * 구조를 그대로 세운다: **끝이 뒤로 말리는 상·하 림**(TubeGeometry 곡선),
+ * 스웹된 리저(손잡이), 당겨진 **시위 V**, 앞으로 뻗은 **사이트 조준링**과
+ * 긴 **스태빌라이저** 봉. 이 부품들이 한눈에 '양궁 활'로 읽힌다.
+ *
+ * 좌표계(로컬): +Y 위, +Z 나(당기는 쪽), -Z 과녁. 림은 위아래로 뻗으며
+ * 과녁 쪽(-Z)으로 휘고, 끝에서 다시 살짝 말린다.
  *
  * 흔들림은 조준 십자선(`Reticle`)이 맡는다. 활은 그 흔들림에 맞춰 **아주 조금만**
  * 같이 움직여 손떨림처럼 보인다 — 활까지 크게 흔들면 과녁이 안 보인다.
  */
+/**
+ * 활을 든 손 높이·거리(앞쪽). 좌우 위치(x)는 화면 비율에 맞춰 **반응형으로** 정한다 —
+ * 세로 화면(모바일)은 가로 시야각이 좁아, x 를 고정하면 활이 화면 밖으로 사라진다.
+ */
+const BOW_Y = 2.05;
+const BOW_Z = 4.2;
+
 function Bow({ setup, startedAt, shooting }: {
   setup: ShotSetup | null;
   startedAt: number;
   shooting: boolean;
 }) {
   const g = useRef<THREE.Group>(null);
-  const string = useRef<THREE.Mesh>(null);
+
+  // 림(휘는 날개)은 곡선이라야 활처럼 보인다 — 형상은 한 번만 만든다.
+  const { upperLimb, lowerLimb, riser } = useMemo(() => {
+    const curve = (pts: [number, number, number][]) =>
+      new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
+    // 위 림: 리저 위에서 과녁 쪽(-Z)으로 휘어 나갔다가 끝에서 되말린다(recurve).
+    const upperLimb = curve([
+      [0, 0.46, 0.03],
+      [0, 0.95, -0.05],
+      [0, 1.5, -0.24],
+      [0, 1.95, -0.4],
+      [0, 2.16, -0.22],
+    ]);
+    const lowerLimb = curve([
+      [0, -0.46, 0.03],
+      [0, -0.95, -0.05],
+      [0, -1.5, -0.24],
+      [0, -1.95, -0.4],
+      [0, -2.16, -0.22],
+    ]);
+    // 리저 — 가운데 손잡이. 살짝 S 로 스웹된 금속 몸통.
+    const riser = curve([
+      [0, -0.58, 0.04],
+      [0, -0.26, 0.11],
+      [0, 0.04, 0.09],
+      [0, 0.34, 0.02],
+      [0, 0.58, 0.04],
+    ]);
+    return { upperLimb, lowerLimb, riser };
+  }, []);
+
+  /**
+   * 활의 좌우 위치 — 카메라 프러스텀의 **왼쪽 가장자리 기준**으로 잡는다.
+   * 활 깊이에서의 화면 절반너비(halfW)를 구해, 그 왼쪽에서 안쪽으로 일정 비율만
+   * 들어온 자리에 둔다. 가로·세로 어떤 비율에서도 활이 왼쪽 아래에 걸린다.
+   */
+  const { camera, size } = useThree();
+  const baseX = useMemo(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    const dz = cam.position.z - BOW_Z;
+    const halfH = dz * Math.tan(((cam.fov ?? 46) * Math.PI) / 180 / 2);
+    const halfW = halfH * (size.width / Math.max(1, size.height));
+    return -Math.min(1.5, 0.5 * halfW);
+  }, [camera, size.width, size.height]);
 
   useFrame(() => {
     if (!g.current || !setup) return;
     const p = aimAt(setup, performance.now() - startedAt);
     // 손떨림 정도로만. 십자선은 크게 돌아도 활은 살짝.
-    g.current.position.x = -1.15 + p.x * K * 0.06;
-    g.current.position.y = 1.5 - p.y * K * 0.06;
-    if (string.current) {
-      // 쏜 직후 시위가 앞으로 튕긴다
-      string.current.position.x = shooting ? 0.12 : -0.28;
-    }
+    g.current.position.x = baseX + p.x * K * 0.05;
+    g.current.position.y = BOW_Y - p.y * K * 0.05;
   });
 
   if (!setup) return null;
 
+  // 시위가 걸리는 림 끝(나 쪽 면)과, 당겨진 노크(오늬) 위치.
+  const topNock: [number, number, number] = [0, 2.13, -0.15];
+  const botNock: [number, number, number] = [0, -2.13, -0.15];
+  // 쏜 직후엔 시위가 앞(-Z)으로 튕겨 나가고, 그 전엔 나(+Z) 쪽으로 당겨져 있다.
+  const nock: [number, number, number] = [0, 0, shooting ? -0.12 : 0.6];
+
   return (
-    <group ref={g} position={[-1.15, 1.5, 5.6]}>
-      {/* 활채 — 세로로 세운 반달. 시위 쪽(오른쪽)이 열리게 돌린다. */}
-      <mesh rotation={[0, 0, -PI * 0.5]}>
-        <torusGeometry args={[0.62, 0.05, 10, 28, PI * 1.1]} />
-        <meshStandardMaterial color="#8A5A3B" roughness={0.7} />
-      </mesh>
-      {/* 손잡이 */}
-      <mesh>
-        <cylinderGeometry args={[0.07, 0.07, 0.3, 8]} />
-        <meshStandardMaterial color="#5C3E26" roughness={0.6} />
-      </mesh>
-      {/* 시위 — 세로 줄, 당겨져 있다 */}
-      <mesh ref={string} position={[-0.28, 0, 0]}>
-        <boxGeometry args={[0.02, 1.15, 0.02]} />
-        <meshStandardMaterial color="#FBF7EE" />
-      </mesh>
-      {/* 메긴 화살 — 쏘는 중에는 감춘다 */}
-      {!shooting && (
-        <mesh position={[0.15, 0, 0]} rotation={[0, 0, PI * 0.5]}>
-          <cylinderGeometry args={[0.026, 0.026, 1.1, 8]} />
-          <meshStandardMaterial color="#C8A860" />
+    <group ref={g} position={[baseX, BOW_Y, BOW_Z]} rotation={[0.02, 0.32, 0.13]} scale={0.55}>
+      {/* 상·하 림 — 나뭇결 라미네이트. 끝(시위 거는 곳)엔 검은 끝동. */}
+      {[upperLimb, lowerLimb].map((c, i) => (
+        <mesh key={i}>
+          <tubeGeometry args={[c, 44, 0.044, 12, false]} />
+          <meshStandardMaterial color="#B57A3C" metalness={0.15} roughness={0.5} />
         </mesh>
+      ))}
+      {/* 림 끝동(검정) — 시위가 걸리는 자리 */}
+      {[topNock, botNock].map((p, i) => (
+        <mesh key={i} position={p}>
+          <sphereGeometry args={[0.06, 10, 10]} />
+          <meshStandardMaterial color="#17181B" metalness={0.4} roughness={0.4} />
+        </mesh>
+      ))}
+
+      {/* 리저 — 스웹된 금속 몸통(가늘게) */}
+      <mesh>
+        <tubeGeometry args={[riser, 24, 0.075, 14, false]} />
+        <meshStandardMaterial color="#2C6BA8" metalness={0.75} roughness={0.3} />
+      </mesh>
+      {/* 그립 — 손이 쥐는 곳, 가죽/고무 톤 */}
+      <mesh position={[0.05, -0.14, 0.1]}>
+        <boxGeometry args={[0.11, 0.4, 0.15]} />
+        <meshStandardMaterial color="#3A2C22" roughness={0.85} />
+      </mesh>
+      {/* 화살받이(쉘프) — 화살이 얹히는 작은 턱 */}
+      <mesh position={[-0.04, 0.14, 0.03]}>
+        <boxGeometry args={[0.14, 0.045, 0.11]} />
+        <meshStandardMaterial color="#20486E" metalness={0.7} roughness={0.35} />
+      </mesh>
+
+      {/* 시위 V — 위/아래 림 끝에서 당겨진 노크로 모인다 */}
+      <Strut a={topNock} b={nock} r={0.011} color="#EFE9DA" roughness={0.5} seg={6} />
+      <Strut a={botNock} b={nock} r={0.011} color="#EFE9DA" roughness={0.5} seg={6} />
+
+      {/* 스태빌라이저 — 리저에서 과녁 쪽으로 뻗은 봉. 끝에 댐퍼 무게추. 양궁의 상징. */}
+      <Strut a={[0, -0.28, 0.02]} b={[0, -0.42, -1.5]} r={0.024} color="#15171A" metalness={0.5} roughness={0.5} />
+      <mesh position={[0, -0.42, -1.5]}>
+        <cylinderGeometry args={[0.045, 0.045, 0.14, 12]} />
+        <meshStandardMaterial color="#D14B3C" metalness={0.3} roughness={0.5} />
+      </mesh>
+
+      {/* 메긴 화살 — 노크에서 과녁 쪽으로. 쏘는 중에는 감춘다. */}
+      {!shooting && (
+        <group>
+          <Strut a={nock} b={[0, 0.14, -2.5]} r={0.02} color="#D9C27A" roughness={0.55} />
+          {/* 화살촉 */}
+          <mesh position={[0, 0.14, -2.5]} rotation={[PI * 0.5, 0, 0]}>
+            <coneGeometry args={[0.035, 0.16, 10]} />
+            <meshStandardMaterial color="#C6CDD4" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* 깃(fletching) — 노크 근처에 두 장 */}
+          <mesh position={[0.05, 0, 0.52]} rotation={[0, 0, PI * 0.5]}>
+            <boxGeometry args={[0.005, 0.16, 0.1]} />
+            <meshStandardMaterial color="#E8604C" roughness={0.7} />
+          </mesh>
+          <mesh position={[-0.05, 0, 0.52]} rotation={[0, 0, PI * 0.5]}>
+            <boxGeometry args={[0.005, 0.16, 0.1]} />
+            <meshStandardMaterial color="#1F6FEB" roughness={0.7} />
+          </mesh>
+        </group>
       )}
     </group>
   );

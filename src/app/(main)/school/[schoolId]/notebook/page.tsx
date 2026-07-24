@@ -56,11 +56,11 @@ export default function NotebookPage() {
   const goQuest = (q: Quest) => {
     const st = questState(q, done);
     // **알릴 것이 있으면 준 사람에게** 먼저 보낸다 — 그게 다음 할 일이다
-    if (st === 'ready' || q.quiz) {
+    if (st === 'ready' || q.quiz?.length) {
       router.push(`/school/${schoolId}/place/${q.giver.placeKind}`);
       return;
     }
-    const t = questTarget(q);
+    const t = questTarget(q, done);
     if (!t) { router.push(`/school/${schoolId}/place/${q.giver.placeKind}`); return; }
     router.push(t.kind === 'site' ? `/school/${schoolId}/site/${t.id}` : `/school/${schoolId}/place/${t.id}`);
   };

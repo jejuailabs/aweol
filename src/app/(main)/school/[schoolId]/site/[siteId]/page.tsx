@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useProgress } from '@/lib/use-progress';
 import { playSound } from '@/lib/sound';
 import { howFar } from '@/lib/local-sites';
-import { questState, siteKey } from '@/lib/village-rpg';
+import { questState, questTarget, siteKey, type Quest } from '@/lib/village-rpg';
 import { useRpgContent } from '@/lib/use-rpg-content';
 
 /**
@@ -124,15 +124,18 @@ export default function LocalSitePage() {
   };
 
   /**
-   * **누구에게 돌아가야 하나.**
+   * **다음에 어디로 가야 하나.**
    *
    * 조사를 마쳐도 어디로 가야 할지 모르면 마을에서 헤맨다.
-   * 이 곳을 시킨 심부름을 찾아 그 사람이 있는 기관으로 보내준다.
+   * 심부름이 `ready`(다 해옴)이면 준 사람에게, 아직 `todo`이면
+   * 남은 곳으로 보내준다.
    */
-  const backTo = rpg.quests.find(
+  const parentQuest: Quest | undefined = rpg.quests.find(
     (q) => q.need.some((c) => c.kind === 'site' && c.siteId === siteId)
       && questState(q, done) !== 'done'
   );
+  const parentReady = parentQuest && questState(parentQuest, done) === 'ready';
+  const nextTarget = parentQuest && !parentReady ? questTarget(parentQuest, done) : null;
 
   return (
     <div className="px-4 pt-6 pb-24 mx-auto max-w-[560px]">
@@ -264,18 +267,33 @@ export default function LocalSitePage() {
       {finished && (
         <div className="rounded-2xl p-4 mt-3 text-center" style={{ background: '#EAF6EF' }}>
           <div className="text-[13px] mb-2" style={{ color: '#3A3226' }}>
-            {backTo
+            {parentReady
               ? '심부름을 준 분에게 돌아가서 알려주면 돼요.'
-              : '조사 수첩에 남았어요.'}
+              : nextTarget
+                ? '아직 갈 곳이 남았어요!'
+                : '조사 수첩에 남았어요.'}
           </div>
           <div className="flex gap-2">
-            {backTo && (
+            {parentReady && parentQuest && (
               <button
-                onClick={() => router.push(`/school/${schoolId}/place/${backTo.giver.placeKind}`)}
+                onClick={() => router.push(`/school/${schoolId}/place/${parentQuest.giver.placeKind}`)}
                 className="flex-1 rounded-xl py-3 text-[14px] font-bold text-white"
                 style={{ background: 'var(--color-primary)' }}
               >
                 🚪 알리러 가기
+              </button>
+            )}
+            {nextTarget && (
+              <button
+                onClick={() => router.push(
+                  nextTarget.kind === 'site'
+                    ? `/school/${schoolId}/site/${nextTarget.id}`
+                    : `/school/${schoolId}/place/${nextTarget.id}`
+                )}
+                className="flex-1 rounded-xl py-3 text-[14px] font-bold text-white"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                🗺️ 다음 곳으로 가기
               </button>
             )}
             <button
