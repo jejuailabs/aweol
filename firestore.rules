@@ -676,6 +676,62 @@ service cloud.firestore {
       }
     }
 
+    /**
+     * ---------- 개인 전시관 ----------
+     *
+     * 학교와 **권한 모델이 다르다.** 학교는 '어느 학교 교직원이냐' 로 갈리지만
+     * 여기는 '내 것이냐' 하나다. 그래서 표를 따로 두고 규칙도 따로 쓴다.
+     *
+     * 공개 여부(`isPublic`)와 주인(`ownerUid`)은 **세 층에 다 베껴 둔다.**
+     * 부모를 `get()` 으로 캐물으면 작품 수만큼 읽기가 든다 — 작품이 마흔 점이면
+     * 전시실 한 번 여는 데 읽기가 여든 번이다.
+     */
+    match /halls/{hallId} {
+      // 만들기는 **서버(`/api/hall`)만.** 한 사람이 지도에 수십 개를 세우는 것을
+      // 규칙으로는 못 막는다(개수를 셀 수 없다).
+      allow create: if false;
+
+      allow read: if resource.data.isPublic == true
+                  || (isSignedIn() && resource.data.ownerUid == request.auth.uid)
+                  || isSuper();
+      // 주인은 못 바꾼다 — 바꿀 수 있으면 남의 전시관을 가로챌 수 있다
+      allow update: if isSuper()
+                    || (isSignedIn()
+                        && resource.data.ownerUid == request.auth.uid
+                        && request.resource.data.ownerUid == resource.data.ownerUid);
+      allow delete: if isSuper()
+                    || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+
+      match /shows/{showId} {
+        allow read: if resource.data.isPublic == true
+                    || (isSignedIn() && resource.data.ownerUid == request.auth.uid)
+                    || isSuper();
+        /**
+         * 만들 때만 **부모를 캐묻는다.**
+         * 자기 uid 를 적었다는 것만 보면 남의 전시관 안에 자기 전시를 만들 수 있다.
+         * 읽기는 매번 일어나지만 만들기는 드물어서, 여기서만 `get()` 을 쓴다.
+         */
+        allow create: if isSignedIn()
+                      && request.resource.data.ownerUid == request.auth.uid
+                      && get(/databases/$(database)/documents/halls/$(hallId)).data.ownerUid
+                         == request.auth.uid;
+        allow update, delete: if isSuper()
+                              || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+
+        match /works/{workId} {
+          allow read: if resource.data.isPublic == true
+                      || (isSignedIn() && resource.data.ownerUid == request.auth.uid)
+                      || isSuper();
+          allow create: if isSignedIn()
+                        && request.resource.data.ownerUid == request.auth.uid
+                        && get(/databases/$(database)/documents/halls/$(hallId)).data.ownerUid
+                           == request.auth.uid;
+          allow update, delete: if isSuper()
+                                || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+        }
+      }
+    }
+
     // ---------- 접근 기록 (계정 도용 추적) ----------
     // IP가 담긴 민감 정보이므로 슈퍼 관리자만 열람. 쓰기는 서버만.
     match /accessLogs/{logId} {

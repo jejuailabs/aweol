@@ -12,6 +12,23 @@ export interface MapSchool {
   classCount: number;
 }
 
+/**
+ * 지도에 함께 서는 **개인 전시관.**
+ *
+ * 학교와 **다르게 그린다.** 학교는 아이들이 다니는 곳이고 전시관은
+ * 한 사람이 연 미술관이다 — 같은 모양으로 찍으면 지도가 무슨 뜻인지 흐려진다.
+ */
+export interface MapHall {
+  id: string;
+  title: string;
+  lat: number;
+  lng: number;
+  tagline: string;
+  coverUrl: string;
+  ownerName: string;
+  showCount: number;
+}
+
 /** 웹 머케이터 변환 — 타일 좌표계로 위경도를 옮긴다 */
 const TILE = 256;
 const lngToX = (lng: number, z: number) => ((lng + 180) / 360) * TILE * 2 ** z;
@@ -36,10 +53,15 @@ export default function SchoolMap({
   schools,
   onSelect,
   focus,
+  halls = [],
+  onSelectHall,
 }: {
   schools: MapSchool[];
   onSelect: (school: MapSchool) => void;
   focus?: { lat: number; lng: number; zoom: number };
+  /** 지도에 함께 서는 개인 전시관 */
+  halls?: MapHall[];
+  onSelectHall?: (hall: MapHall) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -284,6 +306,106 @@ export default function SchoolMap({
                 className="h-1.5 w-1.5 rounded-full mt-0.5"
                 style={{ background: 'rgba(0,0,0,0.35)' }}
               />
+            </button>
+          );
+        })}
+
+      {/*
+        개인 전시관 마커 — **학교와 다르게 생겼다.**
+        학교는 둥근 말풍선 카드, 전시관은 **액자처럼 각진 카드**에 금색 테두리다.
+        지도를 보면 "저건 학교, 저건 누군가의 미술관" 이 한눈에 갈린다.
+      */}
+      {size.w > 0 &&
+        halls.map((h) => {
+          const p = project(h.lat, h.lng);
+          if (p.x < -120 || p.x > size.w + 120 || p.y < -160 || p.y > size.h + 120) return null;
+          const isHot = hovered === `hall-${h.id}`;
+          const detail = isHot || view.zoom >= 12 ? 'full' : view.zoom >= 9 ? 'compact' : 'pin';
+          return (
+            <button
+              key={`hall-${h.id}`}
+              onClick={() => { if (!moved.current) onSelectHall?.(h); }}
+              onPointerEnter={() => setHovered(`hall-${h.id}`)}
+              onPointerLeave={() => setHovered(null)}
+              className="absolute flex flex-col items-center"
+              style={{
+                left: p.x,
+                top: p.y,
+                transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
+                transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                zIndex: isHot ? 20 : 11,
+              }}
+            >
+              {detail === 'pin' ? (
+                <div
+                  className="overflow-hidden flex items-center justify-center"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 6,
+                    background: '#2E2B27',
+                    border: '3px solid #D8B25C',
+                    boxShadow: '0 3px 0 #A98B3E, 0 6px 12px rgba(0,0,0,0.28)',
+                  }}
+                >
+                  {h.coverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={h.coverUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm">🖼️</span>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="flex items-center gap-2"
+                  style={{
+                    background: '#2E2B27',
+                    border: '3px solid #D8B25C',
+                    borderRadius: 8,
+                    boxShadow: isHot
+                      ? '0 6px 0 #A98B3E, 0 14px 26px rgba(0,0,0,0.36)'
+                      : '0 4px 0 #A98B3E, 0 8px 16px rgba(0,0,0,0.26)',
+                    minWidth: detail === 'full' ? 138 : 0,
+                    padding: detail === 'full' ? '8px 12px' : '5px 9px',
+                  }}
+                >
+                  <div
+                    className="shrink-0 overflow-hidden flex items-center justify-center"
+                    style={{
+                      background: '#4A453E',
+                      borderRadius: 4,
+                      width: detail === 'full' ? 36 : 24,
+                      height: detail === 'full' ? 36 : 24,
+                    }}
+                  >
+                    {h.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={h.coverUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className={detail === 'full' ? 'text-lg' : 'text-sm'}>🖼️</span>
+                    )}
+                  </div>
+                  <div className="text-left min-w-0">
+                    <div
+                      className="font-black truncate"
+                      style={{ color: '#F7F2E6', fontSize: detail === 'full' ? 12 : 10 }}
+                    >
+                      {h.title}
+                    </div>
+                    {detail === 'full' && (
+                      <div className="text-[11px]" style={{ color: '#D8B25C' }}>
+                        {h.showCount > 0 ? `전시 ${h.showCount}개` : '준비 중'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* 핀 꼬리 */}
+              <div
+                className="h-3 w-3 rotate-45 -mt-1.5"
+                style={{ background: '#2E2B27', border: '3px solid #D8B25C', borderTop: 0, borderLeft: 0 }}
+              />
+              <div className="h-1.5 w-1.5 rounded-full mt-0.5" style={{ background: 'rgba(0,0,0,0.35)' }} />
             </button>
           );
         })}

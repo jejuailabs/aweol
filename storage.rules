@@ -71,6 +71,23 @@ service firebase.storage {
     }
 
     /**
+     * 개인 전시관에 거는 사진·그림.
+     *
+     * 읽기는 공개다 — 전시는 보라고 거는 것이다. 감춘 전시라도 주소를 알면
+     * 그림 파일은 보인다(Firestore 문서가 막혀 제목·설명은 안 보인다).
+     * 그림 파일까지 가리려면 서명 주소가 필요한데, 그건 아이 전시에 과하다.
+     *
+     * 쓰기는 본인 경로만. 작품 사진이라 상한은 작품(artworks)과 같이 10MB.
+     */
+    match /halls/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    /**
      * 기억창고 JSON — 한 해 한 반의 전체 내용이 파일 하나에 들어 있다.
      * 읽기는 공개(졸업생도 봐야 한다), 쓰기는 서버(admin)만.
      * Firestore 에 수백 건으로 두는 것보다 읽기 요금이 훨씬 싸다.

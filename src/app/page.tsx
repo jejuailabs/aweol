@@ -8,9 +8,10 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import ShareButton from '@/components/common/ShareButton';
 import { playSound } from '@/lib/sound';
-import type { MapSchool } from '@/components/map/SchoolMap';
+import type { MapHall, MapSchool } from '@/components/map/SchoolMap';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
 import SchoolCreateModal from '@/components/map/SchoolCreateModal';
+import type { HallDoc } from '@/lib/art-hall';
 
 const SchoolMap = dynamic(() => import('@/components/map/SchoolMap'), { ssr: false });
 
@@ -18,6 +19,8 @@ export default function MapHomePage() {
   const router = useRouter();
   const { actualRole } = useAuth();
   const [schools, setSchools] = useState<MapSchool[]>([]);
+  /** 지도에 함께 서는 개인 전시관 — 공개된 것만 */
+  const [halls, setHalls] = useState<MapHall[]>([]);
   const [fetched, setFetched] = useState(false);
   const [entering, setEntering] = useState<MapSchool | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -51,6 +54,36 @@ export default function MapHomePage() {
     } catch {
       setSchools([]);
     }
+
+    /**
+     * 개인 전시관 — **공개된 것만.**
+     * 질의 조건이 규칙(`isPublic == true`)과 **정확히 같아야 한다.**
+     * 넓게 물으면 문서 하나가 막히는 순간 질의 전체가 실패한다
+     * (전시실 갤러리에서 이미 한 번 밟은 함정이다).
+     */
+    try {
+      const hs = await getDocs(
+        query(collection(db, 'halls'), where('isPublic', '==', true))
+      );
+      setHalls(
+        hs.docs
+          .map((d) => ({ id: d.id, ...(d.data() as HallDoc) }))
+          .filter((h) => typeof h.lat === 'number' && typeof h.lng === 'number')
+          .map((h) => ({
+            id: h.id,
+            title: h.title || '이름 없는 전시관',
+            lat: h.lat,
+            lng: h.lng,
+            tagline: h.tagline || '',
+            coverUrl: h.coverUrl || '',
+            ownerName: h.ownerName || '',
+            showCount: h.showCount ?? 0,
+          }))
+      );
+    } catch {
+      setHalls([]);
+    }
+
     setFetched(true);
   }, []);
 
@@ -65,7 +98,12 @@ export default function MapHomePage() {
 
   return (
     <div className="relative w-full h-dvh overflow-hidden">
-      <SchoolMap schools={schools} onSelect={handleSelect} />
+      <SchoolMap
+        schools={schools}
+        onSelect={handleSelect}
+        halls={halls}
+        onSelectHall={(h) => { playSound('enter'); router.push(`/hall/${h.id}`); }}
+      />
 
       {/* 상단 타이틀 + 프로필 */}
       <div className="pos-top-safe absolute left-4 right-4 z-30 flex items-start gap-2 pointer-events-none">
@@ -104,15 +142,27 @@ export default function MapHomePage() {
         </div>
       )}
 
-      {/* 슈퍼 관리자: 학교 만들기 */}
-      {isSuper && (
+      {/*
+        왼쪽 아래 — 만들기 단추들.
+        **내 전시관은 누구나 연다.** 학교를 세우는 것은 총관리자만이지만,
+        자기 전시를 여는 것은 허락을 받을 일이 아니다.
+      */}
+      <div className="absolute left-4 bottom-28 z-30 flex flex-col items-start gap-2">
+        {isSuper && (
+          <button
+            onClick={() => { playSound('open'); setShowCreate(true); }}
+            className="ac-btn ac-btn-green px-4 py-2.5 text-sm"
+          >
+            + 학교 만들기
+          </button>
+        )}
         <button
-          onClick={() => { playSound('open'); setShowCreate(true); }}
-          className="ac-btn ac-btn-green absolute left-4 bottom-28 z-30 px-4 py-2.5 text-sm"
+          onClick={() => { playSound('open'); router.push('/my-hall'); }}
+          className="ac-btn px-4 py-2.5 text-sm"
         >
-          + 학교 만들기
+          🖼️ 내 전시관
         </button>
-      )}
+      </div>
 
       {/* 입장 연출 */}
       {entering && (
