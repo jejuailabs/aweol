@@ -502,6 +502,56 @@ function HallDetail({
   const [theme, setTheme] = useState<HallTheme>(hall.theme);
   const [dirty, setDirty] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const coverRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 지도 마커에 쓰는 대표 이미지.
+   *
+   * 없으면 지도에 **이모지 액자**만 뜬다 — 전시관이 여럿이면 다 똑같아 보여서
+   * 어느 것이 누구 것인지 알 수 없다. 마커는 작으니 작게 줄여 올린다.
+   */
+  const pickCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f || !storage || !db) return;
+    setBusy('cover'); setErr('');
+    try {
+      const small = await resizeImage(f, 600);
+      const blob = small?.blob ?? f;
+      const r = ref(storage, `halls/${hall.ownerUid}/${hall.id}-cover-${Date.now()}.jpg`);
+      await uploadBytes(r, blob);
+      const url = await getDownloadURL(r);
+      await updateDoc(doc(db, 'halls', hall.id), { coverUrl: url });
+      playSound('success');
+      await reloadHalls();
+    } catch {
+      setErr('대표 이미지를 올리지 못했어요.');
+    }
+    setBusy('');
+  };
+
+  /**
+   * 전시 차례 바꾸기 — **앞 4개만 건물 앞 배너에 걸린다.**
+   * 순서를 못 바꾸면 나중에 만든 전시를 앞으로 낼 방법이 없다.
+   */
+  const moveShow = async (idx: number, dir: -1 | 1) => {
+    if (!db) return;
+    const to = idx + dir;
+    if (to < 0 || to >= shows.length) return;
+    setBusy('move');
+    try {
+      const a = shows[idx];
+      const b = shows[to];
+      await Promise.all([
+        updateDoc(doc(db, 'halls', hall.id, 'shows', a.id), { order: to }),
+        updateDoc(doc(db, 'halls', hall.id, 'shows', b.id), { order: idx }),
+      ]);
+      await reloadShows();
+    } catch {
+      setErr('순서를 바꾸지 못했어요.');
+    }
+    setBusy('');
+  };
 
   useEffect(() => {
     setTitle(hall.title); setTagline(hall.tagline);
@@ -624,34 +674,54 @@ function HallDetail({
         ) : (
           <div className="flex flex-col gap-1.5 mb-3">
             {shows.map((s, i) => (
-              <button
+              <div
                 key={s.id}
-                onClick={() => onOpenShow(s.id)}
-                className="rounded-2xl p-2.5 text-left flex items-center gap-2.5"
+                className="rounded-2xl p-2.5 flex items-center gap-2.5"
                 style={{ background: 'var(--color-surface-soft)' }}
               >
-                <div
-                  className="h-14 w-10 shrink-0 rounded-md overflow-hidden flex items-center justify-center"
-                  style={{ background: 'rgba(0,0,0,0.06)' }}
+                {/* 차례 바꾸기 — 앞 4개만 배너에 걸리므로 순서가 곧 자리다 */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  {([-1, 1] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => moveShow(i, d)}
+                      disabled={!!busy || (d === -1 ? i === 0 : i === shows.length - 1)}
+                      className="h-6 w-6 rounded-md text-[11px] font-black disabled:opacity-25"
+                      style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
+                      aria-label={d === -1 ? '앞으로' : '뒤로'}
+                    >
+                      {d === -1 ? '▲' : '▼'}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => onOpenShow(s.id)}
+                  className="min-w-0 flex-1 text-left flex items-center gap-2.5"
                 >
-                  {s.posterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.posterUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-[11px]" style={{ color: '#A89880' }}>사진</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
-                    {s.title}
+                  <div
+                    className="h-14 w-10 shrink-0 rounded-md overflow-hidden flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.06)' }}
+                  >
+                    {s.posterUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.posterUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[11px]" style={{ color: '#A89880' }}>사진</span>
+                    )}
                   </div>
-                  <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
-                    작품 {s.workCount ?? 0}점
-                    {i < BANNER_SLOTS ? ' · 배너에 걸림' : ' · 배너 밖'}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
+                      {s.title}
+                    </div>
+                    <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
+                      작품 {s.workCount ?? 0}점
+                      {i < BANNER_SLOTS ? ' · 배너에 걸림' : ' · 배너 밖'}
+                    </div>
                   </div>
-                </div>
-                <span className="shrink-0 text-[13px]" style={{ color: 'var(--color-text-sub)' }}>›</span>
-              </button>
+                  <span className="shrink-0 text-[13px]" style={{ color: 'var(--color-text-sub)' }}>›</span>
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -672,6 +742,38 @@ function HallDetail({
       <div className="rounded-3xl p-4 mb-3" style={card}>
         <div className="text-sm font-black mb-3" style={{ color: 'var(--color-text-main)' }}>
           전시관 정보
+        </div>
+
+        {/* 지도 마커에 쓰는 대표 이미지 */}
+        <label className="block text-[12px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
+          대표 이미지 (지도 마커)
+        </label>
+        <div className="flex items-center gap-2.5 mb-3">
+          <div
+            className="h-16 w-16 shrink-0 overflow-hidden flex items-center justify-center"
+            style={{ background: 'var(--color-surface-soft)', borderRadius: 8 }}
+          >
+            {hall.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={hall.coverUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-2xl">🖼️</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <button
+              onClick={() => coverRef.current?.click()}
+              disabled={!!busy}
+              className="w-full rounded-xl py-2.5 text-[13px] font-bold disabled:opacity-40"
+              style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+            >
+              {busy === 'cover' ? '올리는 중...' : hall.coverUrl ? '다른 사진으로' : '사진 고르기'}
+            </button>
+            <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+              없으면 지도에서 다른 전시관과 <b>똑같아 보여요</b>
+            </p>
+          </div>
+          <input ref={coverRef} type="file" accept="image/*" hidden onChange={pickCover} />
         </div>
 
         <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>이름</label>
@@ -792,8 +894,32 @@ function ShowDetail({
   const [pending, setPending] = useState<Pending[]>([]);
   const [uploading, setUploading] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  /** 지금 고치는 중인 작품. null 이면 닫혀 있다. */
+  const [editing, setEditing] = useState<WorkRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const posterRef = useRef<HTMLInputElement>(null);
+
+  /** 작품 차례 바꾸기 — 앞쪽이 뒷벽(들어서면 정면)에 걸린다 */
+  const moveWork = async (workId: string, dir: -1 | 1) => {
+    if (!db) return;
+    const idx = works.findIndex((w) => w.id === workId);
+    const to = idx + dir;
+    if (idx < 0 || to < 0 || to >= works.length) return;
+    setBusy('movew');
+    try {
+      const a = works[idx];
+      const b = works[to];
+      const base = `halls/${hall.id}/shows/${show.id}/works`;
+      await Promise.all([
+        updateDoc(doc(db, base, a.id), { order: to }),
+        updateDoc(doc(db, base, b.id), { order: idx }),
+      ]);
+      await reloadWorks();
+    } catch {
+      setErr('차례를 바꾸지 못했어요.');
+    }
+    setBusy('');
+  };
 
   useEffect(() => {
     setTitle(show.title); setSubtitle(show.subtitle ?? '');
@@ -1137,37 +1263,67 @@ function ShowDetail({
           올리면 <b>자동으로 반듯하게 잘리고 밝기가 맞춰져요.</b> 마음에 안 들면 원본으로 되돌릴 수 있어요.
         </p>
 
-        {/* 걸린 작품들 */}
+        {/*
+          걸린 작품들 — **눌러서 고친다.**
+          예전에는 ✕(지우기)뿐이라, 제목에 오타 하나만 나도 작품을 지웠다가
+          다시 올려야 했다. 칠판에는 '고치기' 를 넣어놓고 여기만 빠져 있었다.
+        */}
         {works.length > 0 && (
           <div className="grid grid-cols-3 gap-1.5 mt-3">
-            {works.map((w) => (
-              <div key={w.id} className="relative rounded-lg overflow-hidden" style={{ aspectRatio: '1' }}>
+            {works.map((w, i) => (
+              <button
+                key={w.id}
+                onClick={() => setEditing(w)}
+                className="relative rounded-lg overflow-hidden"
+                style={{ aspectRatio: '1' }}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={w.thumbnailUrl || w.imageUrl}
                   alt={w.title}
                   className="h-full w-full object-cover"
                 />
-                <button
-                  onClick={() => removeWork(w.id)}
-                  disabled={!!busy}
-                  className="absolute right-1 top-1 h-6 w-6 rounded-full text-[12px] font-black disabled:opacity-40"
-                  style={{ background: 'rgba(0,0,0,0.6)', color: 'white' }}
-                  aria-label={`${w.title} 지우기`}
-                >
-                  ✕
-                </button>
+                {/* 몇 번째로 걸리는지 — 벽에 거는 차례다 */}
                 <div
-                  className="absolute inset-x-0 bottom-0 px-1.5 py-1 text-[10px] font-bold truncate"
+                  className="absolute left-1 top-1 h-5 min-w-5 px-1 rounded-full text-[10px] font-black flex items-center justify-center"
+                  style={{ background: 'rgba(0,0,0,0.6)', color: 'white' }}
+                >
+                  {i + 1}
+                </div>
+                <div
+                  className="absolute inset-x-0 bottom-0 px-1.5 py-1 text-[10px] font-bold truncate text-left"
                   style={{ background: 'rgba(0,0,0,0.55)', color: 'white' }}
                 >
                   {w.title || '무제'}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
+        {works.length > 0 && (
+          <p className="text-[11px] mt-1.5" style={{ color: 'var(--color-text-sub)' }}>
+            작품을 누르면 제목·설명을 고치고 차례를 바꿀 수 있어요
+          </p>
+        )}
       </div>
+
+      {/* 작품 고치기 */}
+      {editing && (
+        <WorkEditor
+          hallId={hall.id}
+          showId={show.id}
+          work={editing}
+          index={works.findIndex((w) => w.id === editing.id)}
+          total={works.length}
+          busy={busy}
+          onMove={(d) => moveWork(editing.id, d)}
+          onRemove={async () => { await removeWork(editing.id); setEditing(null); }}
+          onSaved={async () => { await reloadWorks(); setEditing(null); }}
+          onClose={() => setEditing(null)}
+          setErr={setErr}
+          setBusy={setBusy}
+        />
+      )}
 
       {/* 전시 지우기 */}
       <div className="rounded-3xl p-4" style={card}>
@@ -1205,5 +1361,188 @@ function ShowDetail({
         )}
       </div>
     </>
+  );
+}
+
+/* ══════════════════════ 작품 고치기 ══════════════════════ */
+
+/**
+ * 걸린 작품 하나를 고친다 — 제목·찍은 곳·작가의 말, 그리고 걸리는 차례.
+ *
+ * **올릴 때만 적을 수 있으면 안 된다.** 오타 하나 때문에 작품을 지웠다가
+ * 다시 올리게 하는 것은 고칠 수 없다고 말하는 것과 같다.
+ */
+function WorkEditor({
+  hallId, showId, work, index, total, busy, onMove, onRemove, onSaved, onClose, setErr, setBusy,
+}: {
+  hallId: string;
+  showId: string;
+  work: WorkRow;
+  index: number;
+  total: number;
+  busy: string;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => Promise<void>;
+  onSaved: () => Promise<void>;
+  onClose: () => void;
+  setErr: (s: string) => void;
+  setBusy: (s: string) => void;
+}) {
+  const [title, setTitle] = useState(work.title ?? '');
+  const [takenAt, setTakenAt] = useState(work.takenAt ?? '');
+  const [caption, setCaption] = useState(work.caption ?? '');
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  useEffect(() => {
+    setTitle(work.title ?? '');
+    setTakenAt(work.takenAt ?? '');
+    setCaption(work.caption ?? '');
+    setConfirmDel(false);
+  }, [work]);
+
+  const save = async () => {
+    if (!db) return;
+    setBusy('editw'); setErr('');
+    try {
+      await updateDoc(doc(db, 'halls', hallId, 'shows', showId, 'works', work.id), {
+        title: title.trim().slice(0, LIMITS.workTitle),
+        takenAt: takenAt.trim().slice(0, LIMITS.takenAt),
+        caption: caption.trim().slice(0, LIMITS.caption),
+      });
+      playSound('success');
+      await onSaved();
+    } catch {
+      setErr('고치지 못했어요.');
+    }
+    setBusy('');
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 py-6"
+      style={{ background: 'rgba(24,20,16,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[420px] rounded-3xl p-4 max-h-[88vh] overflow-y-auto"
+        style={{ background: 'var(--color-bg)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <div className="text-sm font-black" style={{ color: 'var(--color-text-main)' }}>
+            🛠️ 작품 고치기
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-auto rounded-full px-3.5 py-1.5 text-[13px] font-bold"
+            style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
+          >
+            닫기
+          </button>
+        </div>
+
+        <div className="flex gap-3 mb-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={work.thumbnailUrl || work.imageUrl}
+            alt=""
+            className="h-24 w-24 shrink-0 rounded-xl object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-bold mb-1" style={{ color: 'var(--color-text-sub)' }}>
+              벽에 걸리는 차례
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => onMove(-1)}
+                disabled={!!busy || index <= 0}
+                className="h-9 w-9 rounded-lg text-[13px] font-black disabled:opacity-30"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+              >
+                ▲
+              </button>
+              <span className="text-[14px] font-black" style={{ color: 'var(--color-text-main)' }}>
+                {index + 1} / {total}
+              </span>
+              <button
+                onClick={() => onMove(1)}
+                disabled={!!busy || index >= total - 1}
+                className="h-9 w-9 rounded-lg text-[13px] font-black disabled:opacity-30"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+              >
+                ▼
+              </button>
+            </div>
+            <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+              앞쪽 작품이 <b>들어서면 정면인 뒷벽</b>에 걸려요
+            </p>
+          </div>
+        </div>
+
+        <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>작품 제목</label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value.slice(0, LIMITS.workTitle))}
+          className={`${input} mt-1 mb-3`}
+          style={inputStyle}
+        />
+
+        <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>찍은 곳·때</label>
+        <input
+          value={takenAt}
+          onChange={(e) => setTakenAt(e.target.value.slice(0, LIMITS.takenAt))}
+          placeholder="예) 곽지, 2026 여름"
+          className={`${input} mt-1 mb-3`}
+          style={inputStyle}
+        />
+
+        <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>작가의 말</label>
+        <textarea
+          value={caption}
+          onChange={(e) => setCaption(e.target.value.slice(0, LIMITS.caption))}
+          rows={4}
+          placeholder="이 작품에 대해 하고 싶은 말"
+          className={`${input} mt-1 mb-3 resize-none`}
+          style={inputStyle}
+        />
+
+        <button
+          onClick={save}
+          disabled={!!busy}
+          className="w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40 mb-2"
+          style={{ background: 'var(--color-primary)' }}
+        >
+          {busy === 'editw' ? '고치는 중...' : '이대로 고치기'}
+        </button>
+
+        {confirmDel ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmDel(false)}
+              className="flex-1 rounded-xl py-2.5 text-[13px] font-bold"
+              style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+            >
+              그만두기
+            </button>
+            <button
+              onClick={onRemove}
+              disabled={!!busy}
+              className="flex-1 rounded-xl py-2.5 text-[13px] font-bold text-white disabled:opacity-40"
+              style={{ background: '#C0392B' }}
+            >
+              정말 지우기
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDel(true)}
+            className="w-full rounded-xl py-2.5 text-[13px] font-bold"
+            style={{ background: 'transparent', color: '#C0392B', border: '1px solid #F0C4BE' }}
+          >
+            이 작품 지우기
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
