@@ -214,6 +214,66 @@ function Fixtures({ list }: { list: Fixture[] }) {
         </group>
       )}
 
+      {list.includes('shelves') && (
+        // 편의점 매대 — 알록달록한 물건이 줄지어 있어야 가게로 보인다
+        ([-5.2, -2.2] as const).map((sx) => (
+          <group key={sx} position={[sx, 0, -0.6]}>
+            <mesh position={[0, 0.7, 0]} castShadow receiveShadow>
+              <boxGeometry args={[1.1, 1.4, 4.2]} />
+              <meshStandardMaterial color="#EAEAEA" roughness={0.8} />
+            </mesh>
+            {Array.from({ length: 12 }, (_, i) => (
+              <mesh
+                key={i}
+                position={[0, 0.5 + Math.floor(i / 6) * 0.75, -1.7 + (i % 6) * 0.68]}
+                castShadow
+              >
+                <boxGeometry args={[1.0, 0.34, 0.4]} />
+                <meshStandardMaterial
+                  color={['#E8604C', '#E8A33C', '#3BAF9F', '#4A90D9', '#D86CB0', '#8FD98A'][i % 6]}
+                  roughness={0.7}
+                />
+              </mesh>
+            ))}
+          </group>
+        ))
+      )}
+
+      {list.includes('coffee') && (
+        // 커피 머신과 빵 진열대 — 카페 창구 위
+        <group>
+          <group position={[-3.6, 1.22, -4.2]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.9, 0.7, 0.6]} />
+              <meshStandardMaterial color="#4A4440" roughness={0.4} metalness={0.3} />
+            </mesh>
+            <mesh position={[0, 0.42, 0]}>
+              <boxGeometry args={[0.6, 0.14, 0.5]} />
+              <meshStandardMaterial color="#8A8A8A" metalness={0.5} roughness={0.4} />
+            </mesh>
+            {([-0.2, 0.2] as const).map((cx) => (
+              <mesh key={cx} position={[cx, -0.1, 0.36]}>
+                <cylinderGeometry args={[0.07, 0.05, 0.16, 8]} />
+                <meshStandardMaterial color="#FFF6E4" roughness={0.7} />
+              </mesh>
+            ))}
+          </group>
+          {/* 빵 진열 */}
+          <group position={[3.4, 1.22, -4.2]}>
+            <mesh>
+              <boxGeometry args={[1.6, 0.08, 0.8]} />
+              <meshStandardMaterial color="#E8D7BC" roughness={0.8} />
+            </mesh>
+            {([[-0.5, 0], [0, 0.1], [0.5, -0.05]] as const).map(([bx, bz], i) => (
+              <mesh key={i} position={[bx, 0.18, bz]} castShadow>
+                <sphereGeometry args={[0.18, 8, 6]} />
+                <meshStandardMaterial color={['#C9924F', '#B87F42', '#D9A860'][i]} roughness={0.9} />
+              </mesh>
+            ))}
+          </group>
+        </group>
+      )}
+
       {list.includes('siren') && (
         // 경광등 — 켜 둔 것처럼 살짝 빛난다
         <group position={[0, 0, -6.4]}>
@@ -233,7 +293,7 @@ function Fixtures({ list }: { list: Fixture[] }) {
 
 /** 직원 — 창구 안쪽에 서서, 가까이 오면 자기 일을 말한다 */
 function Clerk({
-  x, emoji, name, job, avatarPos, hasGuide, done, onTalk, cta, tone = '#E8A33C',
+  x, emoji, name, job, avatarPos, hasGuide, plainTalk, done, onTalk, cta, tone = '#E8A33C',
 }: {
   x: number;
   emoji: string;
@@ -242,6 +302,11 @@ function Clerk({
   avatarPos: React.RefObject<THREE.Vector3>;
   /** 말을 걸 수 있는 사람인가 — 머리 위에 느낌표가 뜬다 */
   hasGuide?: boolean;
+  /**
+   * 이야기꾼도 심부름꾼도 아니지만 **눌러서 역할을 볼 수 있다.**
+   * 느낌표도, 색깔 옷도 없다 — 미션과 헷갈리면 안 되니까.
+   */
+  plainTalk?: boolean;
   /** 이미 끝냈나 — 느낌표를 내린다 */
   done?: boolean;
   onTalk?: () => void;
@@ -250,6 +315,7 @@ function Clerk({
   /** 옷·테두리 색. 심부름 주는 사람은 이야기꾼과 달라 보여야 한다. */
   tone?: string;
 }) {
+  const talkable = hasGuide || plainTalk;
   const [near, setNear] = useState(false);
   useEffect(() => {
     /**
@@ -272,9 +338,9 @@ function Clerk({
       <mesh
         position={[0, 0.85, 0]}
         castShadow
-        onClick={hasGuide && onTalk ? (e) => { e.stopPropagation(); onTalk(); } : undefined}
-        onPointerOver={hasGuide ? (e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; } : undefined}
-        onPointerOut={hasGuide ? () => { document.body.style.cursor = 'auto'; } : undefined}
+        onClick={talkable && onTalk ? (e) => { e.stopPropagation(); onTalk(); } : undefined}
+        onPointerOver={talkable ? (e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; } : undefined}
+        onPointerOut={talkable ? () => { document.body.style.cursor = 'auto'; } : undefined}
       >
         <capsuleGeometry args={[0.32, 0.8, 4, 12]} />
         <meshStandardMaterial color={hasGuide ? tone : '#5B6B8A'} roughness={0.8} />
@@ -317,11 +383,11 @@ function Clerk({
           position={[0, 3.1, 0]}
           center
           // 이야기해 줄 사람은 말풍선도 눌린다 — 눌러보라고 적어놓고 안 눌리면 안 된다
-          style={{ pointerEvents: hasGuide && onTalk ? 'auto' : 'none' }}
+          style={{ pointerEvents: talkable && onTalk ? 'auto' : 'none' }}
           zIndexRange={[9, 0]}
         >
           <div
-            onClick={hasGuide && onTalk ? onTalk : undefined}
+            onClick={talkable && onTalk ? onTalk : undefined}
             style={{
               background: 'rgba(255,250,240,0.98)', color: '#3A3226',
               fontSize: '13px', lineHeight: 1.5, fontWeight: 600,
@@ -329,11 +395,11 @@ function Clerk({
               fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
               border: `2px solid ${hasGuide ? tone : '#EFE3CB'}`,
               boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
-              cursor: hasGuide ? 'pointer' : 'default',
+              cursor: talkable ? 'pointer' : 'default',
             }}
           >
             {job}
-            {hasGuide && (
+            {talkable && (
               <div style={{ marginTop: '8px', color: '#A6762A', fontWeight: 800 }}>
                 {cta ?? (done ? '💬 다시 듣기 ›' : '💬 이야기 듣기 ›')}
               </div>
@@ -387,6 +453,8 @@ export default function CivicPlaceScene({
   const [misses, setMisses] = useState(0);
   /** 여러 문제 중 지금 몇 번째인가 */
   const [quizIdx, setQuizIdx] = useState(0);
+  /** 역할 카드 — 몇 번째 직원의 역할을 보는 중인가. null 이면 닫혀 있다. */
+  const [roleAt, setRoleAt] = useState<number | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -414,9 +482,24 @@ export default function CivicPlaceScene({
 
   /** 창을 보는 동안에는 아바타가 움직이면 안 된다 — 읽는 중에 걸어가 버린다 */
   useEffect(() => {
-    setMovementLock(page !== null || talking !== null);
+    setMovementLock(page !== null || talking !== null || roleAt !== null);
     return () => setMovementLock(false);
-  }, [page, talking]);
+  }, [page, talking, roleAt]);
+
+  /**
+   * 편의점 매대는 몸이 못 지나가야 한다 — 매대 사이 골목을 걷는 게 가게 맛이다.
+   * 다른 기관은 기존 장애물 그대로.
+   */
+  const obstacles = useMemo<Obstacle[]>(() => {
+    const out = [...OBSTACLES];
+    if (place.fixtures?.includes('shelves')) {
+      out.push(
+        { x: -5.2, z: -0.6, halfW: 0.6, halfD: 2.1 },
+        { x: -2.2, z: -0.6, halfW: 0.6, halfD: 2.1 },
+      );
+    }
+    return out;
+  }, [place.fixtures]);
 
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
@@ -478,6 +561,83 @@ export default function CivicPlaceScene({
         {/* 그 기관다운 물건들 */}
         <Fixtures list={place.fixtures ?? []} />
 
+        {/*
+          벽 포스터 — **이야기가 벽에도 붙어 있다.**
+          이야기꾼을 지나쳐도 벽의 포스터를 누르면 같은 내용을 읽을 수 있다.
+          기관마다 새 글을 쓰는 게 아니라 guide 를 그대로 건다 —
+          내용이 두 벌이 되면 반드시 한쪽이 낡는다.
+        */}
+        {guide.slice(0, 3).map((g, i) => (
+          <group key={`poster-${i}`} position={[ROOM_W / 2 - 0.08, 2.65, -4 + i * 3.4]} rotation={[0, -PI / 2, 0]}>
+            <mesh position={[0, 0, -0.012]}>
+              <planeGeometry args={[2.6, 1.8]} />
+              <meshStandardMaterial color={place.color} roughness={0.85} />
+            </mesh>
+            <mesh
+              onClick={(e) => { e.stopPropagation(); setPage(i); }}
+              onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+              onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+            >
+              <planeGeometry args={[2.4, 1.6]} />
+              <meshStandardMaterial color="#FFFDF6" roughness={0.9} />
+            </mesh>
+            <Html position={[0, 0, 0.02]} transform scale={0.24} pointerEvents="none" zIndexRange={[6, 0]}>
+              <div
+                style={{
+                  width: '340px', textAlign: 'center', fontFamily: 'Pretendard, sans-serif',
+                  userSelect: 'none', color: '#3A3226',
+                }}
+              >
+                <div style={{ fontSize: '30px' }}>{place.emoji}</div>
+                <div style={{ fontSize: '24px', fontWeight: 900, lineHeight: 1.3, wordBreak: 'keep-all' }}>
+                  {g.title}
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#A6762A', marginTop: '8px' }}>
+                  📌 눌러서 읽기
+                </div>
+              </div>
+            </Html>
+          </group>
+        ))}
+
+        {/* 공용 인테리어 — 시계·화분·입구 매트·창문. 어느 기관이든 방이 덜 휑해진다 */}
+        <group position={[5, 3.3, -ROOM_D / 2 + 0.06]}>
+          <mesh>
+            <circleGeometry args={[0.45, 20]} />
+            <meshStandardMaterial color="#FFFFFF" />
+          </mesh>
+          <mesh position={[0, 0.12, 0.01]}>
+            <planeGeometry args={[0.06, 0.3]} />
+            <meshStandardMaterial color="#3A3226" />
+          </mesh>
+          <mesh position={[0.09, 0, 0.01]} rotation={[0, 0, -PI / 2]}>
+            <planeGeometry args={[0.05, 0.22]} />
+            <meshStandardMaterial color="#3A3226" />
+          </mesh>
+        </group>
+        {([[-7.2, -6.2], [7.2, 5.6]] as const).map(([px, pz]) => (
+          <group key={`${px}`} position={[px, 0, pz]}>
+            <mesh position={[0, 0.3, 0]} castShadow>
+              <cylinderGeometry args={[0.32, 0.26, 0.6, 8]} />
+              <meshStandardMaterial color="#B0603F" roughness={0.85} />
+            </mesh>
+            <mesh position={[0, 0.85, 0]} castShadow>
+              <sphereGeometry args={[0.42, 8, 6]} />
+              <meshStandardMaterial color="#4A8F40" roughness={0.95} />
+            </mesh>
+          </group>
+        ))}
+        <mesh position={[0, 0.015, 5.6]} rotation={[NEG_HALF_PI, 0, 0]}>
+          <planeGeometry args={[3.2, 1.6]} />
+          <meshStandardMaterial color="#C9B98E" roughness={0.95} />
+        </mesh>
+        {([-3, 1] as const).map((wz) => (
+          <mesh key={wz} position={[-ROOM_W / 2 + 0.06, 2.7, wz]} rotation={[0, PI / 2, 0]}>
+            <planeGeometry args={[2.2, 1.3]} />
+            <meshStandardMaterial color="#BEE6F7" emissive="#9FD4EE" emissiveIntensity={0.2} />
+          </mesh>
+        ))}
+
         {/* 직원들 — 창구 안쪽 */}
         {place.people.map((p, i) => {
           const isGuide = i === guideAt && guide.length > 0;
@@ -494,6 +654,11 @@ export default function CivicPlaceScene({
               avatarPos={avatarPos}
               hasGuide={isGuide || isMission}
               /**
+               * 미션도 이야기도 없는 직원도 **눌러서 역할을 볼 수 있다.**
+               * 다만 느낌표·색깔 옷은 없다 — 해야 할 일과 헷갈리면 안 된다.
+               */
+              plainTalk={!isGuide && !isMission}
+              /**
                * **알릴 것이 남았으면 느낌표가 살아 있다.**
                * 다녀왔는데 느낌표가 없으면 상 받으러 올 이유를 모른다.
                * 반대로 다 끝났는데 떠 있으면 할 일이 남은 줄 안다.
@@ -507,11 +672,14 @@ export default function CivicPlaceScene({
                     : qs === 'done'
                       ? '🏅 마친 심부름 ›'
                       : '📜 심부름 받기 ›'
-                  : undefined
+                  : isGuide
+                    ? undefined
+                    : '👤 무슨 일 하는지 보기 ›'
               }
               onTalk={() => {
                 if (isMission && q) { setPicked(null); setMisses(0); setTalking(q); }
-                else setPage(0);
+                else if (isGuide) setPage(0);
+                else setRoleAt(i);
               }}
             />
           );
@@ -542,7 +710,7 @@ export default function CivicPlaceScene({
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
           avatarYaw={avatarYaw}
-          obstacles={OBSTACLES}
+          obstacles={obstacles}
         />
         <FollowCamera avatarPos={avatarPos} lookHeight={1.4} />
       </Canvas>
@@ -554,6 +722,57 @@ export default function CivicPlaceScene({
       >
         ← 마을로
       </button>
+
+      {/*
+        역할 카드 — **이 사람이 무슨 일을 하는가.**
+        미션 창과는 완전히 다르게 생겼다(문서 카드 vs 대화 창) —
+        "볼 것"과 "할 일"이 같은 창에 나오면 아이가 구분을 못 한다.
+      */}
+      {roleAt !== null && place.people[roleAt] && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 pb-4"
+          style={{ background: 'rgba(24,20,16,0.55)' }}
+          onClick={() => setRoleAt(null)}
+        >
+          <div
+            className="w-full max-w-[400px] rounded-3xl overflow-hidden"
+            style={{ background: '#FFFAF0', border: '3px solid rgba(255,255,255,0.75)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-2 text-center">
+              <div className="text-[40px]">{place.people[roleAt].emoji}</div>
+              <div className="text-[18px] font-black mt-1" style={{ color: '#3A3226' }}>
+                {place.people[roleAt].name}
+              </div>
+              <div className="text-[12px] font-bold mt-0.5" style={{ color: '#A6762A' }}>
+                {place.emoji} {place.label}에서 일해요
+              </div>
+            </div>
+            <div className="px-5 pb-3">
+              <div
+                className="rounded-2xl px-4 py-3 text-[14px] leading-relaxed"
+                style={{ background: 'white', color: '#5B4A3B' }}
+              >
+                {place.people[roleAt].job}
+              </div>
+              {place.notPublic && (
+                <div className="text-[12px] leading-relaxed mt-2 px-1" style={{ color: '#A89880' }}>
+                  {place.notPublic.replace(/\*\*/g, '')}
+                </div>
+              )}
+            </div>
+            <div className="px-4 pb-4">
+              <button
+                onClick={() => setRoleAt(null)}
+                className="w-full rounded-full py-3 text-[15px] font-bold text-white"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                알겠어요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/*
         이야기 창 — **한 장에 한 가지씩, 화살표로 넘긴다.**

@@ -13,7 +13,8 @@
 export type Fixture =
   | 'scale' | 'parcel' | 'bank' | 'mailbox'
   | 'noticeboard' | 'flag' | 'bookshelf'
-  | 'crops' | 'bed' | 'siren';
+  | 'crops' | 'bed' | 'siren'
+  | 'shelves' | 'coffee';
 
 export interface CivicPlace {
   /** 주소에 쓰는 값이자 표의 열쇠 */
@@ -480,6 +481,7 @@ export const CIVIC_PLACES: CivicPlace[] = [
       '과자, 음료, 생필품 같은 것을 팔아요',
       '물건에는 **가격표**가 붙어 있어요',
     ],
+    fixtures: ['shelves', 'noticeboard'],
     guideAt: 0,
     guide: [
       {
@@ -522,6 +524,7 @@ export const CIVIC_PLACES: CivicPlace[] = [
       '앉아서 이야기하거나 쉬어 갈 수 있어요',
       '**메뉴판**을 보고 골라서 주문해요',
     ],
+    fixtures: ['coffee', 'noticeboard'],
     guideAt: 0,
     guide: [
       {

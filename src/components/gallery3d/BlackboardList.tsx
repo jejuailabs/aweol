@@ -5,6 +5,7 @@ import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import type { BoardItem } from './Blackboard';
+import BlackboardItemEditor from './BlackboardItemEditor';
 
 /**
  * 칠판에 쓴 것 목록 — 골라서 지운다.
@@ -29,6 +30,8 @@ export default function BlackboardList({
   const { user } = useAuth();
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
+  /** 지금 고치는 중인 낙서 — 편집 모달이 위에 뜬다 */
+  const [editing, setEditing] = useState<BoardItem | null>(null);
 
   const removeOne = async (id: string) => {
     setBusy(id); setErr('');
@@ -123,14 +126,24 @@ export default function BlackboardList({
                     </div>
                   </div>
                   {canRemove(it) ? (
-                    <button
-                      onClick={() => removeOne(it.id)}
-                      disabled={!!busy}
-                      className="shrink-0 rounded-xl px-3 py-1.5 text-[13px] font-bold disabled:opacity-40"
-                      style={{ background: '#FDECEA', color: '#B02A37' }}
-                    >
-                      {busy === it.id ? '...' : '지우기'}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setEditing(it)}
+                        disabled={!!busy}
+                        className="shrink-0 rounded-xl px-3 py-1.5 text-[13px] font-bold disabled:opacity-40"
+                        style={{ background: '#EAF3EC', color: '#2E6B45' }}
+                      >
+                        고치기
+                      </button>
+                      <button
+                        onClick={() => removeOne(it.id)}
+                        disabled={!!busy}
+                        className="shrink-0 rounded-xl px-3 py-1.5 text-[13px] font-bold disabled:opacity-40"
+                        style={{ background: '#FDECEA', color: '#B02A37' }}
+                      >
+                        {busy === it.id ? '...' : '지우기'}
+                      </button>
+                    </>
                   ) : (
                     <span className="shrink-0 text-[12px]" style={{ color: '#C4B79E' }}>
                       친구 것
@@ -161,10 +174,24 @@ export default function BlackboardList({
 
         {!canClearAll && (
           <p className="text-[12px] mt-2.5 leading-relaxed" style={{ color: '#A89880' }}>
-            내가 쓴 것만 지울 수 있어요. 친구 것은 선생님께 말씀드려요.
+            내가 쓴 것만 고치거나 지울 수 있어요. 친구 것은 선생님께 말씀드려요.
           </p>
         )}
       </div>
+
+      {/* 편집 모달 — 목록 위에 뜬다 */}
+      {editing && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <BlackboardItemEditor
+            schoolId={schoolId}
+            classId={classId}
+            item={editing}
+            others={items.filter((x) => x.id !== editing.id)}
+            onDone={onChanged}
+            onClose={() => setEditing(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }

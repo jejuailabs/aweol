@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -97,6 +97,9 @@ const SCHOOL_OBSTACLES: Obstacle[] = [
    */
   { x: 0, z: -6, halfW: 9.2, halfD: 3.2 },
   { x: 0, z: -2.3, halfW: 2.4, halfD: 0.9 },
+  // 양쪽 별관 (SchoolBuilding 의 날개와 같은 좌표)
+  { x: -11.1, z: -6.4, halfW: 2.3, halfD: 2.6 },
+  { x: 11.1, z: -6.4, halfW: 2.3, halfD: 2.6 },
   // 뒤뜰 시설 (아래 Backyard 배치와 같은 좌표)
   { x: -6, z: -12.5, halfW: 1.8, halfD: 1.3 },
   { x: -1.5, z: -12.5, halfW: 1.8, halfD: 1.3 },
@@ -431,6 +434,26 @@ function SchoolBuilding({
   const bodyH = 6.5;
   const bodyD = 6;
 
+  /**
+   * 박공지붕 — 삼각 단면을 건물 깊이만큼 뽑는다.
+   * 납작한 상자 지붕은 창고처럼 보인다. 학교는 마을의 얼굴이라
+   * 지붕이 살아야 건물이 산다.
+   */
+  const roofGeo = useMemo(() => {
+    const s = new THREE.Shape();
+    const w = bodyW + 1.6;
+    s.moveTo(-w / 2, 0);
+    s.lineTo(w / 2, 0);
+    s.lineTo(0, 2.4);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: bodyD + 1.6, bevelEnabled: false });
+    g.translate(0, 0, -(bodyD + 1.6) / 2);
+    return g;
+    // 크기 상수는 컴포넌트 안에서 변하지 않는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => () => roofGeo.dispose(), [roofGeo]);
+
   // 창문 슬롯: 2층 왼→오, 그 다음 1층 왼→오
   const windowSlots: [number, number][] = [
     [-7.5, 4.4], [-5.4, 4.4], [-3.3, 4.4], [3.3, 4.4], [5.4, 4.4], [7.5, 4.4],
@@ -444,11 +467,49 @@ function SchoolBuilding({
         <boxGeometry args={[bodyW, bodyH, bodyD]} />
         <meshStandardMaterial color={palette.wall} roughness={0.7} />
       </mesh>
-      {/* 지붕 */}
-      <mesh position={[0, bodyH + 0.55, 0]}>
-        <boxGeometry args={[bodyW + 1, 1.1, bodyD + 1]} />
-        <meshStandardMaterial color={palette.roof} roughness={0.6} />
+      {/* 지붕선 트림 + 박공지붕 */}
+      <mesh position={[0, bodyH + 0.25, 0]}>
+        <boxGeometry args={[bodyW + 1.2, 0.5, bodyD + 1.2]} />
+        <meshStandardMaterial color={palette.roofDark} roughness={0.6} />
       </mesh>
+      <mesh geometry={roofGeo} position={[0, bodyH + 0.5, 0]} castShadow>
+        <meshStandardMaterial color={palette.roof} roughness={0.65} />
+      </mesh>
+
+      {/* 양쪽 별관 — 본관 하나만 서 있으면 상자다. 낮은 날개가 붙어야 학교 평면이 된다 */}
+      {([-1, 1] as const).map((side) => (
+        <group key={side} position={[side * (bodyW / 2 + 2.1), 0, -0.4]}>
+          <mesh position={[0, 2.1, 0]} castShadow>
+            <boxGeometry args={[4.4, 4.2, bodyD - 1]} />
+            <meshStandardMaterial color={palette.wall} roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 4.45, 0]}>
+            <boxGeometry args={[4.8, 0.5, bodyD - 0.6]} />
+            <meshStandardMaterial color={palette.roofDark} roughness={0.6} />
+          </mesh>
+          {/* 별관 창문 */}
+          {([-1, 1] as const).map((wx) => (
+            <mesh key={wx} position={[wx * 1.1, 2.3, (bodyD - 1) / 2 + 0.03]}>
+              <planeGeometry args={[1.3, 1.4]} />
+              <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.25} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+
+      {/* 현관 기둥 둘 + 계단 — 입구가 '정문'으로 읽힌다 */}
+      {([-1.6, 1.6] as const).map((cx) => (
+        <mesh key={cx} position={[cx, 1.6, bodyD * 0.5 + 1.15]} castShadow>
+          <cylinderGeometry args={[0.16, 0.2, 3.2, 10]} />
+          <meshStandardMaterial color="#F2EAD8" roughness={0.7} />
+        </mesh>
+      ))}
+      {([0.18, 0.38] as const).map((sy, i) => (
+        <mesh key={sy} position={[0, sy - 0.18, bodyD * 0.5 + 1.9 - i * 0.45]} receiveShadow castShadow>
+          <boxGeometry args={[4.2 - i * 0.6, 0.36, 0.9]} />
+          <meshStandardMaterial color="#D8CDB8" roughness={0.9} />
+        </mesh>
+      ))}
       {/* 중앙 현관탑 */}
       <mesh position={[0, 3.9, bodyD * 0.5 + 0.6]} castShadow>
         <boxGeometry args={[4.6, 7.8, 1.4]} />

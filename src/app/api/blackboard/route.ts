@@ -110,6 +110,89 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: created.id });
 }
 
+/**
+ * 낙서 하나 고치기 — 옮기고, 키우고, 글이면 내용도 바꾼다.
+ *
+ * **본인 것 또는 담임만.** 지우기와 같은 선이다 — 남의 낙서를 옮길 수 있으면
+ * 친구 글씨를 구석에 처박는 장난이 생긴다.
+ */
+export async function PATCH(req: NextRequest) {
+  const user = await verifyRequestUser(req);
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
+
+  let body: {
+    schoolId?: string;
+    classId?: string;
+    itemId?: string;
+    points?: number[][];
+    color?: string;
+    width?: number;
+    text?: string;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  }
+  const { schoolId, classId, itemId } = body;
+  if (!schoolId || !classId || !itemId) {
+    return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  }
+
+  const db = adminDb();
+  const ref = db
+    .collection('schools').doc(schoolId)
+    .collection('classes').doc(classId)
+    .collection('blackboard').doc(itemId);
+  const snap = await ref.get();
+  if (!snap.exists) return NextResponse.json({ error: '이미 지워졌어요' }, { status: 404 });
+
+  const mine = (snap.data()?.authorUid as string) === user.uid;
+  if (!mine && !isTeacherOfClass(user, schoolId, classId)) {
+    return NextResponse.json({ error: '내가 쓴 것만 고칠 수 있어요' }, { status: 403 });
+  }
+
+  const patch: Record<string, unknown> = { editedAt: FieldValue.serverTimestamp() };
+
+  if (Array.isArray(body.points)) {
+    const valid = body.points.slice(0, MAX_POINTS).filter(
+      (p) => Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === 'number' && n >= 0 && n <= 1)
+    );
+    if (valid.length === 0) return NextResponse.json({ error: '좌표가 없습니다' }, { status: 400 });
+    patch.points = valid.flat();
+  }
+  if (typeof body.width === 'number') {
+    patch.width = Math.max(1, Math.min(40, body.width));
+  }
+  if (typeof body.color === 'string') {
+    patch.color = body.color.slice(0, 16);
+  }
+  if (typeof body.text === 'string') {
+    if (snap.data()?.kind !== 'text') {
+      return NextResponse.json({ error: '글이 아니에요' }, { status: 400 });
+    }
+    const text = body.text.trim().slice(0, MAX_TEXT);
+    if (!text) return NextResponse.json({ error: '내용이 비어 있습니다' }, { status: 400 });
+    patch.text = text;
+  }
+
+  await ref.set(patch, { merge: true });
+
+  await db.collection('accessLogs').add({
+    uid: user.uid,
+    displayName: user.displayName,
+    role: user.role,
+    action: '칠판 고치기',
+    classId,
+    detail: mine ? '본인 것' : '담임이 고침',
+    ip: getClientIp(req.headers),
+    userAgent: req.headers.get('user-agent') || 'unknown',
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
 /** 전체 지우기 — 교직원만 */
 export async function DELETE(req: NextRequest) {
   const user = await verifyRequestUser(req);

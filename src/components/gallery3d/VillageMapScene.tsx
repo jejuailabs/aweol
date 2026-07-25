@@ -12,7 +12,7 @@ import {
 import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
-import { civicKindOf, type CivicPlace } from '@/lib/civic-places';
+import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
@@ -250,6 +250,30 @@ function Buildings({ list, onEnterPlace, places }: {
                     <meshStandardMaterial color={ROOF_COLORS[d.hue]} roughness={0.75} />
                   </mesh>
                 )}
+                {/*
+                  기관 로고 간판 — **기관 색 판에 큰 이모지.**
+                  이름표(Html)는 멀면 작아서 안 읽힌다. 벽의 색과 그림은
+                  멀리서도 "저기 우체국이다"가 된다.
+                */}
+                {civicKind && (() => {
+                  const cp = (places ?? []).find((p) => p.kind === civicKind) ?? civicByKind(civicKind);
+                  if (!cp) return null;
+                  return (
+                    <group position={[0, b.h * 0.62, d.d / 2 + 0.09]}>
+                      <mesh>
+                        <planeGeometry args={[2.4, 1.1]} />
+                        <meshStandardMaterial color={cp.color} roughness={0.7} />
+                      </mesh>
+                      <mesh position={[0, 0, -0.005]}>
+                        <planeGeometry args={[2.6, 1.3]} />
+                        <meshStandardMaterial color="#FFFFFF" roughness={0.8} />
+                      </mesh>
+                      <Html position={[0, 0, 0.02]} transform scale={0.5} pointerEvents="none" zIndexRange={[4, 0]}>
+                        <div style={{ fontSize: '40px', userSelect: 'none' }}>{cp.emoji}</div>
+                      </Html>
+                    </group>
+                  );
+                })()}
 
                 {/* ── 건물 타입별 외관 특징 ── */}
                 {bType === 'post_office' && (
