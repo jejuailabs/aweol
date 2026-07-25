@@ -41,6 +41,16 @@ export function setMuted(v: boolean) {
   } catch {}
 }
 
+/**
+ * 오디오 장치를 **함께 쓴다.**
+ *
+ * 마을 배경음(`ambience.ts`)이 자기 것을 따로 만들면 장치가 둘이 된다 —
+ * 브라우저마다 개수 제한이 있고, 음소거도 따로 놀게 된다.
+ */
+export function getAudioContext(): AudioContext | null {
+  return getCtx();
+}
+
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!ctx) {

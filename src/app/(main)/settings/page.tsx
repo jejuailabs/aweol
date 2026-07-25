@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { isMuted, setMuted, playSound } from '@/lib/sound';
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: '총관리자',
@@ -17,10 +18,19 @@ export default function SettingsPage() {
   const router = useRouter();
   const { user, userDoc, role, signOut, signInWithGoogle } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  /**
+   * 소리 꺼짐인가.
+   *
+   * **처음에는 늘 '켜짐'으로 그린다.** 서버에서 그린 것과 브라우저에서 그린 것이
+   * 다르면 React 가 어긋난다고 나무란다(localStorage 는 서버에 없다).
+   * 실제 값은 아래 효과에서 맞춘다.
+   */
+  const [soundOff, setSoundOff] = useState(false);
 
   useEffect(() => {
     const saved = (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
     setTheme(saved);
+    setSoundOff(isMuted());
   }, []);
 
   const toggleTheme = async () => {
@@ -43,6 +53,52 @@ export default function SettingsPage() {
   return (
     <div className="px-4 pt-8 pb-24 mx-auto max-w-[600px]">
       <h1 className="text-xl font-bold mb-6" style={{ color: 'var(--color-text-main)' }}>⚙️ 설정</h1>
+
+      {/*
+        소리 — **끌 수 있어야 한다.**
+
+        음소거 값은 예전부터 있었는데 **켜고 끄는 자리가 어디에도 없었다.**
+        짧은 효과음만 있을 때는 넘어갔지만, 마을에 파도·바람이 계속 흐르게 된
+        지금은 다르다 — 교실에서 스물다섯 명이 한꺼번에 틀면 수업이 안 된다.
+      */}
+      <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>소리</h2>
+      <div className="rounded-2xl overflow-hidden shadow-md mb-6" style={{ background: 'var(--color-surface)' }}>
+        <button
+          onClick={() => {
+            const next = !soundOff;
+            setSoundOff(next);
+            setMuted(next);
+            // 켠 티를 소리로 낸다 — 껐을 때는 당연히 아무 소리도 안 난다
+            if (!next) playSound('tap');
+          }}
+          className="w-full p-4 text-left text-sm flex items-center justify-between"
+          style={{ color: 'var(--color-text-main)' }}
+        >
+          <span className="min-w-0 pr-3">
+            {soundOff ? '🔇 소리 꺼짐' : '🔊 소리 켜짐'}
+            <span className="block text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+              버튼 소리와 마을의 파도·바람·새소리
+            </span>
+          </span>
+          {/* 켜짐/꺼짐이 한눈에 보이는 스위치 */}
+          <span
+            className="shrink-0 rounded-full transition-colors"
+            style={{
+              width: 46, height: 28, padding: 3,
+              background: soundOff ? 'var(--color-surface-soft)' : 'var(--color-primary)',
+              display: 'inline-block',
+            }}
+          >
+            <span
+              className="block rounded-full transition-transform"
+              style={{
+                width: 22, height: 22, background: 'white',
+                transform: soundOff ? 'translateX(0)' : 'translateX(18px)',
+              }}
+            />
+          </span>
+        </button>
+      </div>
 
       {/* 계정 */}
       <h2 className="text-sm font-bold mb-2" style={{ color: 'var(--color-text-sub)' }}>계정</h2>

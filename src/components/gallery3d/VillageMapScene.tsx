@@ -16,6 +16,7 @@ import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
 import { gatesFrom, type VillageSpot } from '@/lib/village-spots';
 import { PICK_RADIUS, itemsOfSpot, type CollectItem } from '@/lib/village-collect';
 import { seaMask, seaRects } from '@/lib/village-sea';
+import { startAmbience } from '@/lib/ambience';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
@@ -1749,6 +1750,51 @@ export default function VillageMapScene({
   );
   /** 방금 주운 것 — 잠깐 띄웠다 사라진다 */
   const [justPicked, setJustPicked] = useState<CollectItem | null>(null);
+
+  /**
+   * 마을 소리 — 파도·바람·새·발소리.
+   *
+   * **화면을 떠나면 반드시 끈다.** 안 끄면 교실에서도 파도가 친다.
+   * 자리를 옮기면(`data` 가 바뀌면) 껐다 다시 켠다 — 곽지 파도가
+   * 애월리까지 따라오면 안 된다.
+   */
+  useEffect(() => {
+    const amb = startAmbience();
+    if (!amb) return;
+
+    /** 해안선 점들 — 거리를 잴 때 쓴다. 없으면 파도도 없다. */
+    const shore = (data.cl ?? []).flat();
+
+    let walked = 0;
+    let last: { x: number; z: number } | null = null;
+
+    const t = setInterval(() => {
+      const p = avatarPos.current;
+      if (!p) return;
+
+      // 바다가 가까울수록 크게. 40m 안이면 최대, 320m 밖이면 안 들린다.
+      if (shore.length > 0) {
+        let d2 = Infinity;
+        for (const s of shore) {
+          const dx = p.x - s[0];
+          const dz = p.z - s[1];
+          const v = dx * dx + dz * dz;
+          if (v < d2) d2 = v;
+        }
+        const d = Math.sqrt(d2);
+        amb.setSea(d <= 40 ? 1 : d >= 320 ? 0 : 1 - (d - 40) / 280);
+      }
+
+      // 걸은 거리로 발소리를 낸다 — 한 걸음 폭쯤마다
+      if (last) {
+        walked += Math.hypot(p.x - last.x, p.z - last.z);
+        if (walked > 1.7) { walked = 0; amb.step(); }
+      }
+      last = { x: p.x, z: p.z };
+    }, 180);
+
+    return () => { clearInterval(t); amb.stop(); };
+  }, [data]);
 
   /**
    * 화면에 띄울 이름표.
