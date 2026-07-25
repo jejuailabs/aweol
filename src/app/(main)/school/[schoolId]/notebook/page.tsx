@@ -10,6 +10,10 @@ import {
   questState, questTarget, rankForSchool, siteKey, toNextRank, type Quest,
 } from '@/lib/village-rpg';
 import { useRpgContent } from '@/lib/use-rpg-content';
+import { useCollection } from '@/lib/use-collection';
+import { COLLECT_KINDS, PER_SPOT, kindOfToken } from '@/lib/village-collect';
+import { spotsOfSchool } from '@/lib/village-spots';
+import { auth } from '@/lib/firebase';
 
 /**
  * 조사 수첩 — **지금 할 일과, 지금까지 알아낸 것.**
@@ -21,13 +25,14 @@ import { useRpgContent } from '@/lib/use-rpg-content';
  * 점수는 남지 않는다. 연표는 남는다.
  */
 
-type Tab = 'todo' | 'timeline' | 'map' | 'badge';
+type Tab = 'todo' | 'timeline' | 'map' | 'badge' | 'book';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'todo', label: '할 일', emoji: '📌' },
   { id: 'timeline', label: '연표', emoji: '🕰️' },
   { id: 'map', label: '읍 지도', emoji: '🧭' },
   { id: 'badge', label: '뱃지', emoji: '🏅' },
+  { id: 'book', label: '도감', emoji: '🐚' },
 ];
 
 export default function NotebookPage() {
@@ -122,6 +127,7 @@ export default function NotebookPage() {
       {tab === 'timeline' && <TimelineTab sites={timeline} done={done} schoolId={schoolId} />}
       {tab === 'map' && <MapTab sites={sites} done={done} schoolId={schoolId} />}
       {tab === 'badge' && <BadgeTab badges={badges} done={done} quests={rpg.quests} />}
+      {tab === 'book' && <BookTab schoolId={schoolId} />}
     </div>
   );
 }
@@ -397,5 +403,148 @@ function BadgeTab({ badges, done, quests }: {
         })}
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════ 도감 ══════════════════════ */
+
+/**
+ * 마을에서 주운 것들.
+ *
+ * **아직 못 주운 것도 자리를 비워 보여준다.** 빈 칸이 있어야 채우고 싶어진다 —
+ * 뱃지 칸을 자물쇠로 보여주는 것과 같은 판단이다.
+ *
+ * 자리마다 다 모으면 도장 하나를 받는다. 받는 것은 서버가 정한다
+ * (`/api/collect`) — 화면이 잔액을 만질 수 있으면 상점을 턴다.
+ */
+function BookTab({ schoolId }: { schoolId: string }) {
+  const { picked, rewarded, signedIn } = useCollection();
+  const spots = useMemo(() => spotsOfSchool(schoolId), [schoolId]);
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+
+  /** 자리마다 몇 개 주웠나 */
+  const countOf = (spotId: string) =>
+    Array.from(picked).filter((p) => p.startsWith(`${spotId}-`)).length;
+
+  /**
+   * 도감에 채워진 종류.
+   * 기록 한 줄이 `{자리}-{번호}-{종류}` 라, 마을 파일 없이도 종류를 알 수 있다.
+   */
+  const gotKinds = useMemo(
+    () => new Set(Array.from(picked).map(kindOfToken)),
+    [picked]
+  );
+
+  const claim = async (spotId: string, name: string) => {
+    setBusy(spotId); setMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ spotId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '받지 못했어요');
+      setMsg(`${name} — 도장 ${json.got}개를 받았어요!`);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy('');
+  };
+
+  if (!signedIn) {
+    return (
+      <div className="rounded-2xl p-6 text-center text-[13px]"
+        style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}>
+        로그인하면 주운 것이 도감에 남아요
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="text-[13px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        마을을 걷다 보면 <b>반짝이는 것</b>이 보여요. 가까이 가면 저절로 주워져요.
+      </div>
+
+      {/* 자리마다 얼마나 모았나 */}
+      <div className="flex flex-col gap-1.5 mb-4">
+        {spots.map((sp) => {
+          const n = countOf(sp.id);
+          const full = n >= PER_SPOT;
+          const got = rewarded.has(sp.id);
+          return (
+            <div
+              key={sp.id}
+              className="rounded-2xl p-3 flex items-center gap-2.5"
+              style={{ background: 'var(--color-surface)' }}
+            >
+              <span className="text-[20px] shrink-0">{sp.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold" style={{ color: 'var(--color-text-main)' }}>
+                  {sp.name}
+                </div>
+                <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
+                  {n} / {PER_SPOT}개
+                </div>
+              </div>
+              {full && !got && (
+                <button
+                  onClick={() => claim(sp.id, sp.name)}
+                  disabled={!!busy}
+                  className="shrink-0 rounded-xl px-3.5 py-2 text-[13px] font-bold text-white disabled:opacity-40"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  {busy === sp.id ? '...' : '🏅 상 받기'}
+                </button>
+              )}
+              {got && (
+                <span className="shrink-0 text-[12px] font-black" style={{ color: '#1E7B45' }}>
+                  ✓ 다 모음
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {msg && (
+        <div className="rounded-xl px-3 py-2.5 mb-3 text-[13px] font-bold"
+          style={{ background: '#E6F4EA', color: '#1E7B45' }}>
+          {msg}
+        </div>
+      )}
+
+      {/* 종류별 도감 */}
+      <div className="text-[13px] font-black mb-2" style={{ color: 'var(--color-text-main)' }}>
+        무엇을 주웠나
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {COLLECT_KINDS.map((k) => {
+          const got = gotKinds.has(k.id);
+          return (
+            <div
+              key={k.id}
+              className="rounded-2xl p-3 flex items-start gap-2.5"
+              style={{ background: 'var(--color-surface)', opacity: got ? 1 : 0.55 }}
+            >
+              <span className="text-[22px] shrink-0">{got ? k.emoji : '❔'}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold" style={{ color: 'var(--color-text-main)' }}>
+                  {got ? k.name : '아직 못 주웠어요'}
+                </div>
+                {got && (
+                  <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                    {k.note}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

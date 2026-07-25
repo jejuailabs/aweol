@@ -11,6 +11,7 @@ import { useProgress } from '@/lib/use-progress';
 import { openQuests } from '@/lib/village-rpg';
 import { useRpgContent } from '@/lib/use-rpg-content';
 import { homeSpot, spotById, spotsOfSchool } from '@/lib/village-spots';
+import { useCollection } from '@/lib/use-collection';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
 import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
@@ -100,6 +101,8 @@ function VillageBody() {
 
   /** 지금 할 일이 몇 개인가 — 수첩 단추에 뜬다 */
   const { done } = useProgress();
+  /** 마을에서 주운 것 — 문서 하나만 읽는다 */
+  const collect = useCollection();
   const rpg = useRpgContent(schoolId);
   const grade = Number(userDoc?.classIds?.[0]?.split('-')[0]) || undefined;
   const todoCount = openQuests(rpg.quests, done, grade).length;
@@ -227,6 +230,8 @@ function VillageBody() {
           currentSpot={currentSpot}
           onGoSpot={goSpot}
           isHome={isHome}
+          picked={collect.picked}
+          onPickUp={(it) => collect.pick(it.id)}
         />
       ) : !isHome ? (
         /*

@@ -14,6 +14,7 @@ import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
 import { gatesFrom, type VillageSpot } from '@/lib/village-spots';
+import { PICK_RADIUS, itemsOfSpot, type CollectItem } from '@/lib/village-collect';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
@@ -22,6 +23,9 @@ import {
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
+
+/** 로그인 전에는 이걸 그대로 쓴다 — 그릴 때마다 새 집합을 만들면 안 된다 */
+const EMPTY_PICKED: ReadonlySet<string> = new Set();
 
 type XZ = [number, number];
 
@@ -1199,6 +1203,75 @@ function Butterflies() {
 }
 
 /**
+ * 마을에 숨은 것들 — **걸어가면 주워진다.**
+ *
+ * 누르는 것이 아니라 **다가가면** 줍는다. 작은 물건을 손가락으로 조준하는 건
+ * 휴대폰에서 어렵고, 무엇보다 **걸어다니게 하려고 만든 것**이라
+ * 걷는 행위 자체가 줍는 방법이어야 한다.
+ *
+ * 거리 판정은 화면 그리기와 따로 돈다(창구 직원과 같은 방식) —
+ * `useFrame` 안에서 상태를 바꾸면 1초에 60번 다시 그린다.
+ */
+function Collectibles({
+  items, picked, avatarPos, onPick,
+}: {
+  items: CollectItem[];
+  picked: ReadonlySet<string>;
+  avatarPos: React.RefObject<THREE.Vector3>;
+  onPick: (item: CollectItem) => void;
+}) {
+  const bob = useRef<THREE.Group>(null);
+
+  /** 아직 안 주운 것만 */
+  const left = useMemo(() => items.filter((it) => !picked.has(it.id)), [items, picked]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      const p = avatarPos.current;
+      if (!p) return;
+      for (const it of left) {
+        if (Math.hypot(p.x - it.x, p.z - it.z) < PICK_RADIUS) {
+          onPick(it);
+          // 한 번에 하나만 — 여럿이 겹치면 무엇을 주웠는지 모른다
+          break;
+        }
+      }
+    }, 220);
+    return () => clearInterval(t);
+  }, [left, avatarPos, onPick]);
+
+  // 둥실 떠오르며 돈다 — 멈춰 있으면 배경이 되고, 움직이면 눈에 띈다
+  useFrame(({ clock }) => {
+    const g = bob.current;
+    if (!g) return;
+    const t = clock.elapsedTime;
+    g.children.forEach((c, i) => {
+      c.position.y = 0.7 + Math.sin(t * 1.8 + i * 1.3) * 0.22;
+      c.rotation.y = t * 0.8 + i;
+    });
+  });
+
+  return (
+    <group ref={bob}>
+      {left.map((it) => (
+        <group key={it.id} position={[it.x, 0.7, it.z]}>
+          {/* 반짝임 — 멀리서도 '저기 뭔가 있다' 가 보여야 한다 */}
+          <mesh>
+            <sphereGeometry args={[0.55, 10, 8]} />
+            <meshBasicMaterial color="#FFF6C8" transparent opacity={0.34} />
+          </mesh>
+          <Html center style={{ pointerEvents: 'none' }} zIndexRange={[5, 0]}>
+            <div style={{ fontSize: '22px', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.35))' }}>
+              {it.kind.emoji}
+            </div>
+          </Html>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/**
  * 바다 — **해안선에서 계산해 낸다.**
  *
  * 애월은 해안 마을이고 자리 셋 중 둘이 해변인데, 그동안 3D 에 바다가 없었다.
@@ -1514,7 +1587,7 @@ export default function VillageMapScene({
   data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace, onEnterSite,
   localSites, localPlaces,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
-  spots, currentSpot, onGoSpot, isHome = true,
+  spots, currentSpot, onGoSpot, isHome = true, picked, onPickUp,
 }: {
   data: VillageData;
   schoolId: string;
@@ -1544,6 +1617,10 @@ export default function VillageMapScene({
   currentSpot?: VillageSpot;
   /** 다른 자리로 넘어갈 때 */
   onGoSpot?: (spotId: string) => void;
+  /** 마을에서 주운 것들 */
+  picked?: ReadonlySet<string>;
+  /** 하나 주웠을 때 */
+  onPickUp?: (item: CollectItem) => void;
   /**
    * 학교가 서 있는 자리인가.
    *
@@ -1652,6 +1729,14 @@ export default function VillageMapScene({
     () => (currentSpot && (spots?.length ?? 0) > 1 ? gatesFrom(currentSpot) : []),
     [currentSpot, spots]
   );
+
+  /** 이 자리에 숨어 있는 것들 — 씨앗에서 계산한다(저장된 것이 없다) */
+  const collectItems = useMemo(
+    () => (currentSpot ? itemsOfSpot(currentSpot.id, data.r, data.b, data.cl) : []),
+    [currentSpot, data.r, data.b, data.cl]
+  );
+  /** 방금 주운 것 — 잠깐 띄웠다 사라진다 */
+  const [justPicked, setJustPicked] = useState<CollectItem | null>(null);
 
   /**
    * 화면에 띄울 이름표.
@@ -1871,6 +1956,16 @@ export default function VillageMapScene({
         <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
         {isHome && <SchoolYard buildings={data.b} />}
         <Butterflies />
+
+        {/* 마을에 숨은 것 — 다가가면 주워진다 */}
+        {onPickUp && collectItems.length > 0 && (
+          <Collectibles
+            items={collectItems}
+            picked={picked ?? EMPTY_PICKED}
+            avatarPos={avatarPos}
+            onPick={(it) => { onPickUp(it); setJustPicked(it); }}
+          />
+        )}
 
         {/* 이웃 자리로 넘어가는 끝단 화살표 */}
         {gates.map((g) => (
@@ -2247,6 +2342,40 @@ export default function VillageMapScene({
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/*
+        방금 주운 것 — **무엇을 주웠는지 그 자리에서 알려준다.**
+        도감을 열어봐야 아는 것이면 줍는 재미가 없다. 배울 것 한 줄을 같이 띄운다.
+      */}
+      {justPicked && (
+        <div
+          className="pos-hint absolute left-1/2 -translate-x-1/2 z-40 w-[min(92vw,380px)]"
+          style={{ animation: 'modal-fade 0.25s ease both' }}
+        >
+          <div
+            className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{ background: 'rgba(255,250,240,0.97)', border: '3px solid #E8A33C', boxShadow: '0 6px 18px rgba(0,0,0,0.22)' }}
+          >
+            <span className="text-[30px] leading-none shrink-0">{justPicked.kind.emoji}</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-black" style={{ color: '#3A3226' }}>
+                {justPicked.kind.name} 주웠다!
+              </div>
+              <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: '#5B4A3B' }}>
+                {justPicked.kind.note}
+              </div>
+            </div>
+            <button
+              onClick={() => setJustPicked(null)}
+              className="shrink-0 h-7 w-7 rounded-full text-[13px] font-bold"
+              style={{ background: 'rgba(0,0,0,0.06)', color: '#8A7A5F' }}
+              aria-label="닫기"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}
