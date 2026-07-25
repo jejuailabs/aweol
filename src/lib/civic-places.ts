@@ -509,6 +509,49 @@ export const CIVIC_PLACES: CivicPlace[] = [
     ],
   },
   {
+    kind: 'restaurant',
+    label: '식당',
+    emoji: '🍚',
+    color: '#E8604C',
+    oneLine: '음식을 만들어 파는 가게예요. 동네 사람들이 끼니를 해결하러 와요.',
+    notPublic: '나라가 만든 곳이 아니라, **사장님이 직접 여는 가게**예요.',
+    people: [
+      { name: '사장님', emoji: '🧑‍🍳', job: '음식을 만들고 재료를 사 와요. 맛과 위생을 늘 살펴요.' },
+      { name: '홀 직원', emoji: '🧑', job: '주문을 받고 음식을 날라요. 손님이 편하게 드시도록 도와요.' },
+    ],
+    todo: [
+      '**메뉴판**을 보고 골라서 주문해요',
+      '음식을 만드는 곳은 **깨끗해야** 해요',
+      '먹은 만큼 값을 치러요',
+    ],
+    fixtures: ['coffee', 'noticeboard'],
+    guideAt: 0,
+    guide: [
+      {
+        title: '식당은 어떤 곳일까요?',
+        body:
+          '식당은 **음식을 만들어 파는 가게**예요.\n\n'
+          + '집에서 밥을 못 지을 때, 여럿이 모여 먹을 때, 멀리서 온 손님과 함께일 때 —\n'
+          + '동네에 식당이 있으면 **끼니를 해결할 수 있어요.**',
+      },
+      {
+        title: '위생이 제일 중요해요',
+        body:
+          '음식은 사람이 몸에 넣는 것이라 **깨끗하지 않으면 병이 나요.**\n\n'
+          + '그래서 식당을 열려면 나라에서 정한 **위생 교육**을 받고 허가를 받아야 해요.\n'
+          + '보건소가 가끔 나와서 잘 지키고 있는지 살펴봐요.',
+      },
+      {
+        title: '동네 식당이 하는 일',
+        body:
+          '식당도 **사장님이 직접 여는 가게** — 소상공인이에요.\n\n'
+          + '제주 식당은 **우리 동네에서 난 것**으로 만드는 곳이 많아요.\n'
+          + '한치, 갈치, 흑돼지, 우리 밭 채소.\n'
+          + '동네에서 사고 동네에서 팔면 **그 돈이 동네에 남아요.**',
+      },
+    ],
+  },
+  {
     kind: 'cafe',
     label: '카페·빵집',
     emoji: '☕',
@@ -580,7 +623,28 @@ const NAME_HINTS: { kind: string; words: string[] }[] = [
   { kind: 'health', words: ['보건지소', '보건진료소', '보건소', '보건의료원'] },
   { kind: 'convenience', words: ['편의점', 'CU', 'GS25', '세븐일레븐', '이마트24', '미니스톱'] },
   { kind: 'cafe', words: ['카페', '커피', '빵집', '베이커리', 'cafe', 'coffee'] },
+  /**
+   * 식당 — **'카페' 다음에 본다.** 이름 판정은 위에서부터 훑으므로,
+   * '○○카페식당' 같은 이름은 카페로 먼저 잡힌다. 그 편이 자연스럽다.
+   */
+  { kind: 'restaurant', words: ['식당', '음식점', '분식', '횟집', '국수', '해장국', '갈비', '치킨', '피자'] },
 ];
+
+/**
+ * OSM 태그가 우리 기관과 **이름만 다른 경우**를 이어준다.
+ *
+ * `fast_food`(분식·치킨집)는 우리에겐 그냥 식당이고, `bakery`·`coffee` 는 카페다.
+ * 이걸 안 이어주면 차양까지 달린 가게 앞에서 문이 안 눌린다 —
+ * **눌러보고 싶게 생긴 것이 안 눌리는 것**이 제일 나쁘다.
+ */
+const TAG_ALIAS: Record<string, string> = {
+  fast_food: 'restaurant',
+  food_court: 'restaurant',
+  bakery: 'cafe',
+  coffee: 'cafe',
+  supermarket: 'convenience',
+  kiosk: 'convenience',
+};
 
 /**
  * 이 건물이 어떤 기관인가. 아니면 `null`.
@@ -595,6 +659,8 @@ export function civicKindOf(
 ): string | null {
   const known = new Set(places.map((p) => p.kind));
   if (b.k && known.has(b.k)) return b.k;
+  const alias = b.k ? TAG_ALIAS[b.k] : undefined;
+  if (alias && known.has(alias)) return alias;
   const name = (b.n ?? '').replace(/\s+/g, '');
   if (!name) return null;
 

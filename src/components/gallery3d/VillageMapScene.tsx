@@ -195,6 +195,26 @@ function Buildings({ list, onEnterPlace, places }: {
 
             {named && d && (() => {
               const bType = civicKind || b.k || '';
+              /**
+               * 입구는 **통째로 눌린다.**
+               *
+               * 전에는 문짝 하나만 눌렸다. 그 문은 벽에 붙은 1m 남짓 판이라
+               * 멀리서 조준하기 어렵고, 정작 눈에 띄는 것은 그 위 간판과
+               * 발밑 계단이다 — **눌러보고 싶게 생긴 것이 안 눌리면**
+               * 아이는 '여긴 못 들어가나 보다' 하고 지나간다.
+               * 그래서 문틀·계단·차양·간판까지 같은 손잡이를 단다.
+               */
+              const enter = civicKind && onEnterPlace
+                ? {
+                  onClick: (e: { stopPropagation: () => void }) => {
+                    e.stopPropagation(); onEnterPlace(civicKind);
+                  },
+                  onPointerOver: (e: { stopPropagation: () => void }) => {
+                    e.stopPropagation(); document.body.style.cursor = 'pointer';
+                  },
+                  onPointerOut: () => { document.body.style.cursor = 'auto'; },
+                }
+                : {};
               return (
               <group position={[d.cx, 0, d.cz]}>
                 {/* 창문 두 줄 — 틀을 두르고 유리를 끼운다. 틀이 없으면 벽에 뚫린 구멍 같다. */}
@@ -217,20 +237,11 @@ function Buildings({ list, onEnterPlace, places }: {
                   ))
                 )}
                 {/* 문틀 */}
-                <mesh position={[0, b.h * 0.16, d.d / 2 + 0.04]}>
+                <mesh position={[0, b.h * 0.16, d.d / 2 + 0.04]} {...enter}>
                   <planeGeometry args={[Math.min(1.45, d.w * 0.33), b.h * 0.36]} />
                   <meshStandardMaterial color="#6E5335" roughness={0.85} />
                 </mesh>
-                <mesh
-                  position={[0, b.h * 0.16, d.d / 2 + 0.05]}
-                  onClick={civicKind && onEnterPlace
-                    ? (e) => { e.stopPropagation(); onEnterPlace(civicKind); }
-                    : undefined}
-                  onPointerOver={civicKind ? (e) => {
-                    e.stopPropagation(); document.body.style.cursor = 'pointer';
-                  } : undefined}
-                  onPointerOut={civicKind ? () => { document.body.style.cursor = 'auto'; } : undefined}
-                >
+                <mesh position={[0, b.h * 0.16, d.d / 2 + 0.05]} {...enter}>
                   <planeGeometry args={[Math.min(1.2, d.w * 0.28), b.h * 0.32]} />
                   <meshStandardMaterial
                     color={civicKind ? '#B5793F' : '#8A5A3B'}
@@ -239,13 +250,13 @@ function Buildings({ list, onEnterPlace, places }: {
                   />
                 </mesh>
                 {/* 현관 계단 — 문 앞에 낮은 단이 있으면 문이 '진짜 입구'처럼 읽힌다 */}
-                <mesh position={[0, 0.09, d.d / 2 + 0.45]} castShadow receiveShadow>
+                <mesh position={[0, 0.09, d.d / 2 + 0.45]} castShadow receiveShadow {...enter}>
                   <boxGeometry args={[Math.min(1.8, d.w * 0.4), 0.18, 0.8]} />
                   <meshStandardMaterial color="#C9BCA4" roughness={0.9} />
                 </mesh>
                 {/* 들어갈 수 있는 곳은 현관 지붕까지 — 눈에 띄어야 눌러본다 */}
                 {civicKind && (
-                  <mesh position={[0, b.h * 0.36, d.d / 2 + 0.55]} castShadow>
+                  <mesh position={[0, b.h * 0.36, d.d / 2 + 0.55]} castShadow {...enter}>
                     <boxGeometry args={[Math.min(2.2, d.w * 0.45), 0.14, 1.1]} />
                     <meshStandardMaterial color={ROOF_COLORS[d.hue]} roughness={0.75} />
                   </mesh>
@@ -259,7 +270,7 @@ function Buildings({ list, onEnterPlace, places }: {
                   const cp = (places ?? []).find((p) => p.kind === civicKind) ?? civicByKind(civicKind);
                   if (!cp) return null;
                   return (
-                    <group position={[0, b.h * 0.62, d.d / 2 + 0.09]}>
+                    <group position={[0, b.h * 0.62, d.d / 2 + 0.09]} {...enter}>
                       <mesh>
                         <planeGeometry args={[2.4, 1.1]} />
                         <meshStandardMaterial color={cp.color} roughness={0.7} />
@@ -347,11 +358,12 @@ function Buildings({ list, onEnterPlace, places }: {
                   const awnW = Math.min(d.w * 0.9, 5);
                   return (
                     <>
-                      {/* 경사진 차양 — 평평한 판보다 가게처럼 보인다 */}
+                      {/* 경사진 차양 — 평평한 판보다 가게처럼 보인다. 여기도 입구다. */}
                       <mesh
                         position={[0, b.h * 0.4, d.d / 2 + 0.55]}
                         rotation={[0.4, 0, 0]}
                         castShadow
+                        {...enter}
                       >
                         <boxGeometry args={[awnW, 0.1, 1.2]} />
                         <meshStandardMaterial color={awnColor} roughness={0.7} />
