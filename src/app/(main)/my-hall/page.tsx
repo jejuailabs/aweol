@@ -345,14 +345,27 @@ function HallList({
               <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
                 전시 {h.showCount ?? 0}개 · {h.placeName || '자리 지정됨'}
               </div>
+              {/*
+                **왜 지도에 없는지 여기서 말해준다.**
+                '준비 중' 배지만 달아 뒀더니, 전시관을 열고도 지도에서 못 찾고
+                "가려진 건가?" 하고 헤맸다. 배지는 상태를 알리지만
+                **다음에 무엇을 할지는 안 알려준다.**
+              */}
+              {!h.isPublic && (
+                <div className="text-[12px] font-bold mt-1" style={{ color: '#A6762A' }}>
+                  {(h.showCount ?? 0) === 0
+                    ? '아직 지도에 없어요 — 눌러서 전시를 만들어요'
+                    : '아직 지도에 없어요 — 눌러서 공개하면 떠요'}
+                </div>
+              )}
             </div>
             <span
               className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black"
               style={h.isPublic
                 ? { background: '#E6F4EA', color: '#1E7B45' }
-                : { background: 'rgba(0,0,0,0.06)', color: '#8A7A5F' }}
+                : { background: '#FFF1D6', color: '#A6762A' }}
             >
-              {h.isPublic ? '공개 중' : '준비 중'}
+              {h.isPublic ? '지도에 있음' : '나만 보는 중'}
             </span>
           </button>
         ))}

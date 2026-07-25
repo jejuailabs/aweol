@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 export interface MapSchool {
   id: string;
@@ -100,6 +100,43 @@ export default function SchoolMap({
     }),
     [size.w, size.h, z, scale, centerX, centerY]
   );
+
+  /**
+   * 마커가 겹치면 **위로 밀어 올린다.**
+   *
+   * 백록담에 연 개인 전시관과 '한라산' 이 387m 떨어져 있었는데, 줌 12 에서는
+   * 화면상 12픽셀이라 카드(폭 138px)가 거의 완전히 포개졌다. 뒤엣것은
+   * 있는 줄도 모른다.
+   *
+   * 자리를 옮기는 게 아니라 **꼬리는 제자리에 두고 카드만 올린다** —
+   * 그래야 어느 점을 가리키는지가 그대로다.
+   */
+  const nudge = useMemo(() => {
+    const out = new Map<string, number>();
+    if (size.w === 0) return out;
+
+    const all = [
+      ...schools.map((s) => ({ key: `s-${s.id}`, lat: s.lat, lng: s.lng })),
+      ...halls.map((h) => ({ key: `h-${h.id}`, lat: h.lat, lng: h.lng })),
+    ];
+    const placed: { x: number; y: number }[] = [];
+
+    for (const m of all) {
+      const p = project(m.lat, m.lng);
+      let y = p.y;
+      let guard = 0;
+      // 겹치는 동안 한 칸씩 올린다. 무한히 돌지 않게 여덟 번까지만.
+      while (
+        guard++ < 8
+        && placed.some((q) => Math.abs(q.x - p.x) < 124 && Math.abs(q.y - y) < 50)
+      ) {
+        y -= 48;
+      }
+      placed.push({ x: p.x, y });
+      if (y !== p.y) out.set(m.key, y - p.y);
+    }
+    return out;
+  }, [schools, halls, project, size.w]);
 
   // 화면을 덮을 타일 목록
   const tiles: { key: string; x: number; y: number; left: number; top: number }[] = [];
@@ -228,7 +265,7 @@ export default function SchoolMap({
               className="absolute flex flex-col items-center"
               style={{
                 left: p.x,
-                top: p.y,
+                top: p.y + (nudge.get(`s-${s.id}`) ?? 0),
                 transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
                 transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: isHot ? 20 : 10,
@@ -330,7 +367,7 @@ export default function SchoolMap({
               className="absolute flex flex-col items-center"
               style={{
                 left: p.x,
-                top: p.y,
+                top: p.y + (nudge.get(`h-${h.id}`) ?? 0),
                 transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
                 transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: isHot ? 20 : 11,
