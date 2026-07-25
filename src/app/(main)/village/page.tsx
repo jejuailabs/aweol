@@ -81,6 +81,18 @@ function VillageBody() {
   }, [spotParam, schoolId, home]);
   const isHome = !currentSpot || !!currentSpot.home;
 
+  /**
+   * 안내 한 줄 — **3초만.**
+   * 계속 떠 있으면 휴대폰에서 마을 한가운데를 영영 가린다.
+   * 자리를 옮기면 그 자리 이름으로 다시 한 번 뜬다.
+   */
+  const [hintOn, setHintOn] = useState(true);
+  useEffect(() => {
+    setHintOn(true);
+    const t = setTimeout(() => setHintOn(false), 3000);
+    return () => clearTimeout(t);
+  }, [spotParam]);
+
   const goSpot = (id: string) => {
     if (id === currentSpot?.id) return;
     router.push(id === home?.id ? '/village' : `/village?spot=${id}`);
@@ -284,13 +296,23 @@ function VillageBody() {
         말풍선은 **3층(`.pos-hint`)** 이다. `bottom-24` 로 두면 조이스틱과
         '타기' 버튼 사이에 끼어 글자가 양쪽에 가려진다(실제로 그랬다).
         폭도 화면 안으로 묶는다 — 길어지면 좌우로 삐져나간다.
+
+        **잠깐 떴다 사라진다.** 계속 떠 있으면 화면 한가운데를 영영 차지한다 —
+        휴대폰에서는 그 한 줄이 마을을 가린다. 처음 한 번 읽으면 되는 말이다.
       */}
-      <div
-        className="pos-hint absolute left-1/2 -translate-x-1/2 z-20 max-w-[calc(100%-1.5rem)] rounded-full px-4 py-2 text-center text-[13px] font-bold pointer-events-none"
-        style={{ background: 'rgba(255,248,231,0.9)', color: '#6B5B43' }}
-      >
-        {village ? '우리 동네예요. 학교 자리를 누르면 들어가요' : '걸어다니다 문을 눌러보세요'}
-      </div>
+      {hintOn && (
+        <div
+          className="pos-hint absolute left-1/2 -translate-x-1/2 z-20 max-w-[calc(100%-1.5rem)] rounded-full px-4 py-2 text-center text-[13px] font-bold pointer-events-none"
+          style={{
+            background: 'rgba(255,248,231,0.9)', color: '#6B5B43',
+            animation: 'modal-fade 0.25s ease both',
+          }}
+        >
+          {village
+            ? `${currentSpot?.name ?? '우리 동네'}예요. ${isHome ? '학교 자리를 누르면 들어가요' : '끝단 화살표로 다른 마을에 가요'}`
+            : '걸어다니다 문을 눌러보세요'}
+        </div>
+      )}
 
       {/* 모바일 조이스틱 */}
       <MobileJoystick />

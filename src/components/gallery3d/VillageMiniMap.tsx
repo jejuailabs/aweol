@@ -84,14 +84,48 @@ export default function VillageMiniMap({
 
   const setZoomAt = (next: number) => setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, next)));
 
-  /** 끌어서 옮기기 — 손가락으로도 마우스로도 같은 길 */
+  /**
+   * 끌어서 옮기기 + **두 손가락으로 확대·축소.**
+   *
+   * 휴대폰에는 휠이 없다. 오른쪽 ＋／－ 단추만 두면 지도를 볼 때마다
+   * 단추를 여러 번 두드려야 하는데, **아이는 그냥 손가락을 벌린다** —
+   * 지도라면 당연히 되는 동작이고, 안 되면 지도가 고장 난 줄 안다.
+   */
+  const pinch = useRef<{ dist: number; zoom: number } | null>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+
   const onDown = (e: React.PointerEvent) => {
     if (level !== 'spot') return;
-    drag.current = { x: e.clientX, y: e.clientY, cx, cz };
-    setGrabbing(true);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     (e.target as Element).setPointerCapture?.(e.pointerId);
+
+    if (pointers.current.size === 1) {
+      drag.current = { x: e.clientX, y: e.clientY, cx, cz };
+      setGrabbing(true);
+    } else if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom };
+      // 두 손가락이 닿는 순간 끌기는 그만둔다 — 안 그러면 지도가 휙 튄다
+      drag.current = null;
+      setGrabbing(false);
+    }
   };
+
   const onMove = (e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // 두 손가락 — 벌린 만큼 확대
+    if (pointers.current.size >= 2 && pinch.current) {
+      const [a, b] = [...pointers.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      // 10px 아래는 손 떨림이라 무시한다 — 안 그러면 지도가 덜덜 떨린다
+      if (pinch.current.dist > 10) {
+        setZoomAt(pinch.current.zoom * (d / pinch.current.dist));
+      }
+      return;
+    }
+
     const d = drag.current;
     const el = svgRef.current;
     if (!d || !el) return;
@@ -99,7 +133,21 @@ export default function VillageMiniMap({
     const perPx = spanX / el.getBoundingClientRect().width;
     setCenter({ x: d.cx - (e.clientX - d.x) * perPx, z: d.cz - (e.clientY - d.y) * perPx });
   };
-  const onUp = () => { drag.current = null; setGrabbing(false); };
+
+  const onUp = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+    if (pointers.current.size === 0) { drag.current = null; setGrabbing(false); }
+    /**
+     * 손가락 하나가 떨어지고 하나가 남으면 **남은 손가락으로 끌기를 이어받는다.**
+     * 안 그러면 확대하다 한 손을 떼는 순간 지도가 얼어붙는다.
+     */
+    if (pointers.current.size === 1) {
+      const [p] = [...pointers.current.values()];
+      drag.current = { x: p.x, y: p.y, cx, cz };
+      setGrabbing(true);
+    }
+  };
 
   const namedBuildings = useMemo(() => buildings.filter((b) => b.n), [buildings]);
   const plainBuildings = useMemo(() => buildings.filter((b) => !b.n), [buildings]);

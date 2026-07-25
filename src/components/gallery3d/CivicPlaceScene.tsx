@@ -293,13 +293,11 @@ function Fixtures({ list }: { list: Fixture[] }) {
 
 /** 직원 — 창구 안쪽에 서서, 가까이 오면 자기 일을 말한다 */
 function Clerk({
-  x, emoji, name, job, avatarPos, hasGuide, plainTalk, done, onTalk, cta, tone = '#E8A33C',
+  x, emoji, name, hasGuide, plainTalk, done, active, onTalk, tone = '#E8A33C',
 }: {
   x: number;
   emoji: string;
   name: string;
-  job: string;
-  avatarPos: React.RefObject<THREE.Vector3>;
   /** 말을 걸 수 있는 사람인가 — 머리 위에 느낌표가 뜬다 */
   hasGuide?: boolean;
   /**
@@ -309,28 +307,18 @@ function Clerk({
   plainTalk?: boolean;
   /** 이미 끝냈나 — 느낌표를 내린다 */
   done?: boolean;
+  /**
+   * **지금 말을 걸고 있는 사람인가.**
+   *
+   * 하는 말은 3D 에 안 띄우고 화면 아래 한 칸에 모은다(아래 '말 거는 칸').
+   * 여기서는 이름표를 도드라지게 하는 데만 쓴다 — 누구 말인지는 보여야 하니까.
+   */
+  active?: boolean;
   onTalk?: () => void;
-  /** 말풍선 아래 적는 말. 이야기꾼과 심부름꾼은 하는 말이 다르다. */
-  cta?: string;
   /** 옷·테두리 색. 심부름 주는 사람은 이야기꾼과 달라 보여야 한다. */
   tone?: string;
 }) {
   const talkable = hasGuide || plainTalk;
-  const [near, setNear] = useState(false);
-  useEffect(() => {
-    /**
-     * 거리 판정은 **화면 그리기와 따로 돈다.**
-     * `useFrame` 안에서 상태를 바꾸면 1초에 60번 다시 그리게 된다 —
-     * 사람이 걸어오는 속도에는 5번이면 충분하다.
-     */
-    const t = setInterval(() => {
-      const p = avatarPos.current;
-      if (!p) return;
-      const d = Math.hypot(p.x - x, p.z - (-3.0));
-      setNear((was) => (was === d < 3.2 ? was : d < 3.2));
-    }, 200);
-    return () => clearInterval(t);
-  }, [avatarPos, x]);
 
   return (
     <group position={[x, 0, -5.0]}>
@@ -362,51 +350,34 @@ function Clerk({
         </Html>
       )}
 
+      {/*
+        이름표 — **작게, 하나만 도드라지게.**
+
+        예전에는 이름표 밑에 하는 말까지 통째로 띄웠다. 창구에 셋이 서 있으니
+        작은 화면에서는 말풍선 셋이 서로 겹쳐 **하나도 못 읽었다.**
+        하는 말은 화면 아래 한 칸으로 옮기고, 여기는 누구인지만 남긴다.
+      */}
       <Html position={[0, 2.35, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[8, 0]}>
         <div
           style={{
-            background: '#FFF8E7', color: '#5B4A3B', fontWeight: 800, fontSize: '13px',
-            padding: '4px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
-            fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+            background: active ? '#FFF1D6' : 'rgba(255,248,231,0.9)',
+            color: '#5B4A3B',
+            fontWeight: 800,
+            fontSize: active ? '13px' : '11px',
+            padding: active ? '4px 10px' : '2px 7px',
+            borderRadius: '999px',
+            whiteSpace: 'nowrap',
+            fontFamily: 'Pretendard, sans-serif',
+            userSelect: 'none',
+            border: active ? `2px solid ${talkable ? tone : '#EFE3CB'}` : 'none',
+            // 멀리 있는 사람은 옅게 — 가까운 쪽에 눈이 가야 한다
+            opacity: active ? 1 : 0.72,
+            transition: 'opacity .15s',
           }}
         >
           {emoji} {name}
         </div>
       </Html>
-
-      {/*
-        가까이 갔을 때만 말한다. 셋이 한꺼번에 떠들면 아무것도 안 읽힌다 —
-        학교 창문 문패에서 배운 것과 같다.
-      */}
-      {near && (
-        <Html
-          position={[0, 3.1, 0]}
-          center
-          // 이야기해 줄 사람은 말풍선도 눌린다 — 눌러보라고 적어놓고 안 눌리면 안 된다
-          style={{ pointerEvents: talkable && onTalk ? 'auto' : 'none' }}
-          zIndexRange={[9, 0]}
-        >
-          <div
-            onClick={talkable && onTalk ? onTalk : undefined}
-            style={{
-              background: 'rgba(255,250,240,0.98)', color: '#3A3226',
-              fontSize: '13px', lineHeight: 1.5, fontWeight: 600,
-              padding: '10px 14px', borderRadius: '14px', width: '230px',
-              fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
-              border: `2px solid ${hasGuide ? tone : '#EFE3CB'}`,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
-              cursor: talkable ? 'pointer' : 'default',
-            }}
-          >
-            {job}
-            {talkable && (
-              <div style={{ marginTop: '8px', color: '#A6762A', fontWeight: 800 }}>
-                {cta ?? (done ? '💬 다시 듣기 ›' : '💬 이야기 듣기 ›')}
-              </div>
-            )}
-          </div>
-        </Html>
-      )}
     </group>
   );
 }
@@ -465,9 +436,41 @@ export default function CivicPlaceScene({
 
   useEffect(() => { setPicked(null); setMisses(0); setQuizIdx(0); }, [talking?.id]);
 
-  const xs = deskXs(place.people.length);
+  const xs = useMemo(() => deskXs(place.people.length), [place.people.length]);
   const guide = place.guide ?? [];
   const guideAt = place.guideAt ?? -1;
+
+  /**
+   * 지금 **누구 앞에 서 있나** — 한 사람만 고른다.
+   *
+   * 예전에는 사람마다 스스로 거리를 재서 가까우면 말풍선을 띄웠다. 창구가
+   * 8m 넘게 벌어져 있어 셋이 동시에 걸리는 일이 흔했고, 휴대폰 화면에서는
+   * 말풍선 셋이 겹쳐 **하나도 안 읽혔다.**
+   *
+   * 그래서 판정을 여기로 올려 **제일 가까운 한 사람**만 고른다. 재는 것도
+   * 한 번뿐이다(전에는 사람 수만큼 타이머가 돌았다).
+   */
+  const [nearIdx, setNearIdx] = useState<number | null>(null);
+  useEffect(() => {
+    /**
+     * 거리 판정은 **화면 그리기와 따로 돈다.**
+     * `useFrame` 안에서 상태를 바꾸면 1초에 60번 다시 그리게 된다 —
+     * 사람이 걸어오는 속도에는 5번이면 충분하다.
+     */
+    const t = setInterval(() => {
+      const p = avatarPos.current;
+      if (!p) return;
+      let best: number | null = null;
+      // 이 안에 들어와야 말을 건다. 창구 간격보다 좁게 잡아야 한 사람만 걸린다.
+      let bestD = 3.6;
+      xs.forEach((cx, i) => {
+        const d = Math.hypot(p.x - cx, p.z - -3.0);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      setNearIdx((was) => (was === best ? was : best));
+    }, 200);
+    return () => clearInterval(t);
+  }, [xs]);
 
   /**
    * 이 방 사람들이 지금 줄 수 있는 심부름.
@@ -479,6 +482,53 @@ export default function CivicPlaceScene({
     () => place.people.map((_, i) => questOfPerson(quests, place.kind, i, progress, grade)),
     [quests, place.kind, place.people, progress, grade]
   );
+
+  /**
+   * 직원 한 사람 한 사람이 지금 어떤 상태인가 — **한 곳에서 정한다.**
+   * 3D 이름표와 화면 아래 말 거는 칸이 **같은 값**을 봐야 한다.
+   * 따로 계산하면 반드시 한쪽이 낡는다.
+   */
+  const clerks = useMemo(
+    () => place.people.map((p, i) => {
+      const isGuide = i === guideAt && guide.length > 0;
+      const q = questAt[i];
+      const qs = q ? questState(q, progress) : null;
+      const isMission = !!q;
+      return {
+        ...p,
+        i,
+        isGuide,
+        isMission,
+        q,
+        qs,
+        done: isMission ? qs === 'done' : guideDone,
+        tone: isMission ? (qs === 'ready' ? '#E8604C' : '#3BAF9F') : '#E8A33C',
+        cta: isMission
+          ? qs === 'ready'
+            ? '🏅 다녀왔어요!'
+            : qs === 'done'
+              ? '🏅 마친 심부름 보기'
+              : '📜 심부름 받기'
+          : isGuide
+            ? (guideDone ? '💬 다시 듣기' : '💬 이야기 듣기')
+            : '👤 무슨 일 하는지 보기',
+      };
+    }),
+    [place.people, guideAt, guide.length, questAt, progress, guideDone]
+  );
+
+  /** 그 사람에게 말을 건다 — 3D 몸을 눌러도, 아래 칸 단추를 눌러도 같은 길 */
+  const talkTo = (i: number) => {
+    const c = clerks[i];
+    if (!c) return;
+    if (c.isMission && c.q) { setPicked(null); setMisses(0); setTalking(c.q); }
+    else if (c.isGuide) setPage(0);
+    else setRoleAt(i);
+  };
+
+  /** 창이 하나라도 열려 있으면 아래 말 거는 칸은 숨는다 — 두 겹으로 겹치면 안 된다 */
+  const anyModal = page !== null || talking !== null || roleAt !== null;
+  const nearClerk = nearIdx !== null && !anyModal ? clerks[nearIdx] : null;
 
   /** 창을 보는 동안에는 아바타가 움직이면 안 된다 — 읽는 중에 걸어가 버린다 */
   useEffect(() => {
@@ -546,13 +596,22 @@ export default function CivicPlaceScene({
           <div
             style={{
               background: 'rgba(255,255,255,0.96)', color: '#3A3226',
-              padding: '12px 18px', borderRadius: '14px', width: '300px',
+              padding: '10px 14px', borderRadius: '14px',
+              // 휴대폰에서 300px 고정이면 화면 폭을 거의 다 덮는다
+              width: 'min(64vw, 300px)',
               fontFamily: 'Pretendard, sans-serif', userSelect: 'none', textAlign: 'center',
               border: '3px solid rgba(255,255,255,0.8)', boxShadow: '0 6px 18px rgba(0,0,0,0.2)',
             }}
           >
-            <div style={{ fontSize: '19px', fontWeight: 900 }}>{place.emoji} {place.label}</div>
-            <div style={{ fontSize: '13px', marginTop: '6px', lineHeight: 1.5, color: '#6B5B43' }}>
+            <div style={{ fontSize: 'clamp(14px, 3.6vw, 19px)', fontWeight: 900 }}>
+              {place.emoji} {place.label}
+            </div>
+            <div
+              style={{
+                fontSize: 'clamp(11px, 2.6vw, 13px)', marginTop: '5px',
+                lineHeight: 1.5, color: '#6B5B43',
+              }}
+            >
               {place.oneLine}
             </div>
           </div>
@@ -639,51 +698,29 @@ export default function CivicPlaceScene({
         ))}
 
         {/* 직원들 — 창구 안쪽 */}
-        {place.people.map((p, i) => {
-          const isGuide = i === guideAt && guide.length > 0;
-          const q = questAt[i];
-          const qs = q ? questState(q, progress) : null;
-          const isMission = !!q;
-          return (
-            <Clerk
-              key={p.name}
-              x={xs[i]}
-              emoji={p.emoji}
-              name={p.name}
-              job={p.job}
-              avatarPos={avatarPos}
-              hasGuide={isGuide || isMission}
-              /**
-               * 미션도 이야기도 없는 직원도 **눌러서 역할을 볼 수 있다.**
-               * 다만 느낌표·색깔 옷은 없다 — 해야 할 일과 헷갈리면 안 된다.
-               */
-              plainTalk={!isGuide && !isMission}
-              /**
-               * **알릴 것이 남았으면 느낌표가 살아 있다.**
-               * 다녀왔는데 느낌표가 없으면 상 받으러 올 이유를 모른다.
-               * 반대로 다 끝났는데 떠 있으면 할 일이 남은 줄 안다.
-               */
-              done={isMission ? qs === 'done' : guideDone}
-              tone={isMission ? (qs === 'ready' ? '#E8604C' : '#3BAF9F') : '#E8A33C'}
-              cta={
-                isMission
-                  ? qs === 'ready'
-                    ? '🏅 다녀왔어요! ›'
-                    : qs === 'done'
-                      ? '🏅 마친 심부름 ›'
-                      : '📜 심부름 받기 ›'
-                  : isGuide
-                    ? undefined
-                    : '👤 무슨 일 하는지 보기 ›'
-              }
-              onTalk={() => {
-                if (isMission && q) { setPicked(null); setMisses(0); setTalking(q); }
-                else if (isGuide) setPage(0);
-                else setRoleAt(i);
-              }}
-            />
-          );
-        })}
+        {clerks.map((c) => (
+          <Clerk
+            key={c.name}
+            x={xs[c.i]}
+            emoji={c.emoji}
+            name={c.name}
+            active={nearIdx === c.i}
+            hasGuide={c.isGuide || c.isMission}
+            /**
+             * 미션도 이야기도 없는 직원도 **눌러서 역할을 볼 수 있다.**
+             * 다만 느낌표·색깔 옷은 없다 — 해야 할 일과 헷갈리면 안 된다.
+             */
+            plainTalk={!c.isGuide && !c.isMission}
+            /**
+             * **알릴 것이 남았으면 느낌표가 살아 있다.**
+             * 다녀왔는데 느낌표가 없으면 상 받으러 올 이유를 모른다.
+             * 반대로 다 끝났는데 떠 있으면 할 일이 남은 줄 안다.
+             */
+            done={c.done}
+            tone={c.tone}
+            onTalk={() => talkTo(c.i)}
+          />
+        ))}
 
         {/* 대기 의자 */}
         {[-3.5, 3.5].map((x) => (
@@ -722,6 +759,55 @@ export default function CivicPlaceScene({
       >
         ← 마을로
       </button>
+
+      {/*
+        말 거는 칸 — **화면 아래 한 곳에 모은다.**
+
+        3D 위에 떠 있는 말풍선은 휴대폰에서 서로 겹쳐 하나도 안 읽혔다.
+        창구에 셋이 서 있으면 말풍선도 셋이었다.
+
+        그래서 **제일 가까운 한 사람의 말만** 아래 한 칸에 띄운다.
+        여기는 3층(`.pos-hint`)이라 조이스틱과도 오른쪽 단추와도 안 부딪힌다.
+        글자는 화면 크기와 상관없이 또렷하고, 단추도 손가락에 넉넉하다.
+      */}
+      {nearClerk && (
+        <div className="pos-hint absolute left-1/2 -translate-x-1/2 z-30 w-[min(92vw,460px)] px-1">
+          <div
+            className="rounded-2xl px-4 py-3"
+            style={{
+              background: 'rgba(255,250,240,0.97)',
+              border: `3px solid ${nearClerk.isGuide || nearClerk.isMission ? nearClerk.tone : '#EFE3CB'}`,
+              boxShadow: '0 6px 18px rgba(0,0,0,0.22)',
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[18px] leading-none">{nearClerk.emoji}</span>
+              <span className="text-[13px] font-black" style={{ color: '#3A3226' }}>
+                {nearClerk.name}
+              </span>
+              {/* 할 일이 남았으면 여기서도 알린다 — 느낌표는 멀면 안 보인다 */}
+              {(nearClerk.isMission || nearClerk.isGuide) && !nearClerk.done && (
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-black text-white"
+                  style={{ background: nearClerk.tone }}
+                >
+                  {nearClerk.isMission ? '심부름' : '이야기'}
+                </span>
+              )}
+            </div>
+            <div className="text-[13px] leading-relaxed" style={{ color: '#5B4A3B' }}>
+              {nearClerk.job}
+            </div>
+            <button
+              onClick={() => talkTo(nearClerk.i)}
+              className="w-full mt-2.5 rounded-xl py-2.5 text-[14px] font-bold text-white"
+              style={{ background: nearClerk.isGuide || nearClerk.isMission ? nearClerk.tone : '#A6762A' }}
+            >
+              {nearClerk.cta} ›
+            </button>
+          </div>
+        </div>
+      )}
 
       {/*
         역할 카드 — **이 사람이 무슨 일을 하는가.**

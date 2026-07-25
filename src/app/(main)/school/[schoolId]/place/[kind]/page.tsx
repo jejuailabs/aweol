@@ -8,6 +8,13 @@ import { useProgress } from '@/lib/use-progress';
 import { placeKey, questKey, type Quest } from '@/lib/village-rpg';
 
 const CivicPlaceScene = dynamic(() => import('@/components/gallery3d/CivicPlaceScene'), { ssr: false });
+/**
+ * 조이스틱 — **휴대폰에서는 이게 없으면 아예 못 움직인다.**
+ *
+ * 실제로 우체국·농협에 들어간 아이가 그 자리에 갇혔다. 걸어다니는 3D 화면에는
+ * 빠짐없이 있어야 한다 — 마을·학교에는 있는데 기관 안에만 없었다.
+ */
+const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
 
 /**
  * 우리 동네 기관 안 — 마을에서 문을 눌러 들어온다.
@@ -79,6 +86,7 @@ export default function CivicPlacePage() {
         onFinishQuest={finish}
         onGoTo={goTo}
       />
+      <MobileJoystick />
     </div>
   );
 }

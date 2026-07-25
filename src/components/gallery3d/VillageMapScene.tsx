@@ -1481,10 +1481,25 @@ export default function VillageMapScene({
     });
     if (!isHome) return placed;
 
-    // 집 자리 — 자리가 안 정해진 옛 유적 중 걸어갈 수 있는 것
+    /**
+     * 집 자리 — 자리가 안 정해진 옛 유적 중 걸어갈 수 있는 것.
+     *
+     * **겹치지 않게 흩어 놓는다.** 예전에는 전부 (-26, 18) 한 자리에 세워서,
+     * 애월진성과 제주 밭담이 **정확히 포개졌다** — 나중 것(밭담)만 보이고
+     * 학교가 선 애월진성 터는 아예 안 보였다. 실제로 그렇게 보였다.
+     *
+     * 첫 자리는 학교 왼쪽 앞이다. 애월초는 실제로 애월진성 터에 세워졌으므로
+     * **표에서 제일 먼저 오는 애월진성이 그 자리에 선다** — 지어낸 자리가 아니다.
+     */
+    const SPOTS: [number, number][] = [
+      [-26, 18], [30, 22], [-34, -14], [26, -20], [-12, 36], [14, 38],
+    ];
     const legacy = all
       .filter((s) => !s.spotId && s.km <= WALKABLE_KM)
-      .map((s) => ({ site: s, x: -26, z: 18 }));
+      .map((s, i) => {
+        const [lx, lz] = SPOTS[i % SPOTS.length];
+        return { site: s, x: lx, z: lz };
+      });
     return [...placed, ...legacy];
   }, [localSites, isHome, currentSpot, data.c]);
   /** 워프한 직후 잠깐 띄우는 말 */
