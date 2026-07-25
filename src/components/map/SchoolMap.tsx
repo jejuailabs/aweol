@@ -102,38 +102,43 @@ export default function SchoolMap({
   );
 
   /**
-   * 마커가 겹치면 **위로 밀어 올린다.**
+   * 마커가 겹치면 **좌우로 펼친다.**
    *
    * 백록담에 연 개인 전시관과 '한라산' 이 387m 떨어져 있었는데, 줌 12 에서는
    * 화면상 12픽셀이라 카드(폭 138px)가 거의 완전히 포개졌다. 뒤엣것은
    * 있는 줄도 모른다.
    *
-   * 자리를 옮기는 게 아니라 **꼬리는 제자리에 두고 카드만 올린다** —
-   * 그래야 어느 점을 가리키는지가 그대로다.
+   * 위로 쌓아 올려도 되지만, **옆으로 펴는 편이 낫다** — 위로 쌓으면 셋만 되어도
+   * 화면 밖으로 나가고, 어느 것이 위인지도 뜻이 없다. 좌우로 펴고
+   * **끝단을 진짜 자리 한 곳에 모으면** 부챗살처럼 되어 한눈에 읽힌다.
    */
-  const nudge = useMemo(() => {
-    const out = new Map<string, number>();
+  const fan = useMemo(() => {
+    const out = new Map<string, { dx: number; dy: number }>();
     if (size.w === 0) return out;
 
     const all = [
       ...schools.map((s) => ({ key: `s-${s.id}`, lat: s.lat, lng: s.lng })),
       ...halls.map((h) => ({ key: `h-${h.id}`, lat: h.lat, lng: h.lng })),
-    ];
-    const placed: { x: number; y: number }[] = [];
+    ].map((m) => ({ ...m, p: project(m.lat, m.lng) }));
 
+    /** 가까이 붙은 것끼리 묶는다 — 이 안에서 좌우로 편다 */
+    const groups: (typeof all)[] = [];
     for (const m of all) {
-      const p = project(m.lat, m.lng);
-      let y = p.y;
-      let guard = 0;
-      // 겹치는 동안 한 칸씩 올린다. 무한히 돌지 않게 여덟 번까지만.
-      while (
-        guard++ < 8
-        && placed.some((q) => Math.abs(q.x - p.x) < 124 && Math.abs(q.y - y) < 50)
-      ) {
-        y -= 48;
-      }
-      placed.push({ x: p.x, y });
-      if (y !== p.y) out.set(m.key, y - p.y);
+      const g = groups.find((grp) =>
+        grp.some((q) => Math.abs(q.p.x - m.p.x) < 130 && Math.abs(q.p.y - m.p.y) < 56));
+      if (g) g.push(m);
+      else groups.push([m]);
+    }
+
+    for (const g of groups) {
+      if (g.length < 2) continue;
+      // 가운데를 기준으로 좌우 대칭으로 편다. 셋이면 왼쪽·가운데·오른쪽.
+      const SPREAD = 150;
+      g.forEach((m, i) => {
+        const dx = Math.round((i - (g.length - 1) / 2) * SPREAD);
+        // 살짝 들어 올려야 이어지는 선이 보인다
+        out.set(m.key, { dx, dy: -22 });
+      });
     }
     return out;
   }, [schools, halls, project, size.w]);
@@ -227,6 +232,39 @@ export default function SchoolMap({
       onPointerCancel={onPointerUp}
       onWheel={onWheel}
     >
+      {/*
+        펼친 말풍선을 **제자리와 이어 준다.**
+
+        겹칠 때 카드를 좌우로 펼치면 어느 카드가 어느 점을 가리키는지 알 수 없다.
+        그래서 **끝단은 진짜 자리에 모으고** 카드까지 실선을 긋는다 —
+        점 하나에서 부챗살처럼 퍼지는 모양이 된다.
+      */}
+      {size.w > 0 && [
+        ...schools.map((s) => ({ key: `s-${s.id}`, lat: s.lat, lng: s.lng })),
+        ...halls.map((h) => ({ key: `h-${h.id}`, lat: h.lat, lng: h.lng })),
+      ].map((m) => {
+        const off = fan.get(m.key);
+        if (!off) return null;
+        const p = project(m.lat, m.lng);
+        if (p.x < -200 || p.x > size.w + 200 || p.y < -200 || p.y > size.h + 200) return null;
+        return (
+          <svg
+            key={`ln-${m.key}`}
+            width="1"
+            height="1"
+            className="absolute pointer-events-none"
+            style={{ left: p.x, top: p.y, overflow: 'visible', zIndex: 9 }}
+          >
+            <line
+              x1={0} y1={0} x2={off.dx} y2={off.dy}
+              stroke="rgba(60,50,40,0.5)" strokeWidth={2} strokeDasharray="4 3"
+            />
+            {/* 진짜 자리 — 여기가 그 점이다 */}
+            <circle cx={0} cy={0} r={4} fill="#FFF8E7" stroke="rgba(60,50,40,0.6)" strokeWidth={2} />
+          </svg>
+        );
+      })}
+
       {/* 지도 타일 */}
       {tiles.map((t) => (
         // eslint-disable-next-line @next/next/no-img-element
@@ -264,8 +302,8 @@ export default function SchoolMap({
               onPointerLeave={() => setHovered(null)}
               className="absolute flex flex-col items-center"
               style={{
-                left: p.x,
-                top: p.y + (nudge.get(`s-${s.id}`) ?? 0),
+                left: p.x + (fan.get(`s-${s.id}`)?.dx ?? 0),
+                top: p.y + (fan.get(`s-${s.id}`)?.dy ?? 0),
                 transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
                 transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: isHot ? 20 : 10,
@@ -366,8 +404,8 @@ export default function SchoolMap({
               onPointerLeave={() => setHovered(null)}
               className="absolute flex flex-col items-center"
               style={{
-                left: p.x,
-                top: p.y + (nudge.get(`h-${h.id}`) ?? 0),
+                left: p.x + (fan.get(`h-${h.id}`)?.dx ?? 0),
+                top: p.y + (fan.get(`h-${h.id}`)?.dy ?? 0),
                 transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
                 transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: isHot ? 20 : 11,

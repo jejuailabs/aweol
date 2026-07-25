@@ -614,6 +614,37 @@ function SchoolBuilding({
         전시 배너 — 전시관일 때만. 창문 슬롯과 달리 앞면에 고르게 편다.
         네 개까지만 건다. 더 걸면 서로 겹쳐서 읽히지 않는다.
       */}
+      {/*
+        **배너가 하나도 없으면 그렇다고 말한다.**
+
+        전시관은 전시 주제(`displayName`)가 있는 전시실만 배너를 건다. 주제를
+        안 정하면 건물만 덩그러니 서 있어서 **고장 난 것처럼 보인다** —
+        실제로 '한라산' 전시관이 그랬다. 왜 비어 있는지, 무엇을 하면 되는지 건다.
+      */}
+      {kind === 'gallery' && classes.filter((c) => c.label.trim()).length === 0 && (
+        <Html
+          position={[0, 4.2, bodyD * 0.5 + 0.4]}
+          transform
+          scale={0.42}
+          pointerEvents="none"
+          zIndexRange={[9, 0]}
+        >
+          <div
+            style={{
+              width: '300px', textAlign: 'center', fontFamily: 'Pretendard, sans-serif',
+              background: '#FFF8E7', color: '#5B4A3B', borderRadius: '14px',
+              border: '4px solid #EFE3CB', padding: '16px 18px', userSelect: 'none',
+              boxShadow: '0 6px 0 #E3D5B8',
+            }}
+          >
+            <div style={{ fontSize: '26px', fontWeight: 900 }}>아직 열린 전시가 없어요</div>
+            <div style={{ fontSize: '17px', marginTop: '8px', lineHeight: 1.5, color: '#8A7A5F' }}>
+              관리 화면에서 <b>전시 주제</b>를 정하면<br />여기에 배너가 걸려요
+            </div>
+          </div>
+        </Html>
+      )}
+
       {kind === 'gallery' && classes.filter((c) => c.label.trim()).slice(0, 4).map((cls, i, arr) => {
         const span = bodyW * 0.72;
         const gapX = arr.length > 1 ? span / (arr.length - 1) : 0;

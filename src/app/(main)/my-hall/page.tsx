@@ -237,48 +237,7 @@ function HallList({
   const [placeName, setPlaceName] = useState('');
   const [theme, setTheme] = useState<HallTheme>('white');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [addr, setAddr] = useState('');
-  const [finding, setFinding] = useState(false);
-  const [findMsg, setFindMsg] = useState('');
   const [saving, setSaving] = useState(false);
-
-  /** 주소 → 좌표 (OpenStreetMap Nominatim, 열쇠 없이 쓴다) */
-  const searchAddress = async () => {
-    if (!addr.trim()) return;
-    setFinding(true); setFindMsg('');
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addr)}`,
-        { headers: { 'Accept-Language': 'ko' } }
-      );
-      const json = await res.json();
-      if (Array.isArray(json) && json.length > 0) {
-        setCoords({ lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) });
-        setFindMsg(`📍 ${json[0].display_name}`);
-        if (!placeName.trim()) setPlaceName(addr.trim().slice(0, LIMITS.placeName));
-      } else {
-        setFindMsg('그 주소를 찾지 못했어요. 더 자세히 적어보세요.');
-      }
-    } catch {
-      setFindMsg('주소를 찾지 못했어요.');
-    }
-    setFinding(false);
-  };
-
-  /** 지금 있는 자리로 — 휴대폰이면 이게 제일 빠르다 */
-  const useMyPlace = () => {
-    if (!navigator.geolocation) { setFindMsg('이 기기에서는 위치를 쓸 수 없어요.'); return; }
-    setFinding(true); setFindMsg('');
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setCoords({ lat: p.coords.latitude, lng: p.coords.longitude });
-        setFindMsg('📍 지금 있는 자리로 정했어요');
-        setFinding(false);
-      },
-      () => { setFindMsg('위치를 가져오지 못했어요. 주소로 찾아보세요.'); setFinding(false); },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  };
 
   const create = async () => {
     if (!title.trim() || !coords) return;
@@ -295,7 +254,7 @@ function HallList({
       });
       playSound('success');
       setOpening(false);
-      setTitle(''); setTagline(''); setPlaceName(''); setCoords(null); setAddr(''); setFindMsg('');
+      setTitle(''); setTagline(''); setPlaceName(''); setCoords(null);
       await onCreated();
     } catch (e) {
       setErr((e as Error).message);
@@ -399,42 +358,14 @@ function HallList({
           <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>
             지도에 세울 자리
           </label>
-          <div className="flex gap-1.5 mt-1">
-            <input
-              value={addr}
-              onChange={(e) => setAddr(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') searchAddress(); }}
-              placeholder="주소나 장소 이름"
-              className={`${input} min-w-0 flex-1`}
-              style={inputStyle}
+          <div className="mt-1">
+            <LocationPicker
+              coords={coords}
+              onCoords={setCoords}
+              placeName={placeName}
+              onPlaceName={setPlaceName}
             />
-            <button
-              onClick={searchAddress}
-              disabled={finding}
-              className="shrink-0 rounded-xl px-3.5 text-[13px] font-bold disabled:opacity-40"
-              style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
-            >
-              찾기
-            </button>
           </div>
-          <button
-            onClick={useMyPlace}
-            disabled={finding}
-            className="w-full rounded-xl py-2 mt-1.5 text-[13px] font-bold disabled:opacity-40"
-            style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
-          >
-            📍 지금 있는 자리로
-          </button>
-          {findMsg && (
-            <div className="text-[12px] mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-              {findMsg}
-            </div>
-          )}
-          {coords && (
-            <div className="text-[12px] mt-1 font-bold" style={{ color: 'var(--color-primary)' }}>
-              ✓ {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-            </div>
-          )}
 
           <label className="block text-[12px] font-bold mt-3" style={{ color: 'var(--color-text-sub)' }}>
             전시장 분위기
@@ -1557,5 +1488,113 @@ function WorkEditor({
         )}
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════ 자리 고르기 ══════════════════════ */
+
+/**
+ * 지도에 세울 자리를 고른다 — **만들 때와 고칠 때가 같은 것을 쓴다.**
+ *
+ * 처음에는 만들 때만 자리를 정할 수 있었다. 그런데 사람이 백록담에 유럽 전시관을
+ * 열어두고 나서야 자리를 잘못 골랐다는 것을 알았고, **옮길 방법이 없었다.**
+ * 두 군데에 같은 것을 두 벌 쓰면 반드시 한쪽이 낡으므로 여기 한 벌만 둔다.
+ */
+function LocationPicker({
+  coords, onCoords, placeName, onPlaceName,
+}: {
+  coords: { lat: number; lng: number } | null;
+  onCoords: (c: { lat: number; lng: number }) => void;
+  placeName: string;
+  onPlaceName: (s: string) => void;
+}) {
+  const [addr, setAddr] = useState('');
+  const [finding, setFinding] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  /** 주소 → 좌표 (OpenStreetMap Nominatim, 열쇠 없이 쓴다) */
+  const searchAddress = async () => {
+    if (!addr.trim()) return;
+    setFinding(true); setMsg('');
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addr)}`,
+        { headers: { 'Accept-Language': 'ko' } }
+      );
+      const json = await res.json();
+      if (Array.isArray(json) && json.length > 0) {
+        onCoords({ lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) });
+        setMsg(`📍 ${json[0].display_name}`);
+        if (!placeName.trim()) onPlaceName(addr.trim().slice(0, LIMITS.placeName));
+      } else {
+        setMsg('그 주소를 찾지 못했어요. 더 자세히 적어보세요.');
+      }
+    } catch {
+      setMsg('주소를 찾지 못했어요.');
+    }
+    setFinding(false);
+  };
+
+  /** 지금 있는 자리로 — 휴대폰이면 이게 제일 빠르다 */
+  const useMyPlace = () => {
+    if (!navigator.geolocation) { setMsg('이 기기에서는 위치를 쓸 수 없어요.'); return; }
+    setFinding(true); setMsg('');
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        onCoords({ lat: p.coords.latitude, lng: p.coords.longitude });
+        setMsg('📍 지금 있는 자리로 정했어요');
+        setFinding(false);
+      },
+      () => { setMsg('위치를 가져오지 못했어요. 주소로 찾아보세요.'); setFinding(false); },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  return (
+    <>
+      <div className="flex gap-1.5">
+        <input
+          value={addr}
+          onChange={(e) => setAddr(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') searchAddress(); }}
+          placeholder="주소나 장소 이름"
+          className={`${input} min-w-0 flex-1`}
+          style={inputStyle}
+        />
+        <button
+          onClick={searchAddress}
+          disabled={finding}
+          className="shrink-0 rounded-xl px-3.5 text-[13px] font-bold disabled:opacity-40"
+          style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+        >
+          찾기
+        </button>
+      </div>
+      <button
+        onClick={useMyPlace}
+        disabled={finding}
+        className="w-full rounded-xl py-2 mt-1.5 text-[13px] font-bold disabled:opacity-40"
+        style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+      >
+        📍 지금 있는 자리로
+      </button>
+      {msg && (
+        <div className="text-[12px] mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+          {msg}
+        </div>
+      )}
+      {coords && (
+        <div className="text-[12px] mt-1 font-bold" style={{ color: 'var(--color-primary)' }}>
+          ✓ {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+        </div>
+      )}
+      <input
+        value={placeName}
+        onChange={(e) => onPlaceName(e.target.value.slice(0, LIMITS.placeName))}
+        placeholder="자리 이름 (예: 애월 한담해변)"
+        className={`${input} mt-1.5`}
+        style={inputStyle}
+      />
+    </>
   );
 }
