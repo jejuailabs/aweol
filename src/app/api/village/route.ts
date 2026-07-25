@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStorage } from 'firebase-admin/storage';
 import { adminDb, isStaffOfSchool, verifyRequestUser } from '@/lib/firebase-admin';
+import { spotById } from '@/lib/village-spots';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -18,8 +19,8 @@ export const maxDuration = 120;
  *    보고 금지한다. "결과를 로컬에 캐시하라"가 명시적 요구사항이다.
  */
 
-/** 학교를 중심으로 이만큼 (미터) */
-const RADIUS = 800;
+/** 학교를 중심으로 이만큼 (미터). 자리(spot)를 구울 때는 그 자리의 반경을 쓴다. */
+const BASE_RADIUS = 800;
 /** 이보다 촘촘한 점은 솎아낸다 — 2m 차이는 아이 눈에 안 보인다 */
 const SIMPLIFY_M = 2;
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
 
-  let body: { schoolId?: string };
+  let body: { schoolId?: string; spotId?: string };
   try {
     body = await req.json();
   } catch {
@@ -70,8 +71,26 @@ export async function POST(req: NextRequest) {
   const snap = await db.doc(`schools/${schoolId}`).get();
   if (!snap.exists) return NextResponse.json({ error: '학교를 찾을 수 없습니다' }, { status: 404 });
   const school = snap.data() as { lat?: number; lng?: number; name?: string };
-  const lat = Number(school.lat);
-  const lng = Number(school.lng);
+
+  /**
+   * 어느 자리를 굽나.
+   *
+   * 자리 없이 부르면 **예전 그대로 학교 둘레**를 굽는다 — 이미 구운 학교들이
+   * 이 기능 때문에 다시 구워야 하는 일이 있으면 안 된다.
+   * 자리를 주면 그 자리의 좌표·반경으로 굽고, 결과를 따로 둔다.
+   */
+  const spotId = (body.spotId || '').trim();
+  const spot = spotId ? spotById(spotId) : undefined;
+  if (spotId && !spot) {
+    return NextResponse.json({ error: '모르는 자리예요' }, { status: 400 });
+  }
+  if (spot && !spot.schoolIds.includes(schoolId)) {
+    return NextResponse.json({ error: '이 학교의 자리가 아니에요' }, { status: 403 });
+  }
+
+  const lat = spot ? spot.lat : Number(school.lat);
+  const lng = spot ? spot.lng : Number(school.lng);
+  const RADIUS = spot ? spot.radius : BASE_RADIUS;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return NextResponse.json({ error: '학교 좌표가 없습니다' }, { status: 400 });
   }
@@ -207,7 +226,10 @@ out geom;`;
   let url = '';
   try {
     const bucket = getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const path = `app-assets/villages/${schoolId}.json`;
+    // 자리마다 파일이 따로다. 이름에 자리를 붙여 서로 안 덮게 한다.
+    const path = spot
+      ? `app-assets/villages/${schoolId}-${spot.id}.json`
+      : `app-assets/villages/${schoolId}.json`;
     const file = bucket.file(path);
     await file.save(JSON.stringify(data), {
       contentType: 'application/json; charset=utf-8',
@@ -223,10 +245,19 @@ out geom;`;
     );
   }
 
-  await db.doc(`schools/${schoolId}`).set({ villageUrl: url }, { merge: true });
+  /**
+   * 자리별 주소는 `spotVillages` 아래 자리 이름으로 둔다.
+   * 학교 마을(`villageUrl`)은 그대로 둔다 — 집 자리를 다시 구워도
+   * 예전 주소를 보던 화면이 갑자기 빈 마을이 되면 안 된다.
+   */
+  await db.doc(`schools/${schoolId}`).set(
+    spot ? { spotVillages: { [spot.id]: url } } : { villageUrl: url },
+    { merge: true }
+  );
 
   return NextResponse.json({
     ok: true,
+    spotId: spot?.id ?? null,
     villageUrl: url,
     counts: {
       buildings: data.b.length,

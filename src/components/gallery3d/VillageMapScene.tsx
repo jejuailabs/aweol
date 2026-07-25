@@ -13,12 +13,14 @@ import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
+import { gatesFrom, type VillageSpot } from '@/lib/village-spots';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
 
 const PI = Math.PI;
+const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
 
 type XZ = [number, number];
@@ -1195,6 +1197,88 @@ function Butterflies() {
 }
 
 /**
+ * 자리와 자리를 잇는 **끝단 화살표.**
+ *
+ * 마을 끝에 다다르면 보이지 않는 벽에 막힌다 — 그게 세상의 끝처럼 느껴지면
+ * 아이는 더 갈 곳이 없다고 생각한다. **그 방향에 실제로 무엇이 있는지**를
+ * 세워 두면, 막힌 벽이 문이 된다.
+ *
+ * 자리는 그 방향 실제 방위에 선다(`gatesFrom`). 그래서 "서쪽으로 계속 가면
+ * 한담" 이 지도에서도 몸으로도 같은 말이 된다.
+ */
+function WarpGate({
+  x, z, yaw, emoji, name, dirLabel, distLabel, onAsk,
+}: {
+  x: number; z: number; yaw: number;
+  emoji: string; name: string; dirLabel: string; distLabel: string;
+  onAsk: () => void;
+}) {
+  const arrow = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    // 살짝 떠 있게 — 멈춰 있으면 배경이 되고, 움직이면 눈이 간다
+    if (arrow.current) arrow.current.position.y = 4.6 + Math.sin(clock.elapsedTime * 1.6) * 0.28;
+  });
+
+  const press = (e: { stopPropagation: () => void }) => { e.stopPropagation(); onAsk(); };
+  const hover = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation(); document.body.style.cursor = 'pointer';
+  };
+  const out = () => { document.body.style.cursor = 'auto'; };
+
+  return (
+    <group position={[x, 0, z]} rotation={[0, yaw, 0]}>
+      {/* 발밑 판 — 여기 서면 넘어간다는 자리 표시 */}
+      <mesh position={[0, 0.06, 1.6]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+        <circleGeometry args={[3.2, 28]} />
+        <meshStandardMaterial color="#E8D9B4" roughness={0.9} />
+      </mesh>
+
+      {/* 기둥 둘 */}
+      {([-2.2, 2.2] as const).map((px) => (
+        <mesh key={px} position={[px, 1.9, 0]} castShadow onClick={press} onPointerOver={hover} onPointerOut={out}>
+          <cylinderGeometry args={[0.16, 0.2, 3.8, 8]} />
+          <meshStandardMaterial color="#8A6038" roughness={0.85} />
+        </mesh>
+      ))}
+      {/* 표지판 */}
+      <mesh position={[0, 3.5, 0]} castShadow onClick={press} onPointerOver={hover} onPointerOut={out}>
+        <boxGeometry args={[5.4, 1.5, 0.22]} />
+        <meshStandardMaterial color="#FFF3D8" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 3.5, 0.13]} onClick={press} onPointerOver={hover} onPointerOut={out}>
+        <boxGeometry args={[5.0, 1.15, 0.04]} />
+        <meshStandardMaterial color="#3BAF9F" roughness={0.7} />
+      </mesh>
+
+      {/* 떠 있는 화살표 — 나아갈 쪽을 가리킨다 */}
+      <group ref={arrow} position={[0, 4.6, 0]}>
+        <mesh rotation={[HALF_PI, 0, 0]} castShadow onClick={press} onPointerOver={hover} onPointerOut={out}>
+          <coneGeometry args={[0.85, 1.9, 4]} />
+          <meshStandardMaterial color="#E8A33C" emissive="#E8A33C" emissiveIntensity={0.35} />
+        </mesh>
+      </group>
+
+      <Html position={[0, 6.6, 0]} center style={{ pointerEvents: 'auto' }} zIndexRange={[8, 0]}>
+        <div
+          onClick={onAsk}
+          style={{
+            background: '#FFF8E7', color: '#3A3226', fontFamily: 'Pretendard, sans-serif',
+            padding: '8px 16px', borderRadius: '14px', whiteSpace: 'nowrap', userSelect: 'none',
+            border: '3px solid #3BAF9F', boxShadow: '0 5px 0 #2E8B7A', cursor: 'pointer',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '15px', fontWeight: 900 }}>{emoji} {name}</div>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#A6762A', marginTop: '2px' }}>
+            {dirLabel}쪽 {distLabel} · 눌러서 가기 ›
+          </div>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+/**
  * 박공지붕 — 상자 위에 얹는 삼각 프리즘.
  * 납작한 판보다 '집'으로 읽힌다. 가상 관공서 건물에 쓴다.
  */
@@ -1296,6 +1380,7 @@ export default function VillageMapScene({
   data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace, onEnterSite,
   localSites, localPlaces,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
+  spots, currentSpot, onGoSpot, isHome = true,
 }: {
   data: VillageData;
   schoolId: string;
@@ -1319,6 +1404,19 @@ export default function VillageMapScene({
   vehicleId?: string | null;
   /** 탈것을 바꾸면 부른다. 저장은 부모(서버 호출)가 한다. */
   onPickVehicle?: (id: string | null) => void;
+  /** 이 학교의 모든 자리 (애월리·한담·곽지 …). 읍 지도와 끝단 화살표가 이걸로 선다. */
+  spots?: VillageSpot[];
+  /** 지금 있는 자리 */
+  currentSpot?: VillageSpot;
+  /** 다른 자리로 넘어갈 때 */
+  onGoSpot?: (spotId: string) => void;
+  /**
+   * 학교가 서 있는 자리인가.
+   *
+   * **집 자리에만 학교가 있다.** 곽지 한가운데에 학교 자리와 애월진성이
+   * 또 서 있으면 아이는 학교가 두 개라고 배운다 — 지도가 거짓말을 하는 것이다.
+   */
+  isHome?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const avatarPos = useRef(new THREE.Vector3(0, 0, 30));
@@ -1354,12 +1452,57 @@ export default function VillageMapScene({
    * 그걸 400m 짜리 마을 지도에 그리면 거짓말이 된다. 먼 곳은 읍 지도에서
    * 방위와 거리로 본다.
    */
-  const sites = useMemo(
-    () => (localSites ?? []).filter((s) => s.km <= WALKABLE_KM),
-    [localSites]
-  );
+  /**
+   * 이 자리에 서는 유적·명소와 **그 자리 안 좌표.**
+   *
+   * 두 갈래다.
+   * 1) `spotId` 가 지금 자리와 같은 것 — 실제 좌표(lat/lng)를 자리 한가운데 기준
+   *    미터로 바꿔 **거기 그대로** 세운다.
+   * 2) 집 자리에서는 예전처럼 **걸어갈 수 있는 곳**만. 자리가 정해지지 않은
+   *    옛 유적들이라 학교 옆에 세운다.
+   */
+  const sites = useMemo(() => {
+    const all = localSites ?? [];
+    const [clat, clng] = data.c ?? [0, 0];
+    const mPerDegLng = 111320 * Math.cos((clat * PI) / 180);
+
+    const mine = currentSpot
+      ? all.filter((s) => s.spotId === currentSpot.id)
+      : [];
+    const placed = mine.map((s) => {
+      if (typeof s.lat !== 'number' || typeof s.lng !== 'number' || !clat) {
+        return { site: s, x: -26, z: 18 };
+      }
+      return {
+        site: s,
+        x: Math.round((s.lng - clng) * mPerDegLng),
+        z: Math.round(-(s.lat - clat) * 111320),
+      };
+    });
+    if (!isHome) return placed;
+
+    // 집 자리 — 자리가 안 정해진 옛 유적 중 걸어갈 수 있는 것
+    const legacy = all
+      .filter((s) => !s.spotId && s.km <= WALKABLE_KM)
+      .map((s) => ({ site: s, x: -26, z: 18 }));
+    return [...placed, ...legacy];
+  }, [localSites, isHome, currentSpot, data.c]);
   /** 워프한 직후 잠깐 띄우는 말 */
   const [warpedTo, setWarpedTo] = useState('');
+  /**
+   * 끝단 화살표를 눌렀을 때 — **바로 안 넘긴다.**
+   * 걸어다니다 실수로 스치면 딴 동네로 끌려간다. 한 번 물어보고 간다.
+   */
+  const [gateAsk, setGateAsk] = useState<VillageSpot | null>(null);
+
+  /**
+   * 이 자리에서 갈 수 있는 이웃 자리들 — 맵 끝단에 화살표로 선다.
+   * 자리 정보가 없으면(옛 학교) 아무것도 안 선다 — 예전 그대로다.
+   */
+  const gates = useMemo(
+    () => (currentSpot && (spots?.length ?? 0) > 1 ? gatesFrom(currentSpot) : []),
+    [currentSpot, spots]
+  );
 
   /**
    * 화면에 띄울 이름표.
@@ -1406,7 +1549,8 @@ export default function VillageMapScene({
    * 학교 주변 여러 자리에 간판 건물을 하나씩 세워 넣는다.
    */
   const missingPlaces = useMemo(() => {
-    if (!localPlaces?.length) return [];
+    // 가상 관공서는 **집 자리에만** 세운다. 곽지에 읍사무소를 또 세우면 거짓말이다.
+    if (!isHome || !localPlaces?.length) return [];
     const found = new Set<string>();
     for (const b of data.b) {
       const kind = civicKindOf(b, localPlaces);
@@ -1423,15 +1567,19 @@ export default function VillageMapScene({
         si++;
         return { place: p, x, z };
       });
-  }, [data.b, localPlaces]);
+  }, [data.b, localPlaces, isHome]);
 
   const targets: WarpTarget[] = useMemo(
     () => [
-      ...warpTargets([...buildingPois, ...data.poi], schoolName),
-      ...sites.map((s) => {
-        const at = { x: -26, z: 18 };
-        return { id: `site-${s.id}`, name: s.name, x: at.x, z: at.z, dist: Math.hypot(at.x, at.z) };
-      }),
+      // 집 자리가 아니면 '학교' 점을 안 찍는다 — 곽지에 학교가 있는 것처럼 보인다
+      ...warpTargets([...buildingPois, ...data.poi], isHome ? schoolName : ''),
+      ...sites.map((s) => ({
+        id: `site-${s.site.id}`,
+        name: s.site.name,
+        x: s.x,
+        z: s.z,
+        dist: Math.hypot(s.x, s.z),
+      })),
       ...missingPlaces.map((mp) => ({
         id: `civic-${mp.place.kind}`,
         name: mp.place.label,
@@ -1455,7 +1603,7 @@ export default function VillageMapScene({
       const t = targets.find((x) => x.name === (b.n as string).trim());
       if (t) s.add(t.id);
     }
-    for (const site of sites) s.add(`site-${site.id}`);
+    for (const site of sites) s.add(`site-${site.site.id}`);
     for (const mp of missingPlaces) s.add(`civic-${mp.place.kind}`);
     return s;
   }, [data.b, targets, sites, localPlaces, missingPlaces]);
@@ -1554,28 +1702,103 @@ export default function VillageMapScene({
         <Roads list={data.rd} />
         <VillageProps radius={R} buildings={data.b} />
         <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
-        <SchoolYard buildings={data.b} />
+        {isHome && <SchoolYard buildings={data.b} />}
         <Butterflies />
 
+        {/* 이웃 자리로 넘어가는 끝단 화살표 */}
+        {gates.map((g) => (
+          <WarpGate
+            key={g.spot.id}
+            x={g.x}
+            z={g.z}
+            yaw={g.yaw}
+            emoji={g.spot.emoji}
+            name={g.spot.name}
+            dirLabel={g.dirLabel}
+            distLabel={g.distLabel}
+            onAsk={() => setGateAsk(g.spot)}
+          />
+        ))}
+
         {/*
-          우리 고장 유적 — **학교 바로 옆에 선다.**
-          애월초는 실제로 애월진성 터에 세워졌다. 지어낸 자리가 아니라
-          그 자리가 맞아서 여기 둔다.
+          우리 고장 유적·명소 — **실제 좌표에 선다.**
+
+          예전에는 전부 학교 옆 한 자리(-26, 18)에 겹쳐 세웠다. 애월진성은
+          실제로 학교 터라 맞았지만, 곽지패총·과물노천탕까지 거기 세우면
+          **지도가 거짓말을 한다.** 좌표를 아는 곳은 그 자리에 둔다.
+
+          생김새도 종류마다 다르다 — 성벽과 노천탕이 같은 돌담이면 구별이 안 된다.
         */}
         {sites.map((s) => (
-          <group key={s.id} position={[-26, 0, 18]}>
-            {/* 남아 있는 성벽 한 자락 — 실제로 북성 일부가 남아 있다 */}
-            <mesh position={[0, 1.6, 0]} castShadow receiveShadow>
-              <boxGeometry args={[10, 3.2, 1.4]} />
-              <meshStandardMaterial color="#9A9188" roughness={1} />
-            </mesh>
-            <mesh position={[0, 3.3, 0]} castShadow>
-              <boxGeometry args={[10.4, 0.3, 1.7]} />
-              <meshStandardMaterial color="#867D74" roughness={1} />
-            </mesh>
+          <group key={s.site.id} position={[s.x, 0, s.z]}>
+            {s.site.axis === 'life' ? (
+              /* 용천수 노천탕 — 돌담으로 두른 물 */
+              <>
+                <mesh position={[0, 0.06, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+                  <circleGeometry args={[4.2, 24]} />
+                  <meshStandardMaterial color="#7FD4E8" roughness={0.2} />
+                </mesh>
+                {Array.from({ length: 16 }, (_, i) => {
+                  const a = (i / 16) * PI * 2;
+                  return (
+                    <mesh
+                      key={i}
+                      position={[Math.cos(a) * 4.5, 0.45, Math.sin(a) * 4.5]}
+                      rotation={[0, -a, 0]}
+                      castShadow
+                    >
+                      <boxGeometry args={[1.9, 0.9, 0.7]} />
+                      <meshStandardMaterial color="#6E6862" roughness={1} />
+                    </mesh>
+                  );
+                })}
+                {/* 솟는 물 */}
+                <mesh position={[0, 0.5, 0]}>
+                  <cylinderGeometry args={[0.5, 0.3, 1, 10]} />
+                  <meshStandardMaterial color="#BEEBF7" transparent opacity={0.7} />
+                </mesh>
+              </>
+            ) : s.site.axis === 'nature' ? (
+              /* 현무암 해안 — 검은 바위와 나무 데크 */
+              <>
+                <mesh position={[0, 0.05, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+                  <planeGeometry args={[14, 3]} />
+                  <meshStandardMaterial color="#A07E55" roughness={0.9} />
+                </mesh>
+                {([-5, -2, 1.5, 5] as const).map((bx, i) => (
+                  <mesh key={bx} position={[bx, 0.7, -2.6 - (i % 2) * 0.8]} castShadow>
+                    <dodecahedronGeometry args={[1.1 + (i % 3) * 0.35, 0]} />
+                    <meshStandardMaterial color="#4A4744" roughness={1} />
+                  </mesh>
+                ))}
+                {/* 난간 */}
+                {([-6, -2, 2, 6] as const).map((px) => (
+                  <mesh key={`p${px}`} position={[px, 0.6, 1.4]} castShadow>
+                    <cylinderGeometry args={[0.09, 0.09, 1.2, 6]} />
+                    <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+                  </mesh>
+                ))}
+                <mesh position={[0, 1.15, 1.4]}>
+                  <boxGeometry args={[13, 0.1, 0.1]} />
+                  <meshStandardMaterial color="#A07E55" roughness={0.9} />
+                </mesh>
+              </>
+            ) : (
+              /* 옛터 — 남아 있는 성벽·돌담 한 자락 */
+              <>
+                <mesh position={[0, 1.6, 0]} castShadow receiveShadow>
+                  <boxGeometry args={[10, 3.2, 1.4]} />
+                  <meshStandardMaterial color="#9A9188" roughness={1} />
+                </mesh>
+                <mesh position={[0, 3.3, 0]} castShadow>
+                  <boxGeometry args={[10.4, 0.3, 1.7]} />
+                  <meshStandardMaterial color="#867D74" roughness={1} />
+                </mesh>
+              </>
+            )}
             <Html position={[0, 5.2, 0]} center style={{ pointerEvents: 'auto' }} zIndexRange={[5, 0]}>
               <div
-                onClick={() => onEnterSite?.(s.id)}
+                onClick={() => onEnterSite?.(s.site.id)}
                 style={{
                   background: '#FFF1D6', color: '#5B4A3B', fontWeight: 800, fontSize: '14px',
                   padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
@@ -1583,7 +1806,7 @@ export default function VillageMapScene({
                   border: '2px solid #B08860', cursor: 'pointer',
                 }}
               >
-                {s.emoji} {s.name}
+                {s.site.emoji} {s.site.name}
                 <span style={{ color: '#A6762A', marginLeft: '6px', fontSize: '12px' }}>알아보기 ›</span>
               </div>
             </Html>
@@ -1709,7 +1932,8 @@ export default function VillageMapScene({
           );
         })}
 
-        {/* 학교 자리 — 원점이 곧 학교다. 여기를 눌러 들어간다. */}
+        {/* 학교 자리 — **집 자리에서만.** 원점이 곧 학교다. 여기를 눌러 들어간다. */}
+        {isHome && (
         <group
           position={[0, 0, 0]}
           onClick={(e) => { e.stopPropagation(); onEnterSchool(); }}
@@ -1739,6 +1963,7 @@ export default function VillageMapScene({
             </div>
           </Html>
         </group>
+        )}
 
         {/*
           시설 이름표.
@@ -1910,7 +2135,54 @@ export default function VillageMapScene({
           civicIds={civicIds}
           onWarp={warpTo}
           onClose={() => setWarpOpen(false)}
+          spots={spots}
+          currentSpot={currentSpot}
+          onGoSpot={(id) => { setWarpOpen(false); onGoSpot?.(id); }}
         />
+      )}
+
+      {/*
+        자리를 넘어갈까 — **한 번 물어본다.**
+        걸어다니다 화살표를 스쳐 눌러 딴 동네로 끌려가면, 아이는 돌아오는 길을 모른다.
+      */}
+      {gateAsk && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 pb-4"
+          style={{ background: 'rgba(24,20,16,0.55)' }}
+          onClick={() => setGateAsk(null)}
+        >
+          <div
+            className="w-full max-w-[380px] rounded-3xl overflow-hidden"
+            style={{ background: '#FFFAF0', border: '3px solid rgba(255,255,255,0.75)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-2 text-center">
+              <div className="text-[44px]">{gateAsk.emoji}</div>
+              <div className="text-[19px] font-black mt-1" style={{ color: '#3A3226' }}>
+                {gateAsk.name}
+              </div>
+              <div className="text-[13px] leading-relaxed mt-1.5 px-2" style={{ color: '#6B5B43' }}>
+                {gateAsk.tagline}
+              </div>
+            </div>
+            <div className="flex gap-2 px-4 pb-4 pt-2">
+              <button
+                onClick={() => setGateAsk(null)}
+                className="rounded-full px-5 py-3 text-[15px] font-bold"
+                style={{ background: 'white', color: '#8A7A5F' }}
+              >
+                아니요
+              </button>
+              <button
+                onClick={() => { const id = gateAsk.id; setGateAsk(null); onGoSpot?.(id); }}
+                className="flex-1 rounded-full py-3 text-[15px] font-bold text-white"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                네, 가볼래요 ›
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
@@ -10,6 +10,7 @@ import { VEHICLES } from '@/lib/village-travel';
 import { useProgress } from '@/lib/use-progress';
 import { openQuests } from '@/lib/village-rpg';
 import { useRpgContent } from '@/lib/use-rpg-content';
+import { homeSpot, spotById, spotsOfSchool } from '@/lib/village-spots';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
 import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
@@ -38,12 +39,52 @@ const FALLBACK_SCHOOL = 'aewol-elementary';
  *
  * 친구들도 여기서 만난다 — 학교가 달라도 마을에서는 같이 있다.
  */
+/**
+ * `useSearchParams` 는 Suspense 안에서만 쓸 수 있다(Next 규칙).
+ * 마을은 어차피 클라이언트에서만 그리므로 감싸는 값이 싸다.
+ */
 export default function VillagePage() {
+  return (
+    <Suspense fallback={
+      <div className="scene-page">
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#BFE8F5' }}>
+          <div className="text-sm font-bold" style={{ color: '#6B5B43' }}>동네를 여는 중...</div>
+        </div>
+      </div>
+    }>
+      <VillageBody />
+    </Suspense>
+  );
+}
+
+function VillageBody() {
   const { user, userDoc } = useAuth();
   const router = useRouter();
+  const search = useSearchParams();
 
   // 내가 속한 학교로 데려간다. 없으면 애월초.
   const schoolId = userDoc?.schoolIds?.[0] || FALLBACK_SCHOOL;
+
+  /**
+   * 어느 자리에 있나 — 주소의 `?spot=` 이 정한다.
+   *
+   * **주소에 둔다.** 상태로만 들고 있으면 뒤로가기가 안 먹고, 친구에게
+   * "곽지 가봐" 하고 주소를 보낼 수도 없다.
+   */
+  const spots = useMemo(() => spotsOfSchool(schoolId), [schoolId]);
+  const home = useMemo(() => homeSpot(schoolId), [schoolId]);
+  const spotParam = search.get('spot') || '';
+  const currentSpot = useMemo(() => {
+    const asked = spotParam ? spotById(spotParam) : undefined;
+    // 이 학교 자리가 아니면 집으로 — 남의 동네 주소를 들고 와도 헤매지 않는다
+    return asked && asked.schoolIds.includes(schoolId) ? asked : home;
+  }, [spotParam, schoolId, home]);
+  const isHome = !currentSpot || !!currentSpot.home;
+
+  const goSpot = (id: string) => {
+    if (id === currentSpot?.id) return;
+    router.push(id === home?.id ? '/village' : `/village?spot=${id}`);
+  };
 
   /** 지금 할 일이 몇 개인가 — 수첩 단추에 뜬다 */
   const { done } = useProgress();
@@ -104,17 +145,31 @@ export default function VillagePage() {
 
   useEffect(() => {
     if (!db) { setTried(true); return; }
+    let alive = true;
+    setTried(false);
+    setVillage(null);
     getDoc(doc(db, 'schools', schoolId))
       .then(async (s) => {
-        if (s.exists() && s.data()?.name) setSchoolName(s.data()!.name as string);
-        const url = s.exists() ? (s.data()?.villageUrl as string) : '';
+        if (!alive || !s.exists()) return;
+        const v = s.data() ?? {};
+        if (v.name) setSchoolName(v.name as string);
+        /**
+         * 자리마다 구운 파일이 따로다. 집 자리는 예전 주소(`villageUrl`)를 그대로
+         * 쓴다 — 이미 구워 둔 학교가 이 기능 때문에 빈 마을이 되면 안 된다.
+         */
+        const spotUrls = (v.spotVillages ?? {}) as Record<string, string>;
+        const url = (currentSpot && !currentSpot.home ? spotUrls[currentSpot.id] : '')
+          || (isHome ? (v.villageUrl as string) : '')
+          || (currentSpot ? spotUrls[currentSpot.id] : '')
+          || '';
         if (!url) return;
         const res = await fetch(url);
-        if (res.ok) setVillage(await res.json());
+        if (alive && res.ok) setVillage(await res.json());
       })
       .catch(() => {})
-      .finally(() => setTried(true));
-  }, [schoolId]);
+      .finally(() => { if (alive) setTried(true); });
+    return () => { alive = false; };
+  }, [schoolId, currentSpot, isHome]);
 
   const enter = (spot: VillageSpot) => {
     if (spot === 'school') {
@@ -156,7 +211,35 @@ export default function VillagePage() {
           ownedVehicles={ownedVehicles}
           vehicleId={vehicleId}
           onPickVehicle={pickVehicle}
+          spots={spots}
+          currentSpot={currentSpot}
+          onGoSpot={goSpot}
+          isHome={isHome}
         />
+      ) : !isHome ? (
+        /*
+          **아직 안 구운 자리.** 손으로 만든 마을(VillageScene)을 대신 띄우면
+          안 된다 — 그건 학교 앞마당이라, 곽지에 갔는데 학교가 나오는 셈이다.
+          선생님이 한 번 구우면 열린다는 것을 그대로 말해준다.
+        */
+        <div className="absolute inset-0 flex items-center justify-center px-6" style={{ background: '#BFE8F5' }}>
+          <div className="ac-bubble max-w-[360px] px-6 py-6 text-center">
+            <div className="text-4xl mb-2">{currentSpot?.emoji ?? '🧭'}</div>
+            <div className="text-[16px] font-black mb-1.5" style={{ color: '#3A3226' }}>
+              {currentSpot?.name ?? '이 자리'}는 아직 준비 중이에요
+            </div>
+            <div className="text-[13px] leading-relaxed mb-4" style={{ color: '#8A7A5F' }}>
+              선생님이 이 자리를 한 번 만들어 주시면 걸어다닐 수 있어요.
+            </div>
+            <button
+              onClick={() => router.push('/village')}
+              className="rounded-full px-5 py-2.5 text-[14px] font-bold text-white"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              ← 우리 마을로 돌아가기
+            </button>
+          </div>
+        </div>
       ) : (
         <VillageScene
           schoolId={schoolId}

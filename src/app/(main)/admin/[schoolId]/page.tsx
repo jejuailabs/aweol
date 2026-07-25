@@ -9,6 +9,7 @@ import { canAccessAdmin, canApproveTeacher, canCreateClass, isSchoolManager } fr
 import { UserRole } from '@/lib/firestore-schema';
 import SchoolSettingsModal, { type SchoolSettings } from '@/components/admin/SchoolSettingsModal';
 import ClassAdminBox from '@/components/admin/ClassAdminBox';
+import { spotsOfSchool } from '@/lib/village-spots';
 
 
 interface ActivityStat {
@@ -108,6 +109,34 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [villageBusy, setVillageBusy] = useState(false);
   const [villageMsg, setVillageMsg] = useState('');
+
+  /**
+   * 자리를 하나 굽는다. `spotId` 가 없으면 예전처럼 학교 둘레를 굽는다.
+   * Overpass 는 한 번에 오래 걸리므로 **한 번에 하나씩**만 누르게 잠근다.
+   */
+  const bakeVillage = useCallback(async (spotId?: string) => {
+    setVillageBusy(true); setVillageMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/village', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ schoolId, ...(spotId ? { spotId } : {}) }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '만들지 못했어요');
+      const where = spotId
+        ? spotsOfSchool(schoolId).find((s) => s.id === spotId)?.name ?? spotId
+        : '학교 둘레';
+      setVillageMsg(
+        `${where} — 건물 ${json.counts.buildings}채, 길 ${json.counts.roads}조각, 시설 ${json.counts.pois}곳`
+        + (json.named?.length ? ` (${json.named.slice(0, 3).join(', ')} …)` : '')
+      );
+    } catch (e) {
+      setVillageMsg((e as Error).message);
+    }
+    setVillageBusy(false);
+  }, [schoolId]);
 
   const isSuper = role === 'super_admin';
   /**
@@ -463,43 +492,48 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 우리 동네 만들기 — 학교 좌표로 걸어다닐 동네를 굽는다 */}
+      {/* 우리 동네 만들기 — 자리마다 따로 굽는다 */}
       <div className="rounded-3xl p-4 mb-4" style={{ background: 'var(--color-surface)' }}>
         <div className="text-sm font-black mb-1" style={{ color: 'var(--color-text-main)' }}>
           🏘️ 우리 동네 만들기
         </div>
         <div className="text-[13px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-          학교 둘레 400m 를 지도에서 받아 <b>걸어다닐 수 있는 동네</b>로 만들어요.
+          지도에서 받아 <b>걸어다닐 수 있는 동네</b>로 만들어요.
           아이들은 만들어진 파일 하나만 받으니 몇 명이 들어와도 요금이 늘지 않아요.
-          지도가 바뀌면 다시 눌러주세요.
+          <b>자리마다 한 번씩</b> 눌러주세요 — 애월리 말고 한담·곽지도 걸어다닐 수 있어요.
         </div>
-        <button
-          onClick={async () => {
-            setVillageBusy(true); setVillageMsg('');
-            try {
-              const token = await auth?.currentUser?.getIdToken();
-              const res = await fetch('/api/village', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ schoolId }),
-              });
-              const json = await res.json();
-              if (!res.ok) throw new Error(json.error || '만들지 못했어요');
-              setVillageMsg(
-                `동네를 만들었어요 — 건물 ${json.counts.buildings}채, 길 ${json.counts.roads}조각`
-                + (json.named?.length ? ` (${json.named.slice(0, 3).join(', ')} …)` : '')
-              );
-            } catch (e) {
-              setVillageMsg((e as Error).message);
-            }
-            setVillageBusy(false);
-          }}
-          disabled={villageBusy}
-          className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-40"
-          style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
-        >
-          {villageBusy ? '지도를 받는 중...' : '동네 만들기 (또는 다시 만들기)'}
-        </button>
+
+        <div className="flex flex-col gap-1.5">
+          {/* 학교 둘레 — 자리 표에 없던 학교도 예전처럼 굽는다 */}
+          <button
+            onClick={() => bakeVillage()}
+            disabled={villageBusy}
+            className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-40"
+            style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+          >
+            {villageBusy ? '지도를 받는 중...' : '🏫 학교 둘레 만들기 (또는 다시)'}
+          </button>
+
+          {/*
+            자리들 — 표(`village-spots.ts`)에 적힌 곳만 뜬다.
+            자리를 늘리려면 표에 한 줄 쓰면 여기 단추가 저절로 생긴다.
+          */}
+          {spotsOfSchool(schoolId).filter((s) => !s.home).map((sp) => (
+            <button
+              key={sp.id}
+              onClick={() => bakeVillage(sp.id)}
+              disabled={villageBusy}
+              className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-40 text-left px-4"
+              style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+            >
+              {sp.emoji} {sp.name} 만들기
+              <span className="text-[12px] font-normal ml-1.5" style={{ color: 'var(--color-text-sub)' }}>
+                반경 {sp.radius}m
+              </span>
+            </button>
+          ))}
+        </div>
+
         {villageMsg && (
           <div className="text-[13px] font-bold mt-2 leading-relaxed" style={{ color: 'var(--color-primary)' }}>
             {villageMsg}
