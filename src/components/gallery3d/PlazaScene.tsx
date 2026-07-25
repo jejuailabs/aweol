@@ -6,7 +6,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
-  type AvatarCustom, type AvatarTint,
+  type AvatarCustom, type AvatarTint, type Obstacle,
 } from './walker';
 
 const PI = Math.PI;
@@ -98,6 +98,14 @@ export default function PlazaScene({
   onSide,
   /** 떨어졌나 — 떨어지면 바닥이 흐려지고 못 고른다 */
   out = false,
+  /**
+   * 시간 끝 — 가운데 금에 벽이 선다.
+   *
+   * 답 기록은 서버 규칙이 이미 막지만, **몸이 넘어가는 것**은 화면 일이다.
+   * 정답이 열린 뒤 슬쩍 건너가 서 있으면 규칙상 탈락이어도 아이 눈에는
+   * "쟤 맞는 쪽에 있는데?" 로 보인다 — 보이는 것도 막아야 놀이가 공정해 보인다.
+   */
+  wallUp = false,
   children,
 }: {
   avatarId?: string | null;
@@ -105,6 +113,7 @@ export default function PlazaScene({
   avatarTint?: AvatarTint;
   onSide?: (side: 'O' | 'X' | null) => void;
   out?: boolean;
+  wallUp?: boolean;
   /** 화면 위에 얹는 것(문제·남은 시간). 3D 밖이라 여기로 받는다 */
   children?: React.ReactNode;
 }) {
@@ -142,6 +151,16 @@ export default function PlazaScene({
     []
   );
 
+  /**
+   * 시간이 끝나면 가운데 금이 벽이 된다.
+   * 금 위에 서 있다 갇히는 경우는 walker 의 '안에서 시작하면 통과' 예외가
+   * 걸어 나오게 해준다 — 어차피 금 위는 무답이라 탈락이다.
+   */
+  const obstacles = useMemo<Obstacle[]>(
+    () => (wallUp ? [{ x: 0, z: 0, halfW: MIDDLE / 2, halfD: PLAZA_HALF + 8 }] : []),
+    [wallUp]
+  );
+
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas shadows camera={{ position: [0, 8, 14], fov: 55, near: 0.1, far: 200 }} style={{ background: '#DCEBF7' }}>
@@ -160,8 +179,22 @@ export default function PlazaScene({
         {/* 가운데 금 */}
         <mesh position={[0, 0.03, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
           <planeGeometry args={[MIDDLE, PLAZA_HALF * 2]} />
-          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.75} />
+          <meshBasicMaterial color={wallUp ? '#E8604C' : '#FFFFFF'} transparent opacity={0.75} />
         </mesh>
+
+        {/* 시간 끝 — 벽이 보여야 "왜 못 가지?" 가 안 나온다 */}
+        {wallUp && (
+          <mesh position={[0, 1.1, 0]}>
+            <boxGeometry args={[0.14, 2.2, PLAZA_HALF * 2]} />
+            <meshStandardMaterial
+              color="#E8604C"
+              emissive="#E8604C"
+              emissiveIntensity={0.3}
+              transparent
+              opacity={0.35}
+            />
+          </mesh>
+        )}
 
         <Bleachers />
 
@@ -173,6 +206,7 @@ export default function PlazaScene({
           avatarCustom={avatarCustom}
           avatarTint={avatarTint}
           avatarYaw={avatarYaw}
+          obstacles={obstacles}
         />
         <DustPuffs />
         <FollowCamera avatarPos={avatarPos} lookHeight={1.4} />

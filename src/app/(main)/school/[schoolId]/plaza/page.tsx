@@ -293,6 +293,12 @@ export default function PlazaPage() {
         avatarTint={userDoc?.avatarTint}
         onSide={setSide}
         out={amOut}
+        /**
+         * 시간 끝 ~ 정답 공개 동안 가운데 금에 벽이 선다.
+         * 답 기록은 규칙이 이미 막지만, 몸이 건너가 보이는 것까지 막아야
+         * "쟤 맞는 쪽에 서 있는데?" 가 안 나온다. 다음 문제가 열리면 내려간다.
+         */
+        wallUp={locked || revealing}
       >
         {hud}
       </PlazaScene>
