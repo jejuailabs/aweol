@@ -476,9 +476,10 @@ function VillageProps({ radius, buildings }: {
         minZ: Math.min(...zs) - 3, maxZ: Math.max(...zs) + 3,
       };
     });
+    // 학교 앞마당(운동장·놀이터)은 SchoolYard 가 따로 꾸민다 — 흩뿌리지 않는다
     const blocked = (x: number, z: number) =>
       bboxes.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ)
-      || (Math.abs(x) < 12 && Math.abs(z) < 12);
+      || (Math.abs(x) < 26 && Math.abs(z) < 34);
 
     const seeded = (i: number) => {
       let h = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
@@ -489,24 +490,37 @@ function VillageProps({ radius, buildings }: {
     const out: { kind: string; x: number; z: number; r: number; s: number }[] = [];
     const R = radius * 0.9;
 
-    for (let i = 0; i < 220; i++) {
+    /**
+     * 반경이 800m 로 넓어져 면적이 네 배가 됐다 — 220개 그대로면 휑하다.
+     * 380개로 올리고, 제주다운 것들(돌하르방·정자·밭·허수아비)과
+     * 동물(고양이·닭)을 섞는다. 건물 뒷골목에도 뿌려지므로
+     * **돌아다니면 자꾸 뭔가 나온다.**
+     */
+    for (let i = 0; i < 380; i++) {
       const x = (seeded(i * 3) - 0.5) * R * 2;
       const z = (seeded(i * 3 + 1) - 0.5) * R * 2;
       if (blocked(x, z)) continue;
       const roll = seeded(i * 3 + 2);
       const r = seeded(i * 7) * PI * 2;
-      if (roll < 0.40) out.push({ kind: 'tree', x, z, r, s: 0.7 + seeded(i * 5) * 0.6 });
-      else if (roll < 0.52) out.push({ kind: 'palm', x, z, r, s: 0.8 + seeded(i * 5) * 0.5 });
-      else if (roll < 0.60) out.push({ kind: 'lamp', x, z, r, s: 1 });
-      else if (roll < 0.67) out.push({ kind: 'bench', x, z, r, s: 1 });
-      else if (roll < 0.73) out.push({ kind: 'flower', x, z, r, s: 0.8 + seeded(i * 5) * 0.4 });
-      else if (roll < 0.78) out.push({ kind: 'hydrant', x, z, r, s: 1 });
-      else if (roll < 0.83) out.push({ kind: 'rock', x, z, r, s: 0.6 + seeded(i * 5) * 0.8 });
-      else if (roll < 0.87) out.push({ kind: 'bush', x, z, r, s: 0.7 + seeded(i * 5) * 0.5 });
-      else if (roll < 0.90) out.push({ kind: 'sign', x, z, r, s: 1 });
-      else if (roll < 0.93) out.push({ kind: 'bin', x, z, r, s: 1 });
-      else if (roll < 0.96) out.push({ kind: 'fence', x, z, r, s: 1 });
-      else out.push({ kind: 'wall', x, z, r, s: 0.8 + seeded(i * 5) * 0.4 });
+      if (roll < 0.30) out.push({ kind: 'tree', x, z, r, s: 0.7 + seeded(i * 5) * 0.6 });
+      else if (roll < 0.40) out.push({ kind: 'palm', x, z, r, s: 0.8 + seeded(i * 5) * 0.5 });
+      else if (roll < 0.46) out.push({ kind: 'lamp', x, z, r, s: 1 });
+      else if (roll < 0.51) out.push({ kind: 'bench', x, z, r, s: 1 });
+      else if (roll < 0.57) out.push({ kind: 'flower', x, z, r, s: 0.8 + seeded(i * 5) * 0.4 });
+      else if (roll < 0.60) out.push({ kind: 'hydrant', x, z, r, s: 1 });
+      else if (roll < 0.65) out.push({ kind: 'rock', x, z, r, s: 0.6 + seeded(i * 5) * 0.8 });
+      else if (roll < 0.70) out.push({ kind: 'bush', x, z, r, s: 0.7 + seeded(i * 5) * 0.5 });
+      else if (roll < 0.73) out.push({ kind: 'sign', x, z, r, s: 1 });
+      else if (roll < 0.76) out.push({ kind: 'bin', x, z, r, s: 1 });
+      else if (roll < 0.80) out.push({ kind: 'fence', x, z, r, s: 1 });
+      else if (roll < 0.83) out.push({ kind: 'wall', x, z, r, s: 0.8 + seeded(i * 5) * 0.4 });
+      else if (roll < 0.87) out.push({ kind: 'garden', x, z, r, s: 0.9 + seeded(i * 5) * 0.4 });
+      else if (roll < 0.90) out.push({ kind: 'hay', x, z, r, s: 0.8 + seeded(i * 5) * 0.5 });
+      else if (roll < 0.92) out.push({ kind: 'scare', x, z, r, s: 1 });
+      else if (roll < 0.94) out.push({ kind: 'dol', x, z, r, s: 0.9 + seeded(i * 5) * 0.4 });
+      else if (roll < 0.965) out.push({ kind: 'cat', x, z, r, s: 0.9 + seeded(i * 5) * 0.3 });
+      else if (roll < 0.985) out.push({ kind: 'chick', x, z, r, s: 1 });
+      else out.push({ kind: 'gazebo', x, z, r, s: 1 });
     }
     return out;
   }, [radius, buildings]);
@@ -667,6 +681,136 @@ function VillageProps({ radius, buildings }: {
               <meshStandardMaterial color="#9A9188" roughness={1} />
             </mesh>
           )}
+          {it.kind === 'garden' && (
+            <>
+              <mesh position={[0, 0.06, 0]} receiveShadow>
+                <boxGeometry args={[3.2, 0.12, 2.2]} />
+                <meshStandardMaterial color="#8A6B4A" roughness={1} />
+              </mesh>
+              {([-0.7, 0, 0.7] as const).map((gz) => (
+                <mesh key={gz} position={[0, 0.2, gz]} castShadow>
+                  <boxGeometry args={[2.8, 0.18, 0.35]} />
+                  <meshStandardMaterial color="#4E9845" roughness={0.95} />
+                </mesh>
+              ))}
+            </>
+          )}
+          {it.kind === 'hay' && (
+            <mesh position={[0, 0.7, 0]} castShadow>
+              <coneGeometry args={[0.9, 1.4, 8]} />
+              <meshStandardMaterial color="#D9B96C" roughness={1} />
+            </mesh>
+          )}
+          {it.kind === 'scare' && (
+            <>
+              <mesh position={[0, 0.9, 0]} castShadow>
+                <cylinderGeometry args={[0.05, 0.06, 1.8, 5]} />
+                <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+              </mesh>
+              <mesh position={[0, 1.35, 0]} castShadow>
+                <boxGeometry args={[1.6, 0.1, 0.1]} />
+                <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+              </mesh>
+              <mesh position={[0, 1.85, 0]}>
+                <sphereGeometry args={[0.28, 7, 5]} />
+                <meshStandardMaterial color="#F0D9A8" roughness={0.9} />
+              </mesh>
+              <mesh position={[0, 2.12, 0]} castShadow>
+                <coneGeometry args={[0.38, 0.35, 7]} />
+                <meshStandardMaterial color="#C97B4B" roughness={0.9} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'dol' && (
+            <>
+              {/* 돌하르방 — 현무암빛 몸통·머리·벙거지, 눈 두 점 */}
+              <mesh position={[0, 0.45, 0]} castShadow>
+                <cylinderGeometry args={[0.34, 0.42, 0.9, 8]} />
+                <meshStandardMaterial color="#6E6862" roughness={1} />
+              </mesh>
+              <mesh position={[0, 1.12, 0]} castShadow>
+                <sphereGeometry args={[0.33, 8, 6]} />
+                <meshStandardMaterial color="#6E6862" roughness={1} />
+              </mesh>
+              <mesh position={[0, 1.47, 0]} castShadow>
+                <cylinderGeometry args={[0.24, 0.36, 0.3, 8]} />
+                <meshStandardMaterial color="#5E5852" roughness={1} />
+              </mesh>
+              {([-0.12, 0.12] as const).map((ex) => (
+                <mesh key={ex} position={[ex, 1.18, 0.28]}>
+                  <sphereGeometry args={[0.055, 5, 4]} />
+                  <meshStandardMaterial color="#3A3632" roughness={1} />
+                </mesh>
+              ))}
+            </>
+          )}
+          {it.kind === 'cat' && (() => {
+            const fur = it.s > 1.05 ? '#8A8A8A' : '#E8A33C';
+            return (
+              <>
+                <mesh position={[0, 0.26, 0]} castShadow>
+                  <sphereGeometry args={[0.3, 7, 5]} />
+                  <meshStandardMaterial color={fur} roughness={0.95} />
+                </mesh>
+                <mesh position={[0, 0.55, 0.18]} castShadow>
+                  <sphereGeometry args={[0.2, 7, 5]} />
+                  <meshStandardMaterial color={fur} roughness={0.95} />
+                </mesh>
+                {([-0.1, 0.1] as const).map((ex) => (
+                  <mesh key={ex} position={[ex, 0.73, 0.18]}>
+                    <coneGeometry args={[0.07, 0.14, 4]} />
+                    <meshStandardMaterial color={fur} roughness={0.95} />
+                  </mesh>
+                ))}
+                <mesh position={[0, 0.36, -0.34]} rotation={[0.9, 0, 0]}>
+                  <cylinderGeometry args={[0.045, 0.06, 0.5, 5]} />
+                  <meshStandardMaterial color={fur} roughness={0.95} />
+                </mesh>
+              </>
+            );
+          })()}
+          {it.kind === 'chick' && (
+            <>
+              <mesh position={[0, 0.3, 0]} castShadow>
+                <sphereGeometry args={[0.28, 7, 5]} />
+                <meshStandardMaterial color="#F5F0E4" roughness={0.95} />
+              </mesh>
+              <mesh position={[0, 0.58, 0.14]}>
+                <sphereGeometry args={[0.16, 7, 5]} />
+                <meshStandardMaterial color="#F5F0E4" roughness={0.95} />
+              </mesh>
+              <mesh position={[0, 0.74, 0.14]}>
+                <boxGeometry args={[0.06, 0.12, 0.16]} />
+                <meshStandardMaterial color="#E8604C" roughness={0.8} />
+              </mesh>
+              <mesh position={[0, 0.56, 0.31]} rotation={[1.4, 0, 0]}>
+                <coneGeometry args={[0.05, 0.14, 4]} />
+                <meshStandardMaterial color="#E8A33C" roughness={0.8} />
+              </mesh>
+            </>
+          )}
+          {it.kind === 'gazebo' && (
+            <>
+              {/* 정자 — 육각 마루와 기둥, 뾰족 지붕 */}
+              <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[1.9, 1.9, 0.25, 6]} />
+                <meshStandardMaterial color="#A07E55" roughness={0.9} />
+              </mesh>
+              {[0, 1, 2, 3, 4, 5].map((n) => {
+                const a = (n / 6) * PI * 2;
+                return (
+                  <mesh key={n} position={[Math.cos(a) * 1.55, 1.2, Math.sin(a) * 1.55]} castShadow>
+                    <cylinderGeometry args={[0.08, 0.08, 1.8, 6]} />
+                    <meshStandardMaterial color="#8B5A3B" roughness={0.9} />
+                  </mesh>
+                );
+              })}
+              <mesh position={[0, 2.6, 0]} castShadow>
+                <coneGeometry args={[2.4, 1.1, 6]} />
+                <meshStandardMaterial color="#B0603F" roughness={0.85} />
+              </mesh>
+            </>
+          )}
         </group>
       ))}
     </group>
@@ -775,6 +919,241 @@ function Horizon({ R }: { R: number }) {
         <coneGeometry args={[R * 0.85, R * 0.4, 9]} />
         <meshStandardMaterial color="#6FA982" roughness={1} />
       </mesh>
+    </group>
+  );
+}
+
+/**
+ * 학교 앞마당 — 원점(학교 자리) 둘레를 운동장·놀이터로 꾸민다.
+ *
+ * 아이가 처음 떨어지는 자리가 여기다. 마을 한가운데가 빈 잔디면
+ * 게임이 아니라 지도다 — 여기가 제일 먼저 '게임'처럼 보여야 한다.
+ * 실제 학교 건물(OSM)의 위치는 학교마다 다르므로,
+ * **건물과 겹치는 시설은 그 학교에서는 조용히 뺀다.**
+ */
+function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
+  const isBlocked = useMemo(() => {
+    const boxes = buildings.map((b) => {
+      const xs = b.p.map((p) => p[0]);
+      const zs = b.p.map((p) => p[1]);
+      return {
+        minX: Math.min(...xs) - 1, maxX: Math.max(...xs) + 1,
+        minZ: Math.min(...zs) - 1, maxZ: Math.max(...zs) + 1,
+      };
+    });
+    return (x: number, z: number) =>
+      boxes.some((bb) => x >= bb.minX && x <= bb.maxX && z >= bb.minZ && z <= bb.maxZ);
+  }, [buildings]);
+
+  // 트랙은 커서 다섯 점을 짚어본다 — 한 점이라도 건물에 닿으면 안 깐다
+  const trackOk = useMemo(
+    () => [[0, 19], [10.5, 19], [-10.5, 19], [0, 8.5], [0, 29.5]]
+      .every(([x, z]) => !isBlocked(x, z)),
+    [isBlocked]
+  );
+
+  return (
+    <group>
+      {/* 운동장 트랙 — 학교 앞 황토 타원과 흰 레인 선 */}
+      {trackOk && (
+        <group position={[0, 0, 19]}>
+          <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
+            <ringGeometry args={[8.5, 12.5, 48]} />
+            <meshStandardMaterial color="#DBA275" roughness={0.95} />
+          </mesh>
+          <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.04, 0]}>
+            <ringGeometry args={[10.3, 10.55, 48]} />
+            <meshStandardMaterial color="#FFF6E4" roughness={0.9} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 태극기 게양대 */}
+      {!isBlocked(10, 3) && (
+        <group position={[10, 0, 3]}>
+          <mesh position={[0, 3, 0]} castShadow>
+            <cylinderGeometry args={[0.07, 0.1, 6, 6]} />
+            <meshStandardMaterial color="#C8C8C8" metalness={0.4} roughness={0.5} />
+          </mesh>
+          <group position={[0.78, 5.4, 0]}>
+            <mesh>
+              <planeGeometry args={[1.5, 1]} />
+              <meshStandardMaterial color="#FFFFFF" side={THREE.DoubleSide} />
+            </mesh>
+            {/* 태극 무늬 — 위 빨강 반원, 아래 파랑 반원으로 줄여 그린다 */}
+            <mesh position={[0, 0.02, 0.006]}>
+              <circleGeometry args={[0.28, 16, 0, PI]} />
+              <meshStandardMaterial color="#CD2E3A" side={THREE.DoubleSide} />
+            </mesh>
+            <mesh position={[0, -0.02, 0.006]}>
+              <circleGeometry args={[0.28, 16, PI, PI]} />
+              <meshStandardMaterial color="#0047A0" side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        </group>
+      )}
+
+      {/* 미끄럼틀 */}
+      {!isBlocked(-12, 9) && (
+        <group position={[-12, 0, 9]} rotation={[0, 0.5, 0]}>
+          {([[-0.5, -0.9], [0.5, -0.9], [-0.5, 0.1], [0.5, 0.1]] as const).map(([px, pz]) => (
+            <mesh key={`${px}${pz}`} position={[px, 0.85, pz]} castShadow>
+              <cylinderGeometry args={[0.06, 0.06, 1.7, 6]} />
+              <meshStandardMaterial color="#E8A33C" roughness={0.6} />
+            </mesh>
+          ))}
+          <mesh position={[0, 1.72, -0.4]} castShadow>
+            <boxGeometry args={[1.1, 0.1, 1.1]} />
+            <meshStandardMaterial color="#3BAF9F" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 1.06, 1.15]} rotation={[-0.55, 0, 0]} castShadow>
+            <boxGeometry args={[0.85, 0.08, 2.6]} />
+            <meshStandardMaterial color="#E8604C" roughness={0.55} />
+          </mesh>
+          <mesh position={[0, 0.85, -1.25]} rotation={[0.25, 0, 0]} castShadow>
+            <boxGeometry args={[0.7, 1.75, 0.08]} />
+            <meshStandardMaterial color="#FFF6E4" roughness={0.7} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 그네 */}
+      {!isBlocked(-19, 14) && (
+        <group position={[-19, 0, 14]} rotation={[0, -0.3, 0]}>
+          {([-1.4, 1.4] as const).map((sx) => (
+            <mesh key={sx} position={[sx, 1.1, 0]} castShadow>
+              <cylinderGeometry args={[0.07, 0.07, 2.2, 6]} />
+              <meshStandardMaterial color="#4A90D9" roughness={0.6} />
+            </mesh>
+          ))}
+          <mesh position={[0, 2.2, 0]} rotation={[0, 0, PI / 2]} castShadow>
+            <cylinderGeometry args={[0.07, 0.07, 3, 6]} />
+            <meshStandardMaterial color="#4A90D9" roughness={0.6} />
+          </mesh>
+          {([-0.6, 0.6] as const).map((sx) => (
+            <group key={sx}>
+              {([-0.18, 0.18] as const).map((rx) => (
+                <mesh key={rx} position={[sx + rx, 1.5, 0]}>
+                  <cylinderGeometry args={[0.02, 0.02, 1.3, 4]} />
+                  <meshStandardMaterial color="#8A8A8A" />
+                </mesh>
+              ))}
+              <mesh position={[sx, 0.85, 0]} castShadow>
+                <boxGeometry args={[0.5, 0.08, 0.3]} />
+                <meshStandardMaterial color="#E8604C" roughness={0.6} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+      )}
+
+      {/* 시소 */}
+      {!isBlocked(-12, 17) && (
+        <group position={[-12, 0, 17]} rotation={[0, 0.9, 0]}>
+          <mesh position={[0, 0.3, 0]} castShadow>
+            <cylinderGeometry args={[0.18, 0.26, 0.6, 8]} />
+            <meshStandardMaterial color="#7B4B94" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 0.62, 0]} rotation={[0, 0, 0.16]} castShadow>
+            <boxGeometry args={[3.4, 0.1, 0.4]} />
+            <meshStandardMaterial color="#E8A33C" roughness={0.6} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 모래놀이터 — 모래성 하나까지 */}
+      {!isBlocked(-17, 20) && (
+        <group position={[-17, 0, 20]}>
+          <mesh position={[0, 0.12, 0]} receiveShadow>
+            <cylinderGeometry args={[1.6, 1.7, 0.24, 8]} />
+            <meshStandardMaterial color="#C9A46B" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.25, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
+            <circleGeometry args={[1.35, 8]} />
+            <meshStandardMaterial color="#EFDCA8" roughness={1} />
+          </mesh>
+          <mesh position={[0.3, 0.45, 0.2]} castShadow>
+            <coneGeometry args={[0.3, 0.5, 6]} />
+            <meshStandardMaterial color="#E3CD96" roughness={1} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 사방치기 — 바닥에 그려진 놀이판 */}
+      {!isBlocked(5, 12) && (
+        <group position={[5, 0.035, 12]} rotation={[0, 0.15, 0]}>
+          {[[0, 0], [0, 1.05], [-0.55, 2.1], [0.55, 2.1], [0, 3.15], [-0.55, 4.2], [0.55, 4.2]].map(([hx, hz], i) => (
+            <mesh key={i} position={[hx, 0, hz]} rotation={[NEG_HALF_PI, 0, 0]}>
+              <planeGeometry args={[0.95, 0.95]} />
+              <meshStandardMaterial color="#FFF6E4" roughness={0.9} transparent opacity={0.85} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {/* 화단 — 입구 양옆 */}
+      {([-6, 6] as const).map((fx) => !isBlocked(fx, 7) && (
+        <group key={fx} position={[fx, 0, 7]}>
+          <mesh position={[0, 0.25, 0]} castShadow>
+            <boxGeometry args={[1.8, 0.5, 0.7]} />
+            <meshStandardMaterial color="#B0603F" roughness={0.85} />
+          </mesh>
+          {([-0.55, 0, 0.55] as const).map((px, i) => (
+            <mesh key={px} position={[px, 0.62, 0]}>
+              <sphereGeometry args={[0.22, 6, 5]} />
+              <meshStandardMaterial color={['#E8604C', '#E8A33C', '#D86CB0'][i]} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * 나비 — 마을에 움직이는 것이 아바타뿐이면 정지화면 같다.
+ * 학교 둘레를 몇 마리가 다른 반지름·속도로 맴돌고, 날개를 퍼덕인다.
+ */
+function Butterflies() {
+  const g = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    const grp = g.current;
+    if (!grp) return;
+    const t = clock.elapsedTime;
+    grp.children.forEach((b, i) => {
+      const sp = 0.22 + i * 0.05;
+      const rad = 16 + i * 9;
+      const a = t * sp + i * 2.4;
+      b.position.set(
+        Math.cos(a) * rad,
+        1.6 + Math.sin(t * 1.7 + i * 1.3) * 0.7,
+        Math.sin(a) * rad * 0.8
+      );
+      b.rotation.y = -a;
+      const flap = 0.7 + Math.sin(t * 12 + i) * 0.5;
+      b.children[0].rotation.z = flap;
+      b.children[1].rotation.z = -flap;
+    });
+  });
+  return (
+    <group ref={g}>
+      {['#E86CA8', '#E8A33C', '#7B4B94', '#3BAF9F', '#E8604C'].map((c, i) => (
+        <group key={i}>
+          {/* 날개는 몸통을 축으로 퍼덕여야 하므로 피벗 그룹 안에 넣는다 */}
+          <group>
+            <mesh position={[0.17, 0, 0]}>
+              <planeGeometry args={[0.34, 0.24]} />
+              <meshStandardMaterial color={c} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+          <group>
+            <mesh position={[-0.17, 0, 0]}>
+              <planeGeometry args={[0.34, 0.24]} />
+              <meshStandardMaterial color={c} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        </group>
+      ))}
     </group>
   );
 }
@@ -1139,6 +1518,8 @@ export default function VillageMapScene({
         <Roads list={data.rd} />
         <VillageProps radius={R} buildings={data.b} />
         <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
+        <SchoolYard buildings={data.b} />
+        <Butterflies />
 
         {/*
           우리 고장 유적 — **학교 바로 옆에 선다.**
