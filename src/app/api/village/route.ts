@@ -47,6 +47,12 @@ export interface VillageData {
   rd: { p: XZ[]; w: number }[];
   /** 물·공원 */
   a: { p: XZ[]; k: 'water' | 'park' }[];
+  /**
+   * 해안선. **OSM 규칙: 진행 방향 왼쪽이 육지, 오른쪽이 바다.**
+   * 이 규칙 덕에 바다가 어느 쪽인지 계산으로 나온다 — 손으로 적을 필요가 없다.
+   * 바닷가 마을이 아니면 없다.
+   */
+  cl?: XZ[][];
   /** 시설 표시 */
   poi: { x: number; z: number; k: string; n?: string }[];
 }
@@ -102,6 +108,7 @@ export async function POST(req: NextRequest) {
   way["building"](around:${RADIUS},${lat},${lng});
   way["highway"](around:${RADIUS},${lat},${lng});
   way["natural"="water"](around:${RADIUS},${lat},${lng});
+  way["natural"="coastline"](around:${RADIUS},${lat},${lng});
   way["leisure"](around:${RADIUS},${lat},${lng});
   node["amenity"](around:${RADIUS},${lat},${lng});
   node["shop"](around:${RADIUS},${lat},${lng});
@@ -169,7 +176,14 @@ out geom;`;
     return runs;
   };
 
-  const data: VillageData = { c: [lat, lng], r: RADIUS, b: [], rd: [], a: [], poi: [] };
+  const data: VillageData = { c: [lat, lng], r: RADIUS, b: [], rd: [], a: [], poi: [], cl: [] };
+
+  /**
+   * 해안선은 반경 밖까지 이어진다 — 길처럼 잘라내되 **더 넉넉히** 남긴다.
+   * 딱 반경에서 자르면 바다가 마을 모서리에서 끊겨 보인다.
+   */
+  const seaEdge = RADIUS * 1.6;
+  const insideSea = (p: XZ) => Math.abs(p[0]) <= seaEdge && Math.abs(p[1]) <= seaEdge;
 
   for (const e of elements) {
     const t = e.tags ?? {};
@@ -206,6 +220,17 @@ out geom;`;
         ...(t.name ? { n: t.name } : {}),
         ...(kind ? { k: kind } : {}),
       });
+    } else if (t.natural === 'coastline') {
+      /**
+       * **점 차례를 그대로 지킨다.** OSM 해안선은 방향에 뜻이 있다 —
+       * 진행 방향 왼쪽이 육지다. 뒤집거나 이어 붙이면 바다가 육지 쪽에 그려진다.
+       */
+      let cur: XZ[] = [];
+      for (const p of pts) {
+        if (insideSea(p)) cur.push(p);
+        else { if (cur.length >= 2) data.cl!.push(simplify(cur)); cur = []; }
+      }
+      if (cur.length >= 2) data.cl!.push(simplify(cur));
     } else if (t.highway) {
       const big = ['primary', 'secondary', 'tertiary', 'trunk'].includes(t.highway);
       for (const run of clip(pts)) data.rd.push({ p: simplify(run), w: big ? 8 : 4 });
@@ -264,6 +289,7 @@ out geom;`;
       roads: data.rd.length,
       areas: data.a.length,
       pois: data.poi.length,
+      coast: data.cl?.length ?? 0,
     },
     named: data.b.filter((b) => b.n).map((b) => b.n),
   });

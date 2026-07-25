@@ -30,6 +30,11 @@ const M_PER_DEG_LAT = 111320;
  * 스크립트는 TS 를 못 읽으니 여기 베껴 둔다 — 표를 고치면 여기도 고칠 것.
  */
 const SPOTS = [
+  /**
+   * **집 자리는 좌표를 여기 안 적는다.** 학교 문서의 좌표를 그대로 써야 한다 —
+   * 마을 원점이 곧 학교 자리라서, 다른 좌표로 구우면 **학교가 엉뚱한 데 선다.**
+   */
+  { id: 'aewol', name: '애월리(학교 둘레)', home: true, radius: 800 },
   { id: 'handam', name: '한담해변', lat: 33.4610, lng: 126.3105, radius: 600 },
   { id: 'gwakji', name: '곽지과물해변', lat: 33.4513, lng: 126.3047, radius: 800 },
 ];
@@ -48,6 +53,7 @@ async function overpass(lat, lng, RADIUS) {
   way["building"](around:${RADIUS},${lat},${lng});
   way["highway"](around:${RADIUS},${lat},${lng});
   way["natural"="water"](around:${RADIUS},${lat},${lng});
+  way["natural"="coastline"](around:${RADIUS},${lat},${lng});
   way["leisure"](around:${RADIUS},${lat},${lng});
   node["amenity"](around:${RADIUS},${lat},${lng});
   node["shop"](around:${RADIUS},${lat},${lng});
@@ -108,7 +114,11 @@ function build(elements, lat, lng, RADIUS) {
     return runs;
   };
 
-  const data = { c: [lat, lng], r: RADIUS, b: [], rd: [], a: [], poi: [] };
+  const data = { c: [lat, lng], r: RADIUS, b: [], rd: [], a: [], poi: [], cl: [] };
+
+  // 해안선은 길보다 넉넉히 남긴다 — 딱 반경에서 자르면 바다가 모서리에서 끊긴다
+  const seaEdge = RADIUS * 1.6;
+  const insideSea = (p) => Math.abs(p[0]) <= seaEdge && Math.abs(p[1]) <= seaEdge;
 
   for (const e of elements) {
     const t = e.tags ?? {};
@@ -133,6 +143,14 @@ function build(elements, lat, lng, RADIUS) {
         ...(t.name ? { n: t.name } : {}),
         ...(kind ? { k: kind } : {}),
       });
+    } else if (t.natural === 'coastline') {
+      // **점 차례를 지킨다** — 진행 방향 왼쪽이 육지다. 뒤집으면 바다가 뭍에 그려진다
+      let cur = [];
+      for (const p of pts) {
+        if (insideSea(p)) cur.push(p);
+        else { if (cur.length >= 2) data.cl.push(simplify(cur)); cur = []; }
+      }
+      if (cur.length >= 2) data.cl.push(simplify(cur));
     } else if (t.highway) {
       const big = ['primary', 'secondary', 'tertiary', 'trunk'].includes(t.highway);
       for (const run of clip(pts)) data.rd.push({ p: simplify(run), w: big ? 8 : 4 });
@@ -163,17 +181,38 @@ const app = initializeApp({
 const db = getFirestore(app);
 const bucket = getStorage(app).bucket();
 
+const schoolSnap = await db.doc(`schools/${SCHOOL_ID}`).get();
+if (!schoolSnap.exists) {
+  console.error(`학교를 찾을 수 없어요: ${SCHOOL_ID}`);
+  process.exit(1);
+}
+const school = schoolSnap.data();
+
 for (const spot of targets) {
+  // 집 자리는 **학교 좌표**를 쓴다 (원점이 곧 학교 자리다)
+  const lat = spot.home ? Number(school.lat) : spot.lat;
+  const lng = spot.home ? Number(school.lng) : spot.lng;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    console.log(`${spot.name} — 좌표가 없어 건너뜀`);
+    continue;
+  }
+
   process.stdout.write(`${spot.name} 굽는 중... `);
-  const els = await overpass(spot.lat, spot.lng, spot.radius);
-  const data = build(els, spot.lat, spot.lng, spot.radius);
+  const els = await overpass(lat, lng, spot.radius);
+  const data = build(els, lat, lng, spot.radius);
 
   if (data.b.length === 0 && data.rd.length === 0) {
     console.log('지도에 그려진 것이 거의 없어 건너뜀');
     continue;
   }
 
-  const path = `app-assets/villages/${SCHOOL_ID}-${spot.id}.json`;
+  /**
+   * 집 자리는 **예전 경로·필드를 그대로 쓴다.**
+   * 새 경로로 바꾸면 이 기능 이전 주소를 보던 화면이 빈 마을이 된다.
+   */
+  const path = spot.home
+    ? `app-assets/villages/${SCHOOL_ID}.json`
+    : `app-assets/villages/${SCHOOL_ID}-${spot.id}.json`;
   const file = bucket.file(path);
   await file.save(JSON.stringify(data), {
     contentType: 'application/json; charset=utf-8',
@@ -182,12 +221,16 @@ for (const spot of targets) {
   await file.makePublic();
   const url = `https://storage.googleapis.com/${bucket.name}/${path}?v=${Date.now()}`;
 
-  await db.doc(`schools/${SCHOOL_ID}`).set({ spotVillages: { [spot.id]: url } }, { merge: true });
+  await db.doc(`schools/${SCHOOL_ID}`).set(
+    spot.home ? { villageUrl: url } : { spotVillages: { [spot.id]: url } },
+    { merge: true }
+  );
 
   const named = data.b.filter((b) => b.n).map((b) => b.n);
   console.log(
-    `건물 ${data.b.length}채, 길 ${data.rd.length}조각, 시설 ${data.poi.length}곳`
-    + (named.length ? ` — ${named.slice(0, 4).join(', ')} …` : '')
+    `건물 ${data.b.length}채, 길 ${data.rd.length}조각, 시설 ${data.poi.length}곳,`
+    + ` 해안선 ${data.cl.length}줄`
+    + (named.length ? ` — ${named.slice(0, 3).join(', ')} …` : '')
   );
 
   // Overpass 를 몰아치면 막힌다. 한 자리 굽고 잠깐 쉰다.

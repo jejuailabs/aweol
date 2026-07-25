@@ -37,6 +37,8 @@ export interface VillageData {
   rd: { p: XZ[]; w: number }[];
   a: { p: XZ[]; k: 'water' | 'park' }[];
   poi: { x: number; z: number; k: string; n?: string }[];
+  /** 해안선. 없으면 바닷가 마을이 아니다(또는 아직 안 구웠다). */
+  cl?: XZ[][];
 }
 
 /**
@@ -1197,6 +1199,138 @@ function Butterflies() {
 }
 
 /**
+ * 바다 — **해안선에서 계산해 낸다.**
+ *
+ * 애월은 해안 마을이고 자리 셋 중 둘이 해변인데, 그동안 3D 에 바다가 없었다.
+ * 초록 풀밭이 수평선까지 이어져서 **바다 마을이 산골처럼 보였다.**
+ *
+ * 어느 쪽이 바다인지는 **적어 두지 않는다.** OSM 해안선에는 규칙이 있다 —
+ * **진행 방향 왼쪽이 육지, 오른쪽이 바다.** 그래서 점 차례만 지키면
+ * 바다 쪽은 계산으로 나온다. 자리를 늘려도 손댈 것이 없다.
+ *
+ * 우리 좌표는 x=동쪽, z=**남쪽**이다(위도를 뒤집었다). 이 평면에서
+ * 진행 방향 `d=(dx,dz)` 의 왼쪽은 `(dz,-dx)`, 오른쪽(바다)은 `(-dz,dx)` 다.
+ */
+function Sea({ lines, radius }: { lines: XZ[][]; radius: number }) {
+  const waves = useRef<THREE.Group>(null);
+
+  /** 해안선을 바다 쪽으로 넓혀 만든 물 덩어리 */
+  const geo = useMemo(() => {
+    const positions: number[] = [];
+    // 화면 끝까지 덮을 만큼 넉넉히 (수평선 안개가 끝을 가려 준다)
+    const OUT = radius * 3;
+
+    for (const line of lines) {
+      if (line.length < 2) continue;
+
+      /** 점마다 바다 쪽 방향 — 앞뒤 두 마디의 평균을 쓴다(모서리가 안 뜬다) */
+      const seaward: XZ[] = line.map((_, i) => {
+        const a = line[Math.max(0, i - 1)];
+        const b = line[Math.min(line.length - 1, i + 1)];
+        const dx = b[0] - a[0];
+        const dz = b[1] - a[1];
+        const len = Math.hypot(dx, dz) || 1;
+        // 오른쪽 = 바다
+        return [-dz / len, dx / len];
+      });
+
+      for (let i = 0; i < line.length - 1; i++) {
+        const p0 = line[i];
+        const p1 = line[i + 1];
+        const n0 = seaward[i];
+        const n1 = seaward[i + 1];
+        const q0: XZ = [p0[0] + n0[0] * OUT, p0[1] + n0[1] * OUT];
+        const q1: XZ = [p1[0] + n1[0] * OUT, p1[1] + n1[1] * OUT];
+        // 두 삼각형으로 한 칸을 채운다
+        positions.push(p0[0], 0, p0[1], q0[0], 0, q0[1], p1[0], 0, p1[1]);
+        positions.push(q0[0], 0, q0[1], q1[0], 0, q1[1], p1[0], 0, p1[1]);
+      }
+    }
+
+    if (positions.length === 0) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [lines, radius]);
+
+  useEffect(() => () => { geo?.dispose(); }, [geo]);
+
+  /** 물결 — 해안선을 따라 낮게 오르내리는 흰 띠 */
+  useFrame(({ clock }) => {
+    const g = waves.current;
+    if (!g) return;
+    const t = clock.elapsedTime;
+    g.children.forEach((c, i) => {
+      c.position.y = 0.16 + Math.sin(t * 0.9 + i * 0.7) * 0.07;
+      const m = (c as THREE.Mesh).material as THREE.Material & { opacity: number };
+      m.opacity = 0.34 + Math.sin(t * 0.9 + i * 0.7) * 0.16;
+    });
+  });
+
+  if (!geo) return null;
+
+  return (
+    <group>
+      {/* 물 — 바닥보다 살짝 낮게 깔아 모래와 자연스럽게 만난다 */}
+      <mesh geometry={geo} position={[0, 0.05, 0]} receiveShadow>
+        <meshStandardMaterial
+          color="#3E9BC4"
+          roughness={0.14}
+          metalness={0.22}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* 모래밭과 파도 — 해안선을 따라간다 */}
+      <group ref={waves}>
+        {lines.map((line, li) =>
+          line.slice(0, -1).map((p, i) => {
+            const q = line[i + 1];
+            const dx = q[0] - p[0];
+            const dz = q[1] - p[1];
+            const len = Math.hypot(dx, dz);
+            if (len < 3) return null;
+            return (
+              <mesh
+                key={`${li}-${i}`}
+                position={[(p[0] + q[0]) / 2, 0.16, (p[1] + q[1]) / 2]}
+                rotation={[NEG_HALF_PI, 0, Math.atan2(dx, dz)]}
+              >
+                <planeGeometry args={[7, len * 1.1]} />
+                <meshBasicMaterial color="#FFFFFF" transparent opacity={0.36} />
+              </mesh>
+            );
+          })
+        )}
+      </group>
+
+      {/* 백사장 — 물가에 밝은 모래 띠 */}
+      {lines.map((line, li) =>
+        line.slice(0, -1).map((p, i) => {
+          const q = line[i + 1];
+          const dx = q[0] - p[0];
+          const dz = q[1] - p[1];
+          const len = Math.hypot(dx, dz);
+          if (len < 3) return null;
+          return (
+            <mesh
+              key={`s${li}-${i}`}
+              position={[(p[0] + q[0]) / 2, 0.06, (p[1] + q[1]) / 2]}
+              rotation={[NEG_HALF_PI, 0, Math.atan2(dx, dz)]}
+              receiveShadow
+            >
+              <planeGeometry args={[16, len * 1.15]} />
+              <meshStandardMaterial color="#E8DCC0" roughness={0.95} />
+            </mesh>
+          );
+        })
+      )}
+    </group>
+  );
+}
+
+/**
  * 자리와 자리를 잇는 **끝단 화살표.**
  *
  * 마을 끝에 다다르면 보이지 않는 벽에 막힌다 — 그게 세상의 끝처럼 느껴지면
@@ -1728,6 +1862,8 @@ export default function VillageMapScene({
 
         <Ground R={R} />
         <Horizon R={R} />
+        {/* 바다 — 해안선이 구워져 있는 자리에만 (뭍 마을에는 안 뜬다) */}
+        {(data.cl?.length ?? 0) > 0 && <Sea lines={data.cl!} radius={R} />}
 
         <Areas list={data.a} />
         <Roads list={data.rd} />
@@ -2161,6 +2297,7 @@ export default function VillageMapScene({
           roads={data.rd}
           buildings={data.b}
           areas={data.a}
+          coast={data.cl}
           me={mePos}
           targets={targets}
           civicIds={civicIds}

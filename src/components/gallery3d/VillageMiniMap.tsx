@@ -26,6 +26,8 @@ interface Props {
   roads: { p: [number, number][]; w: number }[];
   buildings: { p: [number, number][]; n?: string }[];
   areas: { p: [number, number][]; k: 'water' | 'park' }[];
+  /** 해안선. 있으면 바다를 칠한다. */
+  coast?: [number, number][][];
   /** 지금 내가 선 자리와 보는 쪽 */
   me: { x: number; z: number; yaw?: number };
   targets: WarpTarget[];
@@ -49,7 +51,7 @@ const MAX_ZOOM = 6;
 const pathOf = (p: [number, number][]) => p.map(([x, z]) => `${x},${z}`).join(' ');
 
 export default function VillageMiniMap({
-  radius, roads, buildings, areas, me, targets, civicIds, onWarp, onClose,
+  radius, roads, buildings, areas, coast, me, targets, civicIds, onWarp, onClose,
   spots, currentSpot, onGoSpot,
 }: Props) {
   /** 'town' = 읍 지도(자리들), 'spot' = 지금 자리 안 */
@@ -172,6 +174,33 @@ export default function VillageMiniMap({
 
   const namedBuildings = useMemo(() => buildings.filter((b) => b.n), [buildings]);
   const plainBuildings = useMemo(() => buildings.filter((b) => !b.n), [buildings]);
+
+  /**
+   * 바다 — 해안선을 바다 쪽으로 넓혀 만든 다각형.
+   *
+   * 어느 쪽이 바다인지는 **OSM 규칙**으로 안다: 진행 방향 왼쪽이 육지.
+   * 우리 좌표(x=동, z=남)에서 오른쪽(바다)은 `(-dz, dx)` 다.
+   * 3D 의 `Sea` 와 같은 계산이라, 지도와 걸어다니는 화면의 바다가 어긋나지 않는다.
+   */
+  const seaPolys = useMemo(() => {
+    if (!coast?.length) return [];
+    const OUT = radius * 3;
+    return coast
+      .filter((line) => line.length >= 2)
+      .map((line) => {
+        const out: [number, number][] = [...line];
+        // 되짚어 오면서 바다 쪽으로 밀어낸 점을 잇는다 → 닫힌 다각형
+        for (let i = line.length - 1; i >= 0; i--) {
+          const a = line[Math.max(0, i - 1)];
+          const b = line[Math.min(line.length - 1, i + 1)];
+          const dx = b[0] - a[0];
+          const dz = b[1] - a[1];
+          const len = Math.hypot(dx, dz) || 1;
+          out.push([line[i][0] + (-dz / len) * OUT, line[i][1] + (dx / len) * OUT]);
+        }
+        return out;
+      });
+  }, [coast, radius]);
 
   /**
    * 읍 지도에 놓을 자리들 — **지금 자리를 원점으로 한 실제 미터.**
@@ -400,6 +429,23 @@ export default function VillageMiniMap({
               onPointerCancel={onUp}
               onWheel={(e) => setZoomAt(zoom * (e.deltaY < 0 ? 1.18 : 1 / 1.18))}
             >
+              {/* 바다 먼저 — 그 위에 물·공원·길이 얹힌다 */}
+              {seaPolys.map((poly, i) => (
+                <polygon key={`sea${i}`} points={pathOf(poly)} fill="#8FCDE4" stroke="none" />
+              ))}
+              {/* 파도가 이는 자리 — 해안선을 굵게 한 번 더 긋는다 */}
+              {(coast ?? []).map((line, i) => (
+                <polyline
+                  key={`cl${i}`}
+                  points={pathOf(line)}
+                  fill="none"
+                  stroke="#E8DCC0"
+                  strokeWidth={14}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+
               {/* 물·공원 — 바닥에 깔린 것부터 */}
               {areas.map((a, i) => (
                 <polygon
