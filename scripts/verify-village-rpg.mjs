@@ -125,11 +125,26 @@ for (const q of QUESTS) {
     if (c.kind === 'quest') ok(`${t}: ${c.questId} 는 있는 심부름이다`, QUESTS.some((x) => x.id === c.questId));
   }
 
-  if (q.quiz) {
-    ok(`${t}: 보기가 넷이다`, q.quiz.choices.length === 4);
-    ok(`${t}: 정답 번호가 보기 안에 있다`, q.quiz.correct >= 0 && q.quiz.correct < 4);
-    ok(`${t}: 보기가 겹치지 않는다`, new Set(q.quiz.choices).size === 4);
-    ok(`${t}: 왜 그런지가 있다`, q.quiz.why.length >= 10);
+  /**
+   * 문제 검사 — **`quiz` 는 목록이다.**
+   *
+   * 심부름 하나에 문제 하나이던 시절 모양(`q.quiz.choices`)이 그대로 남아 있어서
+   * 이 스크립트는 **문제가 있는 심부름을 만나는 순간 터졌다.** 검사기가 터지면
+   * 아무것도 검사하지 못한 것인데, 통과로 착각하기 쉽다.
+   *
+   * 보기 수는 넷으로 못박지 않는다 — 참/거짓 두 개짜리 문제도 쓸 수 있다.
+   */
+  if (Array.isArray(q.quiz)) {
+    q.quiz.forEach((qz, qi) => {
+      const n = qz.choices?.length ?? 0;
+      ok(`${t}: 문제${qi + 1} 보기가 둘 이상이다`, n >= 2);
+      ok(`${t}: 문제${qi + 1} 정답 번호가 보기 안에 있다`, qz.correct >= 0 && qz.correct < n);
+      ok(`${t}: 문제${qi + 1} 보기가 겹치지 않는다`, new Set(qz.choices).size === n);
+      ok(`${t}: 문제${qi + 1} 왜 그런지가 있다`, (qz.why ?? '').length >= 10);
+      ok(`${t}: 문제${qi + 1} 지문이 있다`, (qz.q ?? '').trim().length > 0);
+    });
+  } else {
+    ok(`${t}: 문제는 목록이어야 한다`, q.quiz === undefined);
   }
 
   // 유적으로 보내는 심부름은 그 유적이 이 학교 마을에 있어야 한다

@@ -1571,17 +1571,33 @@ export default function VillageMapScene({
       const kind = civicKindOf(b, localPlaces);
       if (kind) found.add(kind);
     }
-    const slots: [number, number][] = [
-      [60, -40], [-60, -50], [80, 30], [-80, 20], [50, 70], [-50, -80],
-    ];
-    let si = 0;
-    return localPlaces
-      .filter((p) => !found.has(p.kind))
-      .map((p) => {
-        const [x, z] = slots[si % slots.length];
-        si++;
-        return { place: p, x, z };
-      });
+    /**
+     * 세울 자리 — **기관 수보다 넉넉해야 한다.**
+     *
+     * 예전에는 자리가 여섯 개였는데 기관이 아홉이 되면서 `si % 6` 이 돌아,
+     * **일곱째부터 첫째 자리 위에 그대로 포개졌다.** 애월초는 OSM 건물에
+     * 기관 태그가 하나도 안 붙어 있어서 **아홉 곳이 전부 가상 건물**이다 —
+     * 실제로 세 채가 겹쳐 서 있었다. (애월진성·밭담이 겹친 것과 같은 실수다)
+     *
+     * 그래서 자리를 **계산해서 만든다.** 기관이 늘어도 자리가 모자라지 않는다.
+     * 학교(원점) 둘레 두 겹으로 돌려 세운다.
+     */
+    const need = localPlaces.filter((p) => !found.has(p.kind));
+    const ringOf = (i: number, n: number) => {
+      // 안쪽 겹은 여덟 자리, 그다음부터 바깥 겹
+      const inner = Math.min(8, n);
+      const isOuter = i >= inner;
+      const idx = isOuter ? i - inner : i;
+      const count = isOuter ? Math.max(1, n - inner) : inner;
+      const radius = isOuter ? 130 : 78;
+      // 겹마다 각도를 조금 틀어야 안쪽 건물과 일직선으로 겹쳐 보이지 않는다
+      const a = ((idx + 0.5) / count) * Math.PI * 2 + (isOuter ? 0.4 : 0);
+      return {
+        x: Math.round(Math.cos(a) * radius),
+        z: Math.round(Math.sin(a) * radius),
+      };
+    };
+    return need.map((p, i) => ({ place: p, ...ringOf(i, need.length) }));
   }, [data.b, localPlaces, isHome]);
 
   const targets: WarpTarget[] = useMemo(

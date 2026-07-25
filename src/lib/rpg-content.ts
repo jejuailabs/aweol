@@ -289,7 +289,21 @@ export function checkRpg(c: RpgContent): Problem[] {
       p.push({ level: 'warn', where: w, message: '끝나는 조건도 문제도 없어요 — 받자마자 끝나요' });
     }
 
-    if (q.quiz?.length) {
+    /**
+     * **문제는 목록이어야 한다.**
+     *
+     * 예전에는 심부름 하나에 문제 하나였고 `quiz` 가 객체였다. 목록으로 바꾼 뒤
+     * 검사는 `q.quiz?.length` 로만 봤는데, **객체에는 `length` 가 없어서
+     * 조용히 건너뛰었다** — 선생님이 예전에 저장해 둔 문제는 아무 검사도
+     * 안 받고 통과했다. 모양이 다르면 여기서 잡는다.
+     */
+    if (q.quiz && !Array.isArray(q.quiz)) {
+      p.push({
+        level: 'error',
+        where: w,
+        message: '문제가 옛 모양이에요 — 문제 목록으로 바꿔 주세요',
+      });
+    } else if (q.quiz?.length) {
       for (const qz of q.quiz) {
         if ((qz.choices?.length ?? 0) < 2) {
           p.push({ level: 'error', where: w, message: '문제 보기가 두 개는 있어야 해요' });

@@ -136,18 +136,34 @@ ok('사람을 지우면 그 사람이 주던 심부름이 걸린다', errorsOf(c
 const hidSite = { ...base, sites: base.sites.filter((s) => s.id !== 'aewol-jinseong') };
 ok('유적을 감추면 그리로 보내던 심부름이 걸린다', err(hidSite).includes('없는 곳으로 보내요'));
 
-/** 문제(quiz) 검사 */
+/**
+ * 문제(quiz) 검사.
+ *
+ * **문제는 목록이다.** 예전에는 심부름 하나에 문제 하나였고 `quiz` 가 객체였는데,
+ * 이 시험이 그 시절 모양 그대로 남아 있었다. 객체에는 `length` 가 없어서
+ * 검사가 통째로 건너뛰었고, **그물이 뚫린 줄 아무도 몰랐다**(세 줄이 계속 빨간불).
+ */
 const badQuiz = {
   ...base,
   quests: [...base.quests, {
     ...base.quests[0], id: 'q-bad', need: [],
-    quiz: { q: '', choices: ['하나'], correct: 5, why: '' },
+    quiz: [{ q: '', choices: ['하나'], correct: 5, why: '' }],
   }],
 };
 const bq = err(badQuiz);
 ok('보기가 모자라면 잡는다', bq.includes('보기가 두 개는'));
 ok('정답 번호가 밖이면 잡는다', bq.includes('정답 번호가 보기 밖'));
 ok('문제가 비면 잡는다', bq.includes('문제가 비어'));
+
+/** 옛 모양(객체)으로 저장된 문제도 잡아야 한다 — 조용히 통과하면 안 된다 */
+const oldShapeQuiz = {
+  ...base,
+  quests: [...base.quests, {
+    ...base.quests[0], id: 'q-old', need: [],
+    quiz: { q: '옛날 모양', choices: ['가', '나'], correct: 0, why: '' },
+  }],
+};
+ok('옛 모양 문제를 잡는다', err(oldShapeQuiz).includes('옛 모양'));
 
 /** 유튜브 id */
 const badVideo = {
