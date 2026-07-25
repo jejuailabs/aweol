@@ -15,6 +15,7 @@ import type { PeerLook } from '@/lib/presence';
 import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
 import { gatesFrom, type VillageSpot } from '@/lib/village-spots';
 import { PICK_RADIUS, itemsOfSpot, type CollectItem } from '@/lib/village-collect';
+import { seaMask, seaRects } from '@/lib/village-sea';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
@@ -936,20 +937,45 @@ function Ground({ R }: { R: number }) {
  * 실제로 보이는 방향이다.
  */
 function Horizon({ R }: { R: number }) {
+  /**
+   * **걸어다니는 데까지 들어오면 안 된다.**
+   *
+   * 처음에는 언덕을 `R*1.18` 에 세웠는데, 언덕 반지름이 `R*0.26` 까지라
+   * 안쪽 끝이 `R*0.92` 였다 — 걸어다니는 범위(±R) 안이다. 차를 타고 끝으로
+   * 가면 **언덕 속으로 들어가 초록 화면만 보였다.** 한라산은 더했다:
+   * 걸어다니는 곳은 네모(±R)라 모서리가 `R*1.41` 인데, 한라산이 그 모서리를
+   * 통째로 덮고 있었다.
+   *
+   * 그래서 **네모의 모서리(R*√2)** 를 기준으로 비켜 세운다.
+   * 원이 아니라 네모라는 것을 놓치면 딱 모서리에서만 파묻힌다.
+   */
+  const CLEAR = 1.55; // R*1.55 > R*1.41(모서리) — 여유를 둔다
+
   const hills = useMemo(() => {
     const out: { x: number; z: number; r: number; h: number }[] = [];
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * PI * 2 + 0.26;
-      const dist = R * (1.18 + (i % 3) * 0.12);
+      const r = R * 0.14 + (i % 4) * R * 0.04;
+      // 안쪽 끝이 R*CLEAR 에 오도록 — 반지름만큼 더 밀어낸다
+      const dist = R * CLEAR + r + (i % 3) * R * 0.1;
       out.push({
         x: Math.cos(a) * dist,
         z: Math.sin(a) * dist,
-        r: R * 0.14 + (i % 4) * R * 0.04,
+        r,
         h: R * 0.045 + (i % 3) * R * 0.02,
       });
     }
     return out;
   }, [R]);
+
+  /** 한라산 — 남동쪽. 반지름만큼 더 밀어 모서리를 비킨다. */
+  const halla = useMemo(() => {
+    const r = R * 0.85;
+    const dist = R * CLEAR + r;
+    // 남동쪽 (x=동, z=남)
+    return { x: dist * 0.45, z: dist * 0.89, r, h: R * 0.4 };
+  }, [R]);
+
   return (
     <group>
       {hills.map((h, i) => (
@@ -958,9 +984,9 @@ function Horizon({ R }: { R: number }) {
           <meshStandardMaterial color="#7FBF77" roughness={1} />
         </mesh>
       ))}
-      {/* 한라산 — 남동쪽 멀리, 안개 너머 실루엣으로 */}
-      <mesh position={[R * 0.9, R * 0.19, R * 1.7]}>
-        <coneGeometry args={[R * 0.85, R * 0.4, 9]} />
+      {/* 한라산 — 안개 너머 실루엣으로 */}
+      <mesh position={[halla.x, halla.h / 2 - 0.5, halla.z]}>
+        <coneGeometry args={[halla.r, halla.h, 9]} />
         <meshStandardMaterial color="#6FA982" roughness={1} />
       </mesh>
     </group>
@@ -1287,40 +1313,26 @@ function Collectibles({
 function Sea({ lines, radius }: { lines: XZ[][]; radius: number }) {
   const waves = useRef<THREE.Group>(null);
 
-  /** 해안선을 바다 쪽으로 넓혀 만든 물 덩어리 */
+  /**
+   * 물 덩어리 — **칸마다 바다인지 물어서** 만든다.
+   *
+   * 예전에는 해안선을 바다 쪽으로 밀어내 사각형을 이어 붙였는데,
+   * 굽은 해안(애월항)에서 그 조각들이 **마을 전체를 덮었다.**
+   * 지금은 `seaMask` 가 칸마다 '가장 가까운 해안선의 어느 쪽인가' 로 답한다.
+   */
   const geo = useMemo(() => {
+    const rects = seaRects(seaMask(lines, radius, 16));
+    if (rects.length === 0) return null;
+
     const positions: number[] = [];
-    // 화면 끝까지 덮을 만큼 넉넉히 (수평선 안개가 끝을 가려 준다)
-    const OUT = radius * 3;
-
-    for (const line of lines) {
-      if (line.length < 2) continue;
-
-      /** 점마다 바다 쪽 방향 — 앞뒤 두 마디의 평균을 쓴다(모서리가 안 뜬다) */
-      const seaward: XZ[] = line.map((_, i) => {
-        const a = line[Math.max(0, i - 1)];
-        const b = line[Math.min(line.length - 1, i + 1)];
-        const dx = b[0] - a[0];
-        const dz = b[1] - a[1];
-        const len = Math.hypot(dx, dz) || 1;
-        // 오른쪽 = 바다
-        return [-dz / len, dx / len];
-      });
-
-      for (let i = 0; i < line.length - 1; i++) {
-        const p0 = line[i];
-        const p1 = line[i + 1];
-        const n0 = seaward[i];
-        const n1 = seaward[i + 1];
-        const q0: XZ = [p0[0] + n0[0] * OUT, p0[1] + n0[1] * OUT];
-        const q1: XZ = [p1[0] + n1[0] * OUT, p1[1] + n1[1] * OUT];
-        // 두 삼각형으로 한 칸을 채운다
-        positions.push(p0[0], 0, p0[1], q0[0], 0, q0[1], p1[0], 0, p1[1]);
-        positions.push(q0[0], 0, q0[1], q1[0], 0, q1[1], p1[0], 0, p1[1]);
-      }
+    for (const r of rects) {
+      const x0 = r.x;
+      const x1 = r.x + r.w;
+      const z0 = r.z;
+      const z1 = r.z + r.d;
+      positions.push(x0, 0, z0, x0, 0, z1, x1, 0, z0);
+      positions.push(x1, 0, z0, x0, 0, z1, x1, 0, z1);
     }
-
-    if (positions.length === 0) return null;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     g.computeVertexNormals();
@@ -1917,7 +1929,11 @@ export default function VillageMapScene({
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
         shadows
-        camera={{ position: [0, 24, 60], fov: 58, near: 0.5, far: 1600 }}
+        /**
+         * `far` 는 지평선 언덕까지 담아야 한다. 한라산이 `R*3.25` 까지 뻗으므로
+         * 1600 으로 두면 **R=800 인 자리에서 산이 잘려 사라진다.**
+         */
+        camera={{ position: [0, 24, 60], fov: 58, near: 0.5, far: 6000 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
       >
@@ -1943,7 +1959,8 @@ export default function VillageMapScene({
           shadow-bias={-0.0005}
         />
         {/* 멀리 갈수록 하늘색에 잠긴다 — 마을 끝이 뚝 끊겨 보이지 않는다 */}
-        <fog attach="fog" args={['#BFE8F5', R * 0.45, R * 2.4]} />
+        {/* 언덕을 멀리 밀어냈으므로 안개도 그만큼 멀리 걷어야 산이 보인다 */}
+        <fog attach="fog" args={['#BFE8F5', R * 0.5, R * 3.6]} />
 
         <Ground R={R} />
         <Horizon R={R} />

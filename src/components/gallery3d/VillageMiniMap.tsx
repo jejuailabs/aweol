@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { WarpTarget } from '@/lib/village-travel';
 import { spotVector, type VillageSpot } from '@/lib/village-spots';
+import { seaMask, seaRects } from '@/lib/village-sea';
 
 /**
  * 마을 지도 — **두 층으로 본다.**
@@ -176,31 +177,16 @@ export default function VillageMiniMap({
   const plainBuildings = useMemo(() => buildings.filter((b) => !b.n), [buildings]);
 
   /**
-   * 바다 — 해안선을 바다 쪽으로 넓혀 만든 다각형.
+   * 바다 — **3D 와 똑같이** 칸마다 물어서 칠한다(`village-sea.ts`).
    *
-   * 어느 쪽이 바다인지는 **OSM 규칙**으로 안다: 진행 방향 왼쪽이 육지.
-   * 우리 좌표(x=동, z=남)에서 오른쪽(바다)은 `(-dz, dx)` 다.
-   * 3D 의 `Sea` 와 같은 계산이라, 지도와 걸어다니는 화면의 바다가 어긋나지 않는다.
+   * 예전에는 해안선을 바다 쪽으로 밀어내 다각형을 만들었는데, 굽은 해안에서
+   * 그것이 **마을 전체를 덮었다.** 지도와 걸어다니는 화면이 같은 계산을 써야
+   * 어긋나지 않는다 — 한쪽만 고치면 반드시 다시 어긋난다.
    */
-  const seaPolys = useMemo(() => {
-    if (!coast?.length) return [];
-    const OUT = radius * 3;
-    return coast
-      .filter((line) => line.length >= 2)
-      .map((line) => {
-        const out: [number, number][] = [...line];
-        // 되짚어 오면서 바다 쪽으로 밀어낸 점을 잇는다 → 닫힌 다각형
-        for (let i = line.length - 1; i >= 0; i--) {
-          const a = line[Math.max(0, i - 1)];
-          const b = line[Math.min(line.length - 1, i + 1)];
-          const dx = b[0] - a[0];
-          const dz = b[1] - a[1];
-          const len = Math.hypot(dx, dz) || 1;
-          out.push([line[i][0] + (-dz / len) * OUT, line[i][1] + (dx / len) * OUT]);
-        }
-        return out;
-      });
-  }, [coast, radius]);
+  const seaRectList = useMemo(
+    () => seaRects(seaMask(coast, radius, 16)),
+    [coast, radius]
+  );
 
   /**
    * 읍 지도에 놓을 자리들 — **지금 자리를 원점으로 한 실제 미터.**
@@ -430,8 +416,16 @@ export default function VillageMiniMap({
               onWheel={(e) => setZoomAt(zoom * (e.deltaY < 0 ? 1.18 : 1 / 1.18))}
             >
               {/* 바다 먼저 — 그 위에 물·공원·길이 얹힌다 */}
-              {seaPolys.map((poly, i) => (
-                <polygon key={`sea${i}`} points={pathOf(poly)} fill="#8FCDE4" stroke="none" />
+              {seaRectList.map((r, i) => (
+                <rect
+                  key={`sea${i}`}
+                  x={r.x}
+                  y={r.z}
+                  width={r.w}
+                  /* 칸 사이에 실틈이 보이지 않게 아주 조금 겹친다 */
+                  height={r.d + 0.5}
+                  fill="#8FCDE4"
+                />
               ))}
               {/* 파도가 이는 자리 — 해안선을 굵게 한 번 더 긋는다 */}
               {(coast ?? []).map((line, i) => (
