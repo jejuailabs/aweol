@@ -90,6 +90,20 @@ const SCHOOL_OBSTACLES: Obstacle[] = [
   // 기억창고 · 운동장 입구 (아래 SidePlace 배치와 같은 좌표여야 한다)
   { x: -11.5, z: 8.5, halfW: 2.2, halfD: 1.9 },
   { x: 11.5, z: 8.5, halfW: 2.2, halfD: 1.9 },
+  /**
+   * 학교 본관·현관탑.
+   * 전에는 이동 범위가 건물 앞(zMin -1.5)에서 끝나 벽 판정이 필요 없었다.
+   * 이제 뒤뜰까지 걸어갈 수 있으므로 **건물을 뚫고 지나가지 못하게** 막는다.
+   */
+  { x: 0, z: -6, halfW: 9.2, halfD: 3.2 },
+  { x: 0, z: -2.3, halfW: 2.4, halfD: 0.9 },
+  // 뒤뜰 시설 (아래 Backyard 배치와 같은 좌표)
+  { x: -6, z: -12.5, halfW: 1.8, halfD: 1.3 },
+  { x: -1.5, z: -12.5, halfW: 1.8, halfD: 1.3 },
+  { x: 8, z: -13.5, halfW: 0.3, halfD: 0.3 },
+  { x: -11, z: -13, halfW: 1.3, halfD: 1 },
+  { x: -16, z: -13, halfW: 0.4, halfD: 0.4 },
+  { x: 15.5, z: -12, halfW: 0.4, halfD: 0.4 },
 ];
 
 const PI = Math.PI;
@@ -694,6 +708,132 @@ function SidePlace({
   );
 }
 
+// --------------- 뒤뜰 ---------------
+/**
+ * 학교 뒤뜰 — 건물 뒤로 걸어가면 나오는 공간.
+ *
+ * 전에는 이동 범위가 건물 앞에서 끝나 뒤뜰이 아예 없었다. 범위를 열었으니
+ * 빈 잔디만 있으면 "가봤는데 아무것도 없네"가 된다 — **돌아간 아이만 보는
+ * 보상**으로 텃밭·토끼장·농구골대·철봉을 둔다. 실제 초등학교 뒤뜰에 있는 것들이다.
+ */
+function Backyard() {
+  return (
+    <group>
+      {/* 뒷문 — 본관 뒷벽에. 문이 있어야 건물 뒤가 '뒷면'이 아니라 '뒤뜰'로 읽힌다 */}
+      <mesh position={[0, 1.1, -9.08]}>
+        <boxGeometry args={[1.6, 2.2, 0.1]} />
+        <meshStandardMaterial color="#8A5A3B" roughness={0.6} />
+      </mesh>
+      {/* 텃밭 두 뙈기 — 고랑과 팻말까지 */}
+      {([[-6, '#E8604C'], [-1.5, '#FFD93D']] as [number, string][]).map(([bx, crop]) => (
+        <group key={bx} position={[bx, 0, -12.5]}>
+          <mesh position={[0, 0.12, 0]} receiveShadow>
+            <boxGeometry args={[3.4, 0.24, 2.4]} />
+            <meshStandardMaterial color="#8A6B4A" roughness={1} />
+          </mesh>
+          {([-0.7, 0, 0.7] as const).map((gz) => (
+            <mesh key={gz} position={[0, 0.3, gz]} castShadow>
+              <boxGeometry args={[3, 0.2, 0.4]} />
+              <meshStandardMaterial color="#4FA85E" roughness={0.95} />
+            </mesh>
+          ))}
+          {/* 열매 몇 알 — 방울토마토·호박 */}
+          {([-1, 0.2, 1.1] as const).map((fx) => (
+            <mesh key={fx} position={[fx, 0.45, -0.7]}>
+              <sphereGeometry args={[0.12, 6, 5]} />
+              <meshStandardMaterial color={crop} />
+            </mesh>
+          ))}
+          <mesh position={[1.5, 0.55, 1]} castShadow>
+            <boxGeometry args={[0.5, 0.4, 0.05]} />
+            <meshStandardMaterial color="#E8D7BC" roughness={0.9} />
+          </mesh>
+          <mesh position={[1.5, 0.2, 1]}>
+            <cylinderGeometry args={[0.03, 0.03, 0.4, 4]} />
+            <meshStandardMaterial color="#8A6038" />
+          </mesh>
+        </group>
+      ))}
+      {/* 토끼장 — 흰 토끼가 산다 */}
+      <group position={[-11, 0, -13]}>
+        <mesh position={[0, 0.7, 0]} castShadow>
+          <boxGeometry args={[2.4, 1.4, 1.8]} />
+          <meshStandardMaterial color="#B08860" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 1.55, 0]} rotation={[0, HALF_PI, 0]} castShadow>
+          <cylinderGeometry args={[1.05, 1.05, 2.6, 3, 1, false, 0, PI]} />
+          <meshStandardMaterial color="#8A6038" roughness={0.8} />
+        </mesh>
+        {/* 철망 자리 — 밝은 판으로 줄인다 */}
+        <mesh position={[0, 0.7, 0.92]}>
+          <planeGeometry args={[1.9, 1]} />
+          <meshStandardMaterial color="#E8E0D0" roughness={0.95} />
+        </mesh>
+        {/* 토끼 — 몸통·머리·귀 */}
+        <group position={[0.2, 0, 1.6]}>
+          <mesh position={[0, 0.22, 0]} castShadow>
+            <sphereGeometry args={[0.24, 7, 5]} />
+            <meshStandardMaterial color="#F5F0E8" roughness={0.95} />
+          </mesh>
+          <mesh position={[0, 0.45, 0.12]}>
+            <sphereGeometry args={[0.16, 7, 5]} />
+            <meshStandardMaterial color="#F5F0E8" roughness={0.95} />
+          </mesh>
+          {([-0.07, 0.07] as const).map((ex) => (
+            <mesh key={ex} position={[ex, 0.66, 0.08]} rotation={[0.15, 0, 0]}>
+              <cylinderGeometry args={[0.035, 0.05, 0.26, 5]} />
+              <meshStandardMaterial color="#F8D8DC" roughness={0.9} />
+            </mesh>
+          ))}
+        </group>
+      </group>
+      {/* 농구골대 */}
+      <group position={[8, 0, -13.5]}>
+        <mesh position={[0, 1.6, 0]} castShadow>
+          <cylinderGeometry args={[0.09, 0.12, 3.2, 6]} />
+          <meshStandardMaterial color="#7A7A7A" metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 3.1, 0.25]} castShadow>
+          <boxGeometry args={[1.7, 1.1, 0.08]} />
+          <meshStandardMaterial color="#FFFFFF" roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 2.75, 0.55]} rotation={[HALF_PI, 0, 0]}>
+          <torusGeometry args={[0.3, 0.04, 6, 14]} />
+          <meshStandardMaterial color="#E8604C" roughness={0.5} />
+        </mesh>
+        {/* 공 하나 굴러다닌다 */}
+        <mesh position={[1.1, 0.25, 1]} castShadow>
+          <sphereGeometry args={[0.25, 8, 6]} />
+          <meshStandardMaterial color="#D97B3C" roughness={0.8} />
+        </mesh>
+      </group>
+      {/* 철봉 — 키 순서대로 세 단 */}
+      <group position={[3, 0, -12.5]}>
+        {([[-1.1, 1.1], [0, 1.5], [1.1, 1.9]] as [number, number][]).map(([px, h]) => (
+          <group key={px}>
+            {([-0.45, 0.45] as const).map((sx) => (
+              <mesh key={sx} position={[px + sx, h / 2, 0]} castShadow>
+                <cylinderGeometry args={[0.05, 0.05, h, 6]} />
+                <meshStandardMaterial color="#4A90D9" metalness={0.3} roughness={0.5} />
+              </mesh>
+            ))}
+            <mesh position={[px, h, 0]} rotation={[0, 0, HALF_PI]}>
+              <cylinderGeometry args={[0.04, 0.04, 0.9, 6]} />
+              <meshStandardMaterial color="#C0C0C0" metalness={0.6} roughness={0.3} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+      {/* 뒤뜰 꽃·나무 */}
+      {([[-14, -10, '#FF8FB1'], [-4, -15.5, '#C3A6FF'], [5.5, -15, '#FFD93D'], [12, -11, '#FF8FB1']] as [number, number, string][]).map(([x, z, c], i) => (
+        <Flower key={`bf-${i}`} position={[x, 0, z]} color={c} />
+      ))}
+      <Tree position={[-16, 0, -13]} scale={1.1} />
+      <Tree position={[15.5, 0, -12]} scale={0.95} />
+    </group>
+  );
+}
+
 // --------------- 깃대 ---------------
 function FlagPole() {
   const flagRef = useRef<THREE.Mesh>(null);
@@ -880,6 +1020,7 @@ export default function SchoolScene({
           kind={kind}
         />
         <FlagPole />
+        <Backyard />
         <Tree position={[-10.5, 0, -1]} scale={1.15} />
         <Tree position={[10.5, 0, -1.5]} scale={1.05} />
         <Tree position={[-8, 0, 4]} scale={0.85} />
@@ -908,7 +1049,12 @@ export default function SchoolScene({
         <Cloud position={[0, 11, -12]} speed={0.18} />
         <WalkerAvatar
           avatarPos={avatarPos}
-          bounds={{ xMin: -14, xMax: 14, zMin: -1.5, zMax: 16 }}
+          /**
+           * 뒤뜰까지 연다. 전에는 zMin -1.5 라 건물 뒤로 못 갔다 —
+           * "뒤에 뭐가 있나" 돌아가 본 아이가 벽에 막히면 세상이 좁아 보인다.
+           * 언덕(z≈-20) 앞에서 멈춘다. 건물 벽은 obstacles 가 막는다.
+           */
+          bounds={{ xMin: -20, xMax: 20, zMin: -16.5, zMax: 16 }}
           start={[0, 0, 11]}
           maxSpeed={5}
           avatarId={avatarId}
