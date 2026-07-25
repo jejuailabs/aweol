@@ -1144,15 +1144,21 @@ export default function CivicPlaceScene({
       {/*
         여기 와야 되는 일 — **창구 사람 말과 다른 것**이다.
         사람은 '내가 무슨 일을 하는가' 를 말하고, 여기는 '네가 무엇을 할 수 있는가' 다.
+
+        **말 거는 칸과 같은 자리(3층)를 쓴다. 그래서 둘 중 하나만 뜬다.**
+        둘 다 띄웠더니 작은 화면에서 그대로 포개졌다. 사람 앞에 서 있는 동안은
+        그 사람 말이 먼저다 — 목록은 물러났다가, 떨어지면 돌아온다.
       */}
-      <div className="pos-hint absolute left-3 right-3 z-20 mx-auto max-w-[420px] rounded-2xl px-4 py-3 pointer-events-none"
-        style={{ background: 'rgba(255,248,231,0.94)', color: '#5B4A3B' }}
-      >
-        <div className="text-[13px] font-black mb-1">여기서 할 수 있는 일</div>
-        <ul className="text-[12px] leading-relaxed list-disc pl-4">
-          {place.todo.map((t) => <li key={t}>{t.replace(/\*\*/g, '')}</li>)}
-        </ul>
-      </div>
+      {!nearClerk && !anyModal && (
+        <div className="pos-hint absolute left-3 right-3 z-20 mx-auto max-w-[420px] rounded-2xl px-4 py-3 pointer-events-none"
+          style={{ background: 'rgba(255,248,231,0.94)', color: '#5B4A3B' }}
+        >
+          <div className="text-[13px] font-black mb-1">여기서 할 수 있는 일</div>
+          <ul className="text-[12px] leading-relaxed list-disc pl-4">
+            {place.todo.map((t) => <li key={t}>{t.replace(/\*\*/g, '')}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

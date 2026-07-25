@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { WarpTarget } from '@/lib/village-travel';
 import { spotVector, type VillageSpot } from '@/lib/village-spots';
 
@@ -45,8 +45,6 @@ interface Props {
 /** 얼마나 당겨 볼 수 있나 — 1 은 자리 전체, 6 이면 한 골목 */
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 6;
-/** 가로:세로. 화면이 가로로 길어서 지도도 눕힌다. */
-const ASPECT = 16 / 9;
 
 const pathOf = (p: [number, number][]) => p.map(([x, z]) => `${x},${z}`).join(' ');
 
@@ -62,6 +60,29 @@ export default function VillageMiniMap({
   const drag = useRef<{ x: number; y: number; cx: number; cz: number } | null>(null);
   const [grabbing, setGrabbing] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  /**
+   * 지도 그릇의 **실제 비율**을 잰다.
+   *
+   * 16:9 로 못박아 두면 컴퓨터에서는 시원한데 **휴대폰 세로 화면에서는
+   * 납작한 띠 하나**가 된다 — 화면의 4분의 1도 못 채운다.
+   * 그릇이 잡은 만큼 그대로 쓰면 어느 기기에서든 꽉 찬다.
+   */
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [aspect, setAspect] = useState(16 / 9);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setAspect(r.width / r.height);
+    };
+    measure();
+    const obs = new ResizeObserver(measure);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const ASPECT = aspect;
 
   /** 보는 네모의 **세로** 한 변(미터). 가로는 여기에 ASPECT 를 곱한다. */
   const span = (radius * 2) / zoom;
@@ -202,7 +223,8 @@ export default function VillageMiniMap({
         className="w-full rounded-3xl overflow-hidden flex flex-col"
         style={{
           maxWidth: 'min(96vw, 1180px)',
-          maxHeight: '92vh',
+          // 화면을 거의 다 쓴다 — 지도는 클수록 쓸모가 커진다
+          height: '92vh',
           background: '#FAF5EA',
           border: '3px solid rgba(255,255,255,0.7)',
         }}
@@ -263,13 +285,18 @@ export default function VillageMiniMap({
           </div>
         )}
 
-        <div className="relative flex-1 min-h-0">
+        {/*
+          지도 그릇 — **남은 자리를 다 쓴다.**
+          비율을 못박지 않고 그릇 크기를 재서 그린다(위 ResizeObserver).
+          그래서 휴대폰 세로에서도, 컴퓨터 가로에서도 꽉 찬다.
+        */}
+        <div ref={boxRef} className="relative flex-1 min-h-[46vh]">
           {level === 'town' ? (
             /* ---------- 읍 지도 ---------- */
             <svg
               viewBox={townViewBox}
-              className="w-full block select-none"
-              style={{ background: '#DCEFD6', aspectRatio: `${ASPECT}`, maxHeight: '70vh' }}
+              className="block select-none absolute inset-0 h-full w-full"
+              style={{ background: '#DCEFD6' }}
             >
               {/* 바다 — 애월은 북쪽이 바다다. 방위를 몸으로 익히는 데 이만한 게 없다. */}
               <rect
@@ -364,12 +391,9 @@ export default function VillageMiniMap({
             <svg
               ref={svgRef}
               viewBox={viewBox}
-              className="w-full block touch-none select-none"
+              className="block touch-none select-none absolute inset-0 h-full w-full"
               // 끄는 중인지는 상태로 둔다 — ref 를 그리는 중에 읽으면 안 된다
-              style={{
-                background: '#DCEFD6', aspectRatio: `${ASPECT}`, maxHeight: '70vh',
-                cursor: grabbing ? 'grabbing' : 'grab',
-              }}
+              style={{ background: '#DCEFD6', cursor: grabbing ? 'grabbing' : 'grab' }}
               onPointerDown={onDown}
               onPointerMove={onMove}
               onPointerUp={onUp}
