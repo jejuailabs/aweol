@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -10,7 +10,7 @@ import {
   requestAttack, setMovementLock, wasTap,
   type Obstacle, type AvatarCustom, type AvatarTint,
 } from './walker';
-import VillageMobs from './VillageMobs';
+import VillageMobs, { type OffscreenMob } from './VillageMobs';
 import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
@@ -34,6 +34,49 @@ import {
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
 const NEG_HALF_PI = -PI * 0.5;
+
+/**
+ * 화면 비율에 맞춰 시야를 넓힌다.
+ *
+ * **`fov` 는 세로 기준이다.** 그래서 화면이 좁고 길면 가로로 보이는 폭이
+ * 통째로 줄어든다 — 같은 58도인데
+ *
+ *   PC(1280x720)  가로 시야 89도
+ *   폰(375x812)   가로 시야 **29도**
+ *
+ * 세 배 차이다. 마을에 몹과 주울 것을 12m 간격으로 흩어 놓았어도, 폰에서는
+ * 그 좁은 29도 안에 든 것만 보인다 — "모바일에서는 몹이 안 보인다" 가 이것이다.
+ *
+ * 그래서 **가로 시야를 목표로 잡고 세로를 거꾸로 계산한다**(게임에서 흔히
+ * 쓰는 Hor+ 방식). 다만 끝까지 늘리면 어안렌즈처럼 휘어 보이므로 위를 막아둔다.
+ */
+const H_FOV_TARGET = 76;
+const V_FOV_MIN = 52;
+const V_FOV_MAX = 74;
+
+const fovFor = (aspect: number) => {
+  if (!Number.isFinite(aspect) || aspect <= 0) return 58;
+  const half = Math.atan(Math.tan((H_FOV_TARGET / 2) * (PI / 180)) / aspect);
+  const v = (half * 2 * 180) / PI;
+  return Math.max(V_FOV_MIN, Math.min(V_FOV_MAX, v));
+};
+
+/**
+ * 화면이 바뀔 때마다 시야를 다시 맞춘다.
+ * 가로/세로를 돌리거나 창을 줄여도 보이는 폭이 그대로 유지된다.
+ */
+function FitFov() {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    if (!cam.isPerspectiveCamera) return;
+    const next = fovFor(size.width / size.height);
+    if (Math.abs(cam.fov - next) < 0.01) return;
+    cam.fov = next;
+    cam.updateProjectionMatrix();
+  }, [camera, size.width, size.height]);
+  return null;
+}
 
 /** 로그인 전에는 이걸 그대로 쓴다 — 그릴 때마다 새 집합을 만들면 안 된다 */
 const EMPTY_PICKED: ReadonlySet<string> = new Set();
@@ -1899,6 +1942,8 @@ export default function VillageMapScene({
   const [justPurified, setJustPurified] = useState<Mob | null>(null);
   /** 칼을 뽑고 있나 — 뽑았으면 아래 단추가 '베기' 로 바뀐다 */
   const [armed, setArmed] = useState(false);
+  /** 화면 밖에 있는 가까운 놈들 — 가장자리 화살표로 알린다 */
+  const [offscreen, setOffscreen] = useState<OffscreenMob[]>([]);
 
   /** 자리를 옮기면 다 잊는다 */
   useEffect(() => {
@@ -2168,7 +2213,13 @@ export default function VillageMapScene({
   );
 
   useEffect(() => {
-    resetControls(0, 12, 0.45);
+    /**
+     * 세로로 긴 화면에서는 **조금 더 물러서서** 본다.
+     * 시야를 넓혀도(FitFov) 폰은 여전히 담기는 폭이 좁다. 한두 걸음 물러서면
+     * 앞쪽이 그만큼 더 들어와, 걷다 마주치는 것을 놓치지 않는다.
+     */
+    const portrait = typeof window !== 'undefined' && window.innerWidth < window.innerHeight;
+    resetControls(0, portrait ? 15 : 12, 0.45);
     const el = containerRef.current;
     if (!el) return;
     return attachCameraControls(el, { minDist: 6, maxDist: 40 });
@@ -2222,6 +2273,9 @@ export default function VillageMapScene({
           하늘빛은 위에서 파랗게, 땅 반사광은 아래에서 초록으로 —
           한 색으로 고르게 밝히는 ambient 만 쓰면 입체감이 죽는다.
         */}
+        {/* 화면 비율에 맞춰 시야 맞추기 — 폰에서 가로로 좁아지는 것을 막는다 */}
+        <FitFov />
+
         <hemisphereLight args={['#CFEFFF', '#9CC98F', 0.75]} />
         <ambientLight intensity={0.3} />
         <directionalLight
@@ -2276,6 +2330,7 @@ export default function VillageMapScene({
             onBossNear={setBossNear}
             onBossWeak={openQuiz}
             onArmedChange={setArmed}
+            onOffscreen={setOffscreen}
           />
         )}
 
@@ -2725,6 +2780,36 @@ export default function VillageMapScene({
           </div>
         </div>
       )}
+
+      {/*
+        화면 밖에 있는 놈 — **어느 쪽인지 가장자리로 알린다.**
+
+        폰은 가로 시야가 좁다(실측 PC 89도, 폰 37도). 40m 앞에서 담기는 폭이
+        27m 인데 몹은 12~38m 간격이라, 걷는 내내 한 마리도 화면에 안 들어오는
+        구간이 생긴다 — "모바일에서는 몹이 안 보인다" 가 이것이다.
+
+        시야를 더 벌리면 어안렌즈처럼 휘어서 그게 더 이상하다. RPG 가 늘
+        그러듯 **화살표로 가리킨다.**
+      */}
+      {offscreen.map((o) => (
+        <div
+          key={o.id}
+          className="absolute z-20 pointer-events-none flex items-center gap-1 rounded-full px-2 py-1"
+          style={{
+            [o.side]: 6,
+            top: `${28 + o.t * 34}%`,
+            background: 'rgba(24,20,16,0.62)',
+            flexDirection: o.side === 'left' ? 'row' : 'row-reverse',
+            animation: 'modal-fade 0.25s ease both',
+          }}
+        >
+          <span style={{ fontSize: 13, color: '#FFD9A8', fontWeight: 900 }}>
+            {o.side === 'left' ? '◀' : '▶'}
+          </span>
+          <span style={{ fontSize: 15, lineHeight: 1 }}>{o.emoji}</span>
+          <span style={{ fontSize: 10, color: '#F5E9D6', fontWeight: 700 }}>{o.dist}m</span>
+        </div>
+      ))}
 
       {/*
         방금 정화한 것 — 주웠을 때와 같은 꼴로 띄운다.

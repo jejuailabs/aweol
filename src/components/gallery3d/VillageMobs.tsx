@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { camControl, consumeAttack, shakeCamera } from './walker';
@@ -59,8 +59,21 @@ interface Dmg {
   big?: boolean;
 }
 
+/** 화면 밖에 있는 가까운 놈 — 가장자리 화살표에 쓴다 */
+export interface OffscreenMob {
+  id: string;
+  emoji: string;
+  /** 왼쪽인가 오른쪽인가 */
+  side: 'left' | 'right';
+  /** 몇 미터 */
+  dist: number;
+  /** 화면 세로에서 어디쯤에 붙일까 (0~1). 뒤에 있으면 가운데. */
+  t: number;
+}
+
 export default function VillageMobs({
   mobs, cleared, solved, avatarPos, onPurified, onBossNear, onBossWeak, onArmedChange,
+  onOffscreen,
 }: {
   mobs: Mob[];
   /** 이미 정화한 것 — 안 그린다 */
@@ -74,7 +87,11 @@ export default function VillageMobs({
   /** 방금 껍질이 벗겨졌다 — 문제를 띄우라고 알린다 */
   onBossWeak: (mob: Mob) => void;
   onArmedChange?: (armed: boolean) => void;
+  /** 화면 밖에 있는 가까운 놈들 */
+  onOffscreen?: (list: OffscreenMob[]) => void;
 }) {
+  const { camera, size } = useThree();
+
   /** 연출이 끝날 때까지 붙잡아 두는 것 (부모가 기록에 적어도 안 사라지게) */
   const [dying, setDying] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -99,6 +116,8 @@ export default function VillageMobs({
   const [, bump] = useState(0);
   const [dmgs, setDmgs] = useState<Dmg[]>([]);
   const dmgKey = useRef(0);
+  /** 마지막으로 알린 화면 밖 목록 — 같으면 다시 안 알린다 */
+  const lastOff = useRef('');
 
   const rtOf = useCallback((id: string): MobRT => {
     let v = rt.current.get(id);
@@ -190,9 +209,68 @@ export default function VillageMobs({
         return seen;
       });
       onBossNear(boss);
+
+      /*
+        ---------- 화면 밖에 있는 놈 ----------
+
+        **폰은 가로로 좁다.** `fov` 는 세로 기준이라 세로로 긴 화면에서는
+        가로 시야가 통째로 줄어든다 — 실측으로 PC 89도, 폰 37도다.
+        40m 앞에서 담기는 폭이 27m 인데 몹은 12~38m 간격이라,
+        걷는 내내 한 마리도 화면에 안 들어오는 구간이 생긴다.
+        "모바일에서는 몹이 안 보인다" 가 이것이다.
+
+        그래서 **어느 쪽에 있는지 가장자리에 알려준다.** RPG 에서 화면 밖
+        적을 화살표로 가리키는 것과 같다. 시야를 억지로 더 넓히면
+        어안렌즈처럼 휘어서 그게 더 이상하다.
+      */
+      if (onOffscreen) {
+        const cam = camera as THREE.PerspectiveCamera;
+        const aspect = size.height > 0 ? size.width / size.height : 1;
+        // 세로 fov 에서 가로 반각을 낸다
+        const halfH = Math.atan(Math.tan((cam.fov * Math.PI) / 360) * aspect);
+        const yaw = camControl.yaw;
+        const fx = -Math.sin(yaw);
+        const fz = -Math.cos(yaw);
+        // 오른쪽 방향 (칼을 드는 쪽과 같은 계산)
+        const rx = Math.cos(yaw);
+        const rz = -Math.sin(yaw);
+
+        const off: OffscreenMob[] = [];
+        for (const m of alive) {
+          const v = rtOf(m.id);
+          if (v.dead) continue;
+          const dx = m.x + v.ox - p.x;
+          const dz = m.z + v.oz - p.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > SHOW_RANGE * 0.75) continue;
+          const ang = Math.atan2(dx * rx + dz * rz, dx * fx + dz * fz);
+          // 가장자리에 걸친 것은 이미 보이므로 조금 여유를 둔다
+          if (Math.abs(ang) < halfH * 0.88) continue;
+          off.push({
+            id: m.id,
+            emoji: m.kind.emoji,
+            side: ang > 0 ? 'right' : 'left',
+            dist: Math.round(dist),
+            // 앞쪽에 가까울수록 위, 뒤로 갈수록 아래
+            t: Math.min(1, Math.max(0, Math.abs(ang) / Math.PI)),
+          });
+        }
+        off.sort((a, b) => a.dist - b.dist);
+        const next = off.slice(0, 3);
+        /*
+          **바뀌었을 때만 알린다.** 그냥 넘기면 0.22초마다 새 배열이라
+          아무 일이 없어도 화면이 계속 다시 그려진다.
+          거리는 5m 단위로 뭉개서 본다 — 한 걸음마다 숫자가 떨리면 그것도 산만하다.
+        */
+        const key = next.map((o) => `${o.id}:${o.side}:${Math.round(o.dist / 5)}`).join('|');
+        if (key !== lastOff.current) {
+          lastOff.current = key;
+          onOffscreen(next);
+        }
+      }
     }, 220);
     return () => clearInterval(t);
-  }, [alive, avatarPos, onBossNear, rtOf]);
+  }, [alive, avatarPos, onBossNear, rtOf, onOffscreen, camera, size.width, size.height]);
 
   /** 떠오른 숫자를 치운다 */
   useEffect(() => {
