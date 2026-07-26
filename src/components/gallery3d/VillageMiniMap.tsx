@@ -473,6 +473,40 @@ export default function VillageMiniMap({
               ))}
 
               {/*
+                걸어다닐 수 있는 데까지 — **경계를 그린다.**
+
+                지도는 그릇 비율대로 넓게 그리므로, 가로로 긴 화면에서는 보이는
+                땅의 절반 이상이 **못 가는 데**다(곽지는 ±800m 를 걸을 수 있는데
+                지도는 ±1,787m 를 비춘다). 선이 없으면 자리를 옮겨 놓고
+                "지도 밖에 서 있는 것 같다" 로 읽힌다.
+
+                **네모로 그린다** — 걷기 판정이 네모(`bounds`)라 동그라미로 그리면
+                거짓말이 된다(모서리까지 갈 수 있다).
+
+                지형 위·표시 아래에 둔다. 지형보다 먼저 그리면 길과 건물에 덮인다.
+              */}
+              <path
+                d={`M${-radius * 9},${-radius * 9}H${radius * 9}V${radius * 9}H${-radius * 9}Z`
+                  + `M${-radius},${-radius}H${radius}V${radius}H${-radius}Z`}
+                fill="#6B5B43"
+                fillOpacity={0.14}
+                fillRule="evenodd"
+                pointerEvents="none"
+              />
+              <rect
+                x={-radius}
+                y={-radius}
+                width={radius * 2}
+                height={radius * 2}
+                fill="none"
+                stroke="#8A7A5F"
+                strokeOpacity={0.55}
+                strokeWidth={4 * s}
+                strokeDasharray={`${18 * s} ${12 * s}`}
+                pointerEvents="none"
+              />
+
+              {/*
                 갈 수 있는 곳. **누르는 자리를 넉넉히** 준다 —
                 아이 손가락에 작은 점은 못 누른다. 배율이 바뀌어도 손가락 크기는 그대로다.
               */}
@@ -594,7 +628,9 @@ export default function VillageMiniMap({
               <b style={{ color: '#3BAF9F' }}>▲</b> 지금 나(보는 쪽) ·{' '}
               <b style={{ color: '#E8A33C' }}>●</b> 학교 ·{' '}
               <b style={{ color: '#4A6FA5' }}>●</b> 🚪 들어가 볼 수 있는 곳 ·{' '}
-              <b style={{ color: '#8A7A5F' }}>●</b> 그 자리로 가기
+              <b style={{ color: '#8A7A5F' }}>●</b> 그 자리로 가기 ·{' '}
+              {/* 경계 밖은 왜 어두운지 말해준다 — 안 적으면 '고장' 으로 읽힌다 */}
+              <b style={{ color: '#8A7A5F' }}>┄</b> 점선 안까지만 걸어갈 수 있어요
             </>
           )}
         </div>

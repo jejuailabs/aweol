@@ -270,8 +270,20 @@ function VillageBody() {
   return (
     <div className="scene-page">
       {!tried ? (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#BFE8F5' }}>
-          <div className="text-sm font-bold" style={{ color: '#6B5B43' }}>동네를 여는 중...</div>
+        /*
+          **어디로 가는 중인지 말해준다.**
+
+          자리를 옮기면 지도가 닫히고 '동네를 여는 중' 만 떴다. 어디로 가는지도,
+          가고 있는 건지도 몰라서 "지도 밖으로 나간 것 같다" 는 말이 나왔다.
+          목적지 이름과 그림을 같이 띄우면 그 사이가 기다림이 된다.
+        */
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2" style={{ background: '#BFE8F5' }}>
+          <div className="text-[40px]" style={{ animation: 'modal-fade 0.3s ease both' }}>
+            {currentSpot?.emoji ?? '🧭'}
+          </div>
+          <div className="text-[15px] font-black" style={{ color: '#3A3226' }}>
+            {currentSpot?.name ? `${currentSpot.name}(으)로 가는 중...` : '동네를 여는 중...'}
+          </div>
         </div>
       ) : village ? (
         <VillageMapScene
