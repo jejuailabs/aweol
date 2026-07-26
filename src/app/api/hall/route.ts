@@ -73,6 +73,21 @@ export async function POST(req: NextRequest) {
   const user = await verifyRequestUser(req);
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
 
+  /**
+   * **아이는 개인 전시관을 쓰지 않는다.**
+   *
+   * 화면에서 단추를 감추고 규칙이 읽기를 막지만, 이 경로는 화면 없이도 부를 수 있다.
+   * 여기를 안 막으면 아이 계정으로 전시관을 만들어 지도에 세울 수 있다 —
+   * 규칙은 만들기를 서버에만 맡겨 두었으므로(`allow create: if false`)
+   * **막을 자리가 여기뿐이다.**
+   */
+  if (user.role === 'student') {
+    return NextResponse.json(
+      { error: '개인 전시관은 선생님과 어른들이 쓰는 곳이에요' },
+      { status: 403 }
+    );
+  }
+
   let body: {
     action?: string;
     hallId?: string;

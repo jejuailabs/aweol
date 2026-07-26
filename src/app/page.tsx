@@ -17,7 +17,7 @@ const SchoolMap = dynamic(() => import('@/components/map/SchoolMap'), { ssr: fal
 
 export default function MapHomePage() {
   const router = useRouter();
-  const { actualRole } = useAuth();
+  const { actualRole, role, loading: authLoading } = useAuth();
   const [schools, setSchools] = useState<MapSchool[]>([]);
   /** 지도에 함께 서는 개인 전시관 — 공개된 것만 */
   const [halls, setHalls] = useState<MapHall[]>([]);
@@ -55,39 +55,56 @@ export default function MapHomePage() {
       setSchools([]);
     }
 
-    /**
-     * 개인 전시관 — **공개된 것만.**
-     * 질의 조건이 규칙(`isPublic == true`)과 **정확히 같아야 한다.**
-     * 넓게 물으면 문서 하나가 막히는 순간 질의 전체가 실패한다
-     * (전시실 갤러리에서 이미 한 번 밟은 함정이다).
-     */
-    try {
-      const hs = await getDocs(
-        query(collection(db, 'halls'), where('isPublic', '==', true))
-      );
-      setHalls(
-        hs.docs
-          .map((d) => ({ id: d.id, ...(d.data() as HallDoc) }))
-          .filter((h) => typeof h.lat === 'number' && typeof h.lng === 'number')
-          .map((h) => ({
-            id: h.id,
-            title: h.title || '이름 없는 전시관',
-            lat: h.lat,
-            lng: h.lng,
-            tagline: h.tagline || '',
-            coverUrl: h.coverUrl || '',
-            ownerName: h.ownerName || '',
-            showCount: h.showCount ?? 0,
-          }))
-      );
-    } catch {
-      setHalls([]);
-    }
-
     setFetched(true);
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
+
+  /**
+   * 개인 전시관 — **공개된 것만, 그리고 아이에게는 안 보인다.**
+   *
+   * 학교와 따로 불러온다. 학교는 로그인 여부와 상관없이 바로 그려야 하지만
+   * 이건 **누가 보는지 알기 전에는 부를 수 없다** — 같이 부르면
+   * 역할이 정해지는 순간 학교까지 다시 읽게 되어 읽기 요금이 두 배가 된다.
+   *
+   * 질의 조건이 규칙(`isPublic == true`)과 **정확히 같아야 한다.**
+   * 넓게 물으면 문서 하나가 막히는 순간 질의 전체가 실패한다
+   * (전시실 갤러리에서 이미 한 번 밟은 함정이다).
+   */
+  useEffect(() => {
+    if (!db || authLoading) return;
+    // 초대코드로 들어온 아이 — 아예 묻지 않는다. 규칙도 막지만, 막힐 걸 알면서
+    // 부르면 실패한 요청만 쌓인다. (총관리자가 '아이로 보기' 중일 때도 같다)
+    if (role === 'student') { setHalls([]); return; }
+
+    let alive = true;
+    (async () => {
+      try {
+        const hs = await getDocs(
+          query(collection(db!, 'halls'), where('isPublic', '==', true))
+        );
+        if (!alive) return;
+        setHalls(
+          hs.docs
+            .map((d) => ({ id: d.id, ...(d.data() as HallDoc) }))
+            .filter((h) => typeof h.lat === 'number' && typeof h.lng === 'number')
+            .map((h) => ({
+              id: h.id,
+              title: h.title || '이름 없는 전시관',
+              lat: h.lat,
+              lng: h.lng,
+              tagline: h.tagline || '',
+              coverUrl: h.coverUrl || '',
+              ownerName: h.ownerName || '',
+              showCount: h.showCount ?? 0,
+            }))
+        );
+      } catch {
+        if (alive) setHalls([]);
+      }
+    })();
+    return () => { alive = false; };
+  }, [role, authLoading, refreshKey]);
 
   // 입장 연출: 소리 + 확대 트랜지션 후 이동
   const handleSelect = (s: MapSchool) => {
@@ -144,8 +161,11 @@ export default function MapHomePage() {
 
       {/*
         왼쪽 아래 — 만들기 단추들.
-        **내 전시관은 누구나 연다.** 학교를 세우는 것은 총관리자만이지만,
+        **내 전시관은 어른이면 누구나 연다.** 학교를 세우는 것은 총관리자만이지만,
         자기 전시를 여는 것은 허락을 받을 일이 아니다.
+
+        **다만 아이에게는 이 단추가 없다.** 개인 전시관은 학교가 걸러주는 자리가
+        아니라서 무엇이 걸릴지 모른다 — 아이 화면에서는 없는 것으로 둔다.
       */}
       <div className="absolute left-4 bottom-28 z-30 flex flex-col items-start gap-2">
         {isSuper && (
@@ -156,12 +176,14 @@ export default function MapHomePage() {
             + 학교 만들기
           </button>
         )}
-        <button
-          onClick={() => { playSound('open'); router.push('/my-hall'); }}
-          className="ac-btn px-4 py-2.5 text-sm"
-        >
-          🖼️ 내 전시관
-        </button>
+        {role !== 'student' && (
+          <button
+            onClick={() => { playSound('open'); router.push('/my-hall'); }}
+            className="ac-btn px-4 py-2.5 text-sm"
+          >
+            🖼️ 내 전시관
+          </button>
+        )}
       </div>
 
       {/* 입장 연출 */}

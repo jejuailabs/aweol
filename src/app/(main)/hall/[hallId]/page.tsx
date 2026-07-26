@@ -21,7 +21,7 @@ const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoysti
 export default function HallPage() {
   const router = useRouter();
   const hallId = String(useParams().hallId ?? '');
-  const { user, userDoc } = useAuth();
+  const { user, userDoc, role } = useAuth();
 
   const [hall, setHall] = useState<(HallDoc & { id: string }) | null>(null);
   const [shows, setShows] = useState<(ShowDoc & { id: string })[]>([]);
@@ -29,6 +29,8 @@ export default function HallPage() {
 
   useEffect(() => {
     if (!db || !hallId) { setTried(true); return; }
+    // 아이는 규칙이 막는다 — 굳이 물어서 실패를 쌓지 않는다
+    if (role === 'student') { setHall(null); setTried(true); return; }
     let alive = true;
     (async () => {
       try {
@@ -49,7 +51,7 @@ export default function HallPage() {
       }
     })();
     return () => { alive = false; };
-  }, [hallId]);
+  }, [hallId, role]);
 
   const isOwner = !!user && hall?.ownerUid === user.uid;
 

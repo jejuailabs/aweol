@@ -22,7 +22,7 @@ export default function ShowPage() {
   const params = useParams();
   const hallId = String(params.hallId ?? '');
   const showId = String(params.showId ?? '');
-  const { userDoc } = useAuth();
+  const { userDoc, role } = useAuth();
 
   const [hall, setHall] = useState<HallDoc | null>(null);
   const [show, setShow] = useState<(ShowDoc & { id: string }) | null>(null);
@@ -33,6 +33,8 @@ export default function ShowPage() {
 
   useEffect(() => {
     if (!db || !hallId || !showId) { setTried(true); return; }
+    // 아이는 규칙이 막는다 — 굳이 물어서 실패를 쌓지 않는다
+    if (role === 'student') { setShow(null); setTried(true); return; }
     let alive = true;
     (async () => {
       try {
@@ -59,7 +61,7 @@ export default function ShowPage() {
       }
     })();
     return () => { alive = false; };
-  }, [hallId, showId]);
+  }, [hallId, showId, role]);
 
   if (!tried) {
     return (

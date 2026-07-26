@@ -55,7 +55,7 @@ const inputStyle = { background: 'var(--color-surface-soft)', color: 'var(--colo
 
 export default function MyHallPage() {
   const router = useRouter();
-  const { user, userDoc } = useAuth();
+  const { user, userDoc, role } = useAuth();
 
   const [view, setView] = useState<View>({ at: 'halls' });
   const [halls, setHalls] = useState<HallRow[]>([]);
@@ -118,6 +118,31 @@ export default function MyHallPage() {
     if (!res.ok) throw new Error(json.error || '안 됐어요');
     return json;
   };
+
+  /**
+   * ---------- 아이는 여기 못 들어온다 ----------
+   *
+   * 지도에서 단추를 감췄지만 **주소를 치면 그대로 열린다.** 감춘 것과 막은 것은
+   * 다르다. 규칙(firestore.rules)이 읽기를 막으므로 열어봤자 빈 화면이지만,
+   * 빈 화면은 '고장 났나' 로 읽힌다 — 왜 못 들어오는지 말해준다.
+   */
+  if (role === 'student') {
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <span className="text-5xl">🔒</span>
+        <p className="text-sm" style={{ color: 'var(--color-text-sub)' }}>
+          개인 전시관은 선생님과 어른들이 쓰는 곳이에요
+        </p>
+        <button
+          onClick={() => router.push('/')}
+          className="rounded-full px-6 py-2.5 text-sm font-bold text-white"
+          style={{ background: 'var(--color-primary)' }}
+        >
+          지도로 돌아가기
+        </button>
+      </div>
+    );
+  }
 
   // ---------- 로그인 안 했을 때 ----------
   if (!user) {

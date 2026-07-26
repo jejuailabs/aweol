@@ -31,6 +31,20 @@ service cloud.firestore {
     }
 
     /**
+     * **선생님 초대코드로 들어온 아이인가.**
+     *
+     * 개인 전시관을 아이에게 감추는 데 쓴다. 개인 전시관은 어른이 자기 이름으로
+     * 여는 곳이라 학교가 걸러주는 자리가 아니다 — 무엇이 걸릴지 학교가 모른다.
+     * 그래서 **아이 화면에서는 아예 없는 것으로 둔다.**
+     *
+     * 화면에서만 감추면 감춘 게 아니다. 주소를 치면 그대로 열리고,
+     * 개발자도구를 열면 목록이 그냥 보인다. 그래서 여기서 막는다.
+     */
+    function isChild() {
+      return isSignedIn() && userRole() == 'student';
+    }
+
+    /**
      * 이 학교의 교직원인가.
      * 예전에는 role == 'teacher' 하나로 판정해서, 승인만 받으면 모든 학교의 명부와
      * 제출물을 볼 수 있었다. 교사 권한은 소속 학교 안에서만 통해야 한다.
@@ -711,7 +725,12 @@ service cloud.firestore {
       // 규칙으로는 못 막는다(개수를 셀 수 없다).
       allow create: if false;
 
-      allow read: if resource.data.isPublic == true
+      /**
+       * **아이에게는 안 보인다**(`!isChild()`).
+       * 공개된 전시관이라도 아이 화면에서는 목록에 뜨지 않고, 주소를 쳐도 안 열린다.
+       * 자기 것이면 볼 수 있게 두 번째 줄은 남겨 둔다 — 막을 이유가 없다.
+       */
+      allow read: if (resource.data.isPublic == true && !isChild())
                   || (isSignedIn() && resource.data.ownerUid == request.auth.uid)
                   || isSuper();
       // 주인은 못 바꾼다 — 바꿀 수 있으면 남의 전시관을 가로챌 수 있다
@@ -723,7 +742,7 @@ service cloud.firestore {
                     || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
 
       match /shows/{showId} {
-        allow read: if resource.data.isPublic == true
+        allow read: if (resource.data.isPublic == true && !isChild())
                     || (isSignedIn() && resource.data.ownerUid == request.auth.uid)
                     || isSuper();
         /**
@@ -739,7 +758,7 @@ service cloud.firestore {
                               || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
 
         match /works/{workId} {
-          allow read: if resource.data.isPublic == true
+          allow read: if (resource.data.isPublic == true && !isChild())
                       || (isSignedIn() && resource.data.ownerUid == request.auth.uid)
                       || isSuper();
           allow create: if isSignedIn()
