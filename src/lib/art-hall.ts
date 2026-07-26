@@ -140,11 +140,79 @@ export interface ShowDoc {
    * 실제 미술관 배너에도 늘 대표 이미지가 한 장 붙는다.
    */
   posterUrl: string;
+  /**
+   * 전시 기간 — `YYYY-MM-DD`. 빈 문자열이면 '상시'.
+   *
+   * **실제 전시에는 늘 기간이 붙는다.** 배너에 이름만 걸면 지금 볼 수 있는
+   * 것인지, 다음 달에 여는 것인지 알 수 없다. 기간이 있어야
+   * "아직 예정이구나", "이번 주까지구나" 가 배너만 보고 온다.
+   *
+   * 날짜는 **글자로 둔다**(Timestamp 가 아니라). 시각도 시간대도 필요 없는
+   * '며칠' 이라 글자가 다루기 쉽고, 화면·서버가 같은 값을 본다.
+   */
+  startAt: string;
+  endAt: string;
   /** 배너가 걸리는 차례 */
   order: number;
   workCount: number;
   createdAt: unknown;
 }
+
+/** 전시가 지금 어느 때인가 */
+export type ShowPhase = 'upcoming' | 'open' | 'closed' | 'always';
+
+export interface ShowPeriod {
+  phase: ShowPhase;
+  /** 배너에 크게 — '전시 예정' · '전시 중' · '전시 끝' */
+  badge: string;
+  /** 배너에 작게 — '3월 2일 시작' · '3월 20일까지' */
+  note: string;
+}
+
+/** '2026-03-20' → '3월 20일' */
+const dayLabel = (s: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  return m ? `${Number(m[2])}월 ${Number(m[3])}일` : s;
+};
+
+/** 오늘을 `YYYY-MM-DD` 로 (그 자리의 달력 기준) */
+export const todayStr = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * 전시 기간을 사람이 읽는 말로.
+ *
+ * 날짜가 `YYYY-MM-DD` 라 **글자끼리 비교하면 그대로 날짜 순서**가 된다 —
+ * Date 로 바꾸면 시간대 때문에 하루가 밀리는 일이 생긴다(자정 근처에서).
+ */
+export function showPeriod(
+  show: { startAt?: string; endAt?: string },
+  today = todayStr()
+): ShowPeriod {
+  const s = (show.startAt || '').trim();
+  const e = (show.endAt || '').trim();
+  if (!s && !e) return { phase: 'always', badge: '상시 전시', note: '' };
+
+  if (s && today < s) {
+    return { phase: 'upcoming', badge: '전시 예정', note: `${dayLabel(s)} 시작` };
+  }
+  if (e && today > e) {
+    return { phase: 'closed', badge: '전시 끝', note: `${dayLabel(e)} 마감` };
+  }
+  return {
+    phase: 'open',
+    badge: '전시 중',
+    note: e ? `${dayLabel(e)}까지` : `${dayLabel(s)} 시작`,
+  };
+}
+
+/** 때마다 다른 색 — 배너 띠와 글자에 쓴다 */
+export const PHASE_COLOR: Record<ShowPhase, string> = {
+  upcoming: '#C7893F',
+  open: '#1E7B45',
+  closed: '#8A8378',
+  always: '#4E7FA8',
+};
 
 /** 작품 (`halls/{hallId}/shows/{showId}/works/{workId}`) */
 export interface WorkDoc {
@@ -189,6 +257,8 @@ export const LIMITS = {
   placeName: 40,
   showTitle: 40,
   subtitle: 40,
+  /** 'YYYY-MM-DD' 열 글자 */
+  date: 10,
   showIntro: 600,
   workTitle: 40,
   caption: 300,

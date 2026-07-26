@@ -124,6 +124,33 @@ export const MOB_KINDS: MobKind[] = [
     tier: 'normal',
     color: '#8C7F6E',
   },
+  {
+    id: 'tire',
+    emoji: '🛞',
+    name: '버려진 타이어',
+    note: '고무는 썩지 않아요. 빗물이 고이면 모기가 알을 낳는 웅덩이가 되기도 해요.',
+    hp: 3,
+    tier: 'normal',
+    color: '#3E3B38',
+  },
+  {
+    id: 'cup',
+    emoji: '🥤',
+    name: '일회용 컵 더미',
+    note: '종이컵 안쪽에도 얇은 비닐이 발려 있어요. 그래서 종이류로 그냥 버리면 재활용이 안 돼요.',
+    hp: 2,
+    tier: 'normal',
+    color: '#E4DCCB',
+  },
+  {
+    id: 'umbrella',
+    emoji: '☂️',
+    name: '부러진 우산',
+    note: '우산은 천·철·플라스틱이 섞여 있어 통째로는 재활용이 안 돼요. 살과 천을 나눠 버려야 해요.',
+    hp: 2,
+    tier: 'normal',
+    color: '#5B6E9C',
+  },
 
   // ── 우두머리 — 칼이 안 통한다. 문제를 풀어야 껍질이 깨진다. ──
   {
@@ -150,7 +177,32 @@ export const MOB_KINDS: MobKind[] = [
 export const mobKindById = (id: string) => MOB_KINDS.find((k) => k.id === id);
 
 /** 한 자리에 두는 수. 너무 많으면 마을이 쓰레기장이 되고, 적으면 만날 일이 없다. */
-export const MOBS_PER_SPOT = 12;
+export const MOBS_PER_SPOT = 16;
+
+/**
+ * **처음 만나는 거리.**
+ *
+ * 이보다 가까이는 안 둔다 — 시작하자마자 코앞에 서 있으면 놀란다.
+ * 그렇다고 멀면 한참을 걸어야 첫 마리를 만난다. 열세 걸음쯤이 적당하다.
+ */
+export const NEAR_M = 13;
+
+/**
+ * 서로 이만큼은 떨어뜨린다.
+ * 칼이 닿는 거리(4.6m)의 갑절보다 넉넉해야 한 번 휘둘러 둘이 맞지 않는다.
+ */
+export const MIN_GAP = 16;
+
+/**
+ * **눈에 들어오는 거리.**
+ *
+ * 이 밖에 있는 것은 아예 안 그린다. 마을이 800m 인데 열여섯 마리를 늘 그려두면
+ * 화면이 어수선하고(어느 게 가까운지 모른다) Html 이 열여섯 개 떠 있어 느리다.
+ * 걸어가면 하나씩 나타나는 편이 낫다 — 그게 탐험이다.
+ */
+export const SHOW_RANGE = 95;
+/** 이름표·체력까지 보이는 거리. 몸통보다 가까워야 글자가 안 뭉친다. */
+export const LABEL_RANGE = 42;
 
 /** 한 자리를 다 치우면 받는 도장 — **적게.** 줍기와 같은 선이다. */
 export const STAMPS_PER_SPOT = 1;
@@ -207,14 +259,29 @@ function seedOf(s: string): number {
 /**
  * 이 자리에 무엇이 어디 있나.
  *
- * 줍기와 **같은 방식이되 씨앗을 달리 탄다**(`:mob` 을 덧붙인다).
- * 같은 씨앗을 쓰면 소라와 폐그물이 늘 같은 자리에 겹쳐 선다.
+ * ---
  *
- * **건물 안과 학교 앞마당은 뺀다.** 벽 속에 있으면 못 베고,
- * 앞마당에 쓰레기 괴물이 서 있으면 그것대로 이상하다.
+ * **가까운 데서 먼 데로 깔아 나간다.**
  *
- * 우두머리는 **끝에 몰아서 놓는다** — 자리마다 반드시 둘이 되도록.
- * 섞어서 뽑으면 어떤 마을에는 우두머리가 하나도 없다.
+ * 처음에는 아무 데나 흩뿌리고 학교 앞마당을 통째로 비웠더니, **가장 가까운
+ * 놈이 마흔 걸음 밖**이었다. 마을에 들어와서 한참을 걸어야 뭔가 나오고,
+ * 그러다 만나면 그 뒤로 또 한참 아무것도 없었다.
+ *
+ * 그래서 **자리마다 거리를 정해 두고** 그 거리에 놓는다. 열세 걸음 앞에 첫
+ * 마리, 그다음은 조금 더 멀리 — 걷는 내내 하나씩 나타난다. 시작 자리 둘레
+ * 아홉 걸음만 비운다(코앞에서 튀어나오면 놀란다).
+ *
+ * 방향은 **황금각(137.5°)** 으로 돌린다. 마구잡이로 뽑으면 한쪽에 몰려서
+ * 어느 쪽은 텅 비고 어느 쪽은 줄지어 선다.
+ *
+ * ---
+ *
+ * **종류는 놓인 자리가 정한다.**
+ *
+ * 먼저 자리를 잡고, 그 자리가 바닷가면 바다 것을, 뭍이면 뭍 것을 놓는다.
+ * 종류를 먼저 뽑으면 소라 게가 밭 한가운데 서거나, 거리 배분이 무너진다.
+ *
+ * 우두머리는 **중간과 맨 끝**에 선다. 졸개로 손을 익힌 뒤에 만나야 한다.
  */
 export function mobsOfSpot(
   spotId: string,
@@ -234,59 +301,92 @@ export function mobsOfSpot(
   });
   const blocked = (x: number, z: number) =>
     boxes.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ)
-    // 학교 앞마당
-    || (Math.abs(x) < 26 && Math.abs(z) < 34);
+    // 시작 자리 둘레만 비운다 — 눈앞에서 튀어나오면 놀란다
+    || Math.hypot(x, z) < 9;
 
-  /** 해안선 점들 — 바다 것을 놓을 때 골라 쓴다 */
   const shorePts = (coast ?? []).flat();
   const hasShore = shorePts.length > 0;
+  /** 이 자리가 바닷가인가 */
+  const atShore = (x: number, z: number) =>
+    hasShore && shorePts.some((p) => Math.hypot(p[0] - x, p[1] - z) < 34);
 
-  const normals = MOB_KINDS.filter((k) => k.tier === 'normal' && (hasShore || !k.shore));
-  const bosses = MOB_KINDS.filter((k) => k.tier === 'boss' && (hasShore || !k.shore));
+  /**
+   * 가장 먼 놈이 서는 거리.
+   *
+   * **마을 끝까지 펴면 안 된다.** 애월 마을은 반지름이 830m 쯤인데, 열여섯
+   * 마리를 거기까지 늘어놓으면 바깥쪽은 백오십 걸음에 하나씩이라 걸어도
+   * 아무것도 안 나온다(실측 156m). 눈에 들어오는 거리가 95m 이니
+   * **그보다 촘촘히** 깔려야 걷는 내내 만난다.
+   *
+   * 그래서 **가운데 300m 안에 모은다.** 바깥은 비지만, 거기는 원래
+   * 워프로 건너다니는 구간이다.
+   */
+  const FAR = Math.min(radius * 0.55, 300);
+  /** 황금각 — 돌려 놓으면 한쪽으로 몰리지 않는다 */
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
-  const out: Mob[] = [];
+  const fits = (x: number, z: number, taken: { x: number; z: number }[]) =>
+    Math.abs(x) <= radius && Math.abs(z) <= radius
+    && !blocked(x, z)
+    && !taken.some((o) => Math.hypot(o.x - x, o.z - z) < MIN_GAP);
 
-  /** 한 마리를 놓아 본다. 자리가 안 되면 false. */
-  const place = (kind: MobKind, s: number): boolean => {
-    let x: number;
-    let z: number;
+  // ---- 1) 자리부터 잡는다 (가까운 것 → 먼 것) ----
+  const spots: { x: number; z: number }[] = [];
+  for (let slot = 0; slot < MOBS_PER_SPOT; slot++) {
+    const t = slot / Math.max(1, MOBS_PER_SPOT - 1);
+    // 앞쪽을 촘촘히, 뒤로 갈수록 성기게 — 걷는 만큼 만난다
+    const target = NEAR_M + Math.pow(t, 1.35) * (FAR - NEAR_M);
 
-    if (kind.shore && hasShore) {
-      const p = shorePts[Math.floor(seeded(s + 1) * shorePts.length) % shorePts.length];
-      const a = seeded(s + 2) * Math.PI * 2;
-      const r = 5 + seeded(s + 3) * 18;
-      x = Math.round(p[0] + Math.cos(a) * r);
-      z = Math.round(p[1] + Math.sin(a) * r);
-    } else {
-      const R = radius * 0.82;
-      x = Math.round((seeded(s + 1) - 0.5) * R * 2);
-      z = Math.round((seeded(s + 2) - 0.5) * R * 2);
+    let done = false;
+    for (let k = 0; k < 80 && !done; k++) {
+      const s = base + slot * 7919 + k * 131;
+      const ang = GOLDEN * slot + (seeded(s) - 0.5) * 1.2;
+      const r = target * (0.86 + seeded(s + 1) * 0.28);
+      const x = Math.round(Math.cos(ang) * r);
+      const z = Math.round(Math.sin(ang) * r);
+      if (!fits(x, z, spots)) continue;
+      spots.push({ x, z });
+      done = true;
     }
+    // 그 거리에 자리가 없으면(건물이 빽빽하면) 아무 데나 — **수는 반드시 채운다.**
+    // 모자라면 그 자리는 영영 다 못 치우고 상을 못 받는다.
+    for (let k = 0; k < 400 && !done; k++) {
+      const s = base + 500_000 + slot * 6151 + k * 97;
+      const x = Math.round((seeded(s) - 0.5) * FAR * 2);
+      const z = Math.round((seeded(s + 1) - 0.5) * FAR * 2);
+      if (!fits(x, z, spots)) continue;
+      spots.push({ x, z });
+      done = true;
+    }
+  }
 
-    if (Math.abs(x) > radius || Math.abs(z) > radius) return false;
-    if (blocked(x, z)) return false;
-    // 서로 너무 붙어 있으면 한 번 휘둘러 둘이 맞는다
-    if (out.some((o) => Math.hypot(o.x - x, o.z - z) < 34)) return false;
+  // ---- 2) 자리에 맞는 종류를 얹는다 ----
+  /** 우두머리가 설 차례 — 중간쯤과 맨 끝 */
+  const bossSlots = new Set([Math.floor((spots.length - 1) * 0.55), spots.length - 1]);
 
-    out.push({ id: `${spotId}-${out.length}-${kind.id}`, kind, x, z });
-    return true;
+  /**
+   * **돌려가며 뽑는다.**
+   *
+   * 씨앗으로 아무 종류나 뽑았더니 열여섯 마리가 **세 종류뿐**이었다 —
+   * 같은 것만 계속 나오면 도감이 안 채워지고 보는 재미도 없다.
+   * 무리(바다/뭍 × 졸개/우두머리)마다 차례를 세어 한 바퀴씩 돌린다.
+   */
+  const turn = new Map<string, number>();
+  const nextOf = (key: string, pool: MobKind[]) => {
+    const n = turn.get(key) ?? Math.floor(seeded(base + seedOf(key)) * pool.length);
+    turn.set(key, n + 1);
+    return pool[n % pool.length];
   };
 
-  const bossCount = Math.min(2, bosses.length);
-  const normalCount = MOBS_PER_SPOT - bossCount;
-
-  // 졸개 먼저
-  for (let i = 0; out.length < normalCount && i < 500; i++) {
-    const s = base + i * 7919;
-    place(normals[Math.floor(seeded(s) * normals.length) % normals.length], s);
-  }
-  // 우두머리는 반드시 채운다
-  for (let i = 0; out.length < normalCount + bossCount && i < 500; i++) {
-    const s = base + 900_000 + i * 5717;
-    place(bosses[Math.floor(seeded(s) * bosses.length) % bosses.length], s);
-  }
-
-  return out;
+  return spots.map((p, i) => {
+    const tier: MobTier = bossSlots.has(i) ? 'boss' : 'normal';
+    const sea = atShore(p.x, p.z);
+    const all = MOB_KINDS.filter((k) => k.tier === tier);
+    const fit = all.filter((k) => !!k.shore === sea);
+    const pool = fit.length ? fit : all;
+    const kind = nextOf(`${tier}:${sea}`, pool);
+    return { id: `${spotId}-${i}-${kind.id}`, kind, x: p.x, z: p.z };
+  });
 }
 
 /** 진행 기록에서 이 자리를 다 치웠나 */

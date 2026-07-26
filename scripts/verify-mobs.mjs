@@ -16,7 +16,8 @@
  */
 import { readFileSync } from 'fs';
 import {
-  MOB_KINDS, MOBS_PER_SPOT, ATTACK_RANGE, mobsOfSpot, mobKindOfToken, mobKindById,
+  MOB_KINDS, MOBS_PER_SPOT, ATTACK_RANGE, NEAR_M, MIN_GAP, SHOW_RANGE,
+  mobsOfSpot, mobKindOfToken, mobKindById,
 } from '../src/lib/village-mobs.ts';
 import { VILLAGE_SPOTS, spotsOfSchool } from '../src/lib/village-spots.ts';
 import { pickBellQuestions, isCorrect, answerText } from '../src/lib/goldenbell.ts';
@@ -78,10 +79,8 @@ for (const spot of spotsOfSchool(SCHOOL)) {
 
   ok(`${t}: 다 자리 안에 있다`, mobs.every((m) => Math.abs(m.x) <= v.r && Math.abs(m.z) <= v.r));
 
-  if (spot.home) {
-    ok(`${t}: 학교 앞마당에는 없다`,
-      mobs.every((m) => Math.abs(m.x) >= 26 || Math.abs(m.z) >= 34));
-  }
+  // 시작 자리 발밑에 서 있으면 놀란다
+  ok(`${t}: 시작 자리 둘레는 비어 있다`, mobs.every((m) => Math.hypot(m.x, m.z) >= 9));
 
   /*
     한 번 휘두를 때 둘이 같이 맞으면 안 된다.
@@ -95,6 +94,25 @@ for (const spot of spotsOfSchool(SCHOOL)) {
     }
   }
   ok(`${t}: 한 번에 둘이 안 맞는다 (${Math.round(minGap)}m)`, minGap > ATTACK_RANGE * 2);
+
+  /*
+    **가까운 데서부터 나와야 한다.**
+
+    예전에는 앞마당을 통째로 비워서 가장 가까운 놈이 마흔 걸음 밖이었다.
+    마을에 들어와 한참을 걸어야 뭔가 나왔다.
+  */
+  const dists = mobs.map((m) => Math.hypot(m.x, m.z)).sort((a, b) => a - b);
+  ok(`${t}: 첫 마리가 가깝다 (${Math.round(dists[0])}m)`, dists[0] <= NEAR_M * 1.7);
+
+  /*
+    **걷는 내내 만나야 한다.**
+    눈에 들어오는 거리(SHOW_RANGE) 안에 늘 몇 마리는 있어야, 하나 잡고
+    걸어가면 또 하나가 나타난다. 거리 순으로 늘어놨을 때 이웃 사이가
+    너무 벌어지면 그 구간이 통째로 빈다.
+  */
+  let maxStep = dists[0];
+  for (let i = 1; i < dists.length; i++) maxStep = Math.max(maxStep, dists[i] - dists[i - 1]);
+  ok(`${t}: 중간에 텅 빈 구간이 없다 (가장 먼 간격 ${Math.round(maxStep)}m)`, maxStep <= SHOW_RANGE);
 
   // 기록에서 종류를 되찾을 수 있어야 도감이 채워진다
   ok(`${t}: 기록에서 종류를 되찾는다`,
@@ -124,7 +142,9 @@ for (const spot of spotsOfSchool(SCHOOL)) {
   }
 
   console.log(
-    `  ${t}: ${mobs.length}마리 (우두머리 ${bosses.length}) · 가장 가까운 둘 ${Math.round(minGap)}m · `
+    `  ${t}: ${mobs.length}마리 (우두머리 ${bosses.length}) · `
+    + `첫 마리 ${Math.round(dists[0])}m · 가장 먼 놈 ${Math.round(dists[dists.length - 1])}m · `
+    + `간격 최대 ${Math.round(maxStep)}m · 서로 최소 ${Math.round(minGap)}m · `
     + `종류 ${new Set(mobs.map((m) => m.kind.id)).size}가지`
   );
 }

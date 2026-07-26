@@ -8,7 +8,9 @@ import {
   WalkerAvatar, FollowCamera, attachCameraControls, resetControls,
   type Obstacle, type AvatarCustom, type AvatarTint,
 } from './walker';
-import { BANNER_SLOTS, themeOf, type HallDoc, type ShowDoc } from '@/lib/art-hall';
+import {
+  BANNER_SLOTS, PHASE_COLOR, showPeriod, themeOf, type HallDoc, type ShowDoc,
+} from '@/lib/art-hall';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -106,6 +108,8 @@ function Banner({
 }) {
   const [hot, setHot] = useState(false);
   const cloth = useRef<THREE.Group>(null);
+  /** 지금이 전시 기간의 어느 때인가 — 띠 글자와 색이 여기서 나온다 */
+  const period = useMemo(() => showPeriod(show), [show]);
 
   useFrame(({ clock }) => {
     // 아주 살짝 흔들린다 — 멈춘 천은 판자로 보인다
@@ -162,6 +166,41 @@ function Banner({
           <planeGeometry args={[BW, 1.1]} />
           <meshStandardMaterial color={accent} roughness={0.8} />
         </mesh>
+
+        {/*
+          전시 기간 띠 — **배너 아래쪽에 가로로 두른다.**
+
+          실제 미술관 배너에도 기간이 늘 붙는다. 이름만 걸면 지금 볼 수 있는
+          것인지, 다음 달에 여는 것인지 알 수 없다. 때에 따라 색이 바뀐다 —
+          예정은 주황, 전시 중은 초록, 끝난 것은 회색.
+        */}
+        <mesh position={[0, -BH / 2 + 1.5, 0.012]}>
+          <planeGeometry args={[BW, 0.86]} />
+          <meshStandardMaterial color={PHASE_COLOR[period.phase]} roughness={0.85} />
+        </mesh>
+        <Html
+          position={[0, -BH / 2 + 1.5, 0.02]}
+          transform
+          scale={0.2}
+          pointerEvents="none"
+          zIndexRange={[8, 0]}
+        >
+          <div
+            style={{
+              width: '230px', textAlign: 'center', fontFamily: 'Pretendard, sans-serif',
+              userSelect: 'none', color: '#FFFFFF', lineHeight: 1.25,
+            }}
+          >
+            <div style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.02em' }}>
+              {period.badge}
+            </div>
+            {period.note && (
+              <div style={{ fontSize: '15px', fontWeight: 700, opacity: 0.92 }}>
+                {period.note}
+              </div>
+            )}
+          </div>
+        </Html>
 
         {/* 대표 이미지 한 장 — 이름만 걸면 무슨 전시인지 알 수 없다 */}
         {show.posterUrl && (

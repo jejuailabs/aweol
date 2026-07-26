@@ -12,7 +12,8 @@ import { resizeImage } from '@/lib/client-image';
 import { playSound } from '@/lib/sound';
 import {
   BANNER_SLOTS, HALL_THEMES, LIMITS, MAX_HALLS_PER_USER, MAX_SHOWS_PER_HALL,
-  MAX_WORKS_PER_SHOW, hallPath, type HallDoc, type HallTheme, type ShowDoc, type WorkDoc,
+  MAX_WORKS_PER_SHOW, PHASE_COLOR, hallPath, showPeriod, todayStr,
+  type HallDoc, type HallTheme, type ShowDoc, type WorkDoc,
 } from '@/lib/art-hall';
 
 /**
@@ -263,9 +264,19 @@ function HallList({
   const [theme, setTheme] = useState<HallTheme>('white');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  /**
+   * 첫 전시 — **전시관과 함께 받는다.**
+   * 전에는 전시관만 만들 수 있어서 전시 0개인 빈 건물이 남았다.
+   */
+  const [showTitle, setShowTitle] = useState('');
+  const [startAt, setStartAt] = useState(todayStr());
+  const [endAt, setEndAt] = useState('');
+
+  const badDates = !!startAt && !!endAt && endAt < startAt;
+  const canCreate = !!title.trim() && !!showTitle.trim() && !!coords && !badDates;
 
   const create = async () => {
-    if (!title.trim() || !coords) return;
+    if (!canCreate || !coords) return;
     setSaving(true); setErr('');
     try {
       await call({
@@ -276,10 +287,14 @@ function HallList({
         theme,
         lat: coords.lat,
         lng: coords.lng,
+        showTitle: showTitle.trim(),
+        startAt,
+        endAt,
       });
       playSound('success');
       setOpening(false);
       setTitle(''); setTagline(''); setPlaceName(''); setCoords(null);
+      setShowTitle(''); setStartAt(todayStr()); setEndAt('');
       await onCreated();
     } catch (e) {
       setErr((e as Error).message);
@@ -380,6 +395,62 @@ function HallList({
             style={inputStyle}
           />
 
+          {/*
+            첫 전시 — **이름과 기간을 여기서 받는다.**
+
+            실제 미술관은 '무엇을 언제까지 거는지' 를 정하고 문을 연다.
+            기간이 있어야 건물 배너에 '전시 예정' · '3월 20일까지' 가 뜨고,
+            보러 온 사람이 지금 볼 수 있는 것인지 배너만 보고 안다.
+          */}
+          <div
+            className="rounded-2xl p-3 mb-3"
+            style={{ background: 'var(--color-surface-soft)' }}
+          >
+            <div className="text-[12px] font-black mb-2" style={{ color: 'var(--color-text-main)' }}>
+              🎫 첫 전시회
+            </div>
+
+            <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>전시회 이름</label>
+            <input
+              value={showTitle}
+              onChange={(e) => setShowTitle(e.target.value.slice(0, LIMITS.showTitle))}
+              placeholder="예) 애월 바다, 사계"
+              className={`${input} mt-1 mb-2.5`}
+              style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+            />
+
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>시작</label>
+                <input
+                  type="date"
+                  value={startAt}
+                  onChange={(e) => setStartAt(e.target.value)}
+                  className={`${input} mt-1`}
+                  style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>끝</label>
+                <input
+                  type="date"
+                  value={endAt}
+                  min={startAt || undefined}
+                  onChange={(e) => setEndAt(e.target.value)}
+                  className={`${input} mt-1`}
+                  style={{ background: 'var(--color-surface)', color: 'var(--color-text-main)' }}
+                />
+              </div>
+            </div>
+            <div className="text-[11px] mt-1.5" style={{ color: badDates ? '#C0392B' : 'var(--color-text-sub)' }}>
+              {badDates
+                ? '끝나는 날이 시작하는 날보다 빨라요'
+                : endAt
+                  ? `건물 배너에 “${showPeriod({ startAt, endAt }).badge} · ${showPeriod({ startAt, endAt }).note}” 로 걸려요`
+                  : '끝나는 날을 비우면 상시 전시로 걸려요'}
+            </div>
+          </div>
+
           <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>
             지도에 세울 자리
           </label>
@@ -420,7 +491,7 @@ function HallList({
             </button>
             <button
               onClick={create}
-              disabled={saving || !title.trim() || !coords}
+              disabled={saving || !canCreate}
               className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
               style={{ background: 'var(--color-primary)' }}
             >
@@ -428,7 +499,7 @@ function HallList({
             </button>
           </div>
           <p className="text-[12px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-            연 뒤에는 <b>준비 중</b> 상태예요. 전시를 걸고 나서 공개하면 지도에 뜹니다.
+            연 뒤에는 <b>나만 보는 중</b>이에요. 작품을 걸고 <b>공개하기</b>를 눌러야 지도에 뜹니다.
           </p>
         </div>
       ) : halls.length < MAX_HALLS_PER_USER ? (
@@ -583,6 +654,9 @@ function HallDetail({
         subtitle: '',
         intro: '',
         posterUrl: '',
+        // 기간을 안 적으면 '상시 전시' 로 걸린다 — 아래 전시 화면에서 고친다
+        startAt: todayStr(),
+        endAt: '',
         order: shows.length,
         workCount: 0,
         createdAt: new Date(),
@@ -680,11 +754,21 @@ function HallDetail({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[14px] font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
-                      {s.title}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[14px] font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
+                        {s.title}
+                      </span>
+                      {/* 지금이 어느 때인지 — 건물 배너에 걸리는 것과 같은 말 */}
+                      <span
+                        className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black text-white"
+                        style={{ background: PHASE_COLOR[showPeriod(s).phase] }}
+                      >
+                        {showPeriod(s).badge}
+                      </span>
                     </div>
                     <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
                       작품 {s.workCount ?? 0}점
+                      {showPeriod(s).note ? ` · ${showPeriod(s).note}` : ''}
                       {i < BANNER_SLOTS ? ' · 배너에 걸림' : ' · 배너 밖'}
                     </div>
                   </div>
@@ -859,7 +943,11 @@ function ShowDetail({
   const [title, setTitle] = useState(show.title);
   const [subtitle, setSubtitle] = useState(show.subtitle ?? '');
   const [intro, setIntro] = useState(show.intro ?? '');
+  /** 전시 기간 — 건물 배너에 그대로 걸린다 */
+  const [startAt, setStartAt] = useState(show.startAt ?? '');
+  const [endAt, setEndAt] = useState(show.endAt ?? '');
   const [dirty, setDirty] = useState(false);
+  const badDates = !!startAt && !!endAt && endAt < startAt;
   const [pending, setPending] = useState<Pending[]>([]);
   const [uploading, setUploading] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -893,6 +981,7 @@ function ShowDetail({
   useEffect(() => {
     setTitle(show.title); setSubtitle(show.subtitle ?? '');
     setIntro(show.intro ?? ''); setDirty(false);
+    setStartAt(show.startAt ?? ''); setEndAt(show.endAt ?? '');
   }, [show]);
 
   // 미리보기 주소는 컴포넌트가 사라질 때 돌려준다 (안 하면 메모리가 샌다)
@@ -908,6 +997,9 @@ function ShowDetail({
         title: title.trim().slice(0, LIMITS.showTitle) || '무제 전시',
         subtitle: subtitle.trim().slice(0, LIMITS.subtitle),
         intro: intro.trim().slice(0, LIMITS.showIntro),
+        // 꼴이 어긋나면 빈 값(상시)으로 — 서버가 만들 때 보는 기준과 같다
+        startAt: /^\d{4}-\d{2}-\d{2}$/.test(startAt) ? startAt : '',
+        endAt: /^\d{4}-\d{2}-\d{2}$/.test(endAt) ? endAt : '',
       });
       playSound('success');
       setDirty(false);
@@ -1091,6 +1183,38 @@ function ShowDetail({
           className={`${input} mt-1 mb-3`}
           style={inputStyle}
         />
+        {/*
+          전시 기간 — **건물 배너에 그대로 걸린다.**
+          아래 미리보기가 배너에 뜰 말과 같아서, 저장 전에 확인할 수 있다.
+        */}
+        <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>전시 기간</label>
+        <div className="flex gap-2 mt-1">
+          <input
+            type="date"
+            value={startAt}
+            onChange={(e) => { setStartAt(e.target.value); setDirty(true); }}
+            className={`${input} flex-1 min-w-0`}
+            style={inputStyle}
+          />
+          <input
+            type="date"
+            value={endAt}
+            min={startAt || undefined}
+            onChange={(e) => { setEndAt(e.target.value); setDirty(true); }}
+            className={`${input} flex-1 min-w-0`}
+            style={inputStyle}
+          />
+        </div>
+        <div
+          className="text-[11px] mt-1.5 mb-3 font-bold"
+          style={{ color: badDates ? '#C0392B' : PHASE_COLOR[showPeriod({ startAt, endAt }).phase] }}
+        >
+          {badDates
+            ? '끝나는 날이 시작하는 날보다 빨라요'
+            : `배너: ${showPeriod({ startAt, endAt }).badge}`
+              + (showPeriod({ startAt, endAt }).note ? ` · ${showPeriod({ startAt, endAt }).note}` : '')}
+        </div>
+
         <label className="text-[12px] font-bold" style={{ color: 'var(--color-text-sub)' }}>전시 소개</label>
         <textarea
           value={intro}

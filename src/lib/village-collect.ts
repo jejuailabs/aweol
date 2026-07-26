@@ -99,7 +99,14 @@ export const COLLECT_KINDS: CollectKind[] = [
 export const kindById = (id: string) => COLLECT_KINDS.find((k) => k.id === id);
 
 /** 한 자리에 숨기는 개수. 너무 많으면 지겹고, 적으면 돌아다닐 이유가 안 된다. */
-export const PER_SPOT = 8;
+export const PER_SPOT = 12;
+
+/** 처음 만나는 거리 — 시작하자마자 코앞이면 줍는 맛이 없다 */
+export const NEAR_M = 10;
+/** 서로 이만큼은 떨어뜨린다 — 한 자리에서 둘이 주워지면 안 된다 */
+export const MIN_GAP = 14;
+/** 눈에 들어오는 거리. 이 밖은 아예 안 그린다 — 멀리 것까지 다 띄우면 어수선하다. */
+export const SHOW_RANGE = 70;
 
 /** 한 자리를 다 모으면 받는 도장 — **적게.** 걷는 것이 숙제를 이기면 안 된다. */
 export const STAMPS_PER_SPOT = 1;
@@ -172,45 +179,84 @@ export function itemsOfSpot(
   });
   const blocked = (x: number, z: number) =>
     boxes.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ)
-    // 학교 앞마당
-    || (Math.abs(x) < 26 && Math.abs(z) < 34);
+    // 시작 자리 둘레만 비운다 — 발밑에 있으면 걷기도 전에 다 주워진다
+    || Math.hypot(x, z) < 6;
 
-  /** 해안선 점을 다 펼쳐 둔다 — 바닷가 것을 놓을 때 골라 쓴다 */
   const shorePts = (coast ?? []).flat();
+  const hasShore = shorePts.length > 0;
+  /**
+   * 바닷가로 치는 거리.
+   *
+   * **넉넉히 잡는다(55m).** 30m 로 좁혔더니 바닷가로 세어지는 자리가 자리마다
+   * 두어 개뿐이어서, 바닷가 것 넷 중 **둘이 어느 자리에도 안 나왔다** —
+   * 도감을 영영 못 채우는 막다른 길이다. 해안에서 쉰 걸음이면 아직 바닷가다.
+   */
+  const atShore = (x: number, z: number) =>
+    hasShore && shorePts.some((p) => Math.hypot(p[0] - x, p[1] - z) < 55);
 
-  const pool = COLLECT_KINDS.filter((k) => !k.spots || k.spots.includes(spotId));
-  const out: CollectItem[] = [];
+  /**
+   * 가장 먼 것이 놓이는 거리 — **마을 끝까지 펴지 않는다.**
+   * 몹과 같은 이유다(`village-mobs.ts` 참고): 반지름 830m 에 열두 개를
+   * 늘어놓으면 백오십 걸음에 하나씩이라 걸어도 안 나온다.
+   */
+  const FAR = Math.min(radius * 0.5, 260);
+  /** 황금각 — 한쪽으로 몰리지 않게 방향을 돌린다 */
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
-  // 넉넉히 돌면서 자리를 찾는다 — 막힌 자리는 건너뛴다
-  for (let i = 0; out.length < PER_SPOT && i < 400; i++) {
-    const s = base + i * 7919;
-    const kind = pool[Math.floor(seeded(s) * pool.length) % pool.length];
+  const fits = (x: number, z: number, taken: { x: number; z: number }[]) =>
+    Math.abs(x) <= radius && Math.abs(z) <= radius
+    && !blocked(x, z)
+    && !taken.some((o) => Math.hypot(o.x - x, o.z - z) < MIN_GAP);
 
-    let x: number;
-    let z: number;
+  // ---- 1) 자리부터. 가까운 것 → 먼 것 (몹과 같은 방식) ----
+  const spots: { x: number; z: number }[] = [];
+  for (let slot = 0; slot < PER_SPOT; slot++) {
+    const t = slot / Math.max(1, PER_SPOT - 1);
+    const target = NEAR_M + Math.pow(t, 1.35) * (FAR - NEAR_M);
 
-    if (kind.shore && shorePts.length > 0) {
-      // 해안선 한 점을 골라 그 둘레에 흩는다
-      const p = shorePts[Math.floor(seeded(s + 1) * shorePts.length) % shorePts.length];
-      const a = seeded(s + 2) * Math.PI * 2;
-      const r = 4 + seeded(s + 3) * 16;
-      x = Math.round(p[0] + Math.cos(a) * r);
-      z = Math.round(p[1] + Math.sin(a) * r);
-    } else {
-      const R = radius * 0.82;
-      x = Math.round((seeded(s + 1) - 0.5) * R * 2);
-      z = Math.round((seeded(s + 2) - 0.5) * R * 2);
+    let done = false;
+    for (let k = 0; k < 80 && !done; k++) {
+      const s = base + slot * 7919 + k * 131;
+      // 몹과 **반대로 돌린다** — 같은 각으로 깔면 소라 옆에 늘 폐그물이 선다
+      const ang = -GOLDEN * slot + (seeded(s) - 0.5) * 1.2 + 1.7;
+      const r = target * (0.86 + seeded(s + 1) * 0.28);
+      const x = Math.round(Math.cos(ang) * r);
+      const z = Math.round(Math.sin(ang) * r);
+      if (!fits(x, z, spots)) continue;
+      spots.push({ x, z });
+      done = true;
     }
-
-    if (Math.abs(x) > radius || Math.abs(z) > radius) continue;
-    if (blocked(x, z)) continue;
-    // 서로 너무 붙어 있으면 한 자리에서 다 주워진다
-    if (out.some((o) => Math.hypot(o.x - x, o.z - z) < 40)) continue;
-
-    out.push({ id: `${spotId}-${out.length}-${kind.id}`, kind, x, z });
+    // 수는 반드시 채운다 — 모자라면 영영 다 못 모아 상을 못 받는다
+    for (let k = 0; k < 400 && !done; k++) {
+      const s = base + 500_000 + slot * 6151 + k * 97;
+      const x = Math.round((seeded(s) - 0.5) * FAR * 2);
+      const z = Math.round((seeded(s + 1) - 0.5) * FAR * 2);
+      if (!fits(x, z, spots)) continue;
+      spots.push({ x, z });
+      done = true;
+    }
   }
 
-  return out;
+  // ---- 2) 자리에 맞는 종류를 얹는다 ----
+  /**
+   * **돌려가며 뽑는다.** 아무 종류나 뽑으면 같은 것만 나와서
+   * 도감에 영영 안 채워지는 종류가 생긴다(실측: 여덟 중 셋이 안 나왔다).
+   */
+  const pool = COLLECT_KINDS.filter((k) => !k.spots || k.spots.includes(spotId));
+  const turn = new Map<string, number>();
+  const nextOf = (key: string, use: CollectKind[]) => {
+    const n = turn.get(key) ?? Math.floor(seeded(base + seedOf(key)) * use.length);
+    turn.set(key, n + 1);
+    return use[n % use.length];
+  };
+
+  return spots.map((p, i) => {
+    const sea = atShore(p.x, p.z);
+    const fit = pool.filter((k) => !!k.shore === sea);
+    const use = fit.length ? fit : pool;
+    const kind = nextOf(String(sea), use);
+    return { id: `${spotId}-${i}-${kind.id}`, kind, x: p.x, z: p.z };
+  });
 }
 
 /** 진행 기록에서 이 자리를 다 모았나 */

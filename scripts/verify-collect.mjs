@@ -14,7 +14,8 @@
  */
 import { readFileSync } from 'fs';
 import {
-  COLLECT_KINDS, PER_SPOT, PICK_RADIUS, itemsOfSpot, kindOfToken, kindById,
+  COLLECT_KINDS, PER_SPOT, PICK_RADIUS, NEAR_M, MIN_GAP, SHOW_RANGE,
+  itemsOfSpot, kindOfToken, kindById,
 } from '../src/lib/village-collect.ts';
 import { VILLAGE_SPOTS, spotsOfSchool } from '../src/lib/village-spots.ts';
 
@@ -54,7 +55,7 @@ for (const spot of spotsOfSchool(SCHOOL)) {
   const items = itemsOfSpot(spot.id, v.r, v.b, v.cl);
   const t = spot.id;
 
-  ok(`${t}: 여덟 개가 다 놓인다`, items.length === PER_SPOT);
+  ok(`${t}: ${PER_SPOT}개가 다 놓인다 (${items.length})`, items.length === PER_SPOT);
 
   // 건물 안에 있으면 못 줍는다
   const boxes = v.b.map((b) => {
@@ -72,11 +73,8 @@ for (const spot of spotsOfSchool(SCHOOL)) {
   // 자리 밖이면 못 간다
   ok(`${t}: 다 자리 안에 있다`, items.every((it) => Math.abs(it.x) <= v.r && Math.abs(it.z) <= v.r));
 
-  // 학교 앞마당은 비운다 (집 자리에서만 뜻이 있다)
-  if (spot.home) {
-    ok(`${t}: 학교 앞마당에는 없다`,
-      items.every((it) => Math.abs(it.x) >= 26 || Math.abs(it.z) >= 34));
-  }
+  // 발밑에 있으면 걷기도 전에 주워진다
+  ok(`${t}: 시작 자리 발밑에는 없다`, items.every((it) => Math.hypot(it.x, it.z) >= 6));
 
   // 서로 붙어 있으면 한 발짝에 다 주워진다
   let minGap = Infinity;
@@ -87,6 +85,17 @@ for (const spot of spotsOfSchool(SCHOOL)) {
     }
   }
   ok(`${t}: 서로 넉넉히 떨어져 있다 (${Math.round(minGap)}m)`, minGap > PICK_RADIUS * 4);
+
+  /*
+    **가까운 데서부터, 걷는 내내 나와야 한다.**
+    예전에는 앞마당을 통째로 비우고 아무 데나 흩뿌려서, 첫 개를 만나기까지
+    한참 걸었고 그 뒤로도 띄엄띄엄이었다. 몹과 같은 기준으로 잰다.
+  */
+  const dists = items.map((it) => Math.hypot(it.x, it.z)).sort((a, b) => a - b);
+  ok(`${t}: 첫 개가 가깝다 (${Math.round(dists[0])}m)`, dists[0] <= NEAR_M * 1.8);
+  let maxStep = dists[0];
+  for (let i = 1; i < dists.length; i++) maxStep = Math.max(maxStep, dists[i] - dists[i - 1]);
+  ok(`${t}: 중간에 텅 빈 구간이 없다 (가장 먼 간격 ${Math.round(maxStep)}m)`, maxStep <= SHOW_RANGE * 1.6);
 
   // 기록에서 종류를 되찾을 수 있어야 도감이 채워진다
   ok(`${t}: 기록에서 종류를 되찾는다`,
@@ -101,13 +110,15 @@ for (const spot of spotsOfSchool(SCHOOL)) {
   const shore = items.filter((it) => it.kind.shore);
   if ((v.cl?.length ?? 0) > 0 && shore.length > 0) {
     const pts = v.cl.flat();
+    // 코드가 바닷가로 치는 거리와 **같은 값**이어야 한다 (village-collect.ts 의 atShore)
     const far = shore.filter((it) =>
-      Math.min(...pts.map((p) => Math.hypot(p[0] - it.x, p[1] - it.z))) > 30);
+      Math.min(...pts.map((p) => Math.hypot(p[0] - it.x, p[1] - it.z))) > 55);
     ok(`${t}: 바닷가 것은 바닷가에 있다`, far.length === 0);
   }
 
   console.log(
-    `  ${t}: ${items.length}개 · 가장 가까운 둘 ${Math.round(minGap)}m · `
+    `  ${t}: ${items.length}개 · 첫 개 ${Math.round(dists[0])}m · `
+    + `간격 최대 ${Math.round(maxStep)}m · 서로 최소 ${Math.round(minGap)}m · `
     + `종류 ${new Set(items.map((i) => i.kind.id)).size}가지`
   );
 }

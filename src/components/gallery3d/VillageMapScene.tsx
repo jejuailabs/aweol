@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -16,7 +16,9 @@ import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
 import { gatesFrom, type VillageSpot } from '@/lib/village-spots';
-import { PICK_RADIUS, itemsOfSpot, type CollectItem } from '@/lib/village-collect';
+import {
+  PICK_RADIUS, SHOW_RANGE as COLLECT_SHOW_RANGE, itemsOfSpot, type CollectItem,
+} from '@/lib/village-collect';
 import { mobsOfSpot, type Mob } from '@/lib/village-mobs';
 import { answerText, isCorrect, pickBellQuestions, type BellQuestion } from '@/lib/goldenbell';
 import { seaMask, seaRects } from '@/lib/village-sea';
@@ -1254,23 +1256,40 @@ function Collectibles({
 }) {
   const bob = useRef<THREE.Group>(null);
 
-  /** 아직 안 주운 것만 */
-  const left = useMemo(() => items.filter((it) => !picked.has(it.id)), [items, picked]);
+  /** 아직 안 주운 것 */
+  const rest = useMemo(() => items.filter((it) => !picked.has(it.id)), [items, picked]);
+
+  /**
+   * 그중 **눈에 들어오는 거리**만 그린다.
+   *
+   * 멀리 있는 것까지 다 띄우면 어느 게 가까운지 헷갈리고, `Html` 이 열두 개
+   * 떠 있어 느려진다. 걸어가면 하나씩 나타나는 편이 낫다.
+   */
+  const [nearIds, setNearIds] = useState<ReadonlySet<string>>(() => new Set());
+  const left = useMemo(() => rest.filter((it) => nearIds.has(it.id)), [rest, nearIds]);
 
   useEffect(() => {
     const t = setInterval(() => {
       const p = avatarPos.current;
       if (!p) return;
-      for (const it of left) {
-        if (Math.hypot(p.x - it.x, p.z - it.z) < PICK_RADIUS) {
+
+      const seen = new Set<string>();
+      for (const it of rest) {
+        const d = Math.hypot(p.x - it.x, p.z - it.z);
+        if (d < PICK_RADIUS) {
           onPick(it);
           // 한 번에 하나만 — 여럿이 겹치면 무엇을 주웠는지 모른다
           break;
         }
+        if (d < COLLECT_SHOW_RANGE) seen.add(it.id);
       }
+      setNearIds((prev) => {
+        if (prev.size === seen.size && Array.from(seen).every((id) => prev.has(id))) return prev;
+        return seen;
+      });
     }, 220);
     return () => clearInterval(t);
-  }, [left, avatarPos, onPick]);
+  }, [rest, avatarPos, onPick]);
 
   // 둥실 떠오르며 돈다 — 멈춰 있으면 배경이 되고, 움직이면 눈에 띈다
   useFrame(({ clock }) => {
@@ -1776,9 +1795,9 @@ export default function VillageMapScene({
     () => (currentSpot && onPurify ? mobsOfSpot(currentSpot.id, data.r, data.b, data.cl) : []),
     [currentSpot, data.r, data.b, data.cl, onPurify]
   );
-  /** 문제를 맞혀 껍질이 깨진 우두머리 — **판을 떠나면 잊는다**(저장할 값어치가 없다) */
-  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(() => new Set());
-  /** 지금 눈앞에 있는 우두머리 */
+  /** 문제를 맞힌 우두머리 — 3D 쪽이 이걸 보고 마무리한다 */
+  const [solved, setSolved] = useState<ReadonlySet<string>>(() => new Set());
+  /** 약점이 드러난 채 곁에 있는 우두머리 (문제를 미뤘을 때 다시 풀라고) */
   const [bossNear, setBossNear] = useState<Mob | null>(null);
   /** 문제 창이 열려 있나 */
   const [quiz, setQuiz] = useState<{ mob: Mob; q: BellQuestion } | null>(null);
@@ -1786,38 +1805,40 @@ export default function VillageMapScene({
   const [quizMsg, setQuizMsg] = useState<{ ok: boolean; text: string } | null>(null);
   /** 방금 정화한 것 — 배울 것 한 줄을 띄운다 */
   const [justPurified, setJustPurified] = useState<Mob | null>(null);
-  /** 껍질에 튕겼을 때 한 줄 */
-  const [blockedMsg, setBlockedMsg] = useState(false);
   /** 칼을 뽑고 있나 — 뽑았으면 아래 단추가 '베기' 로 바뀐다 */
   const [armed, setArmed] = useState(false);
 
-  /** 자리를 옮기면 껍질도 다시 닫힌다 */
+  /** 자리를 옮기면 다 잊는다 */
   useEffect(() => {
-    setUnlocked(new Set());
+    setSolved(new Set());
     setBossNear(null);
     setQuiz(null);
     setJustPurified(null);
   }, [currentSpot]);
 
   /**
-   * 문제를 낸다.
+   * 문제를 낸다 — **껍질을 깨고 난 뒤에** 부른다.
    *
    * **골든벨 문제은행을 그대로 쓴다** — 학년이 있으면 ±2학년으로 걸러진다.
    * 몹마다 씨앗이 달라 늘 같은 문제가 나온다. 다시 도전할 때 문제가 바뀌면
    * 아이가 "아까 그거 뭐였지" 하고 헷갈린다.
    */
-  const openQuiz = (mob: Mob) => {
-    let h = 0;
-    for (let i = 0; i < mob.id.length; i++) h = (Math.imul(h, 31) + mob.id.charCodeAt(i)) | 0;
-    const q = pickBellQuestions(h >>> 0, 1, grade)[0];
-    if (!q) return;
-    setAnswer('');
-    setQuizMsg(null);
-    setQuiz({ mob, q });
-    // 문제를 푸는 동안에는 안 움직인다 — 뒤에서 칼이 나가면 안 된다
-    setMovementLock(true);
-    playSound('open');
-  };
+  const openQuiz = useCallback((mob: Mob) => {
+    setQuiz((cur) => {
+      // 이미 떠 있으면 그대로 둔다 — 3D 쪽이 여러 번 불러도 문제가 새로 안 뜬다
+      if (cur) return cur;
+      let h = 0;
+      for (let i = 0; i < mob.id.length; i++) h = (Math.imul(h, 31) + mob.id.charCodeAt(i)) | 0;
+      const q = pickBellQuestions(h >>> 0, 1, grade)[0];
+      if (!q) return cur;
+      setAnswer('');
+      setQuizMsg(null);
+      // 문제를 푸는 동안에는 안 움직인다 — 뒤에서 칼이 나가면 안 된다
+      setMovementLock(true);
+      playSound('open');
+      return { mob, q };
+    });
+  }, [grade]);
 
   const closeQuiz = () => {
     setQuiz(null);
@@ -1828,8 +1849,8 @@ export default function VillageMapScene({
   const submitAnswer = (given: number | string) => {
     if (!quiz) return;
     if (isCorrect(quiz.q, given)) {
-      playSound('shatter');
-      setUnlocked((prev) => new Set(prev).add(quiz.mob.id));
+      // 맞히면 3D 쪽이 이걸 보고 마무리 일격을 넣는다
+      setSolved((prev) => new Set(prev).add(quiz.mob.id));
       setQuizMsg({ ok: true, text: `맞았어요! ${quiz.q.why}` });
       setTimeout(closeQuiz, 1600);
     } else {
@@ -1837,13 +1858,6 @@ export default function VillageMapScene({
       setQuizMsg({ ok: false, text: `아니에요. 정답은 ${answerText(quiz.q)} — ${quiz.q.why}` });
     }
   };
-
-  /** 껍질에 튕겼다는 말은 잠깐만 띄운다 */
-  useEffect(() => {
-    if (!blockedMsg) return;
-    const t = setTimeout(() => setBlockedMsg(false), 1500);
-    return () => clearTimeout(t);
-  }, [blockedMsg]);
 
   /** 정화 알림도 잠깐만 */
   useEffect(() => {
@@ -2136,11 +2150,11 @@ export default function VillageMapScene({
           <VillageMobs
             mobs={mobs}
             cleared={cleared ?? EMPTY_PICKED}
-            unlocked={unlocked}
+            solved={solved}
             avatarPos={avatarPos}
             onPurified={(m) => { onPurify(m); setJustPurified(m); }}
             onBossNear={setBossNear}
-            onBlocked={() => setBlockedMsg(true)}
+            onBossWeak={openQuiz}
             onArmedChange={setArmed}
           />
         )}
@@ -2627,19 +2641,10 @@ export default function VillageMapScene({
         </div>
       )}
 
-      {/* 껍질에 튕겼다 — 왜 안 통하는지 그 자리에서 말해준다 */}
-      {blockedMsg && !quiz && (
-        <div
-          className="absolute left-1/2 top-[38%] z-40 -translate-x-1/2 rounded-2xl px-4 py-2.5 text-[14px] font-black whitespace-nowrap"
-          style={{ background: 'rgba(24,20,16,0.85)', color: '#BFE9FF' }}
-        >
-          🛡️ 단단해요! 문제를 풀어야 껍질이 깨져요
-        </div>
-      )}
-
       {/*
-        우두머리 앞 — **다가가면 뜨는 단추.**
-        문제 창을 저절로 띄우면 지나가다 걸려서 놀란다. 누를 것 하나만 띄운다.
+        약점이 드러난 우두머리 곁 — **문제를 미뤘을 때 다시 부르는 단추.**
+        껍질을 깨면 문제가 저절로 뜨지만, '나중에' 를 누르고 물러날 수 있다.
+        그때 다시 다가오면 이 단추로 이어서 푼다.
       */}
       {bossNear && !quiz && (
         <div className="pos-hint absolute left-1/2 -translate-x-1/2 z-40">
@@ -2647,19 +2652,18 @@ export default function VillageMapScene({
             onClick={() => openQuiz(bossNear)}
             className="rounded-full px-5 py-3 text-[15px] font-black whitespace-nowrap"
             style={{
-              background: '#FFF8E7', color: '#0B3E52',
-              border: '3px solid #7FC9E8', boxShadow: '0 4px 0 #4E9FC2',
+              background: '#FFF8E7', color: '#7A2E10',
+              border: '3px solid #F0A97C', boxShadow: '0 4px 0 #C2734E',
             }}
           >
-            {bossNear.kind.emoji} {bossNear.kind.name} — 문제 풀기
+            ❗ {bossNear.kind.name} — 문제 풀어 마무리
           </button>
         </div>
       )}
 
       {/*
-        우두머리 문제.
+        우두머리 마무리 문제 — **껍질을 깨고 나서 뜬다.**
 
-        **골든벨 문제은행을 그대로 쓴다** — 학년이 있으면 ±2학년으로 걸러져 나온다.
         틀려도 잃는 것은 없다. 정답과 까닭을 보여주고 다시 풀게 한다 —
         여기서 아이를 벌주면 문제를 피해 다니게 된다.
       */}
@@ -2675,7 +2679,7 @@ export default function VillageMapScene({
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[26px]">{quiz.mob.kind.emoji}</span>
               <span className="text-[15px] font-black" style={{ color: '#0B3E52' }}>
-                {quiz.mob.kind.name}
+                {quiz.mob.kind.name} — 마무리!
               </span>
               <span
                 className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-black"

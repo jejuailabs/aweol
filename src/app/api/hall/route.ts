@@ -21,6 +21,17 @@ export const maxDuration = 30;
 const str = (v: unknown, max: number) =>
   typeof v === 'string' ? v.trim().slice(0, max) : '';
 
+/**
+ * 날짜 — `YYYY-MM-DD` 만 받는다. 아니면 빈 값(상시)으로 둔다.
+ *
+ * 꼴을 안 보고 받으면 배너에 '내일쯤' 같은 글이 그대로 걸리고,
+ * 기간 판정(`showPeriod`)이 글자 비교라 엉뚱한 때가 나온다.
+ */
+const dateStr = (v: unknown) => {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+};
+
 /** 전시관·전시·작품 세 층의 `isPublic` 을 한꺼번에 맞춘다 */
 async function cascadePublic(hallId: string, isPublic: boolean) {
   const db = adminDb();
@@ -98,6 +109,10 @@ export async function POST(req: NextRequest) {
     theme?: string;
     lat?: number;
     lng?: number;
+    /** 전시관을 열 때 함께 만드는 첫 전시 */
+    showTitle?: string;
+    startAt?: string;
+    endAt?: string;
   };
   try {
     body = await req.json();
@@ -138,6 +153,23 @@ export async function POST(req: NextRequest) {
       ? (body.theme as HallTheme)
       : 'white';
 
+    /**
+     * **첫 전시는 전시관과 함께 만든다.**
+     *
+     * 전에는 전시관만 덩그러니 서고 전시는 따로 만들어야 했다. 그래서
+     * 전시 0개인 빈 전시관이 남고, 주인도 "왜 지도에 안 뜨지" 하고 헤맸다.
+     * 미술관을 짓는 사람은 걸 것을 정해두고 짓는다 — 이름과 기간을 함께 받는다.
+     */
+    const showTitle = str(body.showTitle, LIMITS.showTitle);
+    if (!showTitle) {
+      return NextResponse.json({ error: '첫 전시회 이름이 필요해요' }, { status: 400 });
+    }
+    const startAt = dateStr(body.startAt);
+    const endAt = dateStr(body.endAt);
+    if (startAt && endAt && endAt < startAt) {
+      return NextResponse.json({ error: '끝나는 날이 시작하는 날보다 빨라요' }, { status: 400 });
+    }
+
     const ref = db.collection('halls').doc();
     await ref.set({
       ownerUid: user.uid,
@@ -156,9 +188,24 @@ export async function POST(req: NextRequest) {
        * 걸 것을 다 걸고 주인이 직접 연다.
        */
       isPublic: false,
-      showCount: 0,
+      showCount: 1,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    await ref.collection('shows').add({
+      hallId: ref.id,
+      ownerUid: user.uid,
+      isPublic: false,
+      title: showTitle,
+      subtitle: '',
+      intro: '',
+      posterUrl: '',
+      startAt,
+      endAt,
+      order: 0,
+      workCount: 0,
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     await db.collection('accessLogs').add({
