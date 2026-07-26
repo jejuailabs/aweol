@@ -222,6 +222,39 @@ function VillageBody() {
     return () => { alive = false; };
   }, [schoolId, currentSpot, isHome]);
 
+  /**
+   * 들어가는 중 — **누른 즉시 뜬다.**
+   *
+   * 문을 눌러도 한동안 아무 일이 없었다. 화면 코드(`CivicPlaceScene`)를 그때
+   * 처음 내려받아서인데, 아이 눈에는 **눌린 건지 아닌지도 모르는 시간**이다.
+   * 그래서 두 가지를 같이 한다 — 미리 받아두고(아래 효과), 누르면 바로 알린다.
+   */
+  const [entering, setEntering] = useState<string | null>(null);
+
+  /**
+   * 기관·전시실 화면을 **미리 받아 둔다.**
+   *
+   * 마을을 걸어다니는 동안은 통신이 한가하다. 그때 받아두면 문을 눌렀을 때
+   * 이미 손에 있다. `requestIdleCallback` 이라 마을 그리는 일을 방해하지 않는다.
+   */
+  useEffect(() => {
+    if (!village) return;
+    const load = () => {
+      void import('@/components/gallery3d/CivicPlaceScene');
+      router.prefetch(`/school/${schoolId}/place/townhall`);
+    };
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(load, { timeout: 4000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(load, 1800);
+    return () => clearTimeout(t);
+  }, [village, router, schoolId]);
+
   const enter = (spot: VillageSpot) => {
     if (spot === 'school') {
       router.push(`/school/${schoolId}`);
@@ -249,14 +282,20 @@ function VillageBody() {
           avatarId={userDoc?.avatarId}
           avatarCustom={userDoc?.avatarCustom}
           avatarTint={userDoc?.avatarTint}
-          onEnterSchool={() => router.push(`/school/${schoolId}`)}
+          onEnterSchool={() => { setEntering('학교'); router.push(`/school/${schoolId}`); }}
           /**
            * 우체국·읍사무소 같은 곳에 들어간다.
            * **주소가 기관 종류다** — 우체국은 어느 동네에 있든 하는 일이 같아서
            * 학교마다 방을 따로 만들지 않는다.
            */
-          onEnterPlace={(kind) => router.push(`/school/${schoolId}/place/${kind}`)}
-          onEnterSite={(siteId) => router.push(`/school/${schoolId}/site/${siteId}`)}
+          onEnterPlace={(kind) => {
+            setEntering(rpg.places.find((p) => p.kind === kind)?.label ?? '');
+            router.push(`/school/${schoolId}/place/${kind}`);
+          }}
+          onEnterSite={(siteId) => {
+            setEntering(rpg.sites.find((s) => s.id === siteId)?.name ?? '');
+            router.push(`/school/${schoolId}/site/${siteId}`);
+          }}
           localSites={rpg.sites}
           localPlaces={rpg.places}
           ownedVehicles={ownedVehicles}
@@ -355,6 +394,22 @@ function VillageBody() {
           {village
             ? `${currentSpot?.name ?? '우리 동네'}예요. ${isHome ? '학교 자리를 누르면 들어가요' : '끝단 화살표로 다른 마을에 가요'}`
             : '걸어다니다 문을 눌러보세요'}
+        </div>
+      )}
+
+      {/*
+        들어가는 중 — **누르자마자 덮는다.**
+        빈 시간에 아무 표시가 없으면 아이는 한 번 더 누른다(그러면 두 번 들어간다).
+      */}
+      {entering !== null && (
+        <div
+          className="absolute inset-0 z-[60] flex flex-col items-center justify-center pointer-events-none"
+          style={{ background: 'rgba(20,26,32,0.72)', animation: 'modal-fade 0.18s ease both' }}
+        >
+          <div className="text-[38px] mb-2">🚪</div>
+          <div className="text-[15px] font-black text-white">
+            {entering ? `${entering}에 들어가는 중...` : '들어가는 중...'}
+          </div>
         </div>
       )}
 

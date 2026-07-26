@@ -182,8 +182,8 @@ export default function VillageMobs({
         const v = rtOf(m.id);
         const d = Math.hypot(p.x - (m.x + v.ox), p.z - (m.z + v.oz));
         if (d < SHOW_RANGE || v.dead) seen.add(m.id);
-        // 껍질이 벗겨진 채 남아 있는 우두머리 — 다시 풀 수 있게 알린다
-        if (!boss && v.weak && !v.dead && d < BOSS_TALK_RANGE) boss = m;
+        // 껍질이 벗겨진 채 남아 있는 놈 — 다시 풀 수 있게 알린다
+        if (!boss && v.weak && !v.dead && d < BOSS_TALK_RANGE * 1.6) boss = m;
       }
       setNearIds((prev) => {
         if (prev.size === seen.size && Array.from(seen).every((id) => prev.has(id))) return prev;
@@ -253,7 +253,7 @@ export default function VillageMobs({
         continue;
       }
 
-      if (m.kind.tier === 'boss') {
+      if (m.quiz) {
         /*
           **여기서 죽지 않는다.** 껍질이 벗겨지고 약점이 드러날 뿐이다.
           마무리는 문제를 맞혀야 들어간다.
@@ -470,7 +470,23 @@ export default function VillageMobs({
                   >
                     {m.kind.name}
                   </div>
-                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center' }}>
+                    {/*
+                      **문제가 나오는 놈은 미리 알려준다.**
+                      다 두들겼는데 갑자기 문제가 뜨면 놀란다 — 각오하고 치는 것과
+                      다르다. 물음표 하나면 충분하다.
+                    */}
+                    {m.quiz && (
+                      <span
+                        style={{
+                          fontSize: 9, fontWeight: 900, color: '#7A2E10',
+                          background: '#FFD9A8', borderRadius: 6, padding: '0 3px',
+                          marginRight: 2, lineHeight: '11px',
+                        }}
+                      >
+                        ?
+                      </span>
+                    )}
                     {Array.from({ length: m.kind.hp }).map((_, i) => (
                       <span
                         key={i}

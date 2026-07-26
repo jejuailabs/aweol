@@ -241,7 +241,21 @@ export interface Mob {
   kind: MobKind;
   x: number;
   z: number;
+  /**
+   * 마무리에 **문제를 풀어야 하나.**
+   *
+   * 종류가 아니라 **자리(차례)가 정한다.** 우두머리만 문제를 냈더니 스물여섯
+   * 마리 중 둘, 열에 하나도 안 됐다 — 대부분은 그냥 세 번 두들기고 끝이라
+   * 배우는 것이 없었다. 이제 셋에 하나꼴로 낸다.
+   *
+   * 차례에서 나오므로 **기록만 있으면 다시 알아낼 수 있다**(id 에 번호가 있다).
+   * 따로 저장할 것이 없다.
+   */
+  quiz: boolean;
 }
+
+/** 몇 마리에 하나꼴로 문제가 나오나 (우두머리는 무조건 낸다) */
+export const QUIZ_EVERY = 3;
 
 /** 기록 한 줄에서 종류를 되찾는다 */
 export const mobKindOfToken = (token: string) => token.split('-').pop() ?? '';
@@ -398,13 +412,20 @@ export function mobsOfSpot(
   };
 
   return spots.map((p, i) => {
-    const tier: MobTier = bossSlots.has(i) ? 'boss' : 'normal';
+    const isBoss = bossSlots.has(i);
+    const tier: MobTier = isBoss ? 'boss' : 'normal';
     const sea = atShore(p.x, p.z);
     const all = MOB_KINDS.filter((k) => k.tier === tier);
     const fit = all.filter((k) => !!k.shore === sea);
     const pool = fit.length ? fit : all;
     const kind = nextOf(`${tier}:${sea}`, pool);
-    return { id: `${spotId}-${i}-${kind.id}`, kind, x: p.x, z: p.z };
+    return {
+      id: `${spotId}-${i}-${kind.id}`,
+      kind,
+      x: p.x,
+      z: p.z,
+      quiz: isBoss || i % QUIZ_EVERY === 1,
+    };
   });
 }
 

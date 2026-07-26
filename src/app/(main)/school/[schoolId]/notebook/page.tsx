@@ -15,6 +15,7 @@ import { usePurify } from '@/lib/use-purify';
 import { COLLECT_KINDS, PER_SPOT, kindOfToken } from '@/lib/village-collect';
 import { MOB_KINDS, MOBS_PER_SPOT, mobKindOfToken } from '@/lib/village-mobs';
 import { spotsOfSchool } from '@/lib/village-spots';
+import { villageHref } from '@/lib/village-return';
 import { auth } from '@/lib/firebase';
 
 /**
@@ -76,7 +77,7 @@ export default function NotebookPage() {
   return (
     <div className="px-4 pt-4 pb-28 mx-auto max-w-[640px]">
       <div className="flex items-center gap-2 mb-3">
-        <button onClick={() => router.push('/village')} className="ac-btn px-3.5 py-2 text-sm">
+        <button onClick={() => router.push(villageHref())} className="ac-btn px-3.5 py-2 text-sm">
           ← 마을로
         </button>
         <h1 className="text-lg font-black" style={{ color: 'var(--color-text-main)' }}>📓 조사 수첩</h1>

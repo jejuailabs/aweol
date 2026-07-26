@@ -25,6 +25,8 @@ import { seaMask, seaRects } from '@/lib/village-sea';
 import { startAmbience } from '@/lib/ambience';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import { playSound } from '@/lib/sound';
+import { saveReturn, saveSpot, takeReturn } from '@/lib/village-return';
+import { blocksOfBuildings } from '@/lib/village-blocks';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
@@ -1730,8 +1732,45 @@ export default function VillageMapScene({
   isHome?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const avatarPos = useRef(new THREE.Vector3(0, 0, 30));
+
+  /**
+   * 어디서 시작하나 — **들어갔던 문 앞이면 거기서, 아니면 학교 앞에서.**
+   *
+   * `useState` 의 게으른 초기값으로 **딱 한 번만 꺼낸다.**
+   * `useRef(꺼내기())` 로 쓰면 안 된다 — 인자는 그릴 때마다 계산되므로
+   * 저장소를 매번 읽고 지운다(값은 첫 것만 남지만 헛일을 계속 한다).
+   */
+  const [spawn] = useState<[number, number, number]>(() => {
+    const back = takeReturn(currentSpot?.id ?? '');
+    return back ? [back.x, 0, back.z] : [0, 0, 30];
+  });
+  const avatarPos = useRef(new THREE.Vector3(...spawn));
   const avatarYaw = useRef(0);
+
+  /**
+   * 문에 들어가기 직전에 서 있던 자리를 적어 둔다.
+   *
+   * **모든 입구가 이걸 거쳐야 한다.** 한 군데라도 빠뜨리면 그 문으로 들어갔다
+   * 나올 때만 학교 앞으로 튕겨 나온다 — 아이는 그걸 버그로도 못 알아본다.
+   */
+  const remember = useCallback(() => {
+    saveReturn(
+      currentSpot?.id ?? '',
+      avatarPos.current.x,
+      avatarPos.current.z,
+      avatarYaw.current
+    );
+  }, [currentSpot]);
+
+  /** 서 있는 동안 자리를 계속 맞춰 둔다 — 문을 안 거치고 나가도 제자리로 돌아온다 */
+  useEffect(() => { saveSpot(currentSpot?.id ?? ''); }, [currentSpot]);
+
+  const enterPlace = useCallback((kind: string) => { remember(); onEnterPlace?.(kind); },
+    [remember, onEnterPlace]);
+  const enterSite = useCallback((siteId: string) => { remember(); onEnterSite?.(siteId); },
+    [remember, onEnterSite]);
+  const enterSchool = useCallback(() => { remember(); onEnterSchool(); },
+    [remember, onEnterSchool]);
   /** 워프할 자리. WalkerAvatar 가 다음 프레임에 집어간다. */
   const teleport = useRef<THREE.Vector3 | null>(null);
   const [schoolHot, setSchoolHot] = useState(false);
@@ -1912,12 +1951,24 @@ export default function VillageMapScene({
     }
   };
 
-  /** 정화 알림도 잠깐만 */
+  /**
+   * **한 번 알리고 마는 말은 저절로 사라진다.**
+   *
+   * 주웠다·정화했다 같은 것은 읽고 나면 볼 일이 없는데, ✕ 를 눌러야 없어지니
+   * 걸어다니는 내내 화면 한가운데를 차지했다. 휴대폰에서는 그 한 줄이 마을을 가린다.
+   * 안내 한 줄(`hintOn`)을 3초로 둔 것과 같은 선이다.
+   */
   useEffect(() => {
     if (!justPurified) return;
-    const t = setTimeout(() => setJustPurified(null), 5200);
+    const t = setTimeout(() => setJustPurified(null), 2800);
     return () => clearTimeout(t);
   }, [justPurified]);
+
+  useEffect(() => {
+    if (!justPicked) return;
+    const t = setTimeout(() => setJustPicked(null), 2800);
+    return () => clearTimeout(t);
+  }, [justPicked]);
 
   /**
    * 마을 소리 — 파도·바람·새·발소리.
@@ -2100,25 +2151,15 @@ export default function VillageMapScene({
 
   /**
    * 건물은 통과할 수 없게 한다.
-   * 다각형 그대로 판정하면 무거우니 **감싸는 네모**로 줄인다 —
-   * 아이가 벽에 살짝 못 붙는 정도지 걸어다니는 데는 지장이 없다.
+   *
+   * **감싸는 네모 하나로 막으면 안 된다.** 비스듬히 선 건물은 그 네모가
+   * 빈 땅까지 덮어서, 아무것도 없는 풀밭에서 막혀 옆으로 돌아가게 된다
+   * (실측: 막힌 넓이의 40~56%가 빈 땅이었다). 그래서 다각형을 작은 네모로
+   * 쪼갠다 — `village-blocks.ts` 참고.
    */
   const obstacles: Obstacle[] = useMemo(
     () => [
-      ...data.b.map((b) => {
-        const xs = b.p.map((p) => p[0]);
-        const zs = b.p.map((p) => p[1]);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minZ = Math.min(...zs);
-        const maxZ = Math.max(...zs);
-        return {
-          x: (minX + maxX) / 2,
-          z: (minZ + maxZ) / 2,
-          halfW: (maxX - minX) / 2,
-          halfD: (maxZ - minZ) / 2,
-        };
-      }),
+      ...blocksOfBuildings(data.b),
       ...missingPlaces.map((mp) => ({
         x: mp.x, z: mp.z, halfW: 4, halfD: 3,
       })),
@@ -2210,7 +2251,7 @@ export default function VillageMapScene({
         <Areas list={data.a} />
         <Roads list={data.rd} />
         <VillageProps radius={R} buildings={data.b} avatarPos={avatarPos} />
-        <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
+        <Buildings list={data.b} onEnterPlace={enterPlace} places={localPlaces} />
         {isHome && <SchoolYard buildings={data.b} />}
         <Butterflies />
 
@@ -2331,7 +2372,7 @@ export default function VillageMapScene({
             )}
             <Html position={[0, 5.2, 0]} center style={{ pointerEvents: 'auto' }} zIndexRange={[5, 0]}>
               <div
-                onClick={() => onEnterSite?.(s.site.id)}
+                onClick={() => enterSite(s.site.id)}
                 style={{
                   background: '#FFF1D6', color: '#5B4A3B', fontWeight: 800, fontSize: '14px',
                   padding: '3px 10px', borderRadius: '999px', whiteSpace: 'nowrap',
@@ -2469,7 +2510,7 @@ export default function VillageMapScene({
         {isHome && (
         <group
           position={[0, 0, 0]}
-          onClick={(e) => { e.stopPropagation(); onEnterSchool(); }}
+          onClick={(e) => { e.stopPropagation(); enterSchool(); }}
           onPointerOver={(e) => { e.stopPropagation(); setSchoolHot(true); document.body.style.cursor = 'pointer'; }}
           onPointerOut={() => { setSchoolHot(false); document.body.style.cursor = 'auto'; }}
         >
@@ -2524,7 +2565,7 @@ export default function VillageMapScene({
         <WalkerAvatar
           avatarPos={avatarPos}
           bounds={{ xMin: -R, xMax: R, zMin: -R, zMax: R }}
-          start={[0, 0, 30]}
+          start={spawn}
           maxSpeed={speedOf(riding ? 'car' : 'walk', vehicle)}
           avatarId={avatarId}
           avatarCustom={avatarCustom}

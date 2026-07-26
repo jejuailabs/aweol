@@ -64,6 +64,16 @@ for (const spot of spotsOfSchool(SCHOOL)) {
   const bosses = mobs.filter((m) => m.kind.tier === 'boss');
   ok(`${t}: 우두머리가 둘이다 (${bosses.length})`, bosses.length === 2);
 
+  /*
+    **문제가 너무 드물면 배우는 것이 없고, 너무 잦으면 진도가 안 나간다.**
+    우두머리만 냈을 때는 스물여섯에 둘(8%)이라 대부분 그냥 두들기고 끝이었다.
+  */
+  const quizzes = mobs.filter((m) => m.quiz);
+  const pct = Math.round((quizzes.length / mobs.length) * 100);
+  ok(`${t}: 서넛에 하나는 문제를 낸다 (${quizzes.length}/${mobs.length} = ${pct}%)`,
+    pct >= 25 && pct <= 45);
+  ok(`${t}: 우두머리는 모두 문제를 낸다`, bosses.every((m) => m.quiz));
+
   // 건물 안에 있으면 못 벤다
   const boxes = v.b.map((b) => {
     const xs = b.p.map((p) => p[0]);
