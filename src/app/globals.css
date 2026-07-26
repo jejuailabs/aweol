@@ -57,6 +57,18 @@ body {
   to { opacity: 1; }
 }
 
+/*
+  때린 자리에 뜨는 숫자.
+  **위로 뜨면서 옅어진다.** 튀어올랐다 잦아드는 곡선이라야 '맞았다' 로 읽힌다 —
+  그냥 사라지면 눈에 안 남는다.
+*/
+@keyframes dmg-float {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.7); }
+  22%  { opacity: 1; transform: translateY(-10px) scale(1.22); }
+  40%  { transform: translateY(-16px) scale(1); }
+  100% { opacity: 0; transform: translateY(-42px) scale(0.95); }
+}
+
 @keyframes modal-pop {
   0% { opacity: 0; transform: translateY(36px) scale(0.92); }
   60% { opacity: 1; transform: translateY(-8px) scale(1.02); }

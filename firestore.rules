@@ -232,6 +232,24 @@ service cloud.firestore {
       }
 
       /**
+       * 마을에서 정화한 것 — 줍기(`collect`)와 **똑같은 선**이다.
+       *
+       * 본인만 쓰고, 스스로 적어봤자 얻는 것은 도감이 채워지는 것뿐이다.
+       * **`rewarded` 는 못 건드린다** — 그건 도장을 받았다는 표시라
+       * 열려 있으면 지웠다 다시 받아 도장을 무한히 찍어낼 수 있다.
+       * 상 주는 것은 서버(`/api/purify`)만 한다.
+       */
+      match /purify/{docId} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || isStaff());
+        allow create: if isSignedIn() && request.auth.uid == uid
+                      && !request.resource.data.keys().hasAny(['rewarded']);
+        allow update: if isSignedIn() && request.auth.uid == uid
+                      && request.resource.data.get('rewarded', [])
+                         == resource.data.get('rewarded', []);
+        allow delete: if false;
+      }
+
+      /**
        * 선생님이 직접 만든 도장 도안.
        *
        * 본인만 만들고 지운다. 아이는 여기를 안 읽는다 — 찍는 순간 제출물 쪽으로

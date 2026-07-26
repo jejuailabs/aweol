@@ -11,7 +11,10 @@ import { useProgress } from '@/lib/use-progress';
 import { openQuests } from '@/lib/village-rpg';
 import { useRpgContent } from '@/lib/use-rpg-content';
 import { homeSpot, spotById, spotsOfSchool } from '@/lib/village-spots';
+import { playSound } from '@/lib/sound';
 import { useCollection } from '@/lib/use-collection';
+import { usePurify } from '@/lib/use-purify';
+import { MOBS_PER_SPOT } from '@/lib/village-mobs';
 import type { VillageSpot } from '@/components/gallery3d/VillageScene';
 import type { VillageData } from '@/components/gallery3d/VillageMapScene';
 
@@ -103,9 +106,42 @@ function VillageBody() {
   const { done } = useProgress();
   /** 마을에서 주운 것 — 문서 하나만 읽는다 */
   const collect = useCollection();
+  /** 마을에서 정화한 것 — 마찬가지로 문서 하나 */
+  const purify = usePurify();
   const rpg = useRpgContent(schoolId);
   const grade = Number(userDoc?.classIds?.[0]?.split('-')[0]) || undefined;
   const todoCount = openQuests(rpg.quests, done, grade).length;
+
+  /**
+   * 이 자리를 다 치웠으면 상을 받으러 간다.
+   *
+   * **화면이 도장을 쓰지 않는다** — 서버(`/api/purify`)가 세어 보고 준다.
+   * 이미 받은 자리는 서버가 409 로 막으므로 여기서 따로 안 세도 된다.
+   * 다만 헛걸음을 줄이려고 `rewarded` 에 있으면 아예 안 부른다.
+   */
+  useEffect(() => {
+    const spotId = currentSpot?.id;
+    if (!spotId || !user) return;
+    if (purify.rewarded.has(spotId)) return;
+    const mine = Array.from(purify.cleared).filter((c) => c.startsWith(`${spotId}-`)).length;
+    if (mine < MOBS_PER_SPOT) return;
+
+    let alive = true;
+    (async () => {
+      try {
+        const token = await auth?.currentUser?.getIdToken();
+        const res = await fetch('/api/purify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+          body: JSON.stringify({ spotId }),
+        });
+        if (alive && res.ok) playSound('success');
+      } catch {
+        // 못 받아도 다음에 들어오면 다시 부른다
+      }
+    })();
+    return () => { alive = false; };
+  }, [currentSpot, user, purify.cleared, purify.rewarded]);
 
   const me = user && userDoc ? {
     uid: user.uid,
@@ -232,6 +268,9 @@ function VillageBody() {
           isHome={isHome}
           picked={collect.picked}
           onPickUp={(it) => collect.pick(it.id)}
+          cleared={purify.cleared}
+          onPurify={(m) => purify.clear(m.id)}
+          grade={grade}
         />
       ) : !isHome ? (
         /*

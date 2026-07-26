@@ -68,6 +68,11 @@ export function watchSeat(cb: ((seated: boolean) => void) | null) {
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
     if (isTyping(e.target)) return;
+    // 스페이스로 휘두른다. **누르고 있어도 한 번만** — 자동 반복(repeat)은 버린다.
+    if ((e.code === 'Space' || e.code === 'KeyJ') && !e.repeat) {
+      requestAttack();
+      if (e.code === 'Space') e.preventDefault();  // 스페이스가 화면을 내리는 것을 막는다
+    }
     keyState[e.code] = true;
     if (e.code.startsWith('Arrow')) e.preventDefault();
   });
@@ -81,6 +86,50 @@ if (typeof window !== 'undefined') {
 let joystickDir = { x: 0, z: 0 };
 export function setJoystickDir(x: number, z: number) {
   joystickDir = { x, z };
+}
+
+/**
+ * ---------- 휘두르기 ----------
+ *
+ * **누른 것을 깃발로 남기고, 전투 쪽이 가져가 쓴다.**
+ *
+ * 이동키(`keyState`)처럼 '눌려 있음' 으로 두면 안 된다 — 스페이스를 꾹 누르면
+ * 프레임마다 휘둘러서 초당 예순 대가 들어간다. 한 번 누르면 **한 번만**
+ * 나가야 하므로, 집어가는 쪽이 깃발을 **내리고** 가져간다.
+ *
+ * 이동 잠금 중에는 안 받는다 — 문제를 푸는 동안 뒤에서 칼이 나가면 안 된다.
+ */
+let attackWanted = false;
+export function requestAttack() {
+  if (movementLocked) return;
+  attackWanted = true;
+}
+/** 휘두르라는 요청이 있었나. **가져가면 내려간다.** */
+export function consumeAttack(): boolean {
+  if (!attackWanted) return false;
+  attackWanted = false;
+  return true;
+}
+
+/**
+ * ---------- 화면 흔들기 ----------
+ *
+ * 때린 느낌의 절반은 **화면이 흔들리는 것**이다. 소리와 숫자만으로는
+ * 손에 아무것도 안 잡힌다.
+ *
+ * 세기를 쌓아 두고 카메라가 매 프레임 조금씩 깎아 쓴다. 연달아 때리면
+ * 쌓이지만 위로 묶어 둔다 — 안 묶으면 화면이 멀미 나게 요동친다.
+ */
+let shake = 0;
+export function shakeCamera(strength: number) {
+  shake = Math.min(0.5, shake + strength);
+}
+/** 카메라가 이번 프레임에 쓸 흔들림. 쓰고 나면 줄어든다. */
+function takeShake(delta: number): number {
+  if (shake <= 0.0001) return 0;
+  const v = shake;
+  shake = Math.max(0, shake - delta * 2.6);
+  return v;
 }
 
 // 카메라 상태 (드래그 회전 + 핀치/휠 줌)
@@ -1035,6 +1084,23 @@ export function FollowCamera({
     }
 
     camera.position.lerp(followPos, 4.5 * delta);
+
+    /*
+      때린 순간 화면을 턴다.
+
+      **위치를 옮기지 않고 바라보는 곳을 흔든다.** 카메라를 밀면 벽을 뚫거나
+      땅에 박히고, 위에서 잡아둔 클램프도 다 무너진다. 시선만 떨면 화면 전체가
+      흔들려 보이면서 그런 부작용이 없다.
+    */
+    const sh = takeShake(delta);
+    if (sh > 0) {
+      camera.lookAt(
+        followLook.x + (Math.random() - 0.5) * sh,
+        followLook.y + (Math.random() - 0.5) * sh,
+        followLook.z + (Math.random() - 0.5) * sh
+      );
+      return;
+    }
     camera.lookAt(followLook);
   });
 

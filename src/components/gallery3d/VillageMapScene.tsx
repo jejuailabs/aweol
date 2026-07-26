@@ -7,17 +7,22 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
+  requestAttack, setMovementLock,
   type Obstacle, type AvatarCustom, type AvatarTint,
 } from './walker';
+import VillageMobs from './VillageMobs';
 import Peers from './Peers';
 import VillageMiniMap from './VillageMiniMap';
 import type { PeerLook } from '@/lib/presence';
 import { civicKindOf, civicByKind, type CivicPlace } from '@/lib/civic-places';
 import { gatesFrom, type VillageSpot } from '@/lib/village-spots';
 import { PICK_RADIUS, itemsOfSpot, type CollectItem } from '@/lib/village-collect';
+import { mobsOfSpot, type Mob } from '@/lib/village-mobs';
+import { answerText, isCorrect, pickBellQuestions, type BellQuestion } from '@/lib/goldenbell';
 import { seaMask, seaRects } from '@/lib/village-sea';
 import { startAmbience } from '@/lib/ambience';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
+import { playSound } from '@/lib/sound';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
@@ -1601,6 +1606,7 @@ export default function VillageMapScene({
   localSites, localPlaces,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
   spots, currentSpot, onGoSpot, isHome = true, picked, onPickUp,
+  cleared, onPurify, grade,
 }: {
   data: VillageData;
   schoolId: string;
@@ -1634,6 +1640,15 @@ export default function VillageMapScene({
   picked?: ReadonlySet<string>;
   /** 하나 주웠을 때 */
   onPickUp?: (item: CollectItem) => void;
+  /** 마을에서 정화한 것들 */
+  cleared?: ReadonlySet<string>;
+  /** 하나 정화했을 때 */
+  onPurify?: (mob: Mob) => void;
+  /**
+   * 이 아이 학년 — **우두머리 문제를 여기에 맞춘다.**
+   * 없으면 학년을 안 가리고 낸다(로그인 안 한 손님 등).
+   */
+  grade?: number;
   /**
    * 학교가 서 있는 자리인가.
    *
@@ -1750,6 +1765,92 @@ export default function VillageMapScene({
   );
   /** 방금 주운 것 — 잠깐 띄웠다 사라진다 */
   const [justPicked, setJustPicked] = useState<CollectItem | null>(null);
+
+  /**
+   * ---------- 마을 정화 ----------
+   *
+   * 몹도 줍기와 같이 **씨앗에서 계산한다** — 저장된 것이 없다.
+   * 같은 자리에 같은 것이 있어야 "저기 폐그물 있어" 가 친구끼리 통한다.
+   */
+  const mobs = useMemo(
+    () => (currentSpot && onPurify ? mobsOfSpot(currentSpot.id, data.r, data.b, data.cl) : []),
+    [currentSpot, data.r, data.b, data.cl, onPurify]
+  );
+  /** 문제를 맞혀 껍질이 깨진 우두머리 — **판을 떠나면 잊는다**(저장할 값어치가 없다) */
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(() => new Set());
+  /** 지금 눈앞에 있는 우두머리 */
+  const [bossNear, setBossNear] = useState<Mob | null>(null);
+  /** 문제 창이 열려 있나 */
+  const [quiz, setQuiz] = useState<{ mob: Mob; q: BellQuestion } | null>(null);
+  const [answer, setAnswer] = useState<string>('');
+  const [quizMsg, setQuizMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /** 방금 정화한 것 — 배울 것 한 줄을 띄운다 */
+  const [justPurified, setJustPurified] = useState<Mob | null>(null);
+  /** 껍질에 튕겼을 때 한 줄 */
+  const [blockedMsg, setBlockedMsg] = useState(false);
+  /** 칼을 뽑고 있나 — 뽑았으면 아래 단추가 '베기' 로 바뀐다 */
+  const [armed, setArmed] = useState(false);
+
+  /** 자리를 옮기면 껍질도 다시 닫힌다 */
+  useEffect(() => {
+    setUnlocked(new Set());
+    setBossNear(null);
+    setQuiz(null);
+    setJustPurified(null);
+  }, [currentSpot]);
+
+  /**
+   * 문제를 낸다.
+   *
+   * **골든벨 문제은행을 그대로 쓴다** — 학년이 있으면 ±2학년으로 걸러진다.
+   * 몹마다 씨앗이 달라 늘 같은 문제가 나온다. 다시 도전할 때 문제가 바뀌면
+   * 아이가 "아까 그거 뭐였지" 하고 헷갈린다.
+   */
+  const openQuiz = (mob: Mob) => {
+    let h = 0;
+    for (let i = 0; i < mob.id.length; i++) h = (Math.imul(h, 31) + mob.id.charCodeAt(i)) | 0;
+    const q = pickBellQuestions(h >>> 0, 1, grade)[0];
+    if (!q) return;
+    setAnswer('');
+    setQuizMsg(null);
+    setQuiz({ mob, q });
+    // 문제를 푸는 동안에는 안 움직인다 — 뒤에서 칼이 나가면 안 된다
+    setMovementLock(true);
+    playSound('open');
+  };
+
+  const closeQuiz = () => {
+    setQuiz(null);
+    setQuizMsg(null);
+    setMovementLock(false);
+  };
+
+  const submitAnswer = (given: number | string) => {
+    if (!quiz) return;
+    if (isCorrect(quiz.q, given)) {
+      playSound('shatter');
+      setUnlocked((prev) => new Set(prev).add(quiz.mob.id));
+      setQuizMsg({ ok: true, text: `맞았어요! ${quiz.q.why}` });
+      setTimeout(closeQuiz, 1600);
+    } else {
+      playSound('error');
+      setQuizMsg({ ok: false, text: `아니에요. 정답은 ${answerText(quiz.q)} — ${quiz.q.why}` });
+    }
+  };
+
+  /** 껍질에 튕겼다는 말은 잠깐만 띄운다 */
+  useEffect(() => {
+    if (!blockedMsg) return;
+    const t = setTimeout(() => setBlockedMsg(false), 1500);
+    return () => clearTimeout(t);
+  }, [blockedMsg]);
+
+  /** 정화 알림도 잠깐만 */
+  useEffect(() => {
+    if (!justPurified) return;
+    const t = setTimeout(() => setJustPurified(null), 5200);
+    return () => clearTimeout(t);
+  }, [justPurified]);
 
   /**
    * 마을 소리 — 파도·바람·새·발소리.
@@ -2027,6 +2128,20 @@ export default function VillageMapScene({
             picked={picked ?? EMPTY_PICKED}
             avatarPos={avatarPos}
             onPick={(it) => { onPickUp(it); setJustPicked(it); }}
+          />
+        )}
+
+        {/* 마을을 더럽히는 것들 — 다가가면 칼이 나온다 */}
+        {onPurify && mobs.length > 0 && (
+          <VillageMobs
+            mobs={mobs}
+            cleared={cleared ?? EMPTY_PICKED}
+            unlocked={unlocked}
+            avatarPos={avatarPos}
+            onPurified={(m) => { onPurify(m); setJustPurified(m); }}
+            onBossNear={setBossNear}
+            onBlocked={() => setBlockedMsg(true)}
+            onArmedChange={setArmed}
           />
         )}
 
@@ -2352,26 +2467,60 @@ export default function VillageMapScene({
         전에는 차 타기 버튼이 조이스틱 밑에 깔려 아예 안 보였다.
       */}
       <div className="pos-above-nav absolute right-4 z-30 flex flex-col items-end gap-2">
-        <button
-          onClick={() => setRiding((v) => !v)}
-          className="rounded-full px-5 py-3 text-[15px] font-bold"
-          style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
-        >
-          {riding ? '🚶 내리기' : '🚗 타기'}
-        </button>
-
         {/*
-          탈것 고르기 — 산 게 있을 때만 나온다.
-          기본 자동차뿐이면 고를 게 없으니 버튼도 안 만든다(빈 화면이 낫다).
+          **칼을 뽑으면 이 자리가 베기 단추가 된다.**
+
+          단추를 새로 얹을 자리가 없다 — 오른쪽 1층은 타기, 2층은 지도 보기,
+          3층은 말풍선이 이미 쓰고 있다(위 주석의 층 구분). 억지로 끼우면
+          전에 차 타기 단추가 조이스틱에 깔렸던 일이 되풀이된다.
+
+          그래서 **바꿔 끼운다.** 코앞에 쓰레기가 있는데 차를 타야 할 일은 없고,
+          몇 걸음 물러나면 원래 단추가 돌아온다.
         */}
-        {ownedVehicles.length > 0 && (
+        {armed ? (
           <button
-            onClick={() => setVehOpen(true)}
-            className="rounded-full px-5 py-2.5 text-[14px] font-bold"
-            style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+            /* 손가락을 뗄 때가 아니라 **닿는 순간** 나가야 손맛이 난다 */
+            onPointerDown={(e) => { e.preventDefault(); requestAttack(); }}
+            className="rounded-full flex items-center justify-center select-none"
+            style={{
+              width: 76, height: 76,
+              background: 'linear-gradient(160deg,#FFFDF6 0%,#DFF3FF 60%,#B9E4F7 100%)',
+              color: '#0B3E52',
+              border: '4px solid #7FC9E8',
+              boxShadow: '0 5px 0 #4E9FC2, 0 10px 22px rgba(0,0,0,0.28)',
+              fontSize: 13, fontWeight: 900, lineHeight: 1.15,
+              touchAction: 'none',
+            }}
           >
-            {vehicle.emoji} {vehicle.label} 바꾸기
+            <span style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: 26, display: 'block' }}>🗡️</span>
+              베기
+            </span>
           </button>
+        ) : (
+          <>
+            <button
+              onClick={() => setRiding((v) => !v)}
+              className="rounded-full px-5 py-3 text-[15px] font-bold"
+              style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+            >
+              {riding ? '🚶 내리기' : '🚗 타기'}
+            </button>
+
+            {/*
+              탈것 고르기 — 산 게 있을 때만 나온다.
+              기본 자동차뿐이면 고를 게 없으니 버튼도 안 만든다(빈 화면이 낫다).
+            */}
+            {ownedVehicles.length > 0 && (
+              <button
+                onClick={() => setVehOpen(true)}
+                className="rounded-full px-5 py-2.5 text-[14px] font-bold"
+                style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+              >
+                {vehicle.emoji} {vehicle.label} 바꾸기
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -2439,6 +2588,164 @@ export default function VillageMapScene({
             >
               ✕
             </button>
+          </div>
+        </div>
+      )}
+
+      {/*
+        방금 정화한 것 — 주웠을 때와 같은 꼴로 띄운다.
+        **베는 재미로 끝나면 안 된다.** 무엇이었는지, 왜 문제인지 한 줄이 남아야
+        마을을 치운 것이 뜻을 갖는다.
+      */}
+      {justPurified && (
+        <div
+          className="pos-hint absolute left-1/2 -translate-x-1/2 z-40 w-[min(92vw,380px)]"
+          style={{ animation: 'modal-fade 0.25s ease both' }}
+        >
+          <div
+            className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{ background: 'rgba(240,252,255,0.97)', border: '3px solid #6FC6E8', boxShadow: '0 6px 18px rgba(0,0,0,0.22)' }}
+          >
+            <span className="text-[30px] leading-none shrink-0">✨</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-black" style={{ color: '#0B3E52' }}>
+                {justPurified.kind.name} 정화!
+              </div>
+              <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: '#3E5A66' }}>
+                {justPurified.kind.note}
+              </div>
+            </div>
+            <button
+              onClick={() => setJustPurified(null)}
+              className="shrink-0 h-7 w-7 rounded-full text-[13px] font-bold"
+              style={{ background: 'rgba(0,0,0,0.06)', color: '#5B7A88' }}
+              aria-label="닫기"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 껍질에 튕겼다 — 왜 안 통하는지 그 자리에서 말해준다 */}
+      {blockedMsg && !quiz && (
+        <div
+          className="absolute left-1/2 top-[38%] z-40 -translate-x-1/2 rounded-2xl px-4 py-2.5 text-[14px] font-black whitespace-nowrap"
+          style={{ background: 'rgba(24,20,16,0.85)', color: '#BFE9FF' }}
+        >
+          🛡️ 단단해요! 문제를 풀어야 껍질이 깨져요
+        </div>
+      )}
+
+      {/*
+        우두머리 앞 — **다가가면 뜨는 단추.**
+        문제 창을 저절로 띄우면 지나가다 걸려서 놀란다. 누를 것 하나만 띄운다.
+      */}
+      {bossNear && !quiz && (
+        <div className="pos-hint absolute left-1/2 -translate-x-1/2 z-40">
+          <button
+            onClick={() => openQuiz(bossNear)}
+            className="rounded-full px-5 py-3 text-[15px] font-black whitespace-nowrap"
+            style={{
+              background: '#FFF8E7', color: '#0B3E52',
+              border: '3px solid #7FC9E8', boxShadow: '0 4px 0 #4E9FC2',
+            }}
+          >
+            {bossNear.kind.emoji} {bossNear.kind.name} — 문제 풀기
+          </button>
+        </div>
+      )}
+
+      {/*
+        우두머리 문제.
+
+        **골든벨 문제은행을 그대로 쓴다** — 학년이 있으면 ±2학년으로 걸러져 나온다.
+        틀려도 잃는 것은 없다. 정답과 까닭을 보여주고 다시 풀게 한다 —
+        여기서 아이를 벌주면 문제를 피해 다니게 된다.
+      */}
+      {quiz && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center px-4"
+          style={{ background: 'rgba(10,26,34,0.62)' }}
+        >
+          <div
+            className="w-full max-w-[420px] rounded-3xl p-5"
+            style={{ background: '#F7FCFF', border: '4px solid #7FC9E8', animation: 'modal-pop 0.28s ease both' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[26px]">{quiz.mob.kind.emoji}</span>
+              <span className="text-[15px] font-black" style={{ color: '#0B3E52' }}>
+                {quiz.mob.kind.name}
+              </span>
+              <span
+                className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-black"
+                style={{ background: '#DFF3FF', color: '#2A6F8C' }}
+              >
+                {quiz.q.grade}학년 문제
+              </span>
+            </div>
+
+            <div className="text-[15px] font-bold leading-relaxed mb-4 mt-2" style={{ color: '#233A44' }}>
+              {quiz.q.q}
+            </div>
+
+            {quiz.q.kind === 'choice' ? (
+              <div className="flex flex-col gap-2">
+                {(quiz.q.choices ?? []).map((c, i) => (
+                  <button
+                    key={i}
+                    onClick={() => submitAnswer(i)}
+                    disabled={!!quizMsg?.ok}
+                    className="rounded-xl px-4 py-3 text-left text-[14px] font-bold"
+                    style={{ background: '#FFFFFF', color: '#233A44', border: '2px solid #CDE7F2' }}
+                  >
+                    {i + 1}. {c}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value.slice(0, 40))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitAnswer(answer); }}
+                  placeholder="답을 적어요"
+                  disabled={!!quizMsg?.ok}
+                  className="flex-1 rounded-xl px-3 py-3 text-[15px] outline-none"
+                  style={{ background: '#FFFFFF', color: '#233A44', border: '2px solid #CDE7F2' }}
+                />
+                <button
+                  onClick={() => submitAnswer(answer)}
+                  disabled={!!quizMsg?.ok}
+                  className="rounded-xl px-4 text-[14px] font-black text-white"
+                  style={{ background: '#4E9FC2' }}
+                >
+                  내기
+                </button>
+              </div>
+            )}
+
+            {quizMsg && (
+              <div
+                className="mt-3 rounded-xl px-3 py-2.5 text-[13px] font-bold leading-relaxed"
+                style={{
+                  background: quizMsg.ok ? '#E4F7EA' : '#FFF1E8',
+                  color: quizMsg.ok ? '#1E7B45' : '#A6522A',
+                }}
+              >
+                {quizMsg.ok ? '🛡️ 껍질이 깨졌어요! ' : '💧 '}{quizMsg.text}
+              </div>
+            )}
+
+            {!quizMsg?.ok && (
+              <button
+                onClick={closeQuiz}
+                className="mt-3 w-full rounded-xl py-2.5 text-[13px] font-bold"
+                style={{ background: 'rgba(0,0,0,0.05)', color: '#5B7A88' }}
+              >
+                나중에 할래요
+              </button>
+            )}
           </div>
         </div>
       )}
