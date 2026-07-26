@@ -27,6 +27,10 @@
  * 도장은 **한 자리를 다 치웠을 때 한 번만, 하나만** 준다.
  */
 
+// 확장자를 적는다 — 검증 스크립트가 node 로 그대로 읽어서(`--experimental-strip-types`)
+// 확장자가 없으면 못 찾는다. `goldenbell.ts` 도 같은 이유로 이렇게 쓴다.
+import { itemsOfSpot } from './village-collect.ts';
+
 /** 우두머리인가 — 우두머리는 칼이 안 통하고 문제를 풀어야 껍질이 깨진다 */
 export type MobTier = 'normal' | 'boss';
 
@@ -176,8 +180,13 @@ export const MOB_KINDS: MobKind[] = [
 
 export const mobKindById = (id: string) => MOB_KINDS.find((k) => k.id === id);
 
-/** 한 자리에 두는 수. 너무 많으면 마을이 쓰레기장이 되고, 적으면 만날 일이 없다. */
-export const MOBS_PER_SPOT = 16;
+/**
+ * 한 자리에 두는 수.
+ *
+ * **촘촘해야 한다.** 열여섯으로는 하나 잡고 한참 걸어야 다음이 나왔다.
+ * 멀리 것은 어차피 안 그리므로(SHOW_RANGE) 화면이 어수선해지지도 않는다.
+ */
+export const MOBS_PER_SPOT = 26;
 
 /**
  * **처음 만나는 거리.**
@@ -191,7 +200,7 @@ export const NEAR_M = 13;
  * 서로 이만큼은 떨어뜨린다.
  * 칼이 닿는 거리(4.6m)의 갑절보다 넉넉해야 한 번 휘둘러 둘이 맞지 않는다.
  */
-export const MIN_GAP = 16;
+export const MIN_GAP = 12;
 
 /**
  * **눈에 들어오는 거리.**
@@ -318,17 +327,27 @@ export function mobsOfSpot(
    * 아무것도 안 나온다(실측 156m). 눈에 들어오는 거리가 95m 이니
    * **그보다 촘촘히** 깔려야 걷는 내내 만난다.
    *
-   * 그래서 **가운데 300m 안에 모은다.** 바깥은 비지만, 거기는 원래
+   * 그래서 **가운데 220m 안에 모은다.** 바깥은 비지만, 거기는 원래
    * 워프로 건너다니는 구간이다.
    */
-  const FAR = Math.min(radius * 0.55, 300);
+  const FAR = Math.min(radius * 0.45, 220);
   /** 황금각 — 돌려 놓으면 한쪽으로 몰리지 않는다 */
   const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
+  /**
+   * **주울 것 위에는 안 선다.**
+   *
+   * 둘 다 촘촘해지면서 소라 위에 폐그물이 서는 일이 생겼다. 그러면 싸우는
+   * 중에 발밑에서 물건이 주워져 무슨 일이 일어난 건지 모른다.
+   * 씨앗을 달리 타는 것만으로는 모자라서, 자리를 아예 비켜 놓는다.
+   */
+  const itemPts = itemsOfSpot(spotId, radius, buildings, coast);
 
   const fits = (x: number, z: number, taken: { x: number; z: number }[]) =>
     Math.abs(x) <= radius && Math.abs(z) <= radius
     && !blocked(x, z)
-    && !taken.some((o) => Math.hypot(o.x - x, o.z - z) < MIN_GAP);
+    && !taken.some((o) => Math.hypot(o.x - x, o.z - z) < MIN_GAP)
+    && !itemPts.some((o) => Math.hypot(o.x - x, o.z - z) < 9);
 
   // ---- 1) 자리부터 잡는다 (가까운 것 → 먼 것) ----
   const spots: { x: number; z: number }[] = [];

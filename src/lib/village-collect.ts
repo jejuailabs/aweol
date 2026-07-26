@@ -98,13 +98,17 @@ export const COLLECT_KINDS: CollectKind[] = [
 
 export const kindById = (id: string) => COLLECT_KINDS.find((k) => k.id === id);
 
-/** 한 자리에 숨기는 개수. 너무 많으면 지겹고, 적으면 돌아다닐 이유가 안 된다. */
-export const PER_SPOT = 12;
+/**
+ * 한 자리에 숨기는 개수.
+ * **촘촘해야 한다** — 하나 줍고 한참 걸어야 다음이 나오면 줍는 맛이 없다.
+ * 멀리 것은 어차피 안 그린다(SHOW_RANGE).
+ */
+export const PER_SPOT = 20;
 
 /** 처음 만나는 거리 — 시작하자마자 코앞이면 줍는 맛이 없다 */
 export const NEAR_M = 10;
-/** 서로 이만큼은 떨어뜨린다 — 한 자리에서 둘이 주워지면 안 된다 */
-export const MIN_GAP = 14;
+/** 서로 이만큼은 떨어뜨린다 — 한 자리에서 둘이 주워지면 안 된다 (줍는 거리의 네 배) */
+export const MIN_GAP = 13;
 /** 눈에 들어오는 거리. 이 밖은 아예 안 그린다 — 멀리 것까지 다 띄우면 어수선하다. */
 export const SHOW_RANGE = 70;
 
@@ -199,7 +203,7 @@ export function itemsOfSpot(
    * 몹과 같은 이유다(`village-mobs.ts` 참고): 반지름 830m 에 열두 개를
    * 늘어놓으면 백오십 걸음에 하나씩이라 걸어도 안 나온다.
    */
-  const FAR = Math.min(radius * 0.5, 260);
+  const FAR = Math.min(radius * 0.42, 200);
   /** 황금각 — 한쪽으로 몰리지 않게 방향을 돌린다 */
   const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 

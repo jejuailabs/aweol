@@ -132,6 +132,17 @@ function takeShake(delta: number): number {
   return v;
 }
 
+/**
+ * 마지막으로 손을 뗄 때까지 끌린 거리(픽셀).
+ *
+ * **끈 것과 누른 것을 갈라야 한다.** 화면을 눌러 베게 만들었더니
+ * 카메라를 돌리고 손을 떼는 순간에도 칼이 나갔다. 액션 게임에서
+ * 시점을 돌릴 때마다 헛손질이 나가면 조작이 안 된다.
+ */
+let lastDrag = 0;
+/** 방금 그 손짓이 '클릭' 이었나 (끌지 않았나) */
+export const wasTap = (slop = 8) => lastDrag <= slop;
+
 // 카메라 상태 (드래그 회전 + 핀치/휠 줌)
 // pitch: 시선 높이 각도(라디안). 양수면 위에서 내려다보고, 음수면 아래에서 올려다본다.
 export const camControl = { yaw: 0, dist: 6, pitch: 0.34 };
@@ -159,6 +170,8 @@ export function attachCameraControls(
   const pointers = new Map<number, { x: number; y: number }>();
   let pinchStartDist = 0;
   let pinchStartCamDist = 0;
+  /** 이번에 누른 뒤로 얼마나 끌었나 — 끌었으면 클릭이 아니다 */
+  let dragged = 0;
 
   const getPinchDist = () => {
     const pts = [...pointers.values()];
@@ -170,6 +183,7 @@ export function attachCameraControls(
 
   const onDown = (e: PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
+    if (pointers.size === 0) dragged = 0;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 2) {
       pinchStartDist = getPinchDist();
@@ -182,6 +196,7 @@ export function attachCameraControls(
     const prev = pointers.get(e.pointerId)!;
     const dx = e.clientX - prev.x;
     const dy = e.clientY - prev.y;
+    dragged += Math.abs(dx) + Math.abs(dy);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pointers.size >= 2) {
@@ -202,6 +217,8 @@ export function attachCameraControls(
   const onUp = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinchStartDist = 0;
+    // 손을 다 뗐을 때 얼마나 끌었는지를 남겨 둔다 — 클릭 공격이 이걸 본다
+    if (pointers.size === 0) lastDrag = dragged;
   };
 
   const onWheel = (e: WheelEvent) => {

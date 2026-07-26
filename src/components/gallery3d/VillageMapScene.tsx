@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
-  requestAttack, setMovementLock,
+  requestAttack, setMovementLock, wasTap,
   type Obstacle, type AvatarCustom, type AvatarTint,
 } from './walker';
 import VillageMobs from './VillageMobs';
@@ -2097,6 +2097,24 @@ export default function VillageMapScene({
         camera={{ position: [0, 24, 60], fov: 58, near: 0.5, far: 6000 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
+        /**
+         * **화면을 눌러 벤다.**
+         *
+         * 액션 RPG 는 마우스로 친다. 화면 아래 단추만 두면 그건 게임이 아니라
+         * 리모컨이다(단추는 휴대폰용으로 남겨 둔다).
+         *
+         * `onPointerMissed` 를 쓰는 이유: 이건 **아무것도 안 눌렸을 때만** 온다.
+         * 우체국 문이나 워프 화살표를 누르면 그쪽 손잡이가 먼저 먹으므로
+         * 여기까지 안 내려온다 — 문을 열려다 칼을 휘두르는 일이 없다.
+         *
+         * 끌었으면 안 나간다(`wasTap`). 시점을 돌리고 손을 뗄 때마다
+         * 헛손질이 나가면 조작이 안 된다.
+         */
+        onPointerMissed={(e) => {
+          if ((e as MouseEvent).button !== undefined && (e as MouseEvent).button !== 0) return;
+          if (!wasTap()) return;
+          requestAttack();
+        }}
       >
         {/*
           하늘빛은 위에서 파랗게, 땅 반사광은 아래에서 초록으로 —
