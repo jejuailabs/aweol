@@ -12,12 +12,6 @@ export interface MapSchool {
   classCount: number;
 }
 
-/**
- * 지도에 함께 서는 **개인 전시관.**
- *
- * 학교와 **다르게 그린다.** 학교는 아이들이 다니는 곳이고 전시관은
- * 한 사람이 연 미술관이다 — 같은 모양으로 찍으면 지도가 무슨 뜻인지 흐려진다.
- */
 export interface MapHall {
   id: string;
   title: string;
@@ -45,10 +39,6 @@ const yToLat = (y: number, z: number) => {
 const MIN_Z = 6;
 const MAX_Z = 17;
 
-/**
- * OpenStreetMap 타일을 직접 그리는 가벼운 지도.
- * 외부 지도 라이브러리를 쓰지 않아 번들이 늘지 않고, 위에 게임 레이어를 자유롭게 얹을 수 있다.
- */
 export default function SchoolMap({
   schools,
   onSelect,
@@ -59,18 +49,18 @@ export default function SchoolMap({
   schools: MapSchool[];
   onSelect: (school: MapSchool) => void;
   focus?: { lat: number; lng: number; zoom: number };
-  /** 지도에 함께 서는 개인 전시관 */
   halls?: MapHall[];
   onSelectHall?: (hall: MapHall) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [view, setView] = useState({
-    lat: focus?.lat ?? 33.46,   // 제주 애월 근처를 기본 시야로
+    lat: focus?.lat ?? 33.46,
     lng: focus?.lng ?? 126.33,
     zoom: focus?.zoom ?? 11,
   });
   const [hovered, setHovered] = useState<string | null>(null);
+  const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
 
   const drag = useRef<{ x: number; y: number; lat: number; lng: number } | null>(null);
   const pinch = useRef<{ dist: number; zoom: number } | null>(null);
@@ -92,7 +82,9 @@ export default function SchoolMap({
   const centerX = lngToX(view.lng, z);
   const centerY = latToY(view.lat, z);
 
-  /** 화면 좌표 → 타일 좌표 */
+  // 줌이 바뀌면 펼친 클러스터를 닫는다
+  useEffect(() => { setExpandedCluster(null); }, [z]);
+
   const project = useCallback(
     (lat: number, lng: number) => ({
       x: size.w / 2 + (lngToX(lng, z) - centerX) * scale,
@@ -101,47 +93,55 @@ export default function SchoolMap({
     [size.w, size.h, z, scale, centerX, centerY]
   );
 
-  /**
-   * 마커가 겹치면 **좌우로 펼친다.**
-   *
-   * 백록담에 연 개인 전시관과 '한라산' 이 387m 떨어져 있었는데, 줌 12 에서는
-   * 화면상 12픽셀이라 카드(폭 138px)가 거의 완전히 포개졌다. 뒤엣것은
-   * 있는 줄도 모른다.
-   *
-   * 위로 쌓아 올려도 되지만, **옆으로 펴는 편이 낫다** — 위로 쌓으면 셋만 되어도
-   * 화면 밖으로 나가고, 어느 것이 위인지도 뜻이 없다. 좌우로 펴고
-   * **끝단을 진짜 자리 한 곳에 모으면** 부챗살처럼 되어 한눈에 읽힌다.
-   */
-  const fan = useMemo(() => {
-    const out = new Map<string, { dx: number; dy: number }>();
-    if (size.w === 0) return out;
-
+  // --- 클러스터링: 가까운 마커를 묶는다 ---
+  const clusters = useMemo(() => {
+    if (size.w === 0) return [];
     const all = [
       ...schools.map((s) => ({ key: `s-${s.id}`, lat: s.lat, lng: s.lng })),
       ...halls.map((h) => ({ key: `h-${h.id}`, lat: h.lat, lng: h.lng })),
     ].map((m) => ({ ...m, p: project(m.lat, m.lng) }));
 
-    /** 가까이 붙은 것끼리 묶는다 — 이 안에서 좌우로 편다 */
     const groups: (typeof all)[] = [];
-    for (const m of all) {
-      const g = groups.find((grp) =>
-        grp.some((q) => Math.abs(q.p.x - m.p.x) < 130 && Math.abs(q.p.y - m.p.y) < 56));
-      if (g) g.push(m);
-      else groups.push([m]);
+    const used = new Set<number>();
+    for (let i = 0; i < all.length; i++) {
+      if (used.has(i)) continue;
+      const g = [all[i]];
+      used.add(i);
+      for (let j = i + 1; j < all.length; j++) {
+        if (used.has(j)) continue;
+        if (g.some((m) => Math.abs(m.p.x - all[j].p.x) < 130 && Math.abs(m.p.y - all[j].p.y) < 56)) {
+          g.push(all[j]);
+          used.add(j);
+        }
+      }
+      groups.push(g);
     }
 
-    for (const g of groups) {
-      if (g.length < 2) continue;
-      // 가운데를 기준으로 좌우 대칭으로 편다. 셋이면 왼쪽·가운데·오른쪽.
-      const SPREAD = 150;
-      g.forEach((m, i) => {
-        const dx = Math.round((i - (g.length - 1) / 2) * SPREAD);
-        // 살짝 들어 올려야 이어지는 선이 보인다
-        out.set(m.key, { dx, dy: -22 });
-      });
-    }
-    return out;
+    return groups.filter((g) => g.length >= 2).map((g) => {
+      const cx = g.reduce((s, m) => s + m.p.x, 0) / g.length;
+      const cy = g.reduce((s, m) => s + m.p.y, 0) / g.length;
+      const id = g.map((m) => m.key).sort().join('|');
+      return { id, items: g, center: { x: cx, y: cy } };
+    });
   }, [schools, halls, project, size.w]);
+
+  // 펼친 클러스터의 마커 오프셋 + 숨겨야 할 마커 키
+  const { fanOffsets, hiddenKeys } = useMemo(() => {
+    const fo = new Map<string, { dx: number; dy: number }>();
+    const hk = new Set<string>();
+    for (const c of clusters) {
+      if (c.id === expandedCluster) {
+        const spread = Math.min(150, 400 / Math.max(c.items.length - 1, 1));
+        c.items.forEach((m, i) => {
+          const dx = Math.round((i - (c.items.length - 1) / 2) * spread);
+          fo.set(m.key, { dx, dy: -22 });
+        });
+      } else {
+        c.items.forEach((m) => hk.add(m.key));
+      }
+    }
+    return { fanOffsets: fo, hiddenKeys: hk };
+  }, [clusters, expandedCluster]);
 
   // 화면을 덮을 타일 목록
   const tiles: { key: string; x: number; y: number; left: number; top: number }[] = [];
@@ -171,11 +171,9 @@ export default function SchoolMap({
 
   // ---------- 조작 ----------
   const onPointerDown = (e: React.PointerEvent) => {
-    // 마커(버튼) 위에서 시작한 눌림은 지도를 끌지 않는다.
-    // 다만 moved 는 여기서 반드시 초기화해야 한다 — 아래 early return 뒤에 두면
-    // 지도를 한 번 끈 뒤로 moved 가 true 로 남아 마커 클릭이 영영 무시된다.
     moved.current = false;
     if ((e.target as HTMLElement).closest('button')) return;
+    setExpandedCluster(null);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.current.size === 1) {
       drag.current = { x: e.clientX, y: e.clientY, lat: view.lat, lng: view.lng };
@@ -232,18 +230,12 @@ export default function SchoolMap({
       onPointerCancel={onPointerUp}
       onWheel={onWheel}
     >
-      {/*
-        펼친 말풍선을 **제자리와 이어 준다.**
-
-        겹칠 때 카드를 좌우로 펼치면 어느 카드가 어느 점을 가리키는지 알 수 없다.
-        그래서 **끝단은 진짜 자리에 모으고** 카드까지 실선을 긋는다 —
-        점 하나에서 부챗살처럼 퍼지는 모양이 된다.
-      */}
+      {/* 펼친 마커를 실제 위치와 이어주는 점선 */}
       {size.w > 0 && [
         ...schools.map((s) => ({ key: `s-${s.id}`, lat: s.lat, lng: s.lng })),
         ...halls.map((h) => ({ key: `h-${h.id}`, lat: h.lat, lng: h.lng })),
       ].map((m) => {
-        const off = fan.get(m.key);
+        const off = fanOffsets.get(m.key);
         if (!off) return null;
         const p = project(m.lat, m.lng);
         if (p.x < -200 || p.x > size.w + 200 || p.y < -200 || p.y > size.h + 200) return null;
@@ -259,7 +251,6 @@ export default function SchoolMap({
               x1={0} y1={0} x2={off.dx} y2={off.dy}
               stroke="rgba(60,50,40,0.5)" strokeWidth={2} strokeDasharray="4 3"
             />
-            {/* 진짜 자리 — 여기가 그 점이다 */}
             <circle cx={0} cy={0} r={4} fill="#FFF8E7" stroke="rgba(60,50,40,0.6)" strokeWidth={2} />
           </svg>
         );
@@ -279,7 +270,6 @@ export default function SchoolMap({
             top: t.top,
             width: TILE * scale,
             height: TILE * scale,
-            // 지도를 배경으로 눕히고 그 위 게임 레이어가 도드라지게 한다
             filter: 'saturate(0.75) brightness(1.06)',
           }}
         />
@@ -288,11 +278,10 @@ export default function SchoolMap({
       {/* 학교 마커 */}
       {size.w > 0 &&
         schools.map((s) => {
+          if (hiddenKeys.has(`s-${s.id}`)) return null;
           const p = project(s.lat, s.lng);
           if (p.x < -120 || p.x > size.w + 120 || p.y < -160 || p.y > size.h + 120) return null;
           const isHot = hovered === s.id;
-          // 멀리서 보면 카드가 서로 겹쳐 섬을 덮어버린다.
-          // 줌에 따라 핀 → 이름만 → 전체 카드로 단계를 올린다. (펼친 건 항상 전체)
           const detail = isHot || view.zoom >= 12 ? 'full' : view.zoom >= 9 ? 'compact' : 'pin';
           return (
             <button
@@ -302,15 +291,14 @@ export default function SchoolMap({
               onPointerLeave={() => setHovered(null)}
               className="absolute flex flex-col items-center"
               style={{
-                left: p.x + (fan.get(`s-${s.id}`)?.dx ?? 0),
-                top: p.y + (fan.get(`s-${s.id}`)?.dy ?? 0),
+                left: p.x + (fanOffsets.get(`s-${s.id}`)?.dx ?? 0),
+                top: p.y + (fanOffsets.get(`s-${s.id}`)?.dy ?? 0),
                 transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
                 transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: isHot ? 20 : 10,
               }}
             >
               {detail === 'pin' ? (
-                /* 멀리서 — 동그란 핀 하나 */
                 <div
                   className="rounded-full overflow-hidden flex items-center justify-center"
                   style={{
@@ -329,7 +317,6 @@ export default function SchoolMap({
                   )}
                 </div>
               ) : (
-                /* 말풍선 카드 */
                 <div
                   className="rounded-2xl flex items-center gap-2"
                   style={{
@@ -372,7 +359,6 @@ export default function SchoolMap({
                   </div>
                 </div>
               )}
-              {/* 핀 꼬리 */}
               <div
                 className="h-3 w-3 rotate-45 -mt-1.5"
                 style={{ background: '#FFF8E7', border: '3px solid #EFE3CB', borderTop: 0, borderLeft: 0 }}
@@ -385,13 +371,10 @@ export default function SchoolMap({
           );
         })}
 
-      {/*
-        개인 전시관 마커 — **학교와 다르게 생겼다.**
-        학교는 둥근 말풍선 카드, 전시관은 **액자처럼 각진 카드**에 금색 테두리다.
-        지도를 보면 "저건 학교, 저건 누군가의 미술관" 이 한눈에 갈린다.
-      */}
+      {/* 개인 전시관 마커 */}
       {size.w > 0 &&
         halls.map((h) => {
+          if (hiddenKeys.has(`h-${h.id}`)) return null;
           const p = project(h.lat, h.lng);
           if (p.x < -120 || p.x > size.w + 120 || p.y < -160 || p.y > size.h + 120) return null;
           const isHot = hovered === `hall-${h.id}`;
@@ -404,8 +387,8 @@ export default function SchoolMap({
               onPointerLeave={() => setHovered(null)}
               className="absolute flex flex-col items-center"
               style={{
-                left: p.x + (fan.get(`h-${h.id}`)?.dx ?? 0),
-                top: p.y + (fan.get(`h-${h.id}`)?.dy ?? 0),
+                left: p.x + (fanOffsets.get(`h-${h.id}`)?.dx ?? 0),
+                top: p.y + (fanOffsets.get(`h-${h.id}`)?.dy ?? 0),
                 transform: `translate(-50%, -100%) scale(${isHot ? 1.08 : 1})`,
                 transition: 'transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: isHot ? 20 : 11,
@@ -475,12 +458,57 @@ export default function SchoolMap({
                   </div>
                 </div>
               )}
-              {/* 핀 꼬리 */}
               <div
                 className="h-3 w-3 rotate-45 -mt-1.5"
                 style={{ background: '#2E2B27', border: '3px solid #D8B25C', borderTop: 0, borderLeft: 0 }}
               />
               <div className="h-1.5 w-1.5 rounded-full mt-0.5" style={{ background: 'rgba(0,0,0,0.35)' }} />
+            </button>
+          );
+        })}
+
+      {/* 클러스터 배지 — 겹치는 마커를 숫자로 묶어 보여준다 */}
+      {size.w > 0 &&
+        clusters.map((c) => {
+          if (c.id === expandedCluster) return null;
+          if (c.center.x < -60 || c.center.x > size.w + 60 || c.center.y < -60 || c.center.y > size.h + 60) return null;
+          return (
+            <button
+              key={`cluster-${c.id}`}
+              onClick={() => { if (!moved.current) setExpandedCluster(c.id); }}
+              className="absolute flex flex-col items-center"
+              style={{
+                left: c.center.x,
+                top: c.center.y,
+                transform: 'translate(-50%, -100%)',
+                zIndex: 15,
+              }}
+            >
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #FFF8E7 0%, #F5E6C8 100%)',
+                  border: '3.5px solid #D8B25C',
+                  boxShadow: '0 4px 0 #C4A044, 0 8px 16px rgba(0,0,0,0.28)',
+                  fontWeight: 900,
+                  fontSize: 20,
+                  color: '#6B5B43',
+                  letterSpacing: '-0.5px',
+                }}
+              >
+                {c.items.length}
+              </div>
+              <div
+                className="h-3 w-3 rotate-45 -mt-1.5"
+                style={{ background: '#FFF8E7', border: '3px solid #D8B25C', borderTop: 0, borderLeft: 0 }}
+              />
+              <div
+                className="h-1.5 w-1.5 rounded-full mt-0.5"
+                style={{ background: 'rgba(0,0,0,0.35)' }}
+              />
             </button>
           );
         })}
