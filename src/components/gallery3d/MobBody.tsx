@@ -21,6 +21,22 @@ import * as THREE from 'three';
  * 실루엣(무엇인가) + 눈(살아 있다) = 의인화다.
  */
 
+/**
+ * **눈은 모든 몹이 나눠 쓴다.**
+ *
+ * 몹 하나에 눈알·눈동자·반짝임이 여섯 덩이인데, 한 화면에 열 마리면 예순 덩이다.
+ * JSX 안에 `<sphereGeometry>` 를 적으면 **그때마다 새로 만들어 GPU 로 올린다** —
+ * 걸어다니며 몹이 들고 날 때마다 예순 번씩 만들고 버린다.
+ *
+ * 모양이 늘 같은 것은 **모듈에서 한 번만 만들어 돌려 쓴다.** 재질은 그대로 두는데,
+ * 맞았을 때 하얗게 번쩍이는 값을 몹마다 따로 만져야 하기 때문이다
+ * (재질까지 나눠 쓰면 한 마리를 때릴 때 같은 종류가 다 같이 번쩍인다).
+ */
+const EYE_WHITE = new THREE.SphereGeometry(1, 12, 10);
+const EYE_PUPIL = new THREE.SphereGeometry(1, 10, 8);
+const EYE_GLINT = new THREE.SphereGeometry(1, 6, 6);
+const BROW = new THREE.BoxGeometry(1, 1, 1);
+
 /** 눈 한 쌍. `angry` 면 눈썹이 붙는다. */
 function Eyes({
   y = 0.16, spread = 0.3, size = 0.19, angry = false, look = 0.045,
@@ -29,26 +45,36 @@ function Eyes({
 }) {
   return (
     <group position={[0, y, 0]}>
+      {/* 크기는 `scale` 로 준다 — 지오메트리를 나눠 쓰려면 모양이 하나여야 한다 */}
       {[-1, 1].map((s) => (
         <group key={s} position={[spread * s, 0, 0.58]}>
           {/* 흰자 */}
-          <mesh>
-            <sphereGeometry args={[size, 12, 10]} />
+          <mesh geometry={EYE_WHITE} scale={size}>
             <meshStandardMaterial color="#FFFFFF" roughness={0.35} />
           </mesh>
           {/* 눈동자 — 살짝 아래로 내리면 순해 보인다 */}
-          <mesh position={[0, angry ? look : -look * 0.6, size * 0.62]}>
-            <sphereGeometry args={[size * 0.5, 10, 8]} />
+          <mesh
+            geometry={EYE_PUPIL}
+            scale={size * 0.5}
+            position={[0, angry ? look : -look * 0.6, size * 0.62]}
+          >
             <meshStandardMaterial color="#1A1A20" roughness={0.25} />
           </mesh>
           {/* 반짝 — 이거 하나로 눈이 촉촉해진다 */}
-          <mesh position={[size * 0.16, size * 0.2, size * 0.78]}>
-            <sphereGeometry args={[size * 0.17, 6, 6]} />
+          <mesh
+            geometry={EYE_GLINT}
+            scale={size * 0.17}
+            position={[size * 0.16, size * 0.2, size * 0.78]}
+          >
             <meshBasicMaterial color="#FFFFFF" />
           </mesh>
           {angry && (
-            <mesh position={[0, size * 1.05, size * 0.5]} rotation={[0, 0, s * 0.42]}>
-              <boxGeometry args={[size * 1.5, size * 0.28, size * 0.2]} />
+            <mesh
+              geometry={BROW}
+              scale={[size * 1.5, size * 0.28, size * 0.2]}
+              position={[0, size * 1.05, size * 0.5]}
+              rotation={[0, 0, s * 0.42]}
+            >
               <meshStandardMaterial color="#241E22" roughness={0.7} />
             </mesh>
           )}

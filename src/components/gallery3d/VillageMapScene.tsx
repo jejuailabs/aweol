@@ -516,9 +516,22 @@ function Roads({ list }: { list: VillageData['rd'] }) {
  *
  * 에셋은 씨앗으로 뿌린다 — 건물·길과 겹치지 않도록 건물 좌표를 피한다.
  */
-function VillageProps({ radius, buildings }: {
+/**
+ * 에셋이 보이는 거리.
+ *
+ * **안개(`R*0.5`)보다 안쪽에서 자른다.** 마을 반지름이 830m 라 안개는 415m 부터
+ * 끼는데, 그 밖은 어차피 하늘색에 잠겨 형체가 없다. 380개를 늘 그리면
+ * 마을에 들어설 때 메시 1,900개가 한꺼번에 GPU 로 올라가 첫 화면이 늦고,
+ * 그 뒤로도 매 프레임 1,900개를 훑는다.
+ *
+ * 서 있는 자리에서 380m 밖은 전체 넓이의 7할이 넘는다 — **그만큼이 빠진다.**
+ */
+const PROP_RANGE = 380;
+
+function VillageProps({ radius, buildings, avatarPos }: {
   radius: number;
   buildings: { p: XZ[]; h: number }[];
+  avatarPos: React.RefObject<THREE.Vector3>;
 }) {
   const items = useMemo(() => {
     const bboxes = buildings.map((b) => {
@@ -578,10 +591,50 @@ function VillageProps({ radius, buildings }: {
     return out;
   }, [radius, buildings]);
 
+  /**
+   * 지금 그릴 것 — **가까운 것만.**
+   *
+   * 매 프레임 재면 380개를 훑는 일이 그대로라 뜻이 없다. 사람이 걷는 속도로는
+   * 0.4초에 몇 미터라 그때마다 한 번만 봐도 된다.
+   *
+   * 들고 날 때 **여유를 둔다**(30m). 경계에 딱 걸린 나무가 한 걸음마다
+   * 나타났다 사라지면 그게 더 눈에 띈다.
+   */
+  const [shown, setShown] = useState<number[]>([]);
+  useEffect(() => {
+    const inR = PROP_RANGE * PROP_RANGE;
+    const outR = (PROP_RANGE + 30) * (PROP_RANGE + 30);
+    let cur = new Set<number>();
+
+    const tick = () => {
+      const p = avatarPos.current;
+      if (!p) return;
+      const next = new Set<number>();
+      for (let i = 0; i < items.length; i++) {
+        const dx = items[i].x - p.x;
+        const dz = items[i].z - p.z;
+        const d2 = dx * dx + dz * dz;
+        // 이미 보이던 것은 조금 더 멀어질 때까지 남겨 둔다
+        if (d2 < inR || (cur.has(i) && d2 < outR)) next.add(i);
+      }
+      if (next.size === cur.size && Array.from(next).every((i) => cur.has(i))) return;
+      cur = next;
+      setShown(Array.from(next));
+    };
+
+    tick();
+    const t = setInterval(tick, 400);
+    return () => clearInterval(t);
+  }, [items, avatarPos]);
+
   return (
     <group>
-      {items.map((it, i) => (
-        <group key={i} position={[it.x, 0, it.z]} rotation={[0, it.r, 0]} scale={it.s}>
+      {/*
+        **키는 원래 차례(`idx`)로 준다.** 걸러낸 목록의 순번을 쓰면
+        나무 하나가 사라질 때 뒤엣것들이 통째로 밀려 다른 것으로 다시 만들어진다.
+      */}
+      {shown.map((idx) => ({ idx, it: items[idx] })).map(({ idx, it }) => (
+        <group key={idx} position={[it.x, 0, it.z]} rotation={[0, it.r, 0]} scale={it.s}>
           {it.kind === 'tree' && (
             <>
               {/* 덩어리 하나면 사탕처럼 보인다 — 크기·색이 다른 세 덩어리를 겹친다 */}
@@ -2095,7 +2148,15 @@ export default function VillageMapScene({
          * 1600 으로 두면 **R=800 인 자리에서 산이 잘려 사라진다.**
          */
         camera={{ position: [0, 24, 60], fov: 58, near: 0.5, far: 6000 }}
-        dpr={[1, 2]}
+        /**
+         * 그리는 해상도.
+         *
+         * **휴대폰에서는 1.5 로 묶는다.** 요즘 폰은 DPR 이 3까지 가는데,
+         * 3 이면 픽셀이 **아홉 배**다. 마을처럼 넓은 3D 에서는 그 차이가
+         * 그대로 발열과 끊김으로 온다. 1.5 면 글자도 안 뭉개지고 부담은 4분의 1이다.
+         * (책상 컴퓨터는 화면이 커도 GPU 가 받쳐주므로 2 까지 둔다)
+         */
+        dpr={[1, typeof window !== 'undefined' && window.innerWidth < 820 ? 1.5 : 2]}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
         /**
          * **화면을 눌러 벤다.**
@@ -2148,7 +2209,7 @@ export default function VillageMapScene({
 
         <Areas list={data.a} />
         <Roads list={data.rd} />
-        <VillageProps radius={R} buildings={data.b} />
+        <VillageProps radius={R} buildings={data.b} avatarPos={avatarPos} />
         <Buildings list={data.b} onEnterPlace={onEnterPlace} places={localPlaces} />
         {isHome && <SchoolYard buildings={data.b} />}
         <Butterflies />
