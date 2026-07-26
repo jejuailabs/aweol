@@ -11,7 +11,9 @@ import {
 } from '@/lib/village-rpg';
 import { useRpgContent } from '@/lib/use-rpg-content';
 import { useCollection } from '@/lib/use-collection';
+import { usePurify } from '@/lib/use-purify';
 import { COLLECT_KINDS, PER_SPOT, kindOfToken } from '@/lib/village-collect';
+import { MOB_KINDS, MOBS_PER_SPOT, mobKindOfToken } from '@/lib/village-mobs';
 import { spotsOfSchool } from '@/lib/village-spots';
 import { auth } from '@/lib/firebase';
 
@@ -25,7 +27,7 @@ import { auth } from '@/lib/firebase';
  * 점수는 남지 않는다. 연표는 남는다.
  */
 
-type Tab = 'todo' | 'timeline' | 'map' | 'badge' | 'book';
+type Tab = 'todo' | 'timeline' | 'map' | 'badge' | 'book' | 'clean';
 
 const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'todo', label: '할 일', emoji: '📌' },
@@ -33,6 +35,7 @@ const TABS: { id: Tab; label: string; emoji: string }[] = [
   { id: 'map', label: '읍 지도', emoji: '🧭' },
   { id: 'badge', label: '뱃지', emoji: '🏅' },
   { id: 'book', label: '도감', emoji: '🐚' },
+  { id: 'clean', label: '정화', emoji: '🗡️' },
 ];
 
 export default function NotebookPage() {
@@ -128,6 +131,7 @@ export default function NotebookPage() {
       {tab === 'map' && <MapTab sites={sites} done={done} schoolId={schoolId} />}
       {tab === 'badge' && <BadgeTab badges={badges} done={done} quests={rpg.quests} />}
       {tab === 'book' && <BookTab schoolId={schoolId} />}
+      {tab === 'clean' && <CleanTab schoolId={schoolId} />}
     </div>
   );
 }
@@ -534,6 +538,156 @@ function BookTab({ schoolId }: { schoolId: string }) {
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-bold" style={{ color: 'var(--color-text-main)' }}>
                   {got ? k.name : '아직 못 주웠어요'}
+                </div>
+                {got && (
+                  <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                    {k.note}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/* ══════════════════════ 정화 도감 ══════════════════════ */
+
+/**
+ * 마을에서 정화한 것들.
+ *
+ * 줍기 도감(`BookTab`)과 **같은 꼴**이다 — 아직 못 만난 것도 자리를 비워 두고,
+ * 자리마다 다 치우면 상을 받는다. 상은 서버가 준다(`/api/purify`).
+ *
+ * **여기가 이 놀이의 진짜 상이다.** 베는 재미로 끝나면 그냥 게임이지만,
+ * 무엇이 왜 문제인지 한 줄씩 남으면 마을을 치운 것이 뜻을 갖는다.
+ */
+function CleanTab({ schoolId }: { schoolId: string }) {
+  const { cleared, rewarded, signedIn } = usePurify();
+  const spots = useMemo(() => spotsOfSchool(schoolId), [schoolId]);
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+
+  const countOf = (spotId: string) =>
+    Array.from(cleared).filter((c) => c.startsWith(`${spotId}-`)).length;
+
+  const gotKinds = useMemo(
+    () => new Set(Array.from(cleared).map(mobKindOfToken)),
+    [cleared]
+  );
+
+  const claim = async (spotId: string, name: string) => {
+    setBusy(spotId); setMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/purify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ spotId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '받지 못했어요');
+      setMsg(`${name} — 도장 ${json.got}개를 받았어요!`);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy('');
+  };
+
+  if (!signedIn) {
+    return (
+      <div className="rounded-2xl p-6 text-center text-[13px]"
+        style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}>
+        로그인하면 정화한 것이 도감에 남아요
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="text-[13px] mb-3 leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        마을을 걷다 <b>쓰레기</b>를 만나면 정화의 검이 나와요. 오른쪽 아래 <b>베기</b>를
+        누르면(컴퓨터는 스페이스) 앞쪽을 벱니다. <b>🛡️ 우두머리</b>는 칼이 안 통해요 —
+        문제를 맞혀야 껍질이 깨져요.
+      </div>
+
+      {/* 자리마다 얼마나 치웠나 */}
+      <div className="flex flex-col gap-1.5 mb-4">
+        {spots.map((sp) => {
+          const n = countOf(sp.id);
+          const full = n >= MOBS_PER_SPOT;
+          const got = rewarded.has(sp.id);
+          return (
+            <div
+              key={sp.id}
+              className="rounded-2xl p-3 flex items-center gap-2.5"
+              style={{ background: 'var(--color-surface)' }}
+            >
+              <span className="text-[20px] shrink-0">{sp.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold" style={{ color: 'var(--color-text-main)' }}>
+                  {sp.name}
+                </div>
+                <div className="text-[12px]" style={{ color: 'var(--color-text-sub)' }}>
+                  {n} / {MOBS_PER_SPOT}마리
+                </div>
+              </div>
+              {full && !got && (
+                <button
+                  onClick={() => claim(sp.id, sp.name)}
+                  disabled={!!busy}
+                  className="shrink-0 rounded-xl px-3.5 py-2 text-[13px] font-bold text-white disabled:opacity-40"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  {busy === sp.id ? '...' : '🏅 상 받기'}
+                </button>
+              )}
+              {got && (
+                <span className="shrink-0 text-[12px] font-black" style={{ color: '#1E7B45' }}>
+                  ✓ 깨끗해짐
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {msg && (
+        <div className="rounded-xl px-3 py-2.5 mb-3 text-[13px] font-bold"
+          style={{ background: '#E6F4EA', color: '#1E7B45' }}>
+          {msg}
+        </div>
+      )}
+
+      {/* 종류별 도감 */}
+      <div className="text-[13px] font-black mb-2" style={{ color: 'var(--color-text-main)' }}>
+        무엇을 치웠나
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {MOB_KINDS.map((k) => {
+          const got = gotKinds.has(k.id);
+          return (
+            <div
+              key={k.id}
+              className="rounded-2xl p-3 flex items-start gap-2.5"
+              style={{ background: 'var(--color-surface)', opacity: got ? 1 : 0.55 }}
+            >
+              <span className="text-[22px] shrink-0">{got ? k.emoji : '❔'}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[14px] font-bold" style={{ color: 'var(--color-text-main)' }}>
+                    {got ? k.name : '아직 못 만났어요'}
+                  </span>
+                  {got && k.tier === 'boss' && (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-black"
+                      style={{ background: '#DFF3FF', color: '#2A6F8C' }}
+                    >
+                      우두머리
+                    </span>
+                  )}
                 </div>
                 {got && (
                   <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
