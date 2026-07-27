@@ -337,8 +337,31 @@ export default function AdminHomePage() {
                     전시 {h.showCount}개
                     {Number.isFinite(h.lat) && ` · ${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}`}
                   </div>
+                  {/*
+                    **전시 0개면 들어가도 빈 광장이다.**
+                    전시를 거는 것은 주인만 할 수 있으므로, 관리자가 눌러 들어가
+                    막다른 길에 서기 전에 여기서 알려준다.
+                  */}
+                  {h.showCount === 0 && (
+                    <div className="text-[12px] mt-1 font-bold" style={{ color: '#A6762A' }}>
+                      {h.ownerUid === user?.uid
+                        ? '전시가 없어요 — 내 전시관에서 열 수 있어요'
+                        : `전시가 없어요 — ${h.ownerName || '주인'} 님만 걸 수 있어요`}
+                    </div>
+                  )}
                 </div>
               </button>
+
+              {/* 내 것이면 바로 고치러 간다 */}
+              {h.ownerUid === user?.uid && (
+                <button
+                  onClick={() => router.push('/my-hall')}
+                  className="shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold"
+                  style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+                >
+                  ✏️ 관리
+                </button>
+              )}
 
               <span
                 className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black"

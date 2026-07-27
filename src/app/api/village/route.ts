@@ -19,8 +19,20 @@ export const maxDuration = 120;
  *    보고 금지한다. "결과를 로컬에 캐시하라"가 명시적 요구사항이다.
  */
 
-/** 학교를 중심으로 이만큼 (미터). 자리(spot)를 구울 때는 그 자리의 반경을 쓴다. */
-const BASE_RADIUS = 800;
+/**
+ * 학교를 중심으로 이만큼 (미터). 자리(spot)를 구울 때는 그 자리의 반경을 쓴다.
+ *
+ * **1,200m 인 이유가 있다.** 애월초 둘레의 진짜 관공서를 실측해 보니
+ * (`scripts/verify-civic.mjs`)
+ *
+ *   경찰서 456m · 보건 493m · 농협 497m · 우체국 528m
+ *   읍사무소 759m · 편의점 712m · 카페 845m · 도서관 939m · 식당 985m
+ *
+ * 800m 로는 도서관·식당·카페가 안 들어와서, 그동안 **학교 옆에 가짜 건물**을
+ * 세워 놓았다. 우리 동네를 배우는 화면에서 우체국 자리를 지어내면
+ * 안 배우느니만 못하다. 가장 먼 것(985m)까지 담기게 넓힌다.
+ */
+const BASE_RADIUS = 1200;
 /** 이보다 촘촘한 점은 솎아낸다 — 2m 차이는 아이 눈에 안 보인다 */
 const SIMPLIFY_M = 2;
 
@@ -101,9 +113,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '학교 좌표가 없습니다' }, { status: 400 });
   }
 
-  // ---------- 지도에서 받아오기 ----------
+  /**
+   * ---------- 지도에서 받아오기 ----------
+   *
+   * **건물로 그려진 관공서도 받는다.**
+   *
+   * 예전에는 amenity 를 점(node)으로만 받아서, 우체국·경찰서·농협·보건지소가
+   * **반경 안에 실제로 있는데도 못 찾았다**(실측 456~528m). OSM 에서 이런 곳은
+   * 점이 아니라 다각형(way)에 태그가 붙어 있는 경우가 많다.
+   * 그래서 amenity·shop·office 를 단 way 를 따로 한 번 더 받는다.
+   * (Overpass 의 합집합은 같은 것을 한 번만 주므로 겹쳐도 안 늘어난다)
+   *
+   * 못 찾으면 학교 옆에 가짜 건물이 섰다 — 우리 동네를 배우는 화면에서
+   * 우체국 자리를 지어내면 안 배우느니만 못하다.
+   */
+  /**
+   * 다각형 관공서는 **종류를 좁혀서** 받는다.
+   * `way["amenity"]` 를 그냥 열면 주차장·벤치·쓰레기통까지 딸려 와서
+   * 넓은 반경에서는 제한 시간을 넘겨 통째로 실패한다(실측).
+   */
+  const CIVIC_WAY = 'townhall|post_office|police|library|clinic|doctors|pharmacy'
+    + '|fire_station|community_centre|bank|cafe|restaurant|fast_food';
   const query = `
-[out:json][timeout:60];
+[out:json][timeout:180];
 (
   way["building"](around:${RADIUS},${lat},${lng});
   way["highway"](around:${RADIUS},${lat},${lng});
@@ -114,6 +146,9 @@ export async function POST(req: NextRequest) {
   node["shop"](around:${RADIUS},${lat},${lng});
   node["historic"](around:${RADIUS},${lat},${lng});
   node["tourism"](around:${RADIUS},${lat},${lng});
+  way["amenity"~"^(${CIVIC_WAY})$"](around:${RADIUS},${lat},${lng});
+  way["shop"~"^(convenience|supermarket|bakery)$"](around:${RADIUS},${lat},${lng});
+  way["office"="government"](around:${RADIUS},${lat},${lng});
 );
 out geom;`;
 
@@ -237,6 +272,26 @@ out geom;`;
     } else if (t.natural === 'water' || t.leisure) {
       if (!pts.some(inside)) continue;
       data.a.push({ p: simplify(pts), k: t.natural === 'water' ? 'water' : 'park' });
+    } else if (t.amenity || t.shop || t.office) {
+      /**
+       * **건물 태그가 없는 관공서 다각형** — 자리만이라도 남긴다.
+       *
+       * 담벼락으로 둘러친 우체국 부지처럼, `amenity` 만 있고 `building` 이 없는
+       * 다각형이 있다. 그냥 버리면 그 우체국은 **없는 것이 되고**, 없으니까
+       * 학교 옆에 가짜로 세워졌다. 가운데 점을 시설 표시(poi)로 남긴다 —
+       * 모양은 몰라도 **자리는 진짜**다.
+       */
+      const xs = pts.map((p) => p[0]);
+      const zs = pts.map((p) => p[1]);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+      if (!inside([cx, cz])) continue;
+      data.poi.push({
+        x: cx,
+        z: cz,
+        k: t.amenity || t.shop || t.office,
+        ...(t.name ? { n: t.name } : {}),
+      });
     }
   }
 

@@ -607,7 +607,18 @@ function VillageProps({ radius, buildings, avatarPos }: {
      * 동물(고양이·닭)을 섞는다. 건물 뒷골목에도 뿌려지므로
      * **돌아다니면 자꾸 뭔가 나온다.**
      */
-    for (let i = 0; i < 380; i++) {
+    /**
+     * 몇 개를 뿌릴까 — **넓이에 맞춘다.**
+     *
+     * 380개는 반지름 800m 일 때 정한 수다. 관공서를 진짜 자리에 담으려고
+     * 1,200m 로 넓혔더니 넓이가 2.25배가 되어, 같은 380개면 그만큼 휑해진다.
+     * 넓이에 비례해 늘리면 어디를 걸어도 밀도가 같다.
+     *
+     * 멀리 것은 어차피 안 그리므로(PROP_RANGE) 늘어난 만큼 느려지지 않는다 —
+     * 목록만 길어지고 화면에 서는 수는 그대로다.
+     */
+    const COUNT = Math.min(1400, Math.round(380 * (radius / 800) ** 2));
+    for (let i = 0; i < COUNT; i++) {
       const x = (seeded(i * 3) - 0.5) * R * 2;
       const z = (seeded(i * 3 + 1) - 0.5) * R * 2;
       if (blocked(x, z)) continue;
@@ -2107,39 +2118,46 @@ export default function VillageMapScene({
   const missingPlaces = useMemo(() => {
     // 가상 관공서는 **집 자리에만** 세운다. 곽지에 읍사무소를 또 세우면 거짓말이다.
     if (!isHome || !localPlaces?.length) return [];
+
+    /** 건물로 이미 찾은 것 — 여기는 진짜 다각형이 있으니 손댈 것이 없다 */
     const found = new Set<string>();
     for (const b of data.b) {
       const kind = civicKindOf(b, localPlaces);
       if (kind) found.add(kind);
     }
+
     /**
-     * 세울 자리 — **기관 수보다 넉넉해야 한다.**
+     * **점(poi)으로만 있는 곳은 그 자리에 세운다.**
      *
-     * 예전에는 자리가 여섯 개였는데 기관이 아홉이 되면서 `si % 6` 이 돌아,
-     * **일곱째부터 첫째 자리 위에 그대로 포개졌다.** 애월초는 OSM 건물에
-     * 기관 태그가 하나도 안 붙어 있어서 **아홉 곳이 전부 가상 건물**이다 —
-     * 실제로 세 채가 겹쳐 서 있었다. (애월진성·밭담이 겹친 것과 같은 실수다)
+     * OSM 에서 우체국·경찰서·농협은 건물 다각형이 아니라 **점**으로만 찍혀
+     * 있는 경우가 많다. 예전에는 건물만 뒤져서 못 찾았고, 못 찾으면
+     * **학교 둘레에 가짜로 세웠다** — 실측해 보니 아홉 곳이 다 실재하는데도
+     * 그랬다(경찰서 456m, 농협 497m, 우체국 528m …).
      *
-     * 그래서 자리를 **계산해서 만든다.** 기관이 늘어도 자리가 모자라지 않는다.
-     * 학교(원점) 둘레 두 겹으로 돌려 세운다.
+     * 우리 동네를 배우는 화면에서 우체국 자리를 지어내면 안 배우느니만 못하다.
+     * 이제는 **점이 있으면 그 좌표에** 세운다. 모양은 몰라도 자리는 진짜다.
      */
-    const need = localPlaces.filter((p) => !found.has(p.kind));
-    const ringOf = (i: number, n: number) => {
-      // 안쪽 겹은 여덟 자리, 그다음부터 바깥 겹
-      const inner = Math.min(8, n);
-      const isOuter = i >= inner;
-      const idx = isOuter ? i - inner : i;
-      const count = isOuter ? Math.max(1, n - inner) : inner;
-      const radius = isOuter ? 130 : 78;
-      // 겹마다 각도를 조금 틀어야 안쪽 건물과 일직선으로 겹쳐 보이지 않는다
-      const a = ((idx + 0.5) / count) * Math.PI * 2 + (isOuter ? 0.4 : 0);
-      return {
-        x: Math.round(Math.cos(a) * radius),
-        z: Math.round(Math.sin(a) * radius),
-      };
-    };
-    return need.map((p, i) => ({ place: p, ...ringOf(i, need.length) }));
-  }, [data.b, localPlaces, isHome]);
+    const byKind = new Map<string, { x: number; z: number }>();
+    for (const q of data.poi) {
+      const kind = civicKindOf({ n: q.n, k: q.k }, localPlaces);
+      if (!kind || found.has(kind)) continue;
+      const cur = byKind.get(kind);
+      // 같은 종류가 여럿이면 가까운 것 하나만 — 우체국이 둘이면 아이가 헷갈린다
+      if (!cur || Math.hypot(q.x, q.z) < Math.hypot(cur.x, cur.z)) {
+        byKind.set(kind, { x: q.x, z: q.z });
+      }
+    }
+
+    /**
+     * **끝내 못 찾은 곳은 세우지 않는다.**
+     *
+     * 지도에 없으면 없는 것이다. 지어내느니 안 보이는 편이 낫다 —
+     * 선생님이 필요하면 표(`rpgPlaces`)에서 직접 고쳐 넣을 수 있다.
+     */
+    return localPlaces
+      .filter((p) => !found.has(p.kind) && byKind.has(p.kind))
+      .map((p) => ({ place: p, ...byKind.get(p.kind)! }));
+  }, [data.b, data.poi, localPlaces, isHome]);
 
   const targets: WarpTarget[] = useMemo(
     () => [

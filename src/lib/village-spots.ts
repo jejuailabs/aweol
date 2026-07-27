@@ -62,7 +62,18 @@ export const VILLAGE_SPOTS: VillageSpot[] = [
     tagline: '우리 학교가 있는 마을. 읍사무소·우체국·농협이 모여 있어요.',
     lat: 33.4604899,
     lng: 126.3215217,
-    radius: 800,
+    /**
+     * **1,200m 인 이유가 있다.**
+     *
+     * 진짜 관공서가 어디 있는지 실측해 보니(`scripts/verify-civic.mjs`)
+     * 도서관 939m, 식당 985m, 카페 845m 로 800m 밖이었다. 그래서 그동안
+     * **학교 옆에 가짜 건물**을 세워 놓았다 — 지도를 배우는 화면에서
+     * 우체국 자리를 지어내면 안 배우느니만 못하다.
+     *
+     * 넓어진 만큼 걷는 거리도 늘지만, 지도에서 눌러 순간이동할 수 있으므로
+     * 걸어서만 가야 하는 것은 아니다.
+     */
+    radius: 1200,
     schoolIds: ['aewol-elementary'],
     home: true,
     sourceNote: 'OpenStreetMap place=village 애월리',

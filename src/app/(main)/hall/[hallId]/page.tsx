@@ -105,19 +105,43 @@ export default function HallPage() {
           </button>
         )}
 
-        {/* 아직 아무 전시도 안 걸렸을 때 */}
+        {/*
+          아직 아무 전시도 안 걸렸을 때.
+
+          **누가 무엇을 해야 하는지까지 말해준다.** 전에는 남에게 "곧 열릴
+          예정이에요" 한 줄만 띄웠는데, 총관리자가 관리 화면에서 눌러 들어오면
+          그 한 줄이 막다른 길이었다 — 고치러 갈 곳도, 누구에게 말해야 할지도
+          알 수 없었다. 전시를 거는 것은 **주인만** 할 수 있는 일이므로
+          주인이 누구인지 알려주는 것이 답이다.
+        */}
         {shows.length === 0 && (
-          <div className="pos-hint absolute left-1/2 -translate-x-1/2 z-20 w-[min(92vw,420px)]">
+          <div className="pos-hint absolute left-1/2 -translate-x-1/2 z-20 w-[min(92vw,440px)]">
             <div
               className="rounded-2xl px-5 py-4 text-center"
               style={{ background: 'rgba(255,250,240,0.96)', color: '#5B4A3B' }}
             >
               <div className="text-[15px] font-black mb-1">아직 걸린 전시가 없어요</div>
               <div className="text-[13px] leading-relaxed">
-                {isOwner
-                  ? '‘내 전시관 관리’에서 첫 전시를 열어보세요.'
-                  : '곧 첫 전시가 열릴 예정이에요.'}
+                {isOwner ? (
+                  <>오른쪽 위 <b>✏️ 내 전시관 관리</b>에서 첫 전시를 열어보세요.</>
+                ) : (
+                  <>
+                    <b>{hall.ownerName || '주인'}</b> 님의 전시관이에요.
+                    <br />
+                    전시를 거는 것은 주인만 할 수 있어요 —
+                    주인이 로그인해서 <b>프로필 → 🖼️ 내 전시관</b>에서 열면 돼요.
+                  </>
+                )}
               </div>
+              {isOwner && (
+                <button
+                  onClick={() => router.push('/my-hall')}
+                  className="mt-3 rounded-full px-5 py-2.5 text-[14px] font-bold text-white"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  첫 전시 만들러 가기
+                </button>
+              )}
             </div>
           </div>
         )}

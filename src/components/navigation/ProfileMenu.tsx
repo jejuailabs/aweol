@@ -127,6 +127,23 @@ export default function ProfileMenu() {
           >
             ⭐ 내 스탠드
           </button>
+          {/*
+            내 전시관 — **여기 없으면 못 찾는다.**
+
+            그동안 들어가는 길이 지도 화면(`/`) 왼쪽 아래 단추 하나뿐이었다.
+            전시관을 열어 둔 사람이 정작 **관리하러 갈 길을 못 찾아** 헤맸다 —
+            전시관 안에 들어가 봐야 '준비 중' 만 나오고 거기서 끝이었다.
+            아이에게는 안 보인다(개인 전시관은 어른이 쓰는 곳이다).
+          */}
+          {shownRole !== 'student' && (
+            <button
+              onClick={() => { setOpen(false); router.push('/my-hall'); }}
+              className="w-full px-4 py-3 text-left text-sm flex items-center gap-2.5"
+              style={{ color: 'var(--color-text-main)', borderTop: '1px solid var(--color-surface-soft)' }}
+            >
+              🖼️ 내 전시관
+            </button>
+          )}
           {/* 교직원만 — 지나온 반들 */}
           {(role === 'teacher' || role === 'super_admin') && (
             <button

@@ -34,7 +34,17 @@ const SPOTS = [
    * **집 자리는 좌표를 여기 안 적는다.** 학교 문서의 좌표를 그대로 써야 한다 —
    * 마을 원점이 곧 학교 자리라서, 다른 좌표로 구우면 **학교가 엉뚱한 데 선다.**
    */
-  { id: 'aewol', name: '애월리(학교 둘레)', home: true, radius: 800 },
+  /*
+    **반경은 `src/lib/village-spots.ts` 와 같아야 한다.**
+
+    여기 값으로 굽고 화면은 저 표를 보므로, 어긋나면 걸어다닐 수 있는 넓이와
+    실제로 구워진 넓이가 달라진다.
+
+    애월리를 1,200m 로 넓힌 이유: 진짜 관공서를 실측해 보니
+    (`scripts/verify-civic.mjs`) 도서관 939m, 식당 985m, 카페 845m 로
+    800m 밖이었다. 안 들어오니 그동안 학교 옆에 **가짜 건물**을 세웠다.
+  */
+  { id: 'aewol', name: '애월리(학교 둘레)', home: true, radius: 1200 },
   { id: 'handam', name: '한담해변', lat: 33.4610, lng: 126.3105, radius: 600 },
   { id: 'gwakji', name: '곽지과물해변', lat: 33.4513, lng: 126.3047, radius: 800 },
 ];
@@ -47,8 +57,19 @@ const MIRRORS = [
 ];
 
 async function overpass(lat, lng, RADIUS) {
+  /*
+    **다각형 관공서는 종류를 좁혀서 받는다.**
+
+    `way["amenity"]` 를 그냥 열어두면 주차장·벤치·쓰레기통까지 다 딸려 와서,
+    1,200m 반경에서는 60초 제한을 넘겨 통째로 실패했다(실측: fetch failed).
+    필요한 것만 집어 물으면 가볍고, 어차피 쓰는 것도 이것뿐이다.
+
+    제한 시간도 늘린다 — 반경이 넓어지면 서버가 그만큼 오래 판다.
+  */
+  const CIVIC = 'townhall|post_office|police|library|clinic|doctors|pharmacy'
+    + '|fire_station|community_centre|bank|cafe|restaurant|fast_food';
   const query = `
-[out:json][timeout:60];
+[out:json][timeout:180];
 (
   way["building"](around:${RADIUS},${lat},${lng});
   way["highway"](around:${RADIUS},${lat},${lng});
@@ -59,25 +80,42 @@ async function overpass(lat, lng, RADIUS) {
   node["shop"](around:${RADIUS},${lat},${lng});
   node["historic"](around:${RADIUS},${lat},${lng});
   node["tourism"](around:${RADIUS},${lat},${lng});
+  way["amenity"~"^(${CIVIC})$"](around:${RADIUS},${lat},${lng});
+  way["shop"~"^(convenience|supermarket|bakery)$"](around:${RADIUS},${lat},${lng});
+  way["office"="government"](around:${RADIUS},${lat},${lng});
 );
 out geom;`;
 
   let lastErr = '';
   for (let i = 0; i < 6; i++) {
     try {
-      const res = await fetch(MIRRORS[i % MIRRORS.length], {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'aewol-school-exhibition/1.0 (school 3D village)',
-        },
-        body: new URLSearchParams({ data: query }).toString(),
-      });
-      if (res.ok) return (await res.json()).elements ?? [];
-      lastErr = `HTTP ${res.status}`;
+      /*
+        **기다리는 시간을 우리가 정한다.**
+        안 정하면 node 기본값에 끌려가 `fetch failed` 한 줄만 남는다 —
+        서버가 죽은 건지 내가 못 기다린 건지 알 수가 없다.
+        서버 제한(180초)보다 넉넉히 준다.
+      */
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 210_000);
+      try {
+        const res = await fetch(MIRRORS[i % MIRRORS.length], {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'aewol-school-exhibition/1.0 (school 3D village)',
+          },
+          body: new URLSearchParams({ data: query }).toString(),
+          signal: ctl.signal,
+        });
+        if (res.ok) return (await res.json()).elements ?? [];
+        lastErr = `HTTP ${res.status}`;
+      } finally {
+        clearTimeout(timer);
+      }
     } catch (e) {
-      lastErr = String(e.message).slice(0, 80);
+      lastErr = e.name === 'AbortError' ? '210초 안에 응답 없음' : String(e.message).slice(0, 80);
     }
+    process.stdout.write(`(${i + 1}번째 실패: ${lastErr}, 다시) `);
     await new Promise((r) => setTimeout(r, 6000 + i * 5000));
   }
   throw new Error(`Overpass 실패 (${lastErr})`);
@@ -154,6 +192,24 @@ function build(elements, lat, lng, RADIUS) {
     } else if (t.highway) {
       const big = ['primary', 'secondary', 'tertiary', 'trunk'].includes(t.highway);
       for (const run of clip(pts)) data.rd.push({ p: simplify(run), w: big ? 8 : 4 });
+    } else if (t.amenity || t.shop || t.office) {
+      /*
+        **건물 태그가 없는 관공서 다각형** — 자리만이라도 남긴다.
+        담벼락으로 둘러친 우체국 부지처럼 amenity 만 있고 building 이 없는
+        다각형이 있다. 버리면 그 우체국은 없는 것이 되고, 없으니까 화면이
+        학교 옆에 가짜로 세웠다. 가운데 점을 시설(poi)로 남긴다 —
+        모양은 몰라도 자리는 진짜다.
+      */
+      const xs = pts.map((p) => p[0]);
+      const zs = pts.map((p) => p[1]);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+      if (!inside([cx, cz])) continue;
+      data.poi.push({
+        x: cx, z: cz,
+        k: t.amenity || t.shop || t.office,
+        ...(t.name ? { n: t.name } : {}),
+      });
     } else if (t.natural === 'water' || t.leisure) {
       if (!pts.some(inside)) continue;
       data.a.push({ p: simplify(pts), k: t.natural === 'water' ? 'water' : 'park' });
