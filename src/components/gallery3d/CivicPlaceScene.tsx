@@ -12,6 +12,7 @@ import type { CivicPlace, Fixture } from '@/lib/civic-places';
 import {
   questOfPerson, questState, questTarget, type Quest,
 } from '@/lib/village-rpg';
+import { backdropClose } from '@/lib/backdrop';
 
 const PI = Math.PI;
 const NEG_HALF_PI = -PI * 0.5;
@@ -818,7 +819,7 @@ export default function CivicPlaceScene({
         <div
           className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 pb-4"
           style={{ background: 'rgba(24,20,16,0.55)' }}
-          onClick={() => setRoleAt(null)}
+          {...backdropClose(() => setRoleAt(null))}
         >
           <div
             className="w-full max-w-[400px] rounded-3xl overflow-hidden"
@@ -868,7 +869,7 @@ export default function CivicPlaceScene({
         <div
           className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 pb-4"
           style={{ background: 'rgba(24,20,16,0.55)' }}
-          onClick={() => setPage(null)}
+          {...backdropClose(() => setPage(null))}
         >
           <div
             className="w-full max-w-[440px] rounded-3xl overflow-hidden"
@@ -957,7 +958,7 @@ export default function CivicPlaceScene({
           <div
             className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 pb-4"
             style={{ background: 'rgba(24,20,16,0.55)' }}
-            onClick={() => setTalking(null)}
+            {...backdropClose(() => setTalking(null))}
           >
             <div
               className="w-full max-w-[440px] rounded-3xl overflow-hidden"
@@ -1109,7 +1110,7 @@ export default function CivicPlaceScene({
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center px-4"
           style={{ background: 'rgba(24,20,16,0.5)' }}
-          onClick={() => setJustDone(false)}
+          {...backdropClose(() => setJustDone(false))}
         >
           <div
             className="w-full max-w-[380px] rounded-3xl p-5 text-center"

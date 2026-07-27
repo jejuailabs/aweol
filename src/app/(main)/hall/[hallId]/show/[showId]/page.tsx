@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { hallPath, type HallDoc, type ShowDoc, type WorkDoc } from '@/lib/art-hall';
 import ShareButton from '@/components/common/ShareButton';
+import { backdropClose } from '@/lib/backdrop';
 
 const ArtShowScene = dynamic(() => import('@/components/gallery3d/ArtShowScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -157,7 +158,7 @@ export default function ShowPage() {
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-6"
           style={{ background: 'rgba(16,14,12,0.88)' }}
-          onClick={() => setOpen(null)}
+          {...backdropClose(() => setOpen(null))}
         >
           <div
             className="w-full max-w-[860px] max-h-full flex flex-col"

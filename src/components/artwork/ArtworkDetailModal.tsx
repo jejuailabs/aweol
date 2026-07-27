@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { canWriteComment } from '@/lib/auth-helpers';
 import { CommentDoc } from '@/lib/firestore-schema';
 import { youtubeEmbed } from '@/lib/youtube';
+import { backdropClose } from '@/lib/backdrop';
 
 interface ArtworkData {
   id: string;
@@ -386,7 +387,7 @@ export default function ArtworkDetailModal({ artwork, collectionPath, onClose }:
         <div
           className="fixed inset-0 z-[95] flex items-center justify-center p-3 cursor-zoom-out"
           style={{ background: 'rgba(12,10,8,0.96)' }}
-          onClick={() => setZoom(false)}
+          {...backdropClose(() => setZoom(false))}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { playSound } from '@/lib/sound';
 import type { BoardItem } from './Blackboard';
 import BlackboardItemEditor from './BlackboardItemEditor';
+import { backdropClose } from '@/lib/backdrop';
 
 /**
  * 칠판에 쓴 것 목록 — 골라서 지운다.
@@ -81,7 +82,7 @@ export default function BlackboardList({
     <div
       className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center px-4 py-6"
       style={{ background: 'rgba(24,20,16,0.5)' }}
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="w-full max-w-[420px] rounded-3xl p-4 max-h-[80vh] overflow-y-auto"

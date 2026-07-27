@@ -30,6 +30,7 @@ import { blocksOfBuildings } from '@/lib/village-blocks';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
+import { backdropClose } from '@/lib/backdrop';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -2736,7 +2737,7 @@ export default function VillageMapScene({
         <div
           className="fixed inset-0 z-[60] flex items-end justify-center"
           style={{ background: 'rgba(24,20,16,0.45)' }}
-          onClick={() => setVehOpen(false)}
+          {...backdropClose(() => setVehOpen(false))}
         >
           <div
             className="w-full max-w-[420px] rounded-t-3xl p-4 pad-bottom-safe"
@@ -3043,7 +3044,7 @@ export default function VillageMapScene({
         <div
           className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 pb-4"
           style={{ background: 'rgba(24,20,16,0.55)' }}
-          onClick={() => setGateAsk(null)}
+          {...backdropClose(() => setGateAsk(null))}
         >
           <div
             className="w-full max-w-[380px] rounded-3xl overflow-hidden"

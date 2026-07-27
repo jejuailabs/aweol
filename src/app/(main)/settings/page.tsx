@@ -6,6 +6,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { isMuted, setMuted, playSound } from '@/lib/sound';
+import { BRAND, BRAND_TAGLINE } from '@/lib/brand';
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: '총관리자',
@@ -170,7 +171,7 @@ export default function SettingsPage() {
           <span style={{ color: 'var(--color-text-sub)' }}>1.0.0</span>
         </div>
         <div className="p-4 pt-0 text-[12px] leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
-          애월초 학급 전시실 — 우리 반 친구들의 작품을 3D 전시실에서 만나보세요.
+          {BRAND} — {BRAND_TAGLINE}
         </div>
       </div>
     </div>

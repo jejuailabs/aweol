@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { studentsPath, questionsPath, quizSubmissionsPath, inventoryPath } from '@/lib/paths';
 import { QuestionType } from '@/lib/firestore-schema';
 import { SHOP_ITEMS, ShopItem } from '@/lib/shop-catalog';
+import { backdropClose } from '@/lib/backdrop';
 
 /**
  * 교사용 퀴즈 현황판.
@@ -246,7 +247,7 @@ export default function QuizTeacherGrid({
         <div
           className="fixed inset-0 z-50 flex items-end justify-center"
           style={{ background: 'rgba(30,26,20,0.45)' }}
-          onClick={() => setOpenUid(null)}
+          {...backdropClose(() => setOpenUid(null))}
         >
           <div
             className="w-full max-w-md rounded-t-3xl p-4 pb-8 max-h-[80vh] overflow-y-auto"

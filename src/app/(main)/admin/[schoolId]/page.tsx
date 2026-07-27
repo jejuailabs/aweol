@@ -10,6 +10,7 @@ import { UserRole } from '@/lib/firestore-schema';
 import SchoolSettingsModal, { type SchoolSettings } from '@/components/admin/SchoolSettingsModal';
 import ClassAdminBox from '@/components/admin/ClassAdminBox';
 import { spotsOfSchool } from '@/lib/village-spots';
+import { backdropClose } from '@/lib/backdrop';
 
 
 interface ActivityStat {
@@ -787,7 +788,7 @@ export default function AdminPage() {
         <div
           className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center px-5"
           style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setShowCreate(false)}
+          {...backdropClose(() => setShowCreate(false))}
         >
           <div
             className="modal-card w-full max-w-[360px] rounded-3xl p-6"

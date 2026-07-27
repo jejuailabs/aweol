@@ -8,6 +8,7 @@ import { studentsPath, submissionsPath, nudgesPath, readsPath, inventoryPath } f
 import { SubmitType, HomeworkVisibility } from '@/lib/firestore-schema';
 import { SHOP_ITEMS, ShopItem } from '@/lib/shop-catalog';
 import { customStampsPath, type CustomStamp } from '@/lib/custom-stamps';
+import { backdropClose } from '@/lib/backdrop';
 
 /**
  * 교사용 숙제 현황판.
@@ -451,7 +452,7 @@ function StudentSheet({
     <div
       className="fixed inset-0 z-50 flex items-end justify-center"
       style={{ background: 'rgba(30,26,20,0.45)' }}
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="w-full max-w-md rounded-t-3xl p-4 pb-8 max-h-[80vh] overflow-y-auto"

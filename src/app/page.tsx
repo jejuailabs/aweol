@@ -7,6 +7,7 @@ import { collection, getDocs, doc, setDoc, serverTimestamp, query, where } from 
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import ShareButton from '@/components/common/ShareButton';
+import { BRAND, BRAND_TAGLINE } from '@/lib/brand';
 import { playSound } from '@/lib/sound';
 import type { MapHall, MapSchool } from '@/components/map/SchoolMap';
 import ProfileMenu from '@/components/navigation/ProfileMenu';
@@ -129,15 +130,17 @@ export default function MapHomePage() {
           안내문은 휴대폰에서 감춘다 — 좁은 화면에서 세 줄이 되어 지도를 가렸다.
         */}
         <div className="ac-bubble min-w-0 px-4 py-2.5 pointer-events-auto">
+          {/* 서비스 이름은 `lib/brand.ts` 한 곳에서 가져온다 */}
           <div className="text-sm font-black whitespace-nowrap overflow-hidden text-ellipsis" style={{ color: '#6B5B43' }}>
-            🗺️ 우리 동네 전시 지도
+            🗺️ {BRAND}
           </div>
           <div className="hidden sm:block text-[12px]" style={{ color: '#A89880' }}>
             학교를 눌러 전시를 보러 가요
           </div>
         </div>
         <div className="ml-auto pointer-events-auto flex items-center gap-2">
-          <ShareButton title="우리 동네 전시 지도" text="학교를 눌러 아이들 작품 전시를 보러 가요" />
+          {/* 지도는 서비스의 첫 화면이라 제목을 따로 안 붙인다 — 이름 그대로 나간다 */}
+          <ShareButton title="" text={BRAND_TAGLINE} />
           <ProfileMenu />
         </div>
       </div>

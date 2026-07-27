@@ -2,10 +2,26 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { BRAND, BRAND_TAGLINE } from "@/lib/brand";
 
+/**
+ * 이름은 `lib/brand.ts` 한 곳에서 가져온다.
+ * 여기 글자로 적어두면 퍼가기·설정 화면과 따로 놀다가 반드시 어긋난다.
+ *
+ * `openGraph` 를 함께 적는 이유: 카카오톡·문자로 링크를 보내면 미리보기가
+ * 뜨는데, 이게 없으면 **주소만 덜렁** 간다. 퍼가기를 붙여 놓고 미리보기를
+ * 안 챙기면 절반만 한 셈이다.
+ */
 export const metadata: Metadata = {
-  title: "애월초 학급 전시실",
-  description: "한 학급이 1년간 만든 미술·글쓰기 결과물을 3D 가상 공간에 전시하는 플랫폼",
+  title: { default: BRAND, template: `%s · ${BRAND}` },
+  description: BRAND_TAGLINE,
+  openGraph: {
+    title: BRAND,
+    description: BRAND_TAGLINE,
+    type: 'website',
+    locale: 'ko_KR',
+    siteName: BRAND,
+  },
 };
 
 /**

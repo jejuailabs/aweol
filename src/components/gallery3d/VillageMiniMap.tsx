@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { WarpTarget } from '@/lib/village-travel';
 import { spotVector, type VillageSpot } from '@/lib/village-spots';
 import { seaMask, seaRects } from '@/lib/village-sea';
+import { backdropClose } from '@/lib/backdrop';
 
 /**
  * 마을 지도 — **두 층으로 본다.**
@@ -228,7 +229,7 @@ export default function VillageMiniMap({
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center px-3 py-3"
       style={{ background: 'rgba(24,20,16,0.6)' }}
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       {/*
         화면의 대부분을 쓴다. 지도는 크게 볼수록 쓸모가 커진다 —

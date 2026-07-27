@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { BRAND, shareTitle } from '@/lib/brand';
+import { backdropClose } from '@/lib/backdrop';
 
 /**
  * 퍼가기 버튼.
@@ -30,11 +32,20 @@ export default function ShareButton({
     setHref(url || (typeof window !== 'undefined' ? window.location.href : ''));
   }, [url]);
 
+  /**
+   * 보낼 제목 — **무엇을 퍼가는지 + 서비스 이름.**
+   *
+   * 그동안은 부르는 쪽이 준 글자만 보냈다. 그래서 카카오톡으로 받은 사람에게는
+   * 어디서 온 링크인지가 안 남았다. 이름은 `lib/brand.ts` 한 곳에서 가져온다 —
+   * 화면마다 글자로 적어두면 반드시 한쪽이 낡는다.
+   */
+  const sendTitle = shareTitle(title);
+
   const share = useCallback(async () => {
     const shareUrl = url || window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title, text: text || title, url: shareUrl });
+        await navigator.share({ title: sendTitle, text: text || sendTitle, url: shareUrl });
         return;
       } catch {
         // 사용자가 취소한 경우도 여기로 온다 — 조용히 넘어간다
@@ -42,7 +53,7 @@ export default function ShareButton({
       }
     }
     setOpen(true);
-  }, [title, text, url]);
+  }, [sendTitle, text, url]);
 
   const copy = useCallback(async () => {
     try {
@@ -80,7 +91,7 @@ export default function ShareButton({
         <div
           className="fixed inset-0 z-[90] flex items-center justify-center px-6"
           style={{ background: 'rgba(24,20,16,0.5)' }}
-          onClick={() => setOpen(false)}
+          {...backdropClose(() => setOpen(false))}
         >
           <div
             className="w-full max-w-[340px] rounded-3xl p-5"
@@ -90,6 +101,9 @@ export default function ShareButton({
             <div className="text-sm font-black mb-1" style={{ color: '#3A3226' }}>🔗 퍼가기</div>
             <div className="text-[13px] mb-3 leading-relaxed" style={{ color: '#A89880' }}>
               {title}
+              <span className="block text-[12px] mt-0.5" style={{ color: '#C4B79E' }}>
+                {BRAND}
+              </span>
             </div>
 
             <div
@@ -109,7 +123,7 @@ export default function ShareButton({
 
             <div className="flex gap-2 mb-2">
               <a
-                href={`https://twitter.com/intent/tweet?text=${enc(title)}&url=${enc(href)}`}
+                href={`https://twitter.com/intent/tweet?text=${enc(sendTitle)}&url=${enc(href)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 rounded-xl py-2.5 text-center text-[14px] font-bold"

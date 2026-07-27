@@ -10,6 +10,7 @@ import { auth, db, storage } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { resizeImage } from '@/lib/client-image';
 import { playSound } from '@/lib/sound';
+import { backdropClose } from '@/lib/backdrop';
 import {
   BANNER_SLOTS, HALL_THEMES, LIMITS, MAX_HALLS_PER_USER, MAX_SHOWS_PER_HALL,
   MAX_WORKS_PER_SHOW, PHASE_COLOR, hallPath, showPeriod, todayStr,
@@ -1565,7 +1566,7 @@ function WorkEditor({
     <div
       className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-4 py-6"
       style={{ background: 'rgba(24,20,16,0.6)' }}
-      onClick={onClose}
+      {...backdropClose(onClose)}
     >
       <div
         className="w-full max-w-[420px] rounded-3xl p-4 max-h-[88vh] overflow-y-auto"

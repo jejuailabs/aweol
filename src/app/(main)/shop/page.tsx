@@ -8,6 +8,7 @@ import MyStampMaker from '@/components/shop/MyStampMaker';
 import { canManageClass } from '@/lib/auth-helpers';
 import { inventoryPath } from '@/lib/paths';
 import { SHOP_ITEMS, ShopItem, ShopCategory } from '@/lib/shop-catalog';
+import { backdropClose } from '@/lib/backdrop';
 
 export default function ShopPage() {
   const { user, userDoc, role } = useAuth();
@@ -188,7 +189,7 @@ export default function ShopPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-6"
           style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setSelected(null)}
+          {...backdropClose(() => setSelected(null))}
         >
           <div
             className="w-full max-w-[320px] rounded-3xl p-6 text-center"
