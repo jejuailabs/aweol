@@ -619,10 +619,16 @@ function HallDetail({
     setBusy('');
   };
 
+  /**
+   * 다른 전시관으로 옮겨 갔을 때만 칸을 다시 채운다.
+   * 전시 화면(아래 ShowDetail)과 같은 이유로 **`hall.id` 를 본다** —
+   * 객체를 보면 목록을 다시 부를 때마다 적고 있던 글이 되돌아간다.
+   */
   useEffect(() => {
     setTitle(hall.title); setTagline(hall.tagline);
     setIntro(hall.intro ?? ''); setTheme(hall.theme); setDirty(false);
-  }, [hall]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hall.id]);
 
   const save = async () => {
     if (!db) return;
@@ -1012,11 +1018,21 @@ function ShowDetail({
     setBusy('');
   };
 
+  /**
+   * 다른 전시로 옮겨 갔을 때만 칸을 다시 채운다.
+   *
+   * **`show` 객체가 아니라 `show.id` 를 본다.** 객체를 보면, 목록을 다시 불러올
+   * 때마다 내용이 같아도 **새 객체**라 이 효과가 돌아 **적고 있던 글이
+   * 저장된 값으로 되돌아간다.** 실제로 배너 이미지를 올리면(그 끝에서 목록을
+   * 다시 부른다) 방금 친 제목이 '새 전시' 로 돌아갔다 —
+   * 두 번 쳐야 남는 것처럼 보였던 것이 이것이다.
+   */
   useEffect(() => {
     setTitle(show.title); setSubtitle(show.subtitle ?? '');
     setIntro(show.intro ?? ''); setDirty(false);
     setStartAt(show.startAt ?? ''); setEndAt(show.endAt ?? '');
-  }, [show]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show.id]);
 
   // 미리보기 주소는 컴포넌트가 사라질 때 돌려준다 (안 하면 메모리가 샌다)
   useEffect(() => () => { pending.forEach((p) => URL.revokeObjectURL(p.previewUrl)); },
