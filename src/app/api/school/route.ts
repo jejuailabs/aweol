@@ -272,6 +272,17 @@ export async function PATCH(req: NextRequest) {
     patch.kind = k === 'gallery' ? 'gallery' : 'school';
   }
 
+  /**
+   * 지도에서 내리기 / 다시 올리기 — **총관리자만.**
+   *
+   * 지우는 것과 다르다. 안에 있던 반과 작품은 그대로 두고 지도에서만 뺀다.
+   * 시험 삼아 세운 학교나 문 닫은 전시관은 **웬만하면 이쪽**이다 —
+   * 되돌릴 수 있다.
+   */
+  if (isSuper && form.has('isArchived')) {
+    patch.isArchived = String(form.get('isArchived')) === 'true';
+  }
+
   const lat = isSuper ? parseFloat(String(form.get('lat'))) : NaN;
   const lng = isSuper ? parseFloat(String(form.get('lng'))) : NaN;
   if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
@@ -434,4 +445,86 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true, addedClasses, imageUrl: patch.imageUrl ?? null });
+}
+
+/**
+ * 학교(전시관)를 **통째로 지운다.**
+ *
+ * 그동안 지우는 길이 아예 없었다. 시험 삼아 세운 것도 영영 남아서,
+ * 아이들이 보는 지도에 빈 학교가 계속 떠 있었다.
+ *
+ * ---
+ *
+ * **되돌릴 수 없다. 그래서 세 겹으로 막는다.**
+ *
+ * 1. **총관리자만.** 학교는 지도에 서는 것이라 남의 학교를 건드리면 안 된다.
+ * 2. **이름을 그대로 받아 적어야 한다.** 단추 하나로 지워지면 반드시 실수가 난다.
+ * 3. **서버가 한다.** 규칙(firestore.rules)은 문서 하나만 본다 — 학교 밑에는
+ *    반·알림장·숙제·퀴즈·작품이 여러 겹으로 달려 있어서, 화면이 문서만 지우면
+ *    **주인 없는 자료가 그대로 남아** 전체 조회에 계속 딸려 나온다.
+ *
+ * 지우기 전에 **내리기(`isArchived`)** 를 권한다 — 지도에서만 빠지고 되돌릴 수 있다.
+ */
+export async function DELETE(req: NextRequest) {
+  const user = await verifyRequestUser(req);
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 });
+  if (user.role !== 'super_admin') {
+    return NextResponse.json({ error: '총관리자만 지울 수 있습니다' }, { status: 403 });
+  }
+
+  let body: { schoolId?: string; confirmName?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: '잘못된 요청' }, { status: 400 });
+  }
+
+  const schoolId = String(body.schoolId || '').trim();
+  if (!schoolId) return NextResponse.json({ error: '학교를 지정해주세요' }, { status: 400 });
+
+  const db = adminDb();
+  const ref = db.collection('schools').doc(schoolId);
+  const snap = await ref.get();
+  if (!snap.exists) return NextResponse.json({ error: '학교를 찾을 수 없습니다' }, { status: 404 });
+
+  const cur = snap.data() ?? {};
+  const real = String(cur.name ?? '').trim();
+  const typed = String(body.confirmName || '').trim();
+  if (!typed || typed !== real) {
+    return NextResponse.json(
+      { error: `지우려면 이름(${real})을 그대로 적어주세요` },
+      { status: 400 }
+    );
+  }
+
+  /**
+   * 밑에 달린 것까지 한 번에 없앤다.
+   * 없는 버전이면 알려주고 멈춘다 — **반쯤 지우고 끝내는 것이 가장 나쁘다.**
+   */
+  const rd = (db as unknown as { recursiveDelete?: (r: unknown) => Promise<void> }).recursiveDelete;
+  if (typeof rd !== 'function') {
+    return NextResponse.json(
+      { error: '이 서버에서는 통째로 지울 수 없어요' },
+      { status: 500 }
+    );
+  }
+  await rd.call(db, ref);
+
+  await db.collection('accessLogs').add({
+    uid: user.uid,
+    displayName: user.displayName,
+    role: user.role,
+    action: (cur.kind === 'gallery' ? '전시관 삭제' : '학교 삭제'),
+    classId: null,
+    detail: `${real} (${schoolId})`,
+    ip: getClientIp(req.headers),
+    userAgent: req.headers.get('user-agent') || 'unknown',
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  /**
+   * **사진은 안 지운다.** Storage 에 남는다 — 되돌릴 수 없는 일을 한 번에
+   * 두 군데서 하면, 잘못 눌렀을 때 사진까지 영영 사라진다.
+   */
+  return NextResponse.json({ ok: true, note: '사진 파일은 저장소에 남아 있어요' });
 }

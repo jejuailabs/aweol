@@ -20,6 +20,10 @@ interface SchoolRow {
   imageUrl: string;
   classCount: number;
   activityCount: number;
+  /** 'gallery' 면 지도에 세로 배너로, 아니면 학년·반 문패로 선다 */
+  kind: string;
+  /** 지도에서 내려놨나 */
+  isArchived: boolean;
 }
 
 /**
@@ -93,6 +97,8 @@ export default function AdminHomePage() {
               imageUrl: (v.imageUrl as string) || '',
               classCount: classes.size,
               activityCount: actsBySchool.get(d.id) ?? 0,
+              kind: (v.kind as string) || 'school',
+              isArchived: v.isArchived === true,
             };
           })
         );
@@ -157,6 +163,93 @@ export default function AdminHomePage() {
    * 전시관·전시·작품 세 층을 한꺼번에 뒤집어야 해서 화면이 직접 못 쓴다
    * (`/api/hall` 의 publish). 규칙도 총관리자를 통과시킨다.
    */
+  /**
+   * 학교를 **지도에서 내리거나 다시 올린다.**
+   * 지우는 것과 다르다 — 반과 작품은 그대로 두고 지도에서만 뺀다.
+   * 되돌릴 수 있으니 웬만하면 이쪽이다.
+   */
+  const toggleArchive = async (s: SchoolRow) => {
+    setBusy(s.id); setMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const fd = new FormData();
+      fd.set('schoolId', s.id);
+      fd.set('isArchived', String(!s.isArchived));
+      const res = await fetch('/api/school', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token ?? ''}` },
+        body: fd,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '바꾸지 못했어요');
+      setMsg(`${s.name} — ${!s.isArchived ? '지도에서 내렸어요' : '지도에 올렸어요'}`);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy('');
+  };
+
+  /**
+   * 학교를 **통째로 지운다. 되돌릴 수 없다.**
+   * 그래서 이름을 그대로 받아 적게 하고, 서버가 한 번 더 맞춰본다.
+   */
+  const removeSchool = async (s: SchoolRow) => {
+    const typed = window.prompt(
+      `"${s.name}" 을(를) 지웁니다.\n\n`
+      + `반 ${s.classCount}개와 전시 ${s.activityCount}개, 그 안의 작품·숙제가 모두 사라져요.\n`
+      + `되돌릴 수 없습니다.\n\n`
+      + `그래도 지우려면 아래에 학교 이름을 그대로 적어주세요.`
+    );
+    if (typed === null) return;
+    setBusy(s.id); setMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/school', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ schoolId: s.id, confirmName: typed }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '지우지 못했어요');
+      setMsg(`${s.name} — 지웠어요. ${json.note ?? ''}`);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy('');
+  };
+
+  /** 개인 전시관 지우기 — 하위 문서까지 서버가 치운다(`/api/hall`) */
+  const removeHall = async (h: HallRow) => {
+    const typed = window.prompt(
+      `"${h.title}" 전시관을 지웁니다.\n\n`
+      + `전시 ${h.showCount}개와 그 안의 작품이 모두 사라져요. 되돌릴 수 없습니다.\n\n`
+      + `그래도 지우려면 아래에 전시관 이름을 그대로 적어주세요.`
+    );
+    if (typed === null) return;
+    if (typed.trim() !== h.title.trim()) {
+      setMsg('이름이 달라요. 그대로 적어주세요.');
+      return;
+    }
+    setBusy(h.id); setMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/hall', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ action: 'delete', hallId: h.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '지우지 못했어요');
+      setMsg(`${h.title} — 지웠어요`);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy('');
+  };
+
   const togglePublic = async (h: HallRow) => {
     setBusy(h.id); setMsg('');
     try {
@@ -242,36 +335,79 @@ export default function AdminHomePage() {
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((s) => (
-            <button
+            <div
               key={s.id}
-              onClick={() => router.push(`/admin/${s.id}`)}
-              className="flex items-center gap-3 rounded-2xl p-3.5 text-left transition-transform hover:scale-[1.01]"
-              style={{ background: 'var(--color-surface)' }}
+              className="flex items-center gap-3 rounded-2xl p-3.5"
+              style={{ background: 'var(--color-surface)', opacity: s.isArchived ? 0.6 : 1 }}
             >
-              <div
-                className="h-12 w-12 shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-                style={{ background: 'var(--color-surface-soft)' }}
+              <button
+                onClick={() => router.push(`/admin/${s.id}`)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                {s.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-xl">🏫</span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
-                  {s.name}
+                <div
+                  className="h-12 w-12 shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+                  style={{ background: 'var(--color-surface-soft)' }}
+                >
+                  {s.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xl">{s.kind === 'gallery' ? '🖼️' : '🏫'}</span>
+                  )}
                 </div>
-                <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
-                  {s.tagline || s.id}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
+                      {s.name}
+                    </span>
+                    {/* 학교인지 전시관인지 — 지도에 문패로 서는지 배너로 서는지가 갈린다 */}
+                    <span
+                      className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black"
+                      style={s.kind === 'gallery'
+                        ? { background: '#FFF1D6', color: '#A6762A' }
+                        : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
+                    >
+                      {s.kind === 'gallery' ? '전시관' : '학교'}
+                    </span>
+                    {s.isArchived && (
+                      <span
+                        className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black"
+                        style={{ background: 'rgba(0,0,0,0.08)', color: 'var(--color-text-sub)' }}
+                      >
+                        지도에 없음
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
+                    {s.tagline || s.id}
+                  </div>
+                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                    반 {s.classCount}개 · 전시 {s.activityCount}개
+                  </div>
                 </div>
-                <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
-                  반 {s.classCount}개 · 전시 {s.activityCount}개
-                </div>
-              </div>
-              <span className="shrink-0 text-sm" style={{ color: 'var(--color-text-sub)' }}>›</span>
-            </button>
+              </button>
+
+              {/*
+                **내리기를 지우기보다 앞에 둔다.**
+                지우는 것은 되돌릴 수 없다. 대개는 지도에서 빼는 것으로 충분하다.
+              */}
+              <button
+                onClick={() => toggleArchive(s)}
+                disabled={!!busy}
+                className="shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+                style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+              >
+                {busy === s.id ? '...' : s.isArchived ? '올리기' : '내리기'}
+              </button>
+              <button
+                onClick={() => removeSchool(s)}
+                disabled={!!busy}
+                className="shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+                style={{ background: 'rgba(231,76,60,0.12)', color: '#C0392B' }}
+              >
+                삭제
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -381,6 +517,14 @@ export default function AdminHomePage() {
                   : { background: 'var(--color-primary)', color: 'white' }}
               >
                 {busy === h.id ? '...' : h.isPublic ? '내리기' : '올리기'}
+              </button>
+              <button
+                onClick={() => removeHall(h)}
+                disabled={!!busy}
+                className="shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+                style={{ background: 'rgba(231,76,60,0.12)', color: '#C0392B' }}
+              >
+                삭제
               </button>
             </div>
           ))}
