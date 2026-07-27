@@ -77,6 +77,20 @@ export default function HallPage() {
 
   const isOwner = !!user && hall?.ownerUid === user.uid;
 
+  /**
+   * 같은 전시관에 온 사람들에게 알릴 '나'.
+   * 마을 화면과 같은 꼴이다 — 로그인해야 서로 보인다.
+   */
+  const me = user && userDoc ? {
+    uid: user.uid,
+    look: {
+      name: userDoc.displayName || '친구',
+      avatarId: userDoc.avatarId ?? null,
+      shirt: userDoc.avatarTint?.shirt ?? null,
+      hair: userDoc.avatarTint?.hair ?? null,
+    },
+  } : null;
+
   if (!tried) {
     return (
       <div className="scene-page">
@@ -109,6 +123,8 @@ export default function HallPage() {
     <div className="scene-page">
       <ArtHallScene
         hall={hall}
+        hallId={hallId}
+        me={me}
         shows={shows}
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}

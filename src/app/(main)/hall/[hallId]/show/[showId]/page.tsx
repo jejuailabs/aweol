@@ -27,6 +27,17 @@ export default function ShowPage() {
   const { user, userDoc, role } = useAuth();
   const uid = user?.uid;
 
+  /** 같은 전시실에 온 사람들에게 알릴 '나' — 로그인해야 서로 보인다 */
+  const me = user && userDoc ? {
+    uid: user.uid,
+    look: {
+      name: userDoc.displayName || '친구',
+      avatarId: userDoc.avatarId ?? null,
+      shirt: userDoc.avatarTint?.shirt ?? null,
+      hair: userDoc.avatarTint?.hair ?? null,
+    },
+  } : null;
+
   const [hall, setHall] = useState<HallDoc | null>(null);
   const [show, setShow] = useState<(ShowDoc & { id: string }) | null>(null);
   const [works, setWorks] = useState<(WorkDoc & { id: string })[]>([]);
@@ -114,6 +125,8 @@ export default function ShowPage() {
     <div className="scene-page">
       <ArtShowScene
         show={show}
+        hallId={hallId}
+        me={me}
         works={works}
         theme={hall?.theme ?? 'white'}
         hallTitle={hall?.title ?? ''}

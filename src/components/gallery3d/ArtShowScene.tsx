@@ -13,6 +13,8 @@ import {
   PARTITION_Z, PARTITION_W, PARTITION_H,
 } from '@/lib/hall-layout';
 import { themeOf, type HallTheme, type ShowDoc, type WorkDoc } from '@/lib/art-hall';
+import Peers from './Peers';
+import type { PeerLook } from '@/lib/presence';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -248,9 +250,14 @@ function TrackLights({ dark }: { dark: boolean }) {
 }
 
 export default function ArtShowScene({
-  show, works, theme, hallTitle, avatarId, avatarCustom, avatarTint, onSelect, onExit, children,
+  show, hallId, me, works, theme, hallTitle,
+  avatarId, avatarCustom, avatarTint, onSelect, onExit, children,
 }: {
   show: ShowDoc & { id: string };
+  /** 방 이름을 만드는 데 쓴다 */
+  hallId: string;
+  /** 나 — 없으면(로그인 안 했으면) 친구도 안 보인다 */
+  me?: { uid: string; look: PeerLook } | null;
   works: (WorkDoc & { id: string })[];
   theme: HallTheme;
   hallTitle: string;
@@ -446,6 +453,23 @@ export default function ArtShowScene({
           avatarYaw={avatarYaw}
           obstacles={obstacles}
         />
+
+        {/*
+          같이 온 사람들 — **전시마다 따로 모인다.**
+          전시관 광장(`hall-…`)과 방(`show-…`)을 나눠야, 광장에 선 사람이
+          방 안에 있는 것처럼 보이지 않는다.
+        */}
+        {me && (
+          <Peers
+            schoolId="halls"
+            roomKey={`show-${hallId}-${show.id}`}
+            uid={me.uid}
+            look={me.look}
+            avatarPos={avatarPos}
+            avatarYaw={avatarYaw}
+          />
+        )}
+
         <FollowCamera avatarPos={avatarPos} lookHeight={1.5} />
       </Canvas>
 

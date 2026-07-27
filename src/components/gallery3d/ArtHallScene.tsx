@@ -11,6 +11,8 @@ import {
 import {
   BANNER_SLOTS, PHASE_COLOR, showPeriod, themeOf, type HallDoc, type ShowDoc,
 } from '@/lib/art-hall';
+import Peers from './Peers';
+import type { PeerLook } from '@/lib/presence';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -500,9 +502,17 @@ function Facade({ hall, accent }: { hall: HallDoc; accent: string }) {
 }
 
 export default function ArtHallScene({
-  hall, shows, avatarId, avatarCustom, avatarTint, onEnterShow, onExit, children,
+  hall, hallId, me, shows, avatarId, avatarCustom, avatarTint, onEnterShow, onExit, children,
 }: {
   hall: HallDoc;
+  /** 방 이름을 만드는 데 쓴다 — 전시관마다 따로 모인다 */
+  hallId: string;
+  /**
+   * 나 — **없으면 친구도 안 보인다.**
+   * 로그인해야 남에게 내 자리를 알릴 수 있고, 알리지 않으면 받기만 하는 셈이라
+   * 서로 안 보이는 것이 맞다.
+   */
+  me?: { uid: string; look: PeerLook } | null;
   shows: (ShowDoc & { id: string })[];
   avatarId?: string | null;
   avatarCustom?: AvatarCustom | null;
@@ -673,6 +683,28 @@ export default function ArtHallScene({
           avatarYaw={avatarYaw}
           obstacles={obstacles}
         />
+
+        {/*
+          같이 온 사람들 — **전시관마다 따로 모인다.**
+
+          그동안 개인 전시관에는 이게 아예 없어서, 같은 시간 같은 광장에 서 있어도
+          서로 안 보였다(학교 화면들에만 붙어 있었다). 전시는 같이 보는 재미가 큰데
+          혼자 걷는 곳이 되어 있었다.
+
+          방 이름은 `halls / hall-{전시관}` 이다 — 학교와 자리가 겹치지 않게
+          맨 앞을 나눠 둔다.
+        */}
+        {me && (
+          <Peers
+            schoolId="halls"
+            roomKey={`hall-${hallId}`}
+            uid={me.uid}
+            look={me.look}
+            avatarPos={avatarPos}
+            avatarYaw={avatarYaw}
+          />
+        )}
+
         <FollowCamera avatarPos={avatarPos} lookHeight={2} />
       </Canvas>
 
