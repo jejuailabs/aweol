@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 
 /**
@@ -22,12 +22,36 @@ interface SchoolRow {
   activityCount: number;
 }
 
+/**
+ * 개인 전시관 한 줄.
+ *
+ * **총관리자는 이걸 볼 수 있어야 한다.** 규칙(firestore.rules)은 진작
+ * `isSuper()` 로 열어 두었는데 **화면에 목록이 없었다** — 누가 무엇을
+ * 지도에 올렸는지 알 길이 없었다는 뜻이다. 학교와 달리 개인 전시관은
+ * 아무나 열 수 있으므로, 지도에 서는 것을 관리자가 못 보면 안 된다.
+ */
+interface HallRow {
+  id: string;
+  title: string;
+  ownerName: string;
+  ownerUid: string;
+  placeName: string;
+  isPublic: boolean;
+  showCount: number;
+  lat: number;
+  lng: number;
+}
+
 export default function AdminHomePage() {
   const router = useRouter();
   const { user, actualRole, loading } = useAuth();
   const [rows, setRows] = useState<SchoolRow[]>([]);
+  const [halls, setHalls] = useState<HallRow[]>([]);
   const [pendingTeachers, setPendingTeachers] = useState(0);
   const [fetched, setFetched] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     // 역할 테스트 중이어도 실제 계정이 총관리자여야 한다
@@ -79,6 +103,41 @@ export default function AdminHomePage() {
         if (alive) setRows([]);
       }
 
+      /**
+       * 개인 전시관 — **비공개인 것까지 전부.**
+       *
+       * 지도(`/`)는 `isPublic == true` 만 묻지만 여기는 다르다. 관리자가
+       * 봐야 할 것은 **지도에 이미 선 것**과 **곧 설 것** 둘 다이기 때문이다.
+       * 규칙이 총관리자에게는 전부 열어 준다.
+       */
+      try {
+        const hs = await getDocs(collection(db!, 'halls'));
+        if (alive) {
+          setHalls(
+            hs.docs
+              .map((d) => {
+                const v = d.data();
+                return {
+                  id: d.id,
+                  title: (v.title as string) || '이름 없는 전시관',
+                  ownerName: (v.ownerName as string) || '',
+                  ownerUid: (v.ownerUid as string) || '',
+                  placeName: (v.placeName as string) || '',
+                  isPublic: v.isPublic === true,
+                  showCount: (v.showCount as number) ?? 0,
+                  lat: Number(v.lat),
+                  lng: Number(v.lng),
+                };
+              })
+              // 공개된 것부터 — 지도에 이미 서 있는 것이 먼저 눈에 와야 한다
+              .sort((a, b) => Number(b.isPublic) - Number(a.isPublic)
+                || a.title.localeCompare(b.title))
+          );
+        }
+      } catch {
+        if (alive) setHalls([]);
+      }
+
       try {
         const p = await getDocs(
           query(collection(db!, 'users'), where('pendingRole', '==', 'teacher'))
@@ -91,7 +150,31 @@ export default function AdminHomePage() {
     })();
 
     return () => { alive = false; };
-  }, [actualRole]);
+  }, [actualRole, refreshKey]);
+
+  /**
+   * 지도에 올리기 / 내리기 — **서버가 한다.**
+   * 전시관·전시·작품 세 층을 한꺼번에 뒤집어야 해서 화면이 직접 못 쓴다
+   * (`/api/hall` 의 publish). 규칙도 총관리자를 통과시킨다.
+   */
+  const togglePublic = async (h: HallRow) => {
+    setBusy(h.id); setMsg('');
+    try {
+      const token = await auth?.currentUser?.getIdToken();
+      const res = await fetch('/api/hall', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ action: 'publish', hallId: h.id, isPublic: !h.isPublic }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '바꾸지 못했어요');
+      setMsg(`${h.title} — ${!h.isPublic ? '지도에 올렸어요' : '지도에서 내렸어요'}`);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy('');
+  };
 
   if (loading || actualRole !== 'super_admin') return null;
 
@@ -189,6 +272,94 @@ export default function AdminHomePage() {
               </div>
               <span className="shrink-0 text-sm" style={{ color: 'var(--color-text-sub)' }}>›</span>
             </button>
+          ))}
+        </div>
+      )}
+
+      {/*
+        개인 전시관 — **학교와 따로 둔다.**
+
+        학교는 총관리자가 만들지만 전시관은 **누구나 연다.** 그래서 지도에
+        무엇이 서는지 관리자가 볼 수 있어야 하고, 필요하면 내릴 수 있어야 한다.
+        그동안 규칙만 열려 있고 화면이 없어서, 누가 무엇을 올렸는지 알 길이 없었다.
+      */}
+      <h2 className="text-sm font-bold mt-6 mb-2" style={{ color: 'var(--color-text-main)' }}>
+        🖼️ 개인 전시관 {halls.length}곳
+        {halls.length > 0 && (
+          <span className="ml-1.5 font-normal" style={{ color: 'var(--color-text-sub)' }}>
+            (지도에 {halls.filter((h) => h.isPublic).length}곳)
+          </span>
+        )}
+      </h2>
+
+      {msg && (
+        <div
+          className="rounded-xl px-3 py-2.5 mb-2 text-[13px] font-bold"
+          style={{ background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+        >
+          {msg}
+        </div>
+      )}
+
+      {!fetched ? null : halls.length === 0 ? (
+        <div
+          className="rounded-2xl py-8 text-center text-sm"
+          style={{ background: 'var(--color-surface)', color: 'var(--color-text-sub)' }}
+        >
+          아직 연 전시관이 없어요
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {halls.map((h) => (
+            <div
+              key={h.id}
+              className="flex items-center gap-3 rounded-2xl p-3.5"
+              style={{ background: 'var(--color-surface)' }}
+            >
+              <button
+                onClick={() => router.push(`/hall/${h.id}`)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
+                <div
+                  className="h-11 w-11 shrink-0 flex items-center justify-center"
+                  style={{ background: '#2E2B27', borderRadius: 6, border: '2px solid #D8B25C' }}
+                >
+                  <span className="text-lg">🖼️</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold truncate" style={{ color: 'var(--color-text-main)' }}>
+                    {h.title}
+                  </div>
+                  <div className="text-[12px] truncate" style={{ color: 'var(--color-text-sub)' }}>
+                    {h.ownerName || h.ownerUid.slice(0, 8)} · {h.placeName || '자리 지정됨'}
+                  </div>
+                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
+                    전시 {h.showCount}개
+                    {Number.isFinite(h.lat) && ` · ${h.lat.toFixed(4)}, ${h.lng.toFixed(4)}`}
+                  </div>
+                </div>
+              </button>
+
+              <span
+                className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black"
+                style={h.isPublic
+                  ? { background: '#E6F4EA', color: '#1E7B45' }
+                  : { background: '#FFF1D6', color: '#A6762A' }}
+              >
+                {h.isPublic ? '지도에 있음' : '나만 보는 중'}
+              </span>
+
+              <button
+                onClick={() => togglePublic(h)}
+                disabled={!!busy}
+                className="shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+                style={h.isPublic
+                  ? { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }
+                  : { background: 'var(--color-primary)', color: 'white' }}
+              >
+                {busy === h.id ? '...' : h.isPublic ? '내리기' : '올리기'}
+              </button>
+            </div>
           ))}
         </div>
       )}
