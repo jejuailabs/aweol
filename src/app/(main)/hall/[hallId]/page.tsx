@@ -7,6 +7,7 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { showPath, type HallDoc, type ShowDoc } from '@/lib/art-hall';
+import ShareButton from '@/components/common/ShareButton';
 
 const ArtHallScene = dynamic(() => import('@/components/gallery3d/ArtHallScene'), { ssr: false });
 /** 걸어다니는 3D 화면에는 빠짐없이 있어야 한다 — 없으면 휴대폰에서 못 움직인다 */
@@ -115,16 +116,30 @@ export default function HallPage() {
         onEnterShow={(showId) => router.push(showPath(hallId, showId))}
         onExit={() => router.push('/')}
       >
-        {/* 주인에게만 — 고치러 가는 길 */}
-        {isOwner && (
-          <button
-            onClick={() => router.push('/my-hall')}
-            className="pos-top-safe absolute right-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
-            style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
-          >
-            ✏️ 내 전시관 관리
-          </button>
-        )}
+        {/*
+          오른쪽 위 — 퍼가기와 (주인이면) 관리.
+
+          **전시는 보라고 여는 것이다.** 지도까지 찾아오게 하는 것보다
+          주소 하나를 보내는 편이 빠르다. 공개된 전시관에만 띄운다 —
+          감춰 둔 것을 퍼가면 받은 사람은 못 연다.
+        */}
+        <div className="pos-top-safe absolute right-4 z-30 flex items-center gap-2">
+          {hall.isPublic && (
+            <ShareButton
+              title={hall.title}
+              text={hall.tagline || `${hall.ownerName} 님의 전시관`}
+            />
+          )}
+          {isOwner && (
+            <button
+              onClick={() => router.push('/my-hall')}
+              className="rounded-full px-4 py-2.5 text-sm font-bold"
+              style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+            >
+              ✏️ 관리
+            </button>
+          )}
+        </div>
 
         {/*
           아직 아무 전시도 안 걸렸을 때.

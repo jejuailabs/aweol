@@ -7,6 +7,7 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { hallPath, type HallDoc, type ShowDoc, type WorkDoc } from '@/lib/art-hall';
+import ShareButton from '@/components/common/ShareButton';
 
 const ArtShowScene = dynamic(() => import('@/components/gallery3d/ArtShowScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -121,6 +122,21 @@ export default function ShowPage() {
         onSelect={setOpen}
         onExit={() => router.push(hallPath(hallId))}
       >
+        {/*
+          퍼가기 — **전시실은 전시관보다 더 보내고 싶은 자리다.**
+          "우리 전시관 와봐" 보다 "이 전시 봐봐" 가 구체적이라, 받은 사람이
+          바로 그 방으로 들어온다. 공개된 전시만 띄운다 — 감춘 것을 퍼가면
+          받은 사람은 못 연다.
+        */}
+        {show.isPublic && (
+          <div className="pos-top-safe absolute right-4 z-30">
+            <ShareButton
+              title={show.title}
+              text={hall?.title ? `${hall.title} — ${show.title}` : show.title}
+            />
+          </div>
+        )}
+
         {works.length === 0 && (
           <div className="pos-hint absolute left-1/2 -translate-x-1/2 z-20 w-[min(92vw,420px)]">
             <div

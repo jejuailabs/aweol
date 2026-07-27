@@ -151,6 +151,74 @@ function Artwork({
   );
 }
 
+/**
+ * 전시 대표 이미지 — **제목 바로 아래, 크게.**
+ *
+ * 실제 미술관 입구 벽에는 전시 제목과 함께 대표 이미지가 크게 걸린다.
+ * 그동안은 글씨만 있어서 들어서자마자 무슨 전시인지 그림으로 오지 않았고,
+ * 뒷벽 위쪽이 휑했다.
+ *
+ * **비율은 그림이 정한다.** 액자를 먼저 정해두고 우겨 넣으면 세로 사진이
+ * 납작해진다 — 작품 액자에서 이미 겪은 것과 같은 잘못이다.
+ * 가로로도 세로로도 정해둔 크기를 넘지 않는 선에서 원래 비율을 지킨다.
+ */
+function PosterWall({ url, frameColor }: { url: string; frameColor: string }) {
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    if (!url) { setTex(null); return; }
+    let alive = true;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(
+      url,
+      (t) => {
+        if (!alive) { t.dispose(); return; }
+        t.colorSpace = THREE.SRGBColorSpace;
+        setTex(t);
+      },
+      undefined,
+      () => {}
+    );
+    return () => { alive = false; };
+  }, [url]);
+  useEffect(() => () => { tex?.dispose(); }, [tex]);
+
+  const { w, h } = useMemo(() => {
+    const img = tex?.image as { width?: number; height?: number } | undefined;
+    const ratio = img?.width && img?.height ? img.width / img.height : 1.5;
+    /**
+     * 뒷벽에서 이만큼까지 쓴다.
+     *
+     * **작품 위를 침범하면 안 된다.** 작품이 많아 두 줄로 걸리면 윗줄 한가운데가
+     * 2.45m 이고 액자가 2.1m 까지 커지므로 위 끝이 3.5m 다(`hall-layout.ts`).
+     * 그래서 대표 이미지는 3.65m 위에만 선다. 천장은 6.2m 라 자리는 넉넉하다.
+     */
+    const maxW = 4.8;
+    const maxH = 1.4;
+    let ww = maxW;
+    let hh = maxW / ratio;
+    if (hh > maxH) { hh = maxH; ww = maxH * ratio; }
+    return { w: ww, h: hh };
+  }, [tex]);
+
+  if (!tex) return null;
+
+  return (
+    <group position={[0, 4.35, -ROOM_D / 2 + 0.07]}>
+      {/* 테두리 — 벽과 그림 사이를 끊어줘야 '걸린 것' 으로 보인다 */}
+      <mesh position={[0, 0, -0.012]}>
+        <planeGeometry args={[w + 0.16, h + 0.16]} />
+        <meshStandardMaterial color={frameColor} roughness={0.6} metalness={0.12} />
+      </mesh>
+      <mesh>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial map={tex} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
 /** 천장 조명 레일과 등 — 켜진 광원이 아니라 '있어 보이는' 기구다 */
 function TrackLights({ dark }: { dark: boolean }) {
   return (
@@ -298,9 +366,12 @@ export default function ArtShowScene({
 
         <TrackLights dark={dark} />
 
-        {/* 전시 제목 — 뒷벽 위쪽에 크게. 미술관 입구 벽 글씨 그것이다. */}
+        {/*
+          전시 제목 — 뒷벽 맨 위에 크게. 미술관 입구 벽 글씨 그것이다.
+          **대표 이미지 자리를 비워 두려고 위로 올렸다**(아래 PosterWall).
+        */}
         <Html
-          position={[0, 4.4, -ROOM_D / 2 + 0.08]}
+          position={[0, 5.55, -ROOM_D / 2 + 0.08]}
           transform
           scale={0.42}
           pointerEvents="none"
@@ -325,6 +396,9 @@ export default function ArtShowScene({
             )}
           </div>
         </Html>
+
+        {/* 제목 바로 아래 — 이 전시가 무엇인지 그림으로 한 번에 온다 */}
+        {show.posterUrl && <PosterWall url={show.posterUrl} frameColor={t.frame} />}
 
         {/* 작품들 */}
         {works.map((w, i) => {
