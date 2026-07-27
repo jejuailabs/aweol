@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { hallPath, type HallDoc, type ShowDoc, type WorkDoc } from '@/lib/art-hall';
@@ -22,7 +22,8 @@ export default function ShowPage() {
   const params = useParams();
   const hallId = String(params.hallId ?? '');
   const showId = String(params.showId ?? '');
-  const { userDoc, role } = useAuth();
+  const { user, userDoc, role } = useAuth();
+  const uid = user?.uid;
 
   const [hall, setHall] = useState<HallDoc | null>(null);
   const [show, setShow] = useState<(ShowDoc & { id: string }) | null>(null);
@@ -47,13 +48,29 @@ export default function ShowPage() {
         if (!ss.exists()) { setShow(null); return; }
         setShow({ id: ss.id, ...(ss.data() as ShowDoc) });
 
-        const q = query(
-          collection(db!, 'halls', hallId, 'shows', showId, 'works'),
-          orderBy('order', 'asc')
+        /**
+         * **보는 사람에 맞춰 질의를 고른다.** (전시관 화면과 같은 이유)
+         * 규칙이 `isPublic` 이나 `ownerUid` 를 보는데 질의에 그 조건이 없으면
+         * Firestore 가 목록 질의를 통째로 거부한다 — 주인만 못 보게 된다.
+         */
+        const mine = !!uid && (hs.data() as HallDoc | undefined)?.ownerUid === uid;
+        const snap = await getDocs(
+          mine
+            ? query(
+                collection(db!, 'halls', hallId, 'shows', showId, 'works'),
+                where('ownerUid', '==', uid)
+              )
+            : query(
+                collection(db!, 'halls', hallId, 'shows', showId, 'works'),
+                where('isPublic', '==', true)
+              )
         );
-        const snap = await getDocs(q);
         if (!alive) return;
-        setWorks(snap.docs.map((d) => ({ id: d.id, ...(d.data() as WorkDoc) })));
+        setWorks(
+          snap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as WorkDoc) }))
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        );
       } catch {
         if (alive) setShow(null);
       } finally {
@@ -61,7 +78,7 @@ export default function ShowPage() {
       }
     })();
     return () => { alive = false; };
-  }, [hallId, showId, role]);
+  }, [hallId, showId, role, uid]);
 
   if (!tried) {
     return (

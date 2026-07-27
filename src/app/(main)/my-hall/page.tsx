@@ -84,21 +84,47 @@ export default function MyHallPage() {
     setLoading(false);
   }, [user]);
 
+  /**
+   * 전시 목록 — **질의에 `ownerUid` 를 반드시 붙인다.**
+   *
+   * 규칙(firestore.rules)이 `resource.data.ownerUid == request.auth.uid` 로 열려
+   * 있는데 질의에 그 조건이 없으면, Firestore 는 **목록 질의를 통째로 거부한다**
+   * (규칙은 거르개가 아니다 — 읽기 전에 "이 질의가 안전한가" 를 판정한다).
+   *
+   * 그래서 **주인만 못 보는** 기묘한 일이 벌어졌다. 총관리자는 `isSuper()` 가
+   * 문서와 상관없는 조건이라 통과하고, 정작 전시관 주인은 막혔다.
+   * 화면에는 '아직 전시가 없어요' 가 뜨는데 실제로는 세 개가 들어 있었고,
+   * 그 상태에서 새 전시를 만들면 차례가 늘 0 이라 서로 포개졌다.
+   *
+   * 차례는 **받아 와서 정렬한다.** 질의에 `orderBy` 까지 얹으면 복합 색인을
+   * 따로 만들어야 하는데, 전시는 많아야 여섯 개라 그 값을 치를 이유가 없다.
+   */
   const loadShows = useCallback(async (hallId: string) => {
-    if (!db) return;
+    if (!db || !user) return;
     const snap = await getDocs(
-      query(collection(db, 'halls', hallId, 'shows'), orderBy('order', 'asc'))
+      query(collection(db, 'halls', hallId, 'shows'), where('ownerUid', '==', user.uid))
     );
-    setShows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ShowDoc) })));
-  }, []);
+    setShows(
+      snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as ShowDoc) }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    );
+  }, [user]);
 
   const loadWorks = useCallback(async (hallId: string, showId: string) => {
-    if (!db) return;
+    if (!db || !user) return;
     const snap = await getDocs(
-      query(collection(db, 'halls', hallId, 'shows', showId, 'works'), orderBy('order', 'asc'))
+      query(
+        collection(db, 'halls', hallId, 'shows', showId, 'works'),
+        where('ownerUid', '==', user.uid)
+      )
     );
-    setWorks(snap.docs.map((d) => ({ id: d.id, ...(d.data() as WorkDoc) })));
-  }, []);
+    setWorks(
+      snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as WorkDoc) }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    );
+  }, [user]);
 
   useEffect(() => { loadHalls(); }, [loadHalls]);
   useEffect(() => {
@@ -564,8 +590,8 @@ function HallDetail({
       await updateDoc(doc(db, 'halls', hall.id), { coverUrl: url });
       playSound('success');
       await reloadHalls();
-    } catch {
-      setErr('대표 이미지를 올리지 못했어요.');
+    } catch (e) {
+      setErr(`대표 이미지를 올리지 못했어요 — ${(e as Error)?.message ?? e}`);
     }
     setBusy('');
   };
@@ -665,8 +691,16 @@ function HallDetail({
       await reloadShows();
       await reloadHalls();
       onOpenShow(id);
-    } catch {
-      setErr('전시를 만들지 못했어요.');
+    } catch (e) {
+      /*
+        **왜 안 됐는지 그대로 보여준다.**
+
+        '전시를 만들지 못했어요' 한 줄만 띄웠더니, 정작 전시 문서는 만들어졌는데
+        그 다음 줄에서 막힌 것을 아무도 몰랐다 — 화면에는 실패로 뜨고 미술관
+        앞에는 배너가 서는 기묘한 상태가 됐다. 무엇이 막혔는지 글자로 남아야
+        주인도 알고 고치는 쪽도 안다.
+      */
+      setErr(`전시를 만들지 못했어요 — ${(e as Error)?.message ?? e}`);
     }
     setBusy('');
   };
@@ -1026,8 +1060,8 @@ function ShowDetail({
       await updateDoc(doc(db, 'halls', hall.id, 'shows', show.id), { posterUrl: url });
       playSound('success');
       await reloadShows();
-    } catch {
-      setErr('대표 이미지를 올리지 못했어요.');
+    } catch (e) {
+      setErr(`대표 이미지를 올리지 못했어요 — ${(e as Error)?.message ?? e}`);
     }
     setBusy('');
   };
@@ -1120,8 +1154,9 @@ function ShowDetail({
       setPending([]);
       playSound('success');
       await Promise.all([reloadWorks(), reloadShows()]);
-    } catch {
-      setErr('작품을 올리지 못했어요.');
+    } catch (e) {
+      // 왜 막혔는지 그대로 보여준다 — '못 올렸어요' 만으로는 아무도 못 고친다
+      setErr(`작품을 올리지 못했어요 — ${(e as Error)?.message ?? e}`);
       playSound('error');
     }
     setUploading(false);

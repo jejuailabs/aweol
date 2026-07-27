@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { showPath, type HallDoc, type ShowDoc } from '@/lib/art-hall';
@@ -37,12 +37,33 @@ export default function HallPage() {
         const s = await getDoc(doc(db!, 'halls', hallId));
         if (!alive) return;
         if (!s.exists()) { setHall(null); return; }
-        setHall({ id: s.id, ...(s.data() as HallDoc) });
+        const hv = s.data() as HallDoc;
+        setHall({ id: s.id, ...hv });
 
-        const q = query(collection(db!, 'halls', hallId, 'shows'), orderBy('order', 'asc'));
-        const snap = await getDocs(q);
+        /**
+         * **보는 사람에 맞춰 질의를 고른다.**
+         *
+         * 규칙이 `isPublic == true` 이거나 `ownerUid == 나` 일 때 열어주는데,
+         * 질의에 그 조건이 없으면 Firestore 가 목록 질의를 통째로 거부한다
+         * (규칙은 거르개가 아니다). 조건 없이 물었더니 **주인만 못 보는**
+         * 일이 벌어졌다 — 총관리자는 `isSuper()` 로 통과했기 때문에
+         * 한동안 아무도 못 알아챘다.
+         *
+         * 차례는 받아 와서 정렬한다 — 질의에 `orderBy` 를 얹으면 복합 색인이
+         * 따로 필요한데 전시는 많아야 여섯 개다.
+         */
+        const mine = !!user && hv.ownerUid === user.uid;
+        const snap = await getDocs(
+          mine
+            ? query(collection(db!, 'halls', hallId, 'shows'), where('ownerUid', '==', user.uid))
+            : query(collection(db!, 'halls', hallId, 'shows'), where('isPublic', '==', true))
+        );
         if (!alive) return;
-        setShows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ShowDoc) })));
+        setShows(
+          snap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as ShowDoc) }))
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        );
       } catch {
         // 감춘 전시관을 남이 열면 규칙이 막는다 — 그냥 '없음' 으로 둔다
         if (alive) setHall(null);
@@ -51,7 +72,7 @@ export default function HallPage() {
       }
     })();
     return () => { alive = false; };
-  }, [hallId, role]);
+  }, [hallId, role, user]);
 
   const isOwner = !!user && hall?.ownerUid === user.uid;
 
