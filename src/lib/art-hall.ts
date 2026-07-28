@@ -27,12 +27,52 @@
  * 한 번에 고치는 값이 싸다.
  */
 
-/** 전시관 분위기 — 벽·바닥·조명이 통째로 바뀐다 */
-export type HallTheme = 'white' | 'dark' | 'wood';
+/**
+ * 전시관 분위기 — **색만 바뀌는 것이 아니다.**
+ *
+ * 처음에는 벽·바닥 색만 갈아 끼웠다. 그래서 셋 다 **같은 건물에 페인트만
+ * 다시 칠한 것** 이었다 — 열주도, 마당 타일도, 세워둔 조형물도 똑같았다.
+ *
+ * 이제 **건축 양식 단위**로 바꾼다. 세계의 미술관들이 저마다 다른 이유가
+ * 색이 아니라 **형태**이기 때문이다. 열주가 선 신전과 티타늄이 물결치는
+ * 덩어리는 같은 건물에 색만 다른 것이 아니다.
+ *
+ * 이름(id)은 **예전 것을 그대로 둔다.** 이미 만든 전시관이 이 값을 들고
+ * 있어서, 이름을 바꾸면 그 전시관들이 통째로 기본값으로 떨어진다.
+ */
+export type HallTheme = 'white' | 'dark' | 'wood' | 'silver' | 'glass';
+
+/** 바깥 건물을 무엇으로 지을까 */
+export type HallArch =
+  /** 열주가 선 고전 신전 — 대영박물관·예술의전당 */
+  | 'temple'
+  /** 노출 철골과 색색 배관 — 퐁피두 센터 */
+  | 'hitech'
+  /** 기와 지붕과 처마 — 국립중앙박물관·경복궁 */
+  | 'hanok'
+  /** 티타늄이 물결치는 덩어리 — 구겐하임 빌바오 */
+  | 'titanium'
+  /** 유리 피라미드와 낮은 석조 — 루브르 */
+  | 'pyramid';
+
+/** 마당을 어떻게 깔까 */
+export type HallPaving =
+  /** 곧은 격자 — 다듬은 화강암 */
+  | 'grid'
+  /** 넓은 붉은 벽돌 — 퐁피두 앞 경사 광장 */
+  | 'brick'
+  /** 박석 — 불규칙한 넓적 돌. 궁궐 마당. */
+  | 'stone'
+  /** 물결 — 동심원. 물가에 선 건물. */
+  | 'wave'
+  /** 방사형 — 가운데에서 뻗어 나간다 */
+  | 'radial';
 
 export interface HallThemeSpec {
   id: HallTheme;
   label: string;
+  /** 무엇을 본떴나 — 고를 때 보여준다 */
+  motif: string;
   /** 벽 */
   wall: string;
   /** 바닥 */
@@ -49,16 +89,40 @@ export interface HallThemeSpec {
   facade: string;
   /** 전체 밝기 */
   ambient: number;
+
+  // ---- 바깥 ----
+  /** 건물 형태 */
+  arch: HallArch;
+  /** 마당 무늬 */
+  paving: HallPaving;
+  /** 마당 바탕색 */
+  plazaBase: string;
+  /** 마당 돌 색 */
+  plazaTile: string;
+  /** 마당 줄눈 색 */
+  plazaLine: string;
+  /** 포인트 색 — 배너 띠·조형물에 쓴다 */
+  accent: string;
+  /** 하늘 (CSS 그라디언트) */
+  sky: string;
+  /** 나무를 심을까 — 물가나 광장형에는 안 심는다 */
+  trees: boolean;
 }
 
 /**
- * 세 가지만 둔다. 열 가지를 두면 고르다 지치고, 어느 것도 다듬어지지 않는다.
- * 실제 미술관에서 쓰는 세 가지다 — 화이트큐브 / 블랙박스 / 목재 전시장.
+ * 다섯 가지. **저마다 다른 건물이다.**
+ *
+ * 세계의 미술관을 하나씩 본떴다. 색만 다른 다섯이 아니라 **형태가 다른**
+ * 다섯이라 — 열주가 선 신전, 배관을 밖으로 낸 공장, 기와를 인 마당집,
+ * 티타늄이 물결치는 덩어리, 유리 피라미드.
+ *
+ * 다섯을 넘기지 않는다. 열 가지를 두면 고르다 지치고 어느 것도 안 다듬어진다.
  */
 export const HALL_THEMES: Record<HallTheme, HallThemeSpec> = {
   white: {
     id: 'white',
-    label: '화이트 큐브',
+    label: '고전 신전',
+    motif: '대영박물관 · 예술의전당 — 열주가 선 돌 건물',
     wall: '#F4F2EE',
     floor: '#D8D3CA',
     ceiling: '#FBFAF8',
@@ -67,10 +131,19 @@ export const HALL_THEMES: Record<HallTheme, HallThemeSpec> = {
     caption: '#3A3630',
     facade: '#E8E4DC',
     ambient: 0.62,
+    arch: 'temple',
+    paving: 'grid',
+    plazaBase: '#B5AFA6',
+    plazaTile: '#C9C4BB',
+    plazaLine: '#A9A399',
+    accent: '#2F5D8A',
+    sky: 'linear-gradient(180deg, #A8C4D8 0%, #CFDEE8 55%, #E8EEF2 100%)',
+    trees: true,
   },
   dark: {
     id: 'dark',
-    label: '블랙 박스',
+    label: '색색 파이프',
+    motif: '퐁피두 센터 — 배관을 밖으로 낸 건물',
     wall: '#2A2A2E',
     floor: '#1E1E22',
     ceiling: '#232327',
@@ -79,10 +152,19 @@ export const HALL_THEMES: Record<HallTheme, HallThemeSpec> = {
     caption: '#E8E4DC',
     facade: '#3A3A40',
     ambient: 0.3,
+    arch: 'hitech',
+    paving: 'brick',
+    plazaBase: '#8E5B44',
+    plazaTile: '#A96B4E',
+    plazaLine: '#7A4B38',
+    accent: '#E8604C',
+    sky: 'linear-gradient(180deg, #2E3440 0%, #4A5464 60%, #6E7686 100%)',
+    trees: false,
   },
   wood: {
     id: 'wood',
-    label: '목재 전시장',
+    label: '기와 마당',
+    motif: '국립중앙박물관 · 경복궁 — 기와를 인 마당집',
     wall: '#F2EADA',
     floor: '#A87F52',
     ceiling: '#FAF5EA',
@@ -91,6 +173,57 @@ export const HALL_THEMES: Record<HallTheme, HallThemeSpec> = {
     caption: '#4A3B2A',
     facade: '#DCCDB2',
     ambient: 0.58,
+    arch: 'hanok',
+    paving: 'stone',
+    plazaBase: '#A9A093',
+    plazaTile: '#C2B9A9',
+    plazaLine: '#8E8577',
+    accent: '#2E6B4F',
+    sky: 'linear-gradient(180deg, #BBD3E0 0%, #DCE7EC 55%, #F0F2EE 100%)',
+    trees: true,
+  },
+  silver: {
+    id: 'silver',
+    label: '은빛 물결',
+    motif: '구겐하임 빌바오 — 티타늄이 물결치는 덩어리',
+    wall: '#EDEFF2',
+    floor: '#C6CBD2',
+    ceiling: '#F7F9FB',
+    trim: '#D6DAE0',
+    frame: '#3C4149',
+    caption: '#333941',
+    facade: '#C7CDD4',
+    ambient: 0.6,
+    arch: 'titanium',
+    paving: 'wave',
+    plazaBase: '#8FA6B4',
+    plazaTile: '#A8BCC7',
+    plazaLine: '#7B909D',
+    accent: '#4FA3C7',
+    sky: 'linear-gradient(180deg, #8FB4CC 0%, #C2D6E2 55%, #E4EDF2 100%)',
+    // 물가에 선 건물이라 가로수를 안 심는다 — 물과 금속만 있어야 그 맛이다
+    trees: false,
+  },
+  glass: {
+    id: 'glass',
+    label: '유리 피라미드',
+    motif: '루브르 — 옛 돌 건물 앞에 선 유리 피라미드',
+    wall: '#F6F3EC',
+    floor: '#CFC6B6',
+    ceiling: '#FCFAF5',
+    trim: '#DED5C4',
+    frame: '#4A4034',
+    caption: '#3E362C',
+    facade: '#D8CDB8',
+    ambient: 0.64,
+    arch: 'pyramid',
+    paving: 'radial',
+    plazaBase: '#B0A794',
+    plazaTile: '#C7BEAA',
+    plazaLine: '#9A9080',
+    accent: '#C79A3C',
+    sky: 'linear-gradient(180deg, #9FC0D6 0%, #D2E0E8 55%, #EFF2F0 100%)',
+    trees: true,
   },
 };
 

@@ -14,7 +14,7 @@ import { backdropClose } from '@/lib/backdrop';
 import {
   BANNER_SLOTS, HALL_THEMES, LIMITS, MAX_HALLS_PER_USER, MAX_SHOWS_PER_HALL,
   MAX_WORKS_PER_SHOW, PHASE_COLOR, hallPath, showPeriod, todayStr,
-  type HallDoc, type HallTheme, type ShowDoc, type WorkDoc,
+  type HallDoc, type HallTheme, type HallThemeSpec, type ShowDoc, type WorkDoc,
 } from '@/lib/art-hall';
 
 /**
@@ -48,6 +48,49 @@ interface Pending {
   /** 보정본. 실패하면 null 이고 원본을 쓴다. */
   fixed: Blob | null;
   useFixed: boolean;
+}
+
+/**
+ * 전시장 분위기 한 줄 — **무엇을 본떴는지 같이 보여준다.**
+ *
+ * 예전에는 이름만 나란히 놓았다. '화이트 큐브 / 블랙 박스 / 목재 전시장' 은
+ * 미술관을 아는 사람에게만 뜻이 통하는 말이고, 게다가 **셋 다 같은 건물에
+ * 색만 달랐다.** 이제는 건물 모양 자체가 바뀌므로 무엇을 본떴는지 알려야
+ * 고를 수 있다. 색 조각을 함께 보여주면 글자를 안 읽어도 감이 온다.
+ */
+function ThemePick({
+  spec, on, onPick,
+}: {
+  spec: HallThemeSpec;
+  on: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      onClick={onPick}
+      className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left"
+      style={on
+        ? { background: 'var(--color-primary)', color: 'white' }
+        : { background: 'var(--color-surface-soft)', color: 'var(--color-text-main)' }}
+    >
+      {/* 색 조각 — 건물·마당·포인트 */}
+      <span className="shrink-0 flex overflow-hidden" style={{ borderRadius: 6, width: 34, height: 26 }}>
+        <span style={{ background: spec.facade, width: 12 }} />
+        <span style={{ background: spec.plazaTile, width: 12 }} />
+        <span style={{ background: spec.accent, width: 10 }} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-black">{spec.label}</span>
+        <span
+          className="block text-[11px] leading-snug"
+          style={{ color: on ? 'rgba(255,255,255,0.85)' : 'var(--color-text-sub)' }}
+        >
+          {spec.motif}
+        </span>
+      </span>
+      {on && <span className="shrink-0 text-[13px] font-black">✓</span>}
+    </button>
+  );
 }
 
 const card = { background: 'var(--color-surface)' };
@@ -493,18 +536,19 @@ function HallList({
           <label className="block text-[12px] font-bold mt-3" style={{ color: 'var(--color-text-sub)' }}>
             전시장 분위기
           </label>
-          <div className="flex gap-1.5 mt-1.5 mb-3">
+          {/*
+            **무엇을 본떴는지 같이 보여준다.**
+            이름만 늘어놓으면 '고전 신전' 과 '은빛 물결' 이 뭐가 다른지 모른다.
+            다섯이 되면서 가로로도 안 들어가므로 세로로 편다.
+          */}
+          <div className="flex flex-col gap-1.5 mt-1.5 mb-3">
             {Object.values(HALL_THEMES).map((t) => (
-              <button
+              <ThemePick
                 key={t.id}
-                onClick={() => setTheme(t.id)}
-                className="flex-1 rounded-xl py-2 text-[12px] font-bold"
-                style={theme === t.id
-                  ? { background: 'var(--color-primary)', color: 'white' }
-                  : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
-              >
-                {t.label}
-              </button>
+                spec={t}
+                on={theme === t.id}
+                onPick={() => setTheme(t.id)}
+              />
             ))}
           </div>
 
@@ -901,18 +945,14 @@ function HallDetail({
         <label className="block text-[12px] font-bold mb-1.5" style={{ color: 'var(--color-text-sub)' }}>
           전시장 분위기
         </label>
-        <div className="flex gap-1.5 mb-3">
+        <div className="flex flex-col gap-1.5 mb-3">
           {Object.values(HALL_THEMES).map((t) => (
-            <button
+            <ThemePick
               key={t.id}
-              onClick={() => mark(setTheme)(t.id)}
-              className="flex-1 rounded-xl py-2 text-[12px] font-bold"
-              style={theme === t.id
-                ? { background: 'var(--color-primary)', color: 'white' }
-                : { background: 'var(--color-surface-soft)', color: 'var(--color-text-sub)' }}
-            >
-              {t.label}
-            </button>
+              spec={t}
+              on={theme === t.id}
+              onPick={() => mark(setTheme)(t.id)}
+            />
           ))}
         </div>
 

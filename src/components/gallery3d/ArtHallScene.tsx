@@ -13,6 +13,14 @@ import {
 } from '@/lib/art-hall';
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
+/**
+ * 광장·건물 크기와 **양식별 외관·마당·조형물**은 한 곳에서 온다.
+ * 두 군데 적어두면 건물을 옮길 때 반드시 한쪽이 낡는다.
+ */
+import {
+  PLAZA_W, PLAZA_D, FACADE_Z, FACADE_W, FACADE_H,
+  Plaza, PlazaProps, StyledFacade,
+} from './ArtHallStyles';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -33,13 +41,6 @@ const NEG_HALF_PI = -PI * 0.5;
  * 실제 미술관 앞이 그렇다 — 건물은 조용하고 배너만 크게 걸려 있다.
  */
 
-/** 광장 크기 */
-const PLAZA_W = 62;
-const PLAZA_D = 54;
-/** 건물 앞면이 서는 자리 */
-const FACADE_Z = -22;
-const FACADE_W = 42;
-const FACADE_H = 14;
 
 /**
  * 그림 한 장을 3D 판에 입힌다.
@@ -264,242 +265,13 @@ function Banner({
   );
 }
 
-/** 분수 — 광장 한가운데. 물줄기가 오르내린다. */
-function Fountain() {
-  const jets = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    const g = jets.current;
-    if (!g) return;
-    const t = clock.elapsedTime;
-    g.children.forEach((c, i) => {
-      const s = 0.72 + Math.sin(t * 1.7 + i * 1.1) * 0.28;
-      c.scale.y = s;
-      c.position.y = 1.05 + s * 0.55;
-    });
-  });
+/*
+  옛 Fountain·Sculpture·PlazaTree·Facade 는 `ArtHallStyles.tsx` 로 옮겼다.
 
-  return (
-    <group position={[0, 0, 7]}>
-      {/* 수반 */}
-      <mesh position={[0, 0.3, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[5, 5.3, 0.6, 40]} />
-        <meshStandardMaterial color="#B8B2A8" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.62, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
-        <circleGeometry args={[4.6, 40]} />
-        <meshStandardMaterial color="#7EC8DE" roughness={0.16} metalness={0.1} />
-      </mesh>
-      {/* 가운데 기둥 */}
-      <mesh position={[0, 1, 0]} castShadow>
-        <cylinderGeometry args={[0.45, 0.7, 1.4, 16]} />
-        <meshStandardMaterial color="#C8C2B8" roughness={0.8} />
-      </mesh>
-      {/* 물줄기 */}
-      <group ref={jets}>
-        {[0, 1, 2, 3, 4].map((i) => {
-          const a = (i / 5) * PI * 2;
-          return (
-            <mesh key={i} position={[Math.cos(a) * 1.1, 1.5, Math.sin(a) * 1.1]}>
-              <cylinderGeometry args={[0.09, 0.16, 1.6, 8]} />
-              <meshStandardMaterial color="#CFEEF8" transparent opacity={0.72} />
-            </mesh>
-          );
-        })}
-      </group>
-    </group>
-  );
-}
-
-/** 광장 조각 — 미술관 앞에는 늘 하나쯤 서 있다 */
-function Sculpture({ x, kind, accent }: { x: number; kind: 0 | 1; accent: string }) {
-  return (
-    <group position={[x, 0, 1]}>
-      {/* 좌대 */}
-      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
-        <boxGeometry args={[2.2, 0.9, 2.2]} />
-        <meshStandardMaterial color="#A9A399" roughness={0.9} />
-      </mesh>
-      {kind === 0 ? (
-        /* 비틀린 고리 — 추상 조각 */
-        <group position={[0, 2.5, 0]} rotation={[0.5, 0.7, 0.2]}>
-          <mesh castShadow>
-            <torusGeometry args={[1.15, 0.3, 12, 28]} />
-            <meshStandardMaterial color={accent} roughness={0.35} metalness={0.55} />
-          </mesh>
-          <mesh rotation={[HALF_PI, 0.4, 0]} castShadow>
-            <torusGeometry args={[0.8, 0.22, 10, 24]} />
-            <meshStandardMaterial color="#D8D3CA" roughness={0.4} metalness={0.4} />
-          </mesh>
-        </group>
-      ) : (
-        /* 쌓아 올린 돌 — 제주 돌탑에서 온 모양 */
-        <group position={[0, 1.05, 0]}>
-          {([0, 1, 2, 3] as const).map((i) => (
-            <mesh
-              key={i}
-              position={[Math.sin(i * 1.4) * 0.16, 0.42 + i * 0.72, Math.cos(i * 1.9) * 0.16]}
-              rotation={[0, i * 0.8, 0]}
-              castShadow
-            >
-              <dodecahedronGeometry args={[0.78 - i * 0.13, 0]} />
-              <meshStandardMaterial color={i % 2 ? '#6E6862' : '#807A72'} roughness={1} />
-            </mesh>
-          ))}
-        </group>
-      )}
-    </group>
-  );
-}
-
-/** 가로수 — 미술관 앞 플라타너스처럼 곧고 높게 */
-function PlazaTree({ x, z }: { x: number; z: number }) {
-  return (
-    <group position={[x, 0, z]}>
-      <mesh position={[0, 2.1, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.34, 4.2, 8]} />
-        <meshStandardMaterial color="#7C6A56" roughness={0.92} />
-      </mesh>
-      <mesh position={[0, 5, 0]} castShadow>
-        <sphereGeometry args={[2, 9, 7]} />
-        <meshStandardMaterial color="#5E9155" roughness={0.95} />
-      </mesh>
-      <mesh position={[0.85, 5.8, 0.35]} castShadow>
-        <sphereGeometry args={[1.2, 8, 6]} />
-        <meshStandardMaterial color="#6BA160" roughness={0.95} />
-      </mesh>
-      {/* 나무 밑동 화단 */}
-      <mesh position={[0, 0.12, 0]} receiveShadow>
-        <cylinderGeometry args={[1.5, 1.5, 0.24, 10]} />
-        <meshStandardMaterial color="#8F8A80" roughness={0.95} />
-      </mesh>
-    </group>
-  );
-}
-
-/** 미술관 건물 — 계단·열주·유리 파사드 */
-function Facade({ hall, accent }: { hall: HallDoc; accent: string }) {
-  const t = themeOf(hall.theme);
-
-  return (
-    <group>
-      {/* 본관 */}
-      <mesh position={[0, FACADE_H / 2, FACADE_Z - 6]} castShadow receiveShadow>
-        <boxGeometry args={[FACADE_W, FACADE_H, 14]} />
-        <meshStandardMaterial color={t.facade} roughness={0.82} />
-      </mesh>
-      {/* 지붕 처마 — 그림자가 지면서 건물이 무거워진다 */}
-      <mesh position={[0, FACADE_H + 0.5, FACADE_Z - 6]} castShadow>
-        <boxGeometry args={[FACADE_W + 2.4, 1, 16]} />
-        <meshStandardMaterial color="#8F8A80" roughness={0.8} />
-      </mesh>
-
-      {/* 유리 파사드 — 가운데를 크게 비운다 */}
-      <mesh position={[0, 6.2, FACADE_Z + 0.06]}>
-        <planeGeometry args={[19, 11]} />
-        <meshStandardMaterial
-          color="#9EC4D6"
-          roughness={0.08}
-          metalness={0.5}
-          transparent
-          opacity={0.82}
-        />
-      </mesh>
-      {/* 유리 나눔선 — 통유리 한 장은 판때기로 보인다 */}
-      {([-7.6, -3.8, 0, 3.8, 7.6] as const).map((gx) => (
-        <mesh key={gx} position={[gx, 6.2, FACADE_Z + 0.09]}>
-          <boxGeometry args={[0.14, 11, 0.06]} />
-          <meshStandardMaterial color="#6F6A64" metalness={0.5} roughness={0.4} />
-        </mesh>
-      ))}
-      {([2, 6.2, 10.4] as const).map((gy) => (
-        <mesh key={gy} position={[0, gy, FACADE_Z + 0.09]}>
-          <boxGeometry args={[19, 0.12, 0.06]} />
-          <meshStandardMaterial color="#6F6A64" metalness={0.5} roughness={0.4} />
-        </mesh>
-      ))}
-
-      {/* 열주 — 미술관을 미술관으로 보이게 하는 것 */}
-      {([-17.5, -12.5, -7.5, 7.5, 12.5, 17.5] as const).map((cx) => (
-        <group key={cx} position={[cx, 0, FACADE_Z + 2.6]}>
-          <mesh position={[0, 0.3, 0]} castShadow>
-            <boxGeometry args={[1.9, 0.6, 1.9]} />
-            <meshStandardMaterial color="#A9A399" roughness={0.9} />
-          </mesh>
-          <mesh position={[0, 5.9, 0]} castShadow>
-            <cylinderGeometry args={[0.62, 0.7, 11, 16]} />
-            <meshStandardMaterial color="#E0DCD4" roughness={0.86} />
-          </mesh>
-          <mesh position={[0, 11.6, 0]} castShadow>
-            <boxGeometry args={[1.8, 0.5, 1.8]} />
-            <meshStandardMaterial color="#D2CEC6" roughness={0.85} />
-          </mesh>
-        </group>
-      ))}
-      {/* 열주가 받치는 보 */}
-      <mesh position={[0, 12.2, FACADE_Z + 2.6]} castShadow>
-        <boxGeometry args={[FACADE_W - 2, 1.2, 2.4]} />
-        <meshStandardMaterial color="#D8D3CA" roughness={0.85} />
-      </mesh>
-
-      {/* 계단 — 다섯 단. 미술관은 늘 조금 올라가서 들어간다. */}
-      {([0, 1, 2, 3, 4] as const).map((i) => (
-        <mesh
-          key={i}
-          position={[0, 0.17 + i * 0.34, FACADE_Z + 7.4 - i * 1.15]}
-          receiveShadow
-          castShadow
-        >
-          <boxGeometry args={[FACADE_W - 4 + i * 1.4, 0.34, 1.2]} />
-          <meshStandardMaterial color="#CFCAC2" roughness={0.9} />
-        </mesh>
-      ))}
-
-      {/* 현관 안쪽 어둠 — 문이 뚫려 있다는 느낌 */}
-      <mesh position={[0, 3.2, FACADE_Z + 0.04]}>
-        <planeGeometry args={[8, 6.4]} />
-        <meshStandardMaterial color="#2A2A2E" roughness={0.9} />
-      </mesh>
-
-      {/* 전시관 이름 — 건물 앞면 위쪽에 새긴 것처럼 */}
-      <Html
-        position={[0, 12.9, FACADE_Z + 3.9]}
-        transform
-        scale={0.62}
-        pointerEvents="none"
-        zIndexRange={[7, 0]}
-      >
-        <div
-          style={{
-            fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
-            color: '#4A453E', fontWeight: 900, fontSize: '26px',
-            letterSpacing: '0.14em', whiteSpace: 'nowrap',
-          }}
-        >
-          {hall.title}
-        </div>
-      </Html>
-
-      {/* 관장 이름 — 작게 */}
-      <Html
-        position={[0, 11.9, FACADE_Z + 3.9]}
-        transform
-        scale={0.4}
-        pointerEvents="none"
-        zIndexRange={[7, 0]}
-      >
-        <div
-          style={{
-            fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
-            color: accent, fontWeight: 700, fontSize: '18px',
-            letterSpacing: '0.2em', whiteSpace: 'nowrap',
-          }}
-        >
-          {hall.placeName || hall.ownerName}
-        </div>
-      </Html>
-    </group>
-  );
-}
+  여기 있을 때는 **양식이 하나뿐**이라 색만 갈아 끼웠다 — 셋 다 같은 건물에
+  페인트만 다시 칠한 것이었다. 이제 다섯 양식이 저마다 다른 건물·마당·조형물을
+  들고 있어서, 한 파일에 두면 이 파일이 천 줄을 넘는다.
+*/
 
 export default function ArtHallScene({
   hall, hallId, me, shows, avatarId, avatarCustom, avatarTint, onEnterShow, onExit, children,
@@ -527,8 +299,8 @@ export default function ArtHallScene({
   const avatarYaw = useRef(0);
 
   const t = themeOf(hall.theme);
-  /** 배너 색 — 전시관 분위기에 맞춰 하나만 고른다 */
-  const accent = hall.theme === 'dark' ? '#C9A227' : hall.theme === 'wood' ? '#A8572B' : '#2F5D8A';
+  /** 배너 색 — 양식이 정한다(`art-hall.ts`). 여기서 또 적으면 반드시 어긋난다. */
+  const accent = t.accent;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -579,17 +351,15 @@ export default function ArtHallScene({
         dpr={[1, 2]}
         style={{
           position: 'absolute', inset: 0,
-          // 미술관 하늘은 옅다. 쨍한 파랑은 학교 몫이다.
-          background: hall.theme === 'dark'
-            ? 'linear-gradient(180deg, #2E3440 0%, #4A5464 60%, #6E7686 100%)'
-            : 'linear-gradient(180deg, #A8C4D8 0%, #CFDEE8 55%, #E8EEF2 100%)',
+          // 하늘도 양식이 정한다 — 물가 건물과 신전은 같은 하늘 아래 서지 않는다
+          background: t.sky,
         }}
       >
         <hemisphereLight args={['#E8F0F6', '#9E9890', 0.7]} />
         <ambientLight intensity={t.ambient * 0.5} />
         <directionalLight
           position={[26, 40, 22]}
-          intensity={hall.theme === 'dark' ? 0.6 : 1.05}
+          intensity={t.ambient < 0.4 ? 0.6 : 1.05}
           color="#FFF6E6"
           castShadow
           shadow-mapSize-width={2048}
@@ -601,65 +371,57 @@ export default function ArtHallScene({
           shadow-bias={-0.0005}
         />
 
-        {/* 광장 바닥 — 화강암 */}
-        <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
-          <planeGeometry args={[PLAZA_W + 60, PLAZA_D + 60]} />
-          <meshStandardMaterial color="#B5AFA6" roughness={0.94} />
-        </mesh>
-        <mesh position={[0, 0.02, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
-          <planeGeometry args={[PLAZA_W, PLAZA_D]} />
-          <meshStandardMaterial color="#C9C4BB" roughness={0.9} />
-        </mesh>
+        {/* 마당 — 무늬가 양식마다 다르다 (격자·벽돌·박석·물결·방사형) */}
+        <Plaza spec={t} />
+
+        {/* 건물 — 신전·하이테크·한옥·티타늄·피라미드 */}
+        <StyledFacade spec={t} />
+
+        {/* 마당에 놓는 것 — 분수/수반·조형물·나무·석등·벤치 */}
+        <PlazaProps spec={t} />
+
         {/*
-          바닥 눈금 — **곧은 선이 미술관을 만든다.**
-          잔디밭이면 공원이고, 눈금 있는 돌바닥이면 광장이다.
+          전시관 이름 — **건물 앞면에 새긴 것처럼.**
+          건물 모양이 양식마다 달라서 여기(씬)에 둔다 — 양식 파일에 두면
+          다섯 곳에 같은 글자를 다섯 번 적게 된다.
         */}
-        {Array.from({ length: 11 }, (_, i) => (
-          <mesh
-            key={`gx${i}`}
-            position={[-PLAZA_W / 2 + (i * PLAZA_W) / 10, 0.03, 0]}
-            rotation={[NEG_HALF_PI, 0, 0]}
+        <group>
+          <Html
+            position={[0, t.arch === 'pyramid' ? 12.6 : 12.9, FACADE_Z + 3.9]}
+            transform
+            scale={0.62}
+            pointerEvents="none"
+            zIndexRange={[7, 0]}
           >
-            <planeGeometry args={[0.12, PLAZA_D]} />
-            <meshStandardMaterial color="#A9A399" roughness={0.95} />
-          </mesh>
-        ))}
-        {Array.from({ length: 9 }, (_, i) => (
-          <mesh
-            key={`gz${i}`}
-            position={[0, 0.03, -PLAZA_D / 2 + (i * PLAZA_D) / 8]}
-            rotation={[NEG_HALF_PI, 0, 0]}
+            <div
+              style={{
+                fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+                color: t.ambient < 0.4 ? '#E8E4DC' : '#4A453E',
+                fontWeight: 900, fontSize: '26px',
+                letterSpacing: '0.14em', whiteSpace: 'nowrap',
+              }}
+            >
+              {hall.title}
+            </div>
+          </Html>
+          <Html
+            position={[0, t.arch === 'pyramid' ? 11.6 : 11.9, FACADE_Z + 3.9]}
+            transform
+            scale={0.4}
+            pointerEvents="none"
+            zIndexRange={[7, 0]}
           >
-            <planeGeometry args={[PLAZA_W, 0.12]} />
-            <meshStandardMaterial color="#A9A399" roughness={0.95} />
-          </mesh>
-        ))}
-
-        <Facade hall={hall} accent={accent} />
-        <Fountain />
-        <Sculpture x={-21} kind={0} accent={accent} />
-        <Sculpture x={21} kind={1} accent={accent} />
-
-        {/* 가로수 — 양옆으로 줄지어 */}
-        {[-26, 26].map((tx) =>
-          [-6, 4, 14].map((tz) => <PlazaTree key={`${tx}-${tz}`} x={tx} z={tz} />)
-        )}
-
-        {/* 벤치 — 앉아서 배너를 올려다보는 자리 */}
-        {([-11, 11] as const).map((bx) => (
-          <group key={bx} position={[bx, 0, 15]}>
-            <mesh position={[0, 0.46, 0]} castShadow>
-              <boxGeometry args={[3.4, 0.16, 0.9]} />
-              <meshStandardMaterial color="#9A8570" roughness={0.9} />
-            </mesh>
-            {([-1.4, 1.4] as const).map((lx) => (
-              <mesh key={lx} position={[lx, 0.19, 0]} castShadow>
-                <boxGeometry args={[0.22, 0.38, 0.8]} />
-                <meshStandardMaterial color="#6E6862" roughness={0.85} />
-              </mesh>
-            ))}
-          </group>
-        ))}
+            <div
+              style={{
+                fontFamily: 'Pretendard, sans-serif', userSelect: 'none',
+                color: accent, fontWeight: 700, fontSize: '18px',
+                letterSpacing: '0.2em', whiteSpace: 'nowrap',
+              }}
+            >
+              {hall.placeName || hall.ownerName}
+            </div>
+          </Html>
+        </group>
 
         {/* 전시 배너 */}
         {banners.map((b) => (
