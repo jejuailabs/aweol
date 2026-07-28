@@ -34,6 +34,96 @@ const NEG_HALF_PI = -PI * 0.5;
  */
 
 /** 작품 한 점 — 액자·그림·이름표가 한 벌이다 */
+/**
+ * 빛 웅덩이 그림 — **가운데가 밝고 가장자리로 사라진다.**
+ *
+ * 그동안 벽에 진 빛을 **불투명도 0.07 짜리 흰 네모** 하나로 그렸다.
+ * 그건 빛이 아니라 옅은 종이다 — 테두리가 칼같이 끊겨서, 눈은 그걸
+ * 조명으로 안 읽는다. 빛은 **가장자리가 흐려야** 빛이다.
+ *
+ * 그림 한 장을 만들어 **모두가 나눠 쓴다.** 작품마다 만들면 마흔 장이 된다.
+ */
+let glowTex: THREE.Texture | null = null;
+function getGlow(): THREE.Texture | null {
+  if (glowTex) return glowTex;
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  if (!g) return null;
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+  grd.addColorStop(0.7, 'rgba(255,255,255,0.16)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 128, 128);
+  glowTex = new THREE.CanvasTexture(c);
+  glowTex.colorSpace = THREE.SRGBColorSpace;
+  return glowTex;
+}
+
+/**
+ * 핀조명 빔 — **천장에서 그림으로 삼각형으로 퍼진다.**
+ *
+ * 진짜 광원을 켜지 않는다. 작품이 마흔 점이면 광원이 마흔 개가 되어
+ * 휴대폰이 못 버틴다(WebGL 은 광원 수에 한계가 있다).
+ * 대신 **빛이 지나가는 공기**를 옅은 원뿔로 그린다 — 실제로 미술관에서
+ * 보이는 것도 먼지에 걸린 그 빛기둥이지 광원 자체가 아니다.
+ *
+ * `AdditiveBlending` 이라 겹칠수록 밝아진다. 빛이 그렇다.
+ * `depthWrite` 를 끄는 이유: 켜두면 원뿔이 그림을 가려 뿌옇게 만든다.
+ */
+function SpotBeam({ w, h, warm }: { w: number; h: number; warm: string }) {
+  const { from, len, tilt, mid } = useMemo(() => {
+    /** 등이 달린 자리 — 그림 위쪽, 조금 앞으로 */
+    const ly = h / 2 + 2.1;
+    const lz = 1.7;
+    const dy = -(ly);
+    const dz = -(lz - 0.08);
+    const l = Math.hypot(dy, dz);
+    return {
+      from: [0, ly, lz] as [number, number, number],
+      len: l,
+      // 기본 원뿔은 꼭지가 위, 아가리가 아래다. 그림 쪽으로 눕힌다.
+      tilt: Math.atan2(-dz, -dy),
+      mid: [0, ly + dy / 2, lz + dz / 2] as [number, number, number],
+    };
+  }, [h]);
+
+  /**
+   * 아가리 크기 — **옆 작품까지 넘지 않게.**
+   *
+   * 뒷벽 작품은 3m 간격으로 걸린다. 아가리를 그보다 넓게 잡으면 빛기둥이
+   * 서로 겹치는데, 겹칠수록 밝아지는 셈법(가산)이라 그 자리가 하얗게 뜬다.
+   * 그림 폭의 절반 남짓이면 그림은 다 덮으면서 옆과 안 부딪힌다.
+   */
+  const spread = Math.max(w, h) * 0.45 + 0.3;
+
+  return (
+    <group>
+      {/* 빛기둥 */}
+      <mesh position={mid} rotation={[tilt, 0, 0]}>
+        <coneGeometry args={[spread, len, 20, 1, true]} />
+        <meshBasicMaterial
+          color={warm}
+          transparent
+          // 빛기둥은 **있는 듯 없는 듯** 해야 한다. 진하면 안개 낀 방이 된다.
+          opacity={0.09}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* 등 — 빛이 나오는 자리에 작은 알이 보여야 어디서 오는지 안다 */}
+      <mesh position={from}>
+        <sphereGeometry args={[0.11, 10, 8]} />
+        <meshBasicMaterial color={warm} />
+      </mesh>
+    </group>
+  );
+}
+
 function Artwork({
   work, pos, rot, maxW, frameColor, captionColor, onSelect,
 }: {
@@ -47,6 +137,13 @@ function Artwork({
 }) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   const [hot, setHot] = useState(false);
+  /** 빛 웅덩이 그림 — 모두가 나눠 쓴다 */
+  const glow = useMemo(() => getGlow(), []);
+  /**
+   * 조명 색 — **전시등은 늘 조금 노랗다.**
+   * 순백으로 비추면 병원이지 미술관이 아니다.
+   */
+  const warm = '#FFE9C4';
 
   const url = work.thumbnailUrl || work.imageUrl;
   useEffect(() => {
@@ -95,14 +192,31 @@ function Artwork({
   return (
     <group position={pos} rotation={rot}>
       {/*
-        벽에 진 빛 — **조명을 진짜로 켜지 않는다.**
-        작품마다 스포트라이트를 켜면 스물다섯 개 광원이 되어 휴대폰이 못 버틴다.
-        대신 빛이 닿은 자리를 옅은 판으로 그린다 — 눈에는 똑같이 보인다.
+        벽에 진 빛 — **가장자리가 흐려야 빛이다.**
+
+        전에는 불투명도 0.07 짜리 흰 네모였다. 테두리가 칼같이 끊겨서
+        눈이 그걸 조명으로 안 읽었고, 벽은 여전히 캄캄했다.
+        이제 가운데가 밝고 밖으로 사라지는 그림을 깔고, **세로로 길게** 늘인다 —
+        위에서 비스듬히 떨어진 빛은 벽에 길쭉한 타원으로 진다.
       */}
-      <mesh position={[0, 0.35, 0.006]}>
-        <planeGeometry args={[w + 1.9, h + 2.4]} />
-        <meshBasicMaterial color="#FFFFFF" transparent opacity={hot ? 0.14 : 0.07} />
-      </mesh>
+      {glow && (
+        <mesh position={[0, 0.1, 0.006]}>
+          {/* 옆 작품과 겹치지 않게 — 뒷벽은 3m 간격이다 */}
+          <planeGeometry args={[w + 1.7, h + 2.8]} />
+          <meshBasicMaterial
+            map={glow}
+            color={warm}
+            transparent
+            // 가리키면 밝아진다 — 어느 것을 누르려는지 손에 잡힌다
+            opacity={hot ? 0.44 : 0.28}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {/* 천장에서 내려오는 빛기둥 — 삼각형으로 퍼진다 */}
+      <SpotBeam w={w} h={h} warm={warm} />
 
       {/* 액자 */}
       <mesh position={[0, 0, 0.02]} castShadow {...grab}>
@@ -221,6 +335,46 @@ function PosterWall({ url, frameColor }: { url: string; frameColor: string }) {
   );
 }
 
+/**
+ * 코브 조명 — **벽 윗머리를 훑고 내려오는 빛.**
+ *
+ * 작품에만 핀조명을 주면 그 사이 벽은 캄캄해서 **방이 어디까지인지 안 보인다.**
+ * 어두운 전시장에서 실제로 그랬다 — 그림만 떠 있고 벽이 없었다.
+ *
+ * 실제 미술관도 벽 윗머리에 숨은 등을 두어 벽면을 위에서 아래로 훑는다
+ * (wall wash). 그 빛이 있어야 방의 크기와 모서리가 읽힌다.
+ */
+function CoveLight({ w, pos, rot, warm }: {
+  w: number;
+  pos: [number, number, number];
+  rot: [number, number, number];
+  warm: string;
+}) {
+  const glow = useMemo(() => getGlow(), []);
+  if (!glow) return null;
+  return (
+    <group position={pos} rotation={rot}>
+      {/* 벽을 훑는 넓은 빛 — 위가 밝고 아래로 사라진다 */}
+      <mesh position={[0, 0, 0.004]}>
+        <planeGeometry args={[w, ROOM_H * 1.5]} />
+        <meshBasicMaterial
+          map={glow}
+          color={warm}
+          transparent
+          opacity={0.16}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* 숨은 등 자리 — 가느다란 밝은 띠 */}
+      <mesh position={[0, ROOM_H / 2 - 0.5, 0.02]}>
+        <planeGeometry args={[w * 0.92, 0.06]} />
+        <meshBasicMaterial color={warm} transparent opacity={0.5} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 /** 천장 조명 레일과 등 — 켜진 광원이 아니라 '있어 보이는' 기구다 */
 function TrackLights({ dark }: { dark: boolean }) {
   return (
@@ -304,8 +458,13 @@ export default function ArtShowScene({
           위에서 고르게 내리는 빛 하나와 은은한 환경광으로 두고,
           작품 자리의 밝기는 벽에 그린 '빛 자국'이 맡는다.
         */}
+        {/*
+          **어두운 전시장도 벽은 보여야 한다.**
+          검게 두면 분위기는 나지만 방이 어디까지인지 모른다 — 실제로
+          그림만 허공에 떠 있고 벽이 없었다. 밑을 0.34 로 받쳐 둔다.
+        */}
         <hemisphereLight args={[dark ? '#6E6A72' : '#FFFFFF', t.floor, dark ? 0.5 : 0.85]} />
-        <ambientLight intensity={t.ambient} />
+        <ambientLight intensity={Math.max(0.34, t.ambient)} />
         <directionalLight
           position={[0, 12, 6]}
           intensity={dark ? 0.35 : 0.6}
@@ -372,6 +531,30 @@ export default function ArtShowScene({
         </mesh>
 
         <TrackLights dark={dark} />
+
+        {/*
+          벽을 훑는 빛 — **작품 사이 빈 벽도 보여야 한다.**
+          핀조명만 주면 그림만 떠 있고 방이 어디까지인지 안 보인다.
+          뒷벽·양옆 세 면에 하나씩 둔다.
+        */}
+        <CoveLight
+          w={ROOM_W}
+          pos={[0, ROOM_H / 2, -ROOM_D / 2 + 0.05]}
+          rot={[0, 0, 0]}
+          warm="#FFE9C4"
+        />
+        <CoveLight
+          w={ROOM_D}
+          pos={[-ROOM_W / 2 + 0.05, ROOM_H / 2, 0]}
+          rot={[0, HALF_PI, 0]}
+          warm="#FFE9C4"
+        />
+        <CoveLight
+          w={ROOM_D}
+          pos={[ROOM_W / 2 - 0.05, ROOM_H / 2, 0]}
+          rot={[0, NEG_HALF_PI, 0]}
+          warm="#FFE9C4"
+        />
 
         {/*
           전시 제목 — 뒷벽 맨 위에 크게. 미술관 입구 벽 글씨 그것이다.
