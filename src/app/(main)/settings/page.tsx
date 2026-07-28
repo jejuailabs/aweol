@@ -78,7 +78,7 @@ export default function SettingsPage() {
           <span className="min-w-0 pr-3">
             {soundOff ? '🔇 소리 꺼짐' : '🔊 소리 켜짐'}
             <span className="block text-[12px] mt-0.5" style={{ color: 'var(--color-text-sub)' }}>
-              버튼 소리와 마을의 파도·바람·새소리
+              버튼 소리, 마을의 파도·바람·새소리, 전시실 음악
             </span>
           </span>
           {/* 켜짐/꺼짐이 한눈에 보이는 스위치 */}

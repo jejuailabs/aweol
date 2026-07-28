@@ -13,6 +13,7 @@ import {
 } from '@/lib/art-hall';
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
+import { startGalleryMusic } from '@/lib/gallery-music';
 /**
  * 광장·건물 크기와 **양식별 외관·마당·조형물**은 한 곳에서 온다.
  * 두 군데 적어두면 건물을 옮길 때 반드시 한쪽이 낡는다.
@@ -301,6 +302,16 @@ export default function ArtHallScene({
   const t = themeOf(hall.theme);
   /** 배너 색 — 양식이 정한다(`art-hall.ts`). 여기서 또 적으면 반드시 어긋난다. */
   const accent = t.accent;
+
+  /**
+   * 광장 배경음악 — 전시관마다 다른 곡.
+   * 전시실 안(`ArtShowScene`)과 **다른 씨앗**을 쓴다. 밖과 안이 같은 곡이면
+   * 문을 열고 들어가도 아무 일도 안 일어난 것 같다.
+   */
+  useEffect(() => {
+    const m = startGalleryMusic(`hall:${hallId}`, t.ambient < 0.4);
+    return () => m?.stop();
+  }, [hallId, t.ambient]);
 
   useEffect(() => {
     const el = containerRef.current;

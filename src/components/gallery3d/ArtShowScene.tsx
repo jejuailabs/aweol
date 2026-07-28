@@ -13,6 +13,7 @@ import {
   PARTITION_Z, PARTITION_W, PARTITION_H,
 } from '@/lib/hall-layout';
 import { themeOf, type HallTheme, type ShowDoc, type WorkDoc } from '@/lib/art-hall';
+import { startGalleryMusic } from '@/lib/gallery-music';
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
 
@@ -125,7 +126,7 @@ function SpotBeam({ w, h, warm }: { w: number; h: number; warm: string }) {
 }
 
 function Artwork({
-  work, pos, rot, maxW, frameColor, captionColor, onSelect, talk, onTalk,
+  work, pos, rot, maxW, frameColor, captionColor, onSelect, talk, onTalk, dark,
 }: {
   work: WorkDoc & { id: string };
   pos: [number, number, number];
@@ -138,6 +139,15 @@ function Artwork({
   talk?: { count: number; latest: string; isNew: boolean };
   /** 말풍선을 눌렀다 */
   onTalk?: () => void;
+  /**
+   * 어두운 전시실인가 — **핀조명은 여기서만 켠다.**
+   *
+   * 밝은 방에 빛기둥을 세웠더니 흰 벽에 **흰 삼각형**만 도드라졌다.
+   * 조명은 어두워야 조명으로 보인다 — 밝은 데서 더 밝게 비추면
+   * 빛이 아니라 얼룩이다. 실제 미술관도 화이트큐브는 천장을 고르게 밝히고,
+   * 핀조명은 어두운 전시장에서 쓴다.
+   */
+  dark?: boolean;
 }) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   const [hot, setHot] = useState(false);
@@ -211,16 +221,21 @@ function Artwork({
             map={glow}
             color={warm}
             transparent
-            // 가리키면 밝아진다 — 어느 것을 누르려는지 손에 잡힌다
-            opacity={hot ? 0.44 : 0.28}
+            /*
+              **밝은 방에서는 거의 안 보이게.**
+              흰 벽에 밝은 빛을 더하면 빛이 아니라 얼룩이다. 그래도 아주
+              옅게 남기는 이유는 **가리켰을 때**다 — 어느 것을 누르려는지는
+              밝은 방에서도 알아야 한다.
+            */
+            opacity={dark ? (hot ? 0.44 : 0.28) : (hot ? 0.16 : 0)}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />
         </mesh>
       )}
 
-      {/* 천장에서 내려오는 빛기둥 — 삼각형으로 퍼진다 */}
-      <SpotBeam w={w} h={h} warm={warm} />
+      {/* 천장에서 내려오는 빛기둥 — **어두운 전시실에서만** */}
+      {dark && <SpotBeam w={w} h={h} warm={warm} />}
 
       {/* 액자 */}
       <mesh position={[0, 0, 0.02]} castShadow {...grab}>
@@ -512,6 +527,20 @@ export default function ArtShowScene({
   const t = themeOf(theme);
   const dark = theme === 'dark';
 
+  /**
+   * 배경음악 — **방마다 다른 곡.**
+   *
+   * 전시 이름을 씨앗으로 삼아 조와 화음 차례를 뽑으므로, 전시가 늘어도
+   * 손댈 것이 없고 같은 전시에 다시 오면 같은 곡이 흐른다.
+   *
+   * **화면을 떠나면 반드시 끈다.** 안 끄면 교실에서도 음악이 흐른다 —
+   * 마을 파도 소리에서 이미 밟은 함정이다.
+   */
+  useEffect(() => {
+    const m = startGalleryMusic(`${hallId}:${show.id}`, dark);
+    return () => m?.stop();
+  }, [hallId, show.id, dark]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -616,28 +645,36 @@ export default function ArtShowScene({
         <TrackLights dark={dark} />
 
         {/*
-          벽을 훑는 빛 — **작품 사이 빈 벽도 보여야 한다.**
-          핀조명만 주면 그림만 떠 있고 방이 어디까지인지 안 보인다.
-          뒷벽·양옆 세 면에 하나씩 둔다.
+          벽을 훑는 빛 — **어두운 전시실에서만.**
+
+          어두운 방은 작품에만 핀조명을 주면 그 사이 벽이 캄캄해서 방이
+          어디까지인지 안 보인다. 그래서 벽 윗머리를 훑는 빛을 둔다.
+
+          밝은 방(화이트큐브)에는 안 둔다. 이미 벽이 다 보이는데 빛을 더하면
+          **흰 벽에 흰 얼룩**이 생길 뿐이다 — 실제로 그렇게 보였다.
         */}
-        <CoveLight
-          w={ROOM_W}
-          pos={[0, ROOM_H / 2, -ROOM_D / 2 + 0.05]}
-          rot={[0, 0, 0]}
-          warm="#FFE9C4"
-        />
-        <CoveLight
-          w={ROOM_D}
-          pos={[-ROOM_W / 2 + 0.05, ROOM_H / 2, 0]}
-          rot={[0, HALF_PI, 0]}
-          warm="#FFE9C4"
-        />
-        <CoveLight
-          w={ROOM_D}
-          pos={[ROOM_W / 2 - 0.05, ROOM_H / 2, 0]}
-          rot={[0, NEG_HALF_PI, 0]}
-          warm="#FFE9C4"
-        />
+        {dark && (
+          <>
+            <CoveLight
+              w={ROOM_W}
+              pos={[0, ROOM_H / 2, -ROOM_D / 2 + 0.05]}
+              rot={[0, 0, 0]}
+              warm="#FFE9C4"
+            />
+            <CoveLight
+              w={ROOM_D}
+              pos={[-ROOM_W / 2 + 0.05, ROOM_H / 2, 0]}
+              rot={[0, HALF_PI, 0]}
+              warm="#FFE9C4"
+            />
+            <CoveLight
+              w={ROOM_D}
+              pos={[ROOM_W / 2 - 0.05, ROOM_H / 2, 0]}
+              rot={[0, NEG_HALF_PI, 0]}
+              warm="#FFE9C4"
+            />
+          </>
+        )}
 
         {/*
           전시 제목 — 뒷벽 맨 위에 크게. 미술관 입구 벽 글씨 그것이다.
@@ -689,6 +726,7 @@ export default function ArtShowScene({
               onSelect={() => onSelect(w)}
               talk={talks?.[w.id]}
               onTalk={() => onTalk?.(w)}
+              dark={dark}
             />
           );
         })}
