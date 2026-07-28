@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { hallPath, type HallDoc, type ShowDoc, type WorkDoc } from '@/lib/art-hall';
 import ShareButton from '@/components/common/ShareButton';
 import { backdropClose } from '@/lib/backdrop';
+import WorkComments, { useShowComments } from '@/components/gallery3d/WorkComments';
 
 const ArtShowScene = dynamic(() => import('@/components/gallery3d/ArtShowScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -44,6 +45,12 @@ export default function ShowPage() {
   const [tried, setTried] = useState(false);
   /** 크게 보는 중인 작품 */
   const [open, setOpen] = useState<(WorkDoc & { id: string }) | null>(null);
+  /** 말을 보고 있는 작품 */
+  const [talking, setTalking] = useState<(WorkDoc & { id: string }) | null>(null);
+
+  /** 이 전시에 달린 말 — 한 번에 받아 작품마다 나눠 붙인다 */
+  const talk = useShowComments(hallId, showId);
+  const isOwner = !!uid && hall?.ownerUid === uid;
 
   useEffect(() => {
     if (!db || !hallId || !showId) { setTried(true); return; }
@@ -135,6 +142,8 @@ export default function ShowPage() {
         avatarTint={userDoc?.avatarTint}
         onSelect={setOpen}
         onExit={() => router.push(hallPath(hallId))}
+        talks={talk.talks}
+        onTalk={(w) => { setTalking(w); talk.markSeen(); }}
       >
         {/*
           퍼가기 — **전시실은 전시관보다 더 보내고 싶은 자리다.**
@@ -203,16 +212,39 @@ export default function ShowPage() {
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setOpen(null)}
-                className="shrink-0 rounded-full px-4 py-2 text-[14px] font-bold"
-                style={{ background: 'rgba(255,255,255,0.14)', color: '#FBFAF8' }}
-              >
-                닫기
-              </button>
+              <div className="shrink-0 flex flex-col gap-2">
+                {/* 크게 보다가 바로 한마디 — 다시 벽으로 나갈 이유가 없다 */}
+                <button
+                  onClick={() => { setTalking(open); setOpen(null); talk.markSeen(); }}
+                  className="rounded-full px-4 py-2 text-[14px] font-bold whitespace-nowrap"
+                  style={{ background: 'rgba(255,255,255,0.14)', color: '#FBFAF8' }}
+                >
+                  💬 {talk.forWork(open.id).length > 0 ? talk.forWork(open.id).length : '한마디'}
+                </button>
+                <button
+                  onClick={() => setOpen(null)}
+                  className="rounded-full px-4 py-2 text-[14px] font-bold"
+                  style={{ background: 'rgba(255,255,255,0.14)', color: '#FBFAF8' }}
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* 작품에 남긴 말 */}
+      {talking && (
+        <WorkComments
+          hallId={hallId}
+          showId={showId}
+          work={talking}
+          isOwner={isOwner}
+          rows={talk.forWork(talking.id)}
+          onClose={() => setTalking(null)}
+          onChanged={talk.reload}
+        />
       )}
     </div>
   );

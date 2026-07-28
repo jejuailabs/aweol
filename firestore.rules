@@ -775,6 +775,41 @@ service cloud.firestore {
         allow update, delete: if isSuper()
                               || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
 
+        /**
+         * 작품에 남기는 말 — **전시 아래 한 곳에 모은다.**
+         *
+         * 작품마다 하위 컬렉션을 두면, 전시실에 들어설 때 말풍선 숫자를 세려고
+         * **작품 수만큼 질의**해야 한다(마흔 점이면 마흔 번). 한곳에 모으고
+         * `workId` 를 적어두면 **한 번**에 받아 화면에서 나눠 붙인다.
+         *
+         * 읽기는 열어 둔다 — 남긴 말은 보라고 남기는 것이다.
+         * 고치기는 **전시관 주인만.** 작가가 각 댓글에 답을 다는 자리(`reply`)를
+         * 위해서다. 남이 남의 말을 고치면 안 되므로 본인도 못 고친다 —
+         * 잘못 썼으면 지우고 다시 쓴다.
+         */
+        match /comments/{commentId} {
+          allow read: if true;
+          allow create: if isSignedIn()
+                        && request.resource.data.authorUid == request.auth.uid
+                        && request.resource.data.text is string
+                        && request.resource.data.text.size() > 0
+                        && request.resource.data.text.size() <= 300
+                        // 답글 칸을 처음부터 채워서 주인 행세를 할 수 없다
+                        && !request.resource.data.keys().hasAny(['reply', 'replyAt']);
+          allow update: if isSuper()
+                        || (isSignedIn()
+                            && get(/databases/$(database)/documents/halls/$(hallId)).data.ownerUid
+                               == request.auth.uid
+                            // 답만 달 수 있다 — 남이 쓴 말 자체는 못 고친다
+                            && request.resource.data.text == resource.data.text
+                            && request.resource.data.authorUid == resource.data.authorUid);
+          allow delete: if isSuper()
+                        || (isSignedIn() && resource.data.authorUid == request.auth.uid)
+                        || (isSignedIn()
+                            && get(/databases/$(database)/documents/halls/$(hallId)).data.ownerUid
+                               == request.auth.uid);
+        }
+
         match /works/{workId} {
           allow read: if (resource.data.isPublic == true && !isChild())
                       || (isSignedIn() && resource.data.ownerUid == request.auth.uid)

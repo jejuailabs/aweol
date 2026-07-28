@@ -125,7 +125,7 @@ function SpotBeam({ w, h, warm }: { w: number; h: number; warm: string }) {
 }
 
 function Artwork({
-  work, pos, rot, maxW, frameColor, captionColor, onSelect,
+  work, pos, rot, maxW, frameColor, captionColor, onSelect, talk, onTalk,
 }: {
   work: WorkDoc & { id: string };
   pos: [number, number, number];
@@ -134,6 +134,10 @@ function Artwork({
   frameColor: string;
   captionColor: string;
   onSelect: () => void;
+  /** 이 작품에 달린 말 — 개수와 **가장 최근 한 줄**만 받는다 */
+  talk?: { count: number; latest: string; isNew: boolean };
+  /** 말풍선을 눌렀다 */
+  onTalk?: () => void;
 }) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
   const [hot, setHot] = useState(false);
@@ -234,6 +238,81 @@ function Artwork({
           <planeGeometry args={[w, h]} />
           <meshStandardMaterial map={tex} roughness={0.86} toneMapped={false} />
         </mesh>
+      )}
+
+      {/*
+        말풍선 — **작품 밖에 세운다.**
+
+        남긴 말을 액자 안이나 그림 위에 늘어놓으면 **작품 비율이 깨진다.**
+        긴 글 하나에 그림이 밀려나는 셈이라, 여기서는 **숫자와 최신 한 줄**만
+        띄우고 나머지는 눌러서 본다.
+
+        `transform` 을 안 쓴다 — 멀어도 크기가 그대로라야 방 저편에서도
+        "저기 말이 달렸구나" 가 보인다(이름표는 반대로 다가가야 읽힌다).
+      */}
+      {talk && talk.count > 0 && (
+        <Html
+          position={[w / 2 + 0.28, h / 2 - 0.1, 0.08]}
+          center
+          zIndexRange={[7, 0]}
+          style={{ pointerEvents: 'auto' }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); onTalk?.(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'rgba(255,250,240,0.96)',
+              border: '2px solid rgba(0,0,0,0.12)',
+              borderRadius: 999,
+              padding: '4px 9px 4px 7px',
+              boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: 'Pretendard, sans-serif',
+            }}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>💬</span>
+            <span style={{ fontSize: 12, fontWeight: 900, color: '#5B4A3B' }}>
+              {talk.count}
+            </span>
+            {/* 안 읽은 말이 있으면 — 빨간 점 하나면 충분하다 */}
+            {talk.isNew && (
+              <span
+                style={{
+                  fontSize: 9, fontWeight: 900, color: 'white',
+                  background: '#E8604C', borderRadius: 999, padding: '1px 5px',
+                }}
+              >
+                NEW
+              </span>
+            )}
+          </button>
+        </Html>
+      )}
+
+      {/*
+        가장 최근 한 줄 — **딱 한 줄.**
+        여러 줄을 걸면 그림보다 글이 커진다. 나머지는 말풍선을 눌러서 본다.
+      */}
+      {talk && talk.latest && (
+        <Html
+          position={[0, -h / 2 - 0.42, 0.03]}
+          center
+          transform
+          scale={0.13}
+          pointerEvents="none"
+          zIndexRange={[6, 0]}
+        >
+          <div
+            style={{
+              width: '340px', textAlign: 'center', fontFamily: 'Pretendard, sans-serif',
+              userSelect: 'none', color: captionColor, fontSize: '15px', opacity: 0.85,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}
+          >
+            “{talk.latest}”
+          </div>
+        </Html>
       )}
 
       {/*
@@ -405,7 +484,7 @@ function TrackLights({ dark }: { dark: boolean }) {
 
 export default function ArtShowScene({
   show, hallId, me, works, theme, hallTitle,
-  avatarId, avatarCustom, avatarTint, onSelect, onExit, children,
+  avatarId, avatarCustom, avatarTint, onSelect, onExit, talks, onTalk, children,
 }: {
   show: ShowDoc & { id: string };
   /** 방 이름을 만드는 데 쓴다 */
@@ -420,6 +499,10 @@ export default function ArtShowScene({
   avatarTint?: AvatarTint | null;
   onSelect: (work: WorkDoc & { id: string }) => void;
   onExit: () => void;
+  /** 작품마다 달린 말 — `{작품id: {개수, 최신 한 줄, 안 읽은 것 있나}}` */
+  talks?: Record<string, { count: number; latest: string; isNew: boolean }>;
+  /** 말풍선을 눌렀다 */
+  onTalk?: (work: WorkDoc & { id: string }) => void;
   children?: React.ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -604,6 +687,8 @@ export default function ArtShowScene({
               frameColor={t.frame}
               captionColor={t.caption}
               onSelect={() => onSelect(w)}
+              talk={talks?.[w.id]}
+              onTalk={() => onTalk?.(w)}
             />
           );
         })}

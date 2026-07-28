@@ -347,6 +347,34 @@ export const PHASE_COLOR: Record<ShowPhase, string> = {
   always: '#4E7FA8',
 };
 
+/**
+ * 작품에 남기는 말 (`halls/{hallId}/shows/{showId}/comments/{commentId}`)
+ *
+ * **작품 아래가 아니라 전시 아래**에 둔다. 작품마다 하위 컬렉션을 두면
+ * 전시실에 들어설 때 말풍선 숫자를 세려고 작품 수만큼 질의해야 한다 —
+ * 마흔 점이면 마흔 번이다. 한곳에 모으고 `workId` 를 적어두면 한 번에 받는다.
+ */
+export interface WorkCommentDoc {
+  /** 어느 작품에 남긴 말인가 */
+  workId: string;
+  authorUid: string;
+  authorName: string;
+  text: string;
+  createdAt: unknown;
+  /**
+   * 작가가 단 답 — **댓글 하나에 하나.**
+   *
+   * 답글을 또 다는 나무 구조로 만들지 않는다. 전시실에서 오가는 말은
+   * "잘 봤어요" 와 "고맙습니다" 두 마디로 끝나는 것이 보통이라,
+   * 층을 깊게 만들면 화면만 복잡해지고 아이는 못 읽는다.
+   */
+  reply?: string;
+  replyAt?: unknown;
+}
+
+/** 작품에 남기는 말 길이 — 화면과 규칙이 같은 값을 봐야 한다 */
+export const MAX_COMMENT = 300;
+
 /** 작품 (`halls/{hallId}/shows/{showId}/works/{workId}`) */
 export interface WorkDoc {
   hallId: string;
