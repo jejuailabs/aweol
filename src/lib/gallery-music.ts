@@ -145,6 +145,17 @@ export function startGalleryMusic(key: string, dark = false): GalleryMusic | nul
   /** 다음 화음을 미리 예약해 둔 시각 */
   let nextAt = ctx.currentTime + 0.4;
 
+  /**
+   * 멈췄나 — **`pump()` 보다 먼저 선언해야 한다.**
+   *
+   * 전에는 이 줄이 파일 아래쪽에 있었다. `let` 은 선언 전에는 손도 못 대는데
+   * (temporal dead zone), `pump()` 를 그 위에서 불러버려서
+   * `Cannot access 'stopped' before initialization` 이 났다.
+   * 그 오류가 그리기 도중에 터지니 **전시관 화면이 통째로 죽었다** —
+   * 배경음악 하나 때문에 문이 안 열렸다.
+   */
+  let stopped = false;
+
   const pump = () => {
     if (stopped) return;
     /**
@@ -171,8 +182,6 @@ export function startGalleryMusic(key: string, dark = false): GalleryMusic | nul
   };
   const watch = setInterval(sync, 600);
   document.addEventListener('visibilitychange', sync);
-
-  let stopped = false;
 
   return {
     stop() {

@@ -309,8 +309,14 @@ export default function ArtHallScene({
    * 문을 열고 들어가도 아무 일도 안 일어난 것 같다.
    */
   useEffect(() => {
-    const m = startGalleryMusic(`hall:${hallId}`, t.ambient < 0.4);
-    return () => m?.stop();
+    /**
+     * **음악이 광장을 막으면 안 된다.**
+     * 여기서 던진 오류로 전시관 화면이 통째로 안 열린 적이 있다(2026-07).
+     * 배경음악은 있으면 좋은 것이지 없으면 안 되는 것이 아니다.
+     */
+    let m: ReturnType<typeof startGalleryMusic> = null;
+    try { m = startGalleryMusic(`hall:${hallId}`, t.ambient < 0.4); } catch { m = null; }
+    return () => { try { m?.stop(); } catch {} };
   }, [hallId, t.ambient]);
 
   useEffect(() => {

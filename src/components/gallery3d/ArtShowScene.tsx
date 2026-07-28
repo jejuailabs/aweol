@@ -537,8 +537,16 @@ export default function ArtShowScene({
    * 마을 파도 소리에서 이미 밟은 함정이다.
    */
   useEffect(() => {
-    const m = startGalleryMusic(`${hallId}:${show.id}`, dark);
-    return () => m?.stop();
+    /**
+     * **음악이 방을 막으면 안 된다.**
+     *
+     * 여기서 던진 오류가 그리기 도중에 터져 **전시실이 통째로 안 열린 적이
+     * 있다**(2026-07). 배경음악은 있으면 좋은 것이지 없으면 안 되는 것이
+     * 아니다 — 실패하면 조용히 넘어간다.
+     */
+    let m: ReturnType<typeof startGalleryMusic> = null;
+    try { m = startGalleryMusic(`${hallId}:${show.id}`, dark); } catch { m = null; }
+    return () => { try { m?.stop(); } catch {} };
   }, [hallId, show.id, dark]);
 
   useEffect(() => {
