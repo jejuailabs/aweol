@@ -147,6 +147,21 @@ export default function ProfileMenu() {
               🖼️ 내 전시관
             </button>
           )}
+          {/*
+            찜한 그림 — **학교 밖 사람은 아래 메뉴에 이미 있다.** 여기 또 두면
+            같은 곳으로 가는 길이 둘이 되어, 뭐가 다른가 하고 한 번 더 눌러본다.
+            아이에게는 안 보인다 — 개인 전시관 자체가 아이에게 감춰져 있어서
+            찜할 그림이 아예 없다.
+          */}
+          {shownRole !== 'student' && shownRole !== 'general' && (
+            <button
+              onClick={() => { setOpen(false); router.push('/picks'); }}
+              className="w-full px-4 py-3 text-left text-sm flex items-center gap-2.5"
+              style={{ color: 'var(--color-text-main)', borderTop: '1px solid var(--color-surface-soft)' }}
+            >
+              ♥️ 찜한 그림
+            </button>
+          )}
           {/* 교직원만 — 지나온 반들 */}
           {(role === 'teacher' || role === 'super_admin') && (
             <button

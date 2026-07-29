@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { canAccessAdmin } from '@/lib/auth-helpers';
+import { canAccessAdmin, isGeneral } from '@/lib/auth-helpers';
 
 interface NavItem { href: string; label: string; icon: string }
 
@@ -14,6 +14,28 @@ const baseItems: NavItem[] = [
   { href: '/gallery', label: '갤러리', icon: '🖼️' },
   { href: '/my-stand', label: '내 스탠드', icon: '⭐' },
   { href: '/shop', label: '상점', icon: '🛒' },
+  { href: '/settings', label: '설정', icon: '⚙️' },
+];
+
+/**
+ * 학교 밖에서 온 사람의 메뉴.
+ *
+ * **없는 것을 안 보여준다.** 학교 밖 사람에게는
+ * - '갤러리' 가 학교 전시 작품 목록이라 남의 학교 숙제 구경이 되고,
+ * - '내 스탠드' 는 학교 활동 기록이라 늘 비어 있고,
+ * - '상점' 은 도장으로 사는 곳인데 도장을 받을 길이 없다.
+ *
+ * 눌러도 비어 있는 칸은 "아직 안 만들었나" 로 읽힌다. 그래서 뺀다.
+ * 대신 **찜한 그림**을 넣는다 — 흩어진 전시관에서 마음에 든 그림으로
+ * 돌아가는 길이다.
+ *
+ * **마을은 남긴다.** 걸어 다니며 구경하는 것은 학교 사람이 아니어도 재밌고,
+ * 학교 것을 알아야 할 수 있는 일도 아니다.
+ */
+const generalItems: NavItem[] = [
+  { href: '/', label: '지도', icon: '🗺️' },
+  { href: '/village', label: '마을', icon: '🏘️' },
+  { href: '/picks', label: '찜한 그림', icon: '♥️' },
   { href: '/settings', label: '설정', icon: '⚙️' },
 ];
 
@@ -45,17 +67,23 @@ export default function BottomNav() {
         : '/admin';
 
   const staff = canAccessAdmin(role);
-  const navItems: NavItem[] = staff
-    ? [...baseItems.slice(0, 2), { href: adminHref, label: '관리', icon: '📊' }, ...baseItems.slice(2)]
-    : baseItems;
+  const general = isGeneral(role);
+  const navItems: NavItem[] = general
+    ? generalItems
+    : staff
+      ? [...baseItems.slice(0, 2), { href: adminHref, label: '관리', icon: '📊' }, ...baseItems.slice(2)]
+      : baseItems;
 
   /**
    * 접었을 때 무엇을 남길지는 **누가 쓰느냐**에 달렸다.
    * 선생님은 '관리' 가 매일 쓰는 곳이고, 아이는 '내 스탠드' 가 그렇다.
+   * 학교 밖 사람은 넷뿐이라 접을 것이 없다.
    */
-  const primary = staff
-    ? navItems.filter((i) => ['/', '/village', '/gallery'].includes(i.href) || i.href === adminHref)
-    : navItems.filter((i) => ['/', '/village', '/gallery', '/my-stand'].includes(i.href));
+  const primary = general
+    ? navItems
+    : staff
+      ? navItems.filter((i) => ['/', '/village', '/gallery'].includes(i.href) || i.href === adminHref)
+      : navItems.filter((i) => ['/', '/village', '/gallery', '/my-stand'].includes(i.href));
   const mobileMain = primary.slice(0, MOBILE_SLOTS);
   const mobileRest = navItems.filter((i) => !mobileMain.includes(i));
 
@@ -109,6 +137,12 @@ export default function BottomNav() {
           {/* 휴대폰 — 4개 + 더보기 */}
           <div className="flex flex-1 min-w-0 sm:hidden">
             {mobileMain.map((i) => cell(i, () => setMore(false)))}
+            {/*
+              **접힌 것이 없으면 '더보기' 도 없다.**
+              학교 밖 사람은 메뉴가 넷뿐이라, 이게 그냥 있으면 눌렀을 때
+              빈 서랍이 올라온다.
+            */}
+            {mobileRest.length > 0 && (
             <button
               onClick={() => setMore((v) => !v)}
               className="flex flex-1 min-w-0 flex-col items-center gap-0.5 py-1"
@@ -121,6 +155,7 @@ export default function BottomNav() {
                 더보기
               </span>
             </button>
+            )}
           </div>
 
           {/* 넓은 화면 — 다 편다 */}

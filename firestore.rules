@@ -264,6 +264,34 @@ service cloud.firestore {
                       && request.resource.data.imageUrl is string;
         allow delete: if isSignedIn() && request.auth.uid == uid;
       }
+
+      /**
+       * 찜한 그림 — **나만 보는 책갈피.**
+       *
+       * 도장·정화와 달리 **상이 걸려 있지 않다.** 스스로 적어봤자 얻는 것이
+       * 없으므로 서버를 거치게 할 이유도 없다. 그래서 본인이 직접 쓴다.
+       *
+       * **읽기도 본인만이다.** 교직원에게도 열지 않는다 — 무엇을 찜했는지는
+       * 취향이라, 성적이나 제출물처럼 지도에 필요한 정보가 아니다.
+       * 선생님이 아이의 취향 목록을 들여다볼 자리는 없다.
+       *
+       * 글자 길이를 막는다. 안 막으면 한 문서에 수십 KB 를 넣어 저장공간을
+       * 채울 수 있다 — 목록에 보일 만큼이면 충분하다.
+       */
+      match /picks/{pickId} {
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create, update: if isSignedIn() && request.auth.uid == uid
+                      && request.resource.data.hallId is string
+                      && request.resource.data.showId is string
+                      && request.resource.data.workId is string
+                      && request.resource.data.imageUrl is string
+                      && request.resource.data.imageUrl.size() <= 500
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() <= 120
+                      && request.resource.data.hallTitle.size() <= 120
+                      && request.resource.data.showTitle.size() <= 120;
+        allow delete: if isSignedIn() && request.auth.uid == uid;
+      }
     }
 
     // ---------- 학교/학년/학급 ----------

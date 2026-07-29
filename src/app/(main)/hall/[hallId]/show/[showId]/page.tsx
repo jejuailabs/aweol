@@ -10,6 +10,7 @@ import { hallPath, type HallDoc, type ShowDoc, type WorkDoc } from '@/lib/art-ha
 import ShareButton from '@/components/common/ShareButton';
 import { backdropClose } from '@/lib/backdrop';
 import WorkComments, { useShowComments } from '@/components/gallery3d/WorkComments';
+import { usePicks } from '@/lib/picks';
 
 const ArtShowScene = dynamic(() => import('@/components/gallery3d/ArtShowScene'), { ssr: false });
 const MobileJoystick = dynamic(() => import('@/components/gallery3d/MobileJoystick'), { ssr: false });
@@ -51,6 +52,8 @@ export default function ShowPage() {
   /** 이 전시에 달린 말 — 한 번에 받아 작품마다 나눠 붙인다 */
   const talk = useShowComments(hallId, showId);
   const isOwner = !!uid && hall?.ownerUid === uid;
+  /** 내가 찜한 그림 — 하트를 채울지 정하고, 누르면 담거나 뺀다 */
+  const picks = usePicks(uid);
 
   useEffect(() => {
     if (!db || !hallId || !showId) { setTried(true); return; }
@@ -213,6 +216,37 @@ export default function ShowPage() {
                 )}
               </div>
               <div className="shrink-0 flex flex-col gap-2">
+                {/*
+                  찜 — **크게 본 자리에서 담는다.**
+
+                  마음에 드는 그림은 크게 봤을 때 정해진다. 벽에서 작게 볼 때는
+                  담을지 말지가 안 정해지고, 방을 나간 뒤에는 이미 늦다.
+
+                  로그인해야 담을 수 있으므로, 아니면 아예 안 보여준다 —
+                  눌렀는데 아무 일도 안 일어나는 단추가 제일 나쁘다.
+                */}
+                {uid && (
+                  <button
+                    onClick={() => picks.toggle({
+                      hallId,
+                      showId,
+                      workId: open.id,
+                      // 목록은 작게 보여주므로 벽에 걸린 작은 판을 먼저 쓴다
+                      imageUrl: open.thumbnailUrl || open.imageUrl,
+                      title: open.title || '무제',
+                      hallTitle: hall?.title ?? '',
+                      showTitle: show.title ?? '',
+                    })}
+                    className="rounded-full px-4 py-2 text-[14px] font-bold whitespace-nowrap transition-transform active:scale-95"
+                    style={
+                      picks.has(hallId, showId, open.id)
+                        ? { background: '#E8604C', color: '#FFF5F2' }
+                        : { background: 'rgba(255,255,255,0.14)', color: '#FBFAF8' }
+                    }
+                  >
+                    {picks.has(hallId, showId, open.id) ? '♥ 찜함' : '♡ 찜하기'}
+                  </button>
+                )}
                 {/* 크게 보다가 바로 한마디 — 다시 벽으로 나갈 이유가 없다 */}
                 <button
                   onClick={() => { setTalking(open); setOpen(null); talk.markSeen(); }}
