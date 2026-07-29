@@ -15,6 +15,8 @@ const MODES: { role: UserRole; label: string; icon: string; desc: string; color:
   { role: 'teacher', label: '선생님', icon: '👩‍🏫', desc: '우리 반 수업 등록·작품 승인', color: '#E8604C' },
   { role: 'student', label: '학생', icon: '🎒', desc: '우리 반 바로가기·작품 올리기', color: '#3BAF9F' },
   { role: 'parent', label: '학부모', icon: '👨‍👩‍👧', desc: '자녀 반 바로가기·관람', color: '#4A90D9' },
+  // 학교 밖에서 온 사람. **학교 화면이 안 보이는지**를 확인하는 데 쓴다.
+  { role: 'general', label: '일반', icon: '🎨', desc: '학교 밖 관람객·전시관 주인', color: '#6B7280' },
 ];
 
 export default function RoleSwitcher() {
@@ -48,9 +50,11 @@ export default function RoleSwitcher() {
   // 슈퍼 관리자에게만 보인다
   if (actualRole !== 'super_admin') return null;
 
+  /** 반이 없어도 되는 역할 — 담임이 아닐 수 있거나(교직원), 학교 밖이거나(일반) */
+  const NO_CLASS: UserRole[] = ['teacher', 'school_admin', 'general'];
+
   const apply = (role: UserRole) => {
-    // 선생님·학교관리자는 반을 고르지 않아도 된다 (담임이 아닐 수 있다)
-    if (!classId && role !== 'teacher' && role !== 'school_admin') return;
+    if (!classId && !NO_CLASS.includes(role)) return;
     setViewAs({ role, classId });
     setOpen(false);
     router.push('/');
@@ -80,7 +84,7 @@ export default function RoleSwitcher() {
           >
             <span className="text-[12px] font-bold whitespace-nowrap">
               {MODES.find((m) => m.role === viewAs.role)?.label} 모드
-              {viewAs.role !== 'teacher' && ` · ${viewAs.classId}`}
+              {!NO_CLASS.includes(viewAs.role) && ` · ${viewAs.classId}`}
             </span>
             <button
               onClick={exit}

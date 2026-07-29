@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import StudentLoginPanel from '@/components/auth/StudentLoginPanel';
+import { BRAND, BRAND_TAGLINE } from '@/lib/brand';
 
 function LoginInner() {
   const { user, role, loading, signInWithGoogle } = useAuth();
@@ -41,12 +42,16 @@ function LoginInner() {
       style={{ background: 'linear-gradient(180deg, var(--color-sky) 0%, #FFFFFF 100%)' }}
     >
       <div className="mb-8 text-center">
-        <div className="text-6xl mb-4">🏫</div>
+        {/*
+          **학교 그림(🏫)을 뺐다.** 이제 학교 밖에서 오는 사람도 여기서 가입한다.
+          첫 화면이 학교면 "나는 학교 사람이 아닌데" 하고 되돌아간다.
+        */}
+        <div className="text-6xl mb-4">🖼️</div>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-main)' }}>
-          우리 동네 전시 지도
+          {BRAND}
         </h1>
         <p className="mt-2 text-sm" style={{ color: 'var(--color-text-sub)' }}>
-          우리 반의 작품을 만나러 가요!
+          {BRAND_TAGLINE}
         </p>
       </div>
 
@@ -58,7 +63,7 @@ function LoginInner() {
             className="mt-5 text-[13px] underline"
             style={{ color: 'var(--color-text-sub)' }}
           >
-            선생님·학부모로 로그인하기
+            어른은 이쪽으로 (Google 로그인)
           </button>
         </>
       ) : (
@@ -83,9 +88,14 @@ function LoginInner() {
         </svg>
         Google로 로그인
       </button>
-      <p className="mt-4 text-[13px] text-center" style={{ color: 'var(--color-text-sub)' }}>
-        아이는 <b>학생 로그인</b>으로 들어가요.<br />
-        이름과 우리 반 비밀번호만 있으면 돼요.
+      {/*
+        **두 줄이 각각 누구에게 하는 말인지 분명해야 한다.**
+        예전에는 아이 얘기만 있어서, 학교와 상관없이 온 사람은 자기가 여기서
+        가입해도 되는 곳인지 알 수 없었다.
+      */}
+      <p className="mt-4 text-[13px] text-center leading-relaxed" style={{ color: 'var(--color-text-sub)' }}>
+        아이는 <b>학생 로그인</b> — 이름과 우리 반 비밀번호만 있으면 돼요.<br />
+        선생님·학부모와 <b>학교 밖에서 오신 분</b>은 Google로 들어오세요.
       </p>
       </>
       )}

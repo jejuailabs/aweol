@@ -141,6 +141,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: 'parent',
         children: [{ studentUid: 'test-child', classId: activeViewAs.classId, name: '테스트 자녀' }],
       };
+    } else if (activeViewAs.role === 'general') {
+      /**
+       * 일반은 **소속을 지워야** 진짜 일반이 된다.
+       *
+       * 역할만 바꾸고 `schoolIds`·`classIds` 를 그대로 두면, 총관리자가 가진
+       * 학교·반이 남아서 학교 화면이 그대로 열린다 — 확인하려던 것(학교 밖
+       * 사람에게 학교가 안 보이는가)이 확인이 안 된다.
+       */
+      effectiveDoc = {
+        ...realDoc,
+        role: 'general',
+        schoolIds: [],
+        classIds: [],
+        children: [],
+      };
     } else {
       effectiveDoc = { ...realDoc, role: activeViewAs.role };
     }

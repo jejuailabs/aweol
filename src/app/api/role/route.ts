@@ -16,9 +16,25 @@ export const maxDuration = 30;
  * - 교사: pendingRole 로 접수만 하고, 슈퍼관리자가 승인해야 role 이 된다.
  */
 
-/** 학생·학부모는 즉시 부여, 교사·학교관리자는 승인 대기 */
-const SELF_SERVE = new Set(['student', 'parent']);
+/**
+ * 학생·학부모·일반은 즉시 부여, 교사·학교관리자는 승인 대기.
+ *
+ * **일반(`general`)을 왜 그냥 들여보내는가.** 승인은 "이 사람이 그럴 자격이 있나"
+ * 를 확인하는 일이다. 교사는 아이들 명부를 열게 되니 확인할 것이 있다.
+ * 일반은 확인할 것이 없다 — 학교 명부도 못 보고, 반에도 못 들어간다.
+ * 자기 전시관을 열고 남의 전시를 볼 뿐이라 기다리게 할 이유가 없다.
+ */
+const SELF_SERVE = new Set(['student', 'parent', 'general']);
 const NEEDS_APPROVAL = new Set(['teacher', 'school_admin']);
+
+/**
+ * 코드를 넣는 화면(`/join-class`)으로 보낼 역할.
+ *
+ * 학생은 반 코드로 우리 반에 들어가고, 학부모는 자녀와 연결한다.
+ * **일반은 여기로 보내면 안 된다** — 넣을 코드가 없는데 코드 화면이 나오면
+ * 뭘 못 받은 줄 알고 선생님을 찾는다.
+ */
+const NEEDS_CODE = new Set(['student', 'parent']);
 
 /**
  * 학교관리자는 **반을 밝히지 않는다.** 담임이 아니라 학교 단위 관리자라서
@@ -58,7 +74,14 @@ export async function POST(req: NextRequest) {
       { role, pendingRole: null, pendingSchoolId: null, schoolIds: [], classIds: [] },
       { merge: true }
     );
-    return NextResponse.json({ ok: true, role, pending: false });
+    // 어디로 보낼지는 **서버가 정한다.** 화면마다 따로 판단하면 역할이 늘 때
+    // 한 곳은 고치고 한 곳은 빠뜨린다.
+    return NextResponse.json({
+      ok: true,
+      role,
+      pending: false,
+      next: NEEDS_CODE.has(role) ? '/join-class' : '/',
+    });
   }
 
   // 교사는 **어느 학교 몇 학년 몇 반**인지 밝혀야 한다.

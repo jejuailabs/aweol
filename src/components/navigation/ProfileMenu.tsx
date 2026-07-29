@@ -11,6 +11,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
   teacher: '선생님',
   student: '학생',
   parent: '학부모',
+  general: '일반',
 };
 
 const ROLE_COLOR: Record<UserRole, string> = {
@@ -20,6 +21,8 @@ const ROLE_COLOR: Record<UserRole, string> = {
   teacher: '#E8604C',
   student: '#3BAF9F',
   parent: '#4A90D9',
+  // 학교 색(주황·초록·파랑) 어느 쪽도 아닌 회색. 소속이 없다는 것이 색으로 보여야 한다.
+  general: '#6B7280',
 };
 
 export default function ProfileMenu() {

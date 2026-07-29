@@ -43,6 +43,28 @@ export function isSchoolManager(role: UserRole | null): boolean {
 }
 
 /**
+ * 학교에 속하지 않은 사람인가 — **일반.**
+ *
+ * 학교 화면(반·명부·숙제·도장)을 아예 안 보여주는 데 쓴다. 막는 것이 아니라
+ * **없는 것으로 두는 것**이다. 어차피 `schoolIds` 도 `classIds` 도 비어 있어서
+ * 눌러도 아무것도 안 나오는데, 그러면 고장 난 것처럼 보인다.
+ */
+export function isGeneral(role: UserRole | null): boolean {
+  return role === 'general';
+}
+
+/**
+ * 학교 안 사람인가 — 학생·학부모·교직원.
+ *
+ * `!isGeneral(role)` 로 쓰면 안 된다. 그러면 **아직 역할이 없는 계정**(가입 도중,
+ * `role === null`)까지 학교 사람으로 세어 학교 화면이 열린다.
+ */
+export function isSchoolMember(role: UserRole | null): boolean {
+  return role === 'super_admin' || role === 'school_admin' || role === 'teacher'
+    || role === 'student' || role === 'parent';
+}
+
+/**
  * 교사 신청을 승인할 수 있는가.
  *
  * 예전에는 총관리자 한 사람에게 전부 몰렸다. "이 사람이 우리 학교 선생님이 맞는가" 는
