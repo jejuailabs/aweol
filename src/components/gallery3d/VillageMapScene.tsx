@@ -609,20 +609,21 @@ function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
     };
 
     // 잔디 — 밑동 어둡고 끝 밝은 명암을 정점 색에 굽는다
-    const spikeBase = new THREE.ConeGeometry(0.1, 0.72, 4, 1).translate(0, 0.36, 0);
+    const spikeBase = new THREE.ConeGeometry(0.13, 0.4, 5, 1).translate(0, 0.2, 0);
     const spike = spikeBase.toNonIndexed();
     spikeBase.dispose();
     {
       const p = spike.attributes.position;
       const col = new Float32Array(p.count * 3);
       for (let i = 0; i < p.count; i++) {
-        const t = Math.min(1, p.getY(i) / 0.72);
-        const v = 0.48 + t * 0.8;
-        col[i * 3] = v * 0.9; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.68;
+        const t = Math.min(1, p.getY(i) / 0.4);
+        // 낙차를 줄인다 — 끝이 하얗게 반짝이면 풀이 아니라 가시로 보인다
+        const v = 0.84 + t * 0.24;
+        col[i * 3] = v * 0.93; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.8;
       }
       spike.setAttribute('color', new THREE.BufferAttribute(col, 3));
     }
-    const petal = new THREE.CircleGeometry(0.16, 5);
+    const petal = new THREE.CircleGeometry(0.13, 5);
     return { blocked, spike, petal };
   }, [radius, buildings, roads, coast]);
 
@@ -643,7 +644,7 @@ function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
     const v = new THREE.Vector3();
     const sc = new THREE.Vector3();
     const col = new THREE.Color();
-    const PALETTE = [0xE8A33C, 0xD9873C, 0xE05A6E, 0xF2E3C6, 0xFFFFFF, 0xF2B33D];
+    const PALETTE = [0xF7C8D0, 0xF9E7B8, 0xFFFFFF, 0xF4C89A, 0xEAD9F0];
     // 칸 세계 좌표 → 0~1 난수. 세계가 씨앗이라 언제 와도 같은 잔디다.
     const hash = (cx: number, cz: number, k: number) => {
       let h = Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ Math.imul(k + 1, 83492791);
@@ -671,24 +672,30 @@ function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
           const wx = cellX * CELL, wz = cellZ * CELL;
           if (ctx.blocked(wx, wz)) continue;
 
-          // 잔디 다발 — 칸당 6~10포기
-          const n = 6 + ((hash(cellX, cellZ, 0) * 5) | 0);
-          const hue = (hash(cellX, cellZ, 1) - 0.5) * 0.06;
-          for (let k = 0; k < n && gi < CAP_G; k++) {
-            const x = wx + (hash(cellX, cellZ, 10 + k) - 0.5) * CELL;
-            const z = wz + (hash(cellX, cellZ, 40 + k) - 0.5) * CELL;
-            eu.set((hash(cellX, cellZ, 70 + k) - 0.5) * 0.5,
+          // 다발로 심는다 — 고르게 흩으면 잔디밭이 아니라 바늘밭이 된다
+          const clumps = 1 + ((hash(cellX, cellZ, 0) * 2) | 0);
+          const hue = (hash(cellX, cellZ, 1) - 0.5) * 0.04;
+          for (let c = 0; c < clumps; c++) {
+          const ccx = wx + (hash(cellX, cellZ, 400 + c) - 0.5) * CELL;
+          const ccz = wz + (hash(cellX, cellZ, 420 + c) - 0.5) * CELL;
+          const n = 4 + ((hash(cellX, cellZ, 440 + c) * 4) | 0);
+          for (let k0 = 0; k0 < n && gi < CAP_G; k0++) {
+            const k = c * 8 + k0;
+            const x = ccx + (hash(cellX, cellZ, 10 + k) - 0.5) * 1.1;
+            const z = ccz + (hash(cellX, cellZ, 40 + k) - 0.5) * 1.1;
+            eu.set((hash(cellX, cellZ, 70 + k) - 0.5) * 0.7,
               hash(cellX, cellZ, 100 + k) * 6.28,
-              (hash(cellX, cellZ, 130 + k) - 0.5) * 0.5);
+              (hash(cellX, cellZ, 130 + k) - 0.5) * 0.7);
             q.setFromEuler(eu);
-            const s = 0.7 + hash(cellX, cellZ, 160 + k) * 1.0;
+            const s = 0.7 + hash(cellX, cellZ, 160 + k) * 0.7;
             m.compose(v.set(x, -0.02, z), q,
-              sc.set(s, s * (0.7 + hash(cellX, cellZ, 190 + k) * 0.8), s));
+              sc.set(s, s * (0.8 + hash(cellX, cellZ, 190 + k) * 0.6), s));
             gm.setMatrixAt(gi, m);
-            col.setHex(0x79B354).offsetHSL(hue, (hash(cellX, cellZ, 220 + k) - 0.5) * 0.2,
-              (hash(cellX, cellZ, 250 + k) - 0.5) * 0.1);
+            col.setHex(0x9BCB86).offsetHSL(hue, (hash(cellX, cellZ, 220 + k) - 0.5) * 0.12,
+              (hash(cellX, cellZ, 250 + k) - 0.5) * 0.07);
             gm.setColorAt(gi, col);
             gi++;
+          }
           }
 
           // 꽃잎·낙엽 — 세 칸에 하나꼴
@@ -1195,9 +1202,9 @@ function Ground({ R, buildings }: { R: number; buildings: VillageData['b'] }) {
     c.width = 256; c.height = 256;
     const ctx = c.getContext('2d');
     if (!ctx) return null;
-    ctx.fillStyle = '#A8DDA0';
+    ctx.fillStyle = '#9CD693';
     ctx.fillRect(0, 0, 256, 256);
-    const tones = ['#9ED596', '#B2E3AA', '#98CE90', '#ACDFA4'];
+    const tones = ['#92CD89', '#A6DE9D', '#8AC581', '#A0D897'];
     for (let i = 0; i < 1000; i++) {
       ctx.fillStyle = tones[i % 4];
       ctx.fillRect(Math.random() * 256, Math.random() * 256, 2.5, 2.5);
