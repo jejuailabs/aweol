@@ -416,7 +416,13 @@ export default function VillageMiniMap({
               onPointerCancel={onUp}
               onWheel={(e) => setZoomAt(zoom * (e.deltaY < 0 ? 1.18 : 1 / 1.18))}
             >
-              {/* 바다 먼저 — 그 위에 물·공원·길이 얹힌다 */}
+              {/* 바다 먼저 — 얕은 데는 옥빛, 깊은 데로 갈수록 짙게 */}
+              <defs>
+                <linearGradient id="mmSea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#8FD2E8" />
+                  <stop offset="1" stopColor="#5FA8D8" />
+                </linearGradient>
+              </defs>
               {seaRectList.map((r, i) => (
                 <rect
                   key={`sea${i}`}
@@ -425,16 +431,28 @@ export default function VillageMiniMap({
                   width={r.w}
                   /* 칸 사이에 실틈이 보이지 않게 아주 조금 겹친다 */
                   height={r.d + 0.5}
-                  fill="#8FCDE4"
+                  fill="url(#mmSea)"
                 />
               ))}
-              {/* 파도가 이는 자리 — 해안선을 굵게 한 번 더 긋는다 */}
+              {/* 물거품 → 백사장 — 해안선을 두 겹으로 긋는다 */}
+              {(coast ?? []).map((line, i) => (
+                <polyline
+                  key={`cf${i}`}
+                  points={pathOf(line)}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeOpacity={0.5}
+                  strokeWidth={22}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
               {(coast ?? []).map((line, i) => (
                 <polyline
                   key={`cl${i}`}
                   points={pathOf(line)}
                   fill="none"
-                  stroke="#E8DCC0"
+                  stroke="#F0E2BE"
                   strokeWidth={14}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -446,32 +464,50 @@ export default function VillageMiniMap({
                 <polygon
                   key={`a${i}`}
                   points={pathOf(a.p)}
-                  fill={a.k === 'water' ? '#A9DCF2' : '#BFE3B3'}
-                  stroke="none"
+                  fill={a.k === 'water' ? '#8FC8E8' : '#A9D89B'}
+                  stroke={a.k === 'water' ? '#6FA8CC' : '#8FC482'}
+                  strokeWidth={1.4 * s}
                 />
               ))}
 
-              {/* 길 — 실제 폭(미터)으로 긋는다. 당겨 보면 골목이 좁다는 게 보인다. */}
+              {/*
+                길 — **테두리를 먼저, 속살을 나중에.**
+                게임 지도의 길이 길처럼 보이는 건 이 두 겹(케이싱) 덕이다.
+              */}
+              {roads.map((r, i) => (
+                <polyline
+                  key={`rc${i}`}
+                  points={pathOf(r.p)}
+                  fill="none"
+                  stroke="#B7A684"
+                  strokeWidth={r.w + 2.6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
               {roads.map((r, i) => (
                 <polyline
                   key={`r${i}`}
                   points={pathOf(r.p)}
                   fill="none"
-                  stroke="#CDBE9E"
+                  stroke="#EFE3C8"
                   strokeWidth={r.w}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               ))}
 
-              {/* 이름 없는 건물 — 옅게. 있는 것과 없는 것은 다르다 */}
-              {plainBuildings.map((b, i) => (
-                <polygon key={`p${i}`} points={pathOf(b.p)} fill="#DED6C6" opacity={0.75} />
-              ))}
-              {/* 이름 있는 건물 */}
-              {namedBuildings.map((b, i) => (
-                <polygon key={`n${i}`} points={pathOf(b.p)} fill="#E6DAC4" stroke="#B9A480" strokeWidth={1.2 * s} />
-              ))}
+              {/* 건물 — 화면 기준 그림자 한 겹이면 지도가 일어선다 */}
+              <g style={{ filter: 'drop-shadow(0 1.5px 0.8px rgba(90,70,40,0.3))' }}>
+                {/* 이름 없는 건물 — 옅게. 있는 것과 없는 것은 다르다 */}
+                {plainBuildings.map((b, i) => (
+                  <polygon key={`p${i}`} points={pathOf(b.p)} fill="#E3D9C6" stroke="#CBBFA6" strokeWidth={0.8 * s} />
+                ))}
+                {/* 이름 있는 건물 */}
+                {namedBuildings.map((b, i) => (
+                  <polygon key={`n${i}`} points={pathOf(b.p)} fill="#F2E6CC" stroke="#B08860" strokeWidth={1.6 * s} />
+                ))}
+              </g>
 
               {/*
                 걸어다닐 수 있는 데까지 — **경계를 그린다.**
@@ -559,17 +595,41 @@ export default function VillageMiniMap({
               })}
 
               {/*
-                내 자리 — 갈 곳들 위에 그린다. **보는 쪽까지 그린다**:
-                점 하나만 있으면 어느 쪽으로 걸어야 할지 알 수 없다.
+                내 자리 — 갈 곳들 위에, **제일 크고 제일 붉게.**
+                처음엔 옅은 청록 삼각형 17m 였다 — 2.4km 지도에서 7픽셀이라
+                있어도 없는 것이었다. 게임 지도의 '나' 는 무조건 한눈에 띄어야 한다.
               */}
-              <circle cx={me.x} cy={me.z} r={22 * s} fill="rgba(59,175,159,0.25)" />
-              <g transform={`translate(${me.x} ${me.z}) rotate(${((me.yaw ?? 0) * 180) / Math.PI})`}>
-                <polygon
-                  points={`0,${-17 * s} ${8 * s},${6 * s} ${-8 * s},${6 * s}`}
-                  fill="#3BAF9F"
-                  stroke="#FFFFFF"
-                  strokeWidth={3 * s}
-                />
+              <g pointerEvents="none">
+                {/* 맥동 링 — 살아 있는 표시. SVG 자체 애니메이션이라 공짜다. */}
+                <circle cx={me.x} cy={me.z} fill="none" stroke="#E8604C" strokeWidth={4 * s}>
+                  <animate attributeName="r" values={`${24 * s};${52 * s}`} dur="1.6s" repeatCount="indefinite" />
+                  <animate attributeName="stroke-opacity" values="0.7;0" dur="1.6s" repeatCount="indefinite" />
+                </circle>
+                <circle cx={me.x} cy={me.z} r={30 * s} fill="rgba(232,96,76,0.2)" />
+                <g transform={`translate(${me.x} ${me.z}) rotate(${((me.yaw ?? 0) * 180) / Math.PI})`}>
+                  {/* 보는 쪽 쐐기 */}
+                  <polygon
+                    points={`0,${-34 * s} ${13 * s},${-8 * s} ${-13 * s},${-8 * s}`}
+                    fill="#E8604C"
+                    stroke="#FFFFFF"
+                    strokeWidth={4 * s}
+                    strokeLinejoin="round"
+                  />
+                  <circle r={15 * s} fill="#E8604C" stroke="#FFFFFF" strokeWidth={5 * s} />
+                  <circle r={5.5 * s} fill="#FFFFFF" />
+                </g>
+                <text
+                  x={me.x}
+                  y={me.z + 46 * s}
+                  textAnchor="middle"
+                  style={{
+                    fontFamily: 'Pretendard, sans-serif', fontSize: `${28 * s}px`,
+                    fontWeight: 900, fill: '#C0432F',
+                    paintOrder: 'stroke', stroke: '#FFFFFF', strokeWidth: 8 * s,
+                  }}
+                >
+                  나
+                </text>
               </g>
             </svg>
           )}
@@ -626,7 +686,7 @@ export default function VillageMiniMap({
             </>
           ) : (
             <>
-              <b style={{ color: '#3BAF9F' }}>▲</b> 지금 나(보는 쪽) ·{' '}
+              <b style={{ color: '#E8604C' }}>◉</b> 지금 나(쐐기가 보는 쪽) ·{' '}
               <b style={{ color: '#E8A33C' }}>●</b> 학교 ·{' '}
               <b style={{ color: '#4A6FA5' }}>●</b> 🚪 들어가 볼 수 있는 곳 ·{' '}
               <b style={{ color: '#8A7A5F' }}>●</b> 그 자리로 가기 ·{' '}

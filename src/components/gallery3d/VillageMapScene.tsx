@@ -25,7 +25,7 @@ import { isSea, seaMask, seaRects } from '@/lib/village-sea';
 import { startAmbience } from '@/lib/ambience';
 import { WALKABLE_KM, type LocalSite } from '@/lib/local-sites';
 import { playSound } from '@/lib/sound';
-import { saveReturn, saveSpot, takeReturn } from '@/lib/village-return';
+import { clearReturn, peekReturn, saveReturn, saveSpot } from '@/lib/village-return';
 import { blocksOfBuildings } from '@/lib/village-blocks';
 import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
@@ -1995,12 +1995,19 @@ export default function VillageMapScene({
    * `useRef(꺼내기())` 로 쓰면 안 된다 — 인자는 그릴 때마다 계산되므로
    * 저장소를 매번 읽고 지운다(값은 첫 것만 남지만 헛일을 계속 한다).
    */
-  const [spawn] = useState<[number, number, number]>(() => {
-    const back = takeReturn(currentSpot?.id ?? '');
-    return back ? [back.x, 0, back.z] : [0, 0, 30];
+  const [spawn] = useState<[number, number, number, number]>(() => {
+    // 그리는 중에는 **읽기만** 한다 — React 가 첫 그리기를 버리고 다시 그릴 수
+    // 있어서, 여기서 지우면 두 번째 그리기가 빈손이 된다(village-return 참고).
+    const back = peekReturn(currentSpot?.id ?? '');
+    return back ? [back.x, 0, back.z, back.yaw] : [0, 0, 30, 0];
   });
-  const avatarPos = useRef(new THREE.Vector3(...spawn));
-  const avatarYaw = useRef(0);
+  useEffect(() => {
+    // 표는 화면이 선 다음에 한 번만 지운다
+    clearReturn(currentSpot?.id ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const avatarPos = useRef(new THREE.Vector3(spawn[0], spawn[1], spawn[2]));
+  const avatarYaw = useRef(spawn[3]);
 
   /**
    * 문에 들어가기 직전에 서 있던 자리를 적어 둔다.
@@ -2837,7 +2844,7 @@ export default function VillageMapScene({
         <WalkerAvatar
           avatarPos={avatarPos}
           bounds={{ xMin: -R, xMax: R, zMin: -R, zMax: R }}
-          start={spawn}
+          start={[spawn[0], spawn[1], spawn[2]]}
           maxSpeed={speedOf(riding ? 'car' : 'walk', vehicle)}
           avatarId={avatarId}
           avatarCustom={avatarCustom}

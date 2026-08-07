@@ -95,21 +95,30 @@ export function villageHref(): string {
 }
 
 /**
- * 돌아왔을 때 설 자리를 꺼낸다. **꺼내면 지운다.**
+ * 돌아왔을 때 설 자리 — **읽기와 지우기를 갈랐다.**
  *
- * 안 지우면 그 뒤로 워프를 하든 뭘 하든 새로고침할 때마다 그 자리로 끌려간다.
- * 이건 '한 번 돌아가는 표' 지 '내 집 주소' 가 아니다.
+ * 처음엔 꺼내면서 지우는 `takeReturn` 하나였고, 화면이 그리는 중에 불렀다.
+ * 그런데 React 는 (Suspense·동시 렌더링 때문에) **첫 그리기를 버리고 다시
+ * 그릴 수 있다** — 첫 호출이 이미 지워버려서 두 번째 그리기는 빈손이었고,
+ * 보건소에 들어갔다 나오면 죄다 학교 앞이었다. 그리는 중에는 읽기만 하고,
+ * 지우는 것은 화면이 선 다음(effect)에 한다.
  */
-export function takeReturn(spotId: string): ReturnSpot | null {
+export function peekReturn(spotId: string): ReturnSpot | null {
   if (typeof window === 'undefined' || !spotId) return null;
   try {
-    const bag = read();
-    const v = bag[spotId];
-    if (!v) return null;
-    delete bag[spotId];
-    sessionStorage.setItem(KEY, JSON.stringify(bag));
-    return v;
+    return read()[spotId] ?? null;
   } catch {
     return null;
   }
+}
+
+/** 자리를 잡았으면 표를 지운다 — 안 지우면 새로고침마다 그 자리로 끌려간다 */
+export function clearReturn(spotId: string) {
+  if (typeof window === 'undefined' || !spotId) return;
+  try {
+    const bag = read();
+    if (!(spotId in bag)) return;
+    delete bag[spotId];
+    sessionStorage.setItem(KEY, JSON.stringify(bag));
+  } catch {}
 }
