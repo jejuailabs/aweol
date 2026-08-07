@@ -32,6 +32,8 @@ import {
 } from '@/lib/village-travel';
 import { backdropClose } from '@/lib/backdrop';
 import { MatcapMat } from './MatcapMat';
+import NpcBillboard from './NpcBillboard';
+import { APP_IMAGES } from '@/lib/image-urls';
 import type { Occluder } from '@/lib/baked';
 import { bakeGroundGeometry } from './baked-three';
 
@@ -119,7 +121,19 @@ const ROOF_COLORS = ['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'];
  * 흙·모래 계열 몇 가지를 돌려 쓰면 동네처럼 보인다. 비용은 0이다
  * (어차피 건물마다 재질이 하나씩이다).
  */
-const WALL_COLORS = ['#EFE5D3', '#E6DAC5', '#E9DFCE', '#DFD3BE', '#F0E7D6', '#E2D8C8'];
+/** 기관 종류 → 문 앞에 서는 NPC 그림 (gpt-image-2, app-assets) */
+const NPC_OF_KIND: Record<string, string> = {
+  townhall: APP_IMAGES.npcOfficer,
+  police: APP_IMAGES.npcOfficer,
+  post_office: APP_IMAGES.npcPostman,
+  library: APP_IMAGES.npcLibrarian,
+  health: APP_IMAGES.npcLibrarian,
+};
+
+/** 배경 지붕 4색 — 묵은 기와·슬레이트 느낌의 낮은 채도 */
+const PLAIN_ROOF_COLORS = ['#C08A66', '#95A78C', '#8E9DB2', '#C4A96B'];
+
+const WALL_COLORS = ['#EFE5D3', '#E6DAC5', '#F2E0DA', '#DFE8DC', '#DDE4EE', '#F0E7D6', '#E9D8C8', '#F4E6C8'];
 
 /** 건물 바닥 다각형을 세운다 */
 function Buildings({ list, onEnterPlace, places }: {
@@ -208,31 +222,35 @@ function Buildings({ list, onEnterPlace, places }: {
    * 색이 다 같아도 되는 배경 지붕이므로 지오메트리를 병합해 한 번에 그린다.
    */
   const plainRoofs = useMemo(() => {
-    const parts: THREE.BufferGeometry[] = [];
-    for (const b of list) {
-      if (b.n) continue;
+    // 색 4버킷 — 한 색 한 덩어리였더니 마을이 단조로웠다. 드로우콜 1→4.
+    const buckets: THREE.BufferGeometry[][] = [[], [], [], []];
+    list.forEach((b, bi) => {
+      if (b.n) return;
       const shape = new THREE.Shape();
       b.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
       shape.closePath();
       const g = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
       g.rotateX(-PI / 2);
       g.translate(0, b.h + 0.02, 0);
-      parts.push(g);
-    }
-    if (!parts.length) return null;
-    const merged = mergeGeometries(parts);
-    parts.forEach((g) => g.dispose());
-    return merged;
+      // 색은 건물 차례를 씨앗 삼아 — 같은 마을은 늘 같은 지붕
+      buckets[bi % buckets.length].push(g);
+    });
+    return buckets.map((parts) => {
+      if (!parts.length) return null;
+      const merged = mergeGeometries(parts);
+      parts.forEach((g) => g.dispose());
+      return merged;
+    });
   }, [list]);
-  useEffect(() => () => { plainRoofs?.dispose(); }, [plainRoofs]);
+  useEffect(() => () => { plainRoofs.forEach((g) => g?.dispose()); }, [plainRoofs]);
 
   return (
     <group>
-      {plainRoofs && (
-        <mesh geometry={plainRoofs}>
-          <MatcapMat color="#B7A78D" />
+      {plainRoofs.map((g, i) => g && (
+        <mesh key={`pr${i}`} geometry={g}>
+          <MatcapMat color={PLAIN_ROOF_COLORS[i]} />
         </mesh>
-      )}
+      ))}
       {geos.map((geo, i) => {
         const b = list[i];
         const named = !!b.n;
@@ -315,6 +333,20 @@ function Buildings({ list, onEnterPlace, places }: {
                   <boxGeometry args={[Math.min(1.8, d.w * 0.4), 0.18, 0.8]} />
                   <MatcapMat color="#C9BCA4" />
                 </mesh>
+                {/*
+                  NPC — 문 옆에 서 있는 사람 그림(빌보드). 그림이 서 있으면
+                  '여기 사람이 있구나 = 들어갈 수 있구나' 가 말 없이 전해진다.
+                  누르면 문을 누른 것과 같다.
+                */}
+                {civicKind && NPC_OF_KIND[civicKind] && (
+                  <NpcBillboard
+                    url={NPC_OF_KIND[civicKind]}
+                    x={Math.min(d.w * 0.32, 2.6)}
+                    z={d.d / 2 + 1.7}
+                    h={2.05}
+                    onClick={onEnterPlace ? () => onEnterPlace(civicKind) : undefined}
+                  />
+                )}
                 {/* 들어갈 수 있는 곳은 현관 지붕까지 — 눈에 띄어야 눌러본다 */}
                 {civicKind && (
                   <mesh position={[0, b.h * 0.36, d.d / 2 + 0.55]} {...enter}>
