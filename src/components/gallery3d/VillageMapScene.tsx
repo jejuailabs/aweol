@@ -147,7 +147,7 @@ function Buildings({ list, onEnterPlace, places }: {
     () =>
       list.map((b) => {
         const shape = new THREE.Shape();
-        b.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
+        [...b.p].reverse().forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, -z) : shape.lineTo(x, -z)));
         shape.closePath();
         const geo = new THREE.ExtrudeGeometry(shape, { depth: b.h, bevelEnabled: false });
         // Shape 는 XY 평면에 그려지므로 눕혀서 XZ 로 보낸다
@@ -204,7 +204,7 @@ function Buildings({ list, onEnterPlace, places }: {
       list.map((b) => {
         if (!b.n) return null;
         const shape = new THREE.Shape();
-        b.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
+        [...b.p].reverse().forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, -z) : shape.lineTo(x, -z)));
         shape.closePath();
         const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false });
         geo.rotateX(-PI / 2);
@@ -227,7 +227,7 @@ function Buildings({ list, onEnterPlace, places }: {
     list.forEach((b, bi) => {
       if (b.n) return;
       const shape = new THREE.Shape();
-      b.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
+      [...b.p].reverse().forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, -z) : shape.lineTo(x, -z)));
       shape.closePath();
       const g = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
       g.rotateX(-PI / 2);
@@ -1199,7 +1199,7 @@ function Areas({ list }: { list: VillageData['a'] }) {
     () =>
       list.map((a) => {
         const shape = new THREE.Shape();
-        a.p.forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z)));
+        [...a.p].reverse().forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, -z) : shape.lineTo(x, -z)));
         shape.closePath();
         const geo = new THREE.ShapeGeometry(shape);
         geo.rotateX(-PI / 2);

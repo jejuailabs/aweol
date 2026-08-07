@@ -793,27 +793,27 @@ export function WalkerAvatar({
       </group>
 
       {/* 머리 */}
-      <mesh position={[0, 1.02, 0]} castShadow>
-        <sphereGeometry args={[0.3, 20, 20]} />
+      <mesh position={[0, 1.05, 0]} castShadow>
+        <sphereGeometry args={[0.36, 20, 20]} />
         <MatcapMat color={look.skin} />
       </mesh>
 
       {/* 머리카락 */}
       {look.hairStyle !== 'none' && (
         <>
-          <mesh position={[0, 1.2, -0.02]}>
-            <sphereGeometry args={[0.29, 20, 20, 0, PI * 2, 0, HALF_PI * 1.1]} />
+          <mesh position={[0, 1.26, -0.02]}>
+            <sphereGeometry args={[0.385, 20, 20, 0, PI * 2, 0, HALF_PI * 1.1]} />
             <MatcapMat color={look.hair} />
           </mesh>
-          <mesh position={[-0.26, 1.05, 0]}>
-            <sphereGeometry args={[0.09, 10, 10]} />
+          <mesh position={[-0.34, 1.07, 0]}>
+            <sphereGeometry args={[0.11, 10, 10]} />
             <MatcapMat color={look.hair} />
           </mesh>
-          <mesh position={[0.26, 1.05, 0]}>
-            <sphereGeometry args={[0.09, 10, 10]} />
+          <mesh position={[0.34, 1.07, 0]}>
+            <sphereGeometry args={[0.11, 10, 10]} />
             <MatcapMat color={look.hair} />
           </mesh>
-          <mesh position={[0, 1.28, 0.2]} rotation={[0.5, 0, 0]}>
+          <mesh position={[0, 1.35, 0.24]} rotation={[0.5, 0, 0]}>
             <coneGeometry args={[0.06, 0.12, 8]} />
             <MatcapMat color={look.hair} />
           </mesh>
@@ -822,15 +822,15 @@ export function WalkerAvatar({
       {/* 긴 머리 — 뒤로 늘어뜨린 볼륨 */}
       {look.hairStyle === 'long' && (
         <>
-          <mesh position={[0, 0.9, -0.2]} scale={[1, 1.35, 0.75]}>
-            <sphereGeometry args={[0.24, 14, 14]} />
+          <mesh position={[0, 0.92, -0.24]} scale={[1, 1.35, 0.75]}>
+            <sphereGeometry args={[0.27, 14, 14]} />
             <MatcapMat color={look.hair} />
           </mesh>
-          <mesh position={[-0.24, 0.82, -0.1]} scale={[0.7, 1.5, 0.7]}>
+          <mesh position={[-0.28, 0.84, -0.1]} scale={[0.7, 1.5, 0.7]}>
             <sphereGeometry args={[0.12, 10, 10]} />
             <MatcapMat color={look.hair} />
           </mesh>
-          <mesh position={[0.24, 0.82, -0.1]} scale={[0.7, 1.5, 0.7]}>
+          <mesh position={[0.28, 0.84, -0.1]} scale={[0.7, 1.5, 0.7]}>
             <sphereGeometry args={[0.12, 10, 10]} />
             <MatcapMat color={look.hair} />
           </mesh>
@@ -839,9 +839,9 @@ export function WalkerAvatar({
 
       {/* 모자 / 머리 장식 */}
       {look.hat === 'beret' && (
-        <group position={[0, 1.3, -0.02]} rotation={[0, 0, 0.18]}>
+        <group position={[0, 1.4, -0.02]} rotation={[0, 0, 0.18]}>
           <mesh scale={[1, 0.45, 1]}>
-            <sphereGeometry args={[0.27, 16, 16]} />
+            <sphereGeometry args={[0.32, 16, 16]} />
             <MatcapMat color={look.hatColor} />
           </mesh>
           <mesh position={[0, 0.1, 0]}>
@@ -851,20 +851,20 @@ export function WalkerAvatar({
         </group>
       )}
       {look.hat === 'cap' && (
-        <group position={[0, 1.24, 0]}>
+        <group position={[0, 1.31, 0]}>
           <mesh scale={[1, 0.62, 1]}>
-            <sphereGeometry args={[0.3, 16, 16, 0, PI * 2, 0, HALF_PI]} />
+            <sphereGeometry args={[0.36, 16, 16, 0, PI * 2, 0, HALF_PI]} />
             <MatcapMat color={look.hatColor} />
           </mesh>
           {/* 챙 */}
-          <mesh position={[0, -0.01, 0.24]} rotation={[NEG_HALF_PI * 0.92, 0, 0]}>
-            <circleGeometry args={[0.19, 16, 0, PI]} />
+          <mesh position={[0, -0.01, 0.29]} rotation={[NEG_HALF_PI * 0.92, 0, 0]}>
+            <circleGeometry args={[0.22, 16, 0, PI]} />
             <MatcapMat color={look.hatColor} side={THREE.DoubleSide} />
           </mesh>
         </group>
       )}
       {look.hat === 'ribbon' && (
-        <group position={[0.2, 1.26, 0.06]} rotation={[0, 0, -0.3]}>
+        <group position={[0.24, 1.33, 0.07]} rotation={[0, 0, -0.3]}>
           <mesh position={[-0.05, 0, 0]} scale={[1, 0.7, 0.5]}>
             <sphereGeometry args={[0.07, 10, 10]} />
             <MatcapMat color={look.hatColor} />
@@ -880,7 +880,7 @@ export function WalkerAvatar({
         </group>
       )}
       {look.hat === 'antenna' && (
-        <group position={[0, 1.3, 0]}>
+        <group position={[0, 1.38, 0]}>
           <mesh position={[0, 0.08, 0]}>
             <cylinderGeometry args={[0.012, 0.012, 0.18, 6]} />
             <MatcapMat color="#8FA0B0" />
@@ -893,9 +893,9 @@ export function WalkerAvatar({
       )}
       {/* 왕관 — 띠 + 뾰족한 봉우리 5개 + 보석 */}
       {look.hat === 'crown' && (
-        <group position={[0, 1.3, 0]}>
+        <group position={[0, 1.4, 0]}>
           <mesh>
-            <cylinderGeometry args={[0.235, 0.235, 0.08, 16, 1, true]} />
+            <cylinderGeometry args={[0.28, 0.28, 0.09, 16, 1, true]} />
             <MatcapMat
               color={look.hatColor}
               side={THREE.DoubleSide}
@@ -904,14 +904,14 @@ export function WalkerAvatar({
           {[0, 1, 2, 3, 4].map((i) => {
             const a = (i / 5) * PI * 2;
             return (
-              <mesh key={`sp-${i}`} position={[Math.sin(a) * 0.2, 0.09, Math.cos(a) * 0.2]}>
+              <mesh key={`sp-${i}`} position={[Math.sin(a) * 0.24, 0.1, Math.cos(a) * 0.24]}>
                 <coneGeometry args={[0.055, 0.13, 4]} />
                 <MatcapMat color={look.hatColor} />
               </mesh>
             );
           })}
-          <mesh position={[0, 0.02, 0.235]}>
-            <octahedronGeometry args={[0.045, 0]} />
+          <mesh position={[0, 0.02, 0.28]}>
+            <octahedronGeometry args={[0.05, 0]} />
             <MatcapMat color="#E8493C" />
           </mesh>
         </group>
@@ -919,7 +919,7 @@ export function WalkerAvatar({
 
       {/* 상점 장식 */}
       {look.deco === 'glasses' && (
-        <group position={[0, 1.05, 0.235]}>
+        <group position={[0, 1.07, 0.29]}>
           {[-0.09, 0.09].map((x) => (
             <mesh key={`lens-${x}`} position={[x, 0, 0]} rotation={[HALF_PI, 0, 0]}>
               <torusGeometry args={[0.062, 0.014, 8, 16]} />
@@ -933,7 +933,7 @@ export function WalkerAvatar({
         </group>
       )}
       {look.deco === 'star' && (
-        <mesh position={[0.19, 1.38, 0.08]} rotation={[0.3, 0.4, 0.3]}>
+        <mesh position={[0.22, 1.46, 0.09]} rotation={[0.3, 0.4, 0.3]}>
           <octahedronGeometry args={[0.075, 0]} />
           <MatcapMat color="#FFD93D" />
         </mesh>
@@ -961,7 +961,7 @@ export function WalkerAvatar({
       {look.ears === 'cat' && (
         <>
           {[-0.16, 0.16].map((x) => (
-            <group key={`ear-${x}`} position={[x, 1.26, 0]} rotation={[0, 0, x < 0 ? 0.25 : -0.25]}>
+            <group key={`ear-${x}`} position={[x * 1.2, 1.34, 0]} rotation={[0, 0, x < 0 ? 0.25 : -0.25]}>
               <mesh>
                 <coneGeometry args={[0.09, 0.18, 4]} />
                 <MatcapMat color={look.earColor} />
@@ -979,7 +979,7 @@ export function WalkerAvatar({
           {[-0.26, 0.26].map((x) => (
             <mesh
               key={`dear-${x}`}
-              position={[x, 1.1, 0]}
+              position={[x * 1.18, 1.13, 0]}
               rotation={[0, 0, x < 0 ? 0.35 : -0.35]}
               scale={[0.65, 1.5, 0.6]}
             >
@@ -991,40 +991,40 @@ export function WalkerAvatar({
       )}
 
       {/* 눈 + 하이라이트 */}
-      <mesh position={[-0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
-        <sphereGeometry args={[0.055, 12, 12]} />
+      <mesh position={[-0.12, 1.07, 0.3]} scale={[1, 1.5, 0.5]}>
+        <sphereGeometry args={[0.075, 12, 12]} />
         <MatcapMat color="#2B2016" />
       </mesh>
-      <mesh position={[0.1, 1.04, 0.25]} scale={[1, 1.5, 0.5]}>
-        <sphereGeometry args={[0.055, 12, 12]} />
+      <mesh position={[0.12, 1.07, 0.3]} scale={[1, 1.5, 0.5]}>
+        <sphereGeometry args={[0.075, 12, 12]} />
         <MatcapMat color="#2B2016" />
       </mesh>
-      <mesh position={[-0.085, 1.08, 0.29]}>
-        <sphereGeometry args={[0.016, 6, 6]} />
+      <mesh position={[-0.095, 1.115, 0.37]}>
+        <sphereGeometry args={[0.024, 6, 6]} />
         <meshBasicMaterial color="#FFFFFF" />
       </mesh>
-      <mesh position={[0.115, 1.08, 0.29]}>
-        <sphereGeometry args={[0.016, 6, 6]} />
+      <mesh position={[0.145, 1.115, 0.37]}>
+        <sphereGeometry args={[0.024, 6, 6]} />
         <meshBasicMaterial color="#FFFFFF" />
       </mesh>
 
       {/* 동물 주둥이 */}
       {look.muzzle && (
-        <mesh position={[0, 0.93, 0.26]} scale={[1.5, 1, 0.9]}>
+        <mesh position={[0, 0.95, 0.31]} scale={[1.5, 1, 0.9]}>
           <sphereGeometry args={[0.1, 12, 12]} />
           <MatcapMat color="#FFF3E0" />
         </mesh>
       )}
 
       {/* 코 */}
-      <mesh position={[0, look.muzzle ? 0.96 : 0.97, look.muzzle ? 0.35 : 0.29]}>
+      <mesh position={[0, look.muzzle ? 0.98 : 1.0, look.muzzle ? 0.41 : 0.37]}>
         <sphereGeometry args={[look.muzzle ? 0.04 : 0.035, 10, 10]} />
         <MatcapMat color={look.muzzle ? '#4A3A2A' : '#FFC89E'} />
       </mesh>
 
       {/* 입 */}
       <mesh
-        position={[0, look.muzzle ? 0.89 : 0.9, look.muzzle ? 0.33 : 0.27]}
+        position={[0, look.muzzle ? 0.91 : 0.93, look.muzzle ? 0.39 : 0.35]}
         rotation={[0.35, 0, 0]}
         scale={[1.5, 0.7, 0.5]}
       >
@@ -1035,11 +1035,11 @@ export function WalkerAvatar({
       {/* 볼터치 */}
       {look.cheek && (
         <>
-          <mesh position={[-0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
+          <mesh position={[-0.23, 0.975, 0.315]} scale={[1.3, 0.9, 0.5]}>
             <sphereGeometry args={[0.04, 8, 8]} />
             <MatcapMat color="#FF9EAF" transparent opacity={0.65} />
           </mesh>
-          <mesh position={[0.18, 0.95, 0.21]} scale={[1.3, 0.9, 0.5]}>
+          <mesh position={[0.23, 0.975, 0.315]} scale={[1.3, 0.9, 0.5]}>
             <sphereGeometry args={[0.04, 8, 8]} />
             <MatcapMat color="#FF9EAF" transparent opacity={0.65} />
           </mesh>
@@ -1048,7 +1048,7 @@ export function WalkerAvatar({
 
       {/* 기본 별 장식 (모자·귀가 없고, 상점 장식도 안 낀 맨머리일 때만) */}
       {look.hat === 'none' && look.ears === 'none' && look.deco === 'none' && (
-        <mesh position={[0.18, 1.32, 0.12]} rotation={[0.3, 0.4, 0.3]}>
+        <mesh position={[0.2, 1.42, 0.13]} rotation={[0.3, 0.4, 0.3]}>
           <octahedronGeometry args={[0.05, 0]} />
           <MatcapMat color="#FFD93D" />
         </mesh>

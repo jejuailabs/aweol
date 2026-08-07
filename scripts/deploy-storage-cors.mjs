@@ -19,6 +19,8 @@ const ORIGINS = [
   'https://aweol.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
+  // 개발 서버 기본 포트(launch.json) — scene-lab 이 NPC 텍스처를 받는다
+  'http://localhost:3100',
 ];
 
 const auth = new GoogleAuth({

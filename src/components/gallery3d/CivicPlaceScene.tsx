@@ -14,6 +14,18 @@ import {
 } from '@/lib/village-rpg';
 import { backdropClose } from '@/lib/backdrop';
 import { MatcapMat } from './MatcapMat';
+import NpcBillboard from './NpcBillboard';
+import { APP_IMAGES } from '@/lib/image-urls';
+
+/** 기관 종류 → 창구에 서는 사람 그림 (gpt-image-2, app-assets) */
+const CLERK_IMG: Record<string, string> = {
+  townhall: APP_IMAGES.npcOfficer,
+  police: APP_IMAGES.npcOfficer,
+  nonghyup: APP_IMAGES.npcOfficer,
+  post_office: APP_IMAGES.npcPostman,
+  library: APP_IMAGES.npcLibrarian,
+  health: APP_IMAGES.npcLibrarian,
+};
 
 const PI = Math.PI;
 const NEG_HALF_PI = -PI * 0.5;
@@ -292,9 +304,11 @@ function Fixtures({ list }: { list: Fixture[] }) {
 
 /** 직원 — 창구 안쪽에 서서, 가까이 오면 자기 일을 말한다 */
 function Clerk({
-  x, emoji, name, hasGuide, plainTalk, done, active, onTalk, tone = '#E8A33C',
+  x, emoji, name, hasGuide, plainTalk, done, active, onTalk, tone = '#E8A33C', img,
 }: {
   x: number;
+  /** 사람 그림(빌보드). 있으면 원통 인형 대신 그림이 선다. */
+  img?: string;
   emoji: string;
   name: string;
   /** 말을 걸 수 있는 사람인가 — 머리 위에 느낌표가 뜬다 */
@@ -321,20 +335,26 @@ function Clerk({
 
   return (
     <group position={[x, 0, -5.0]}>
-      {/* 몸 — 이야기해 줄 사람은 옷 색이 다르다(느낌표만으로는 멀리서 안 보인다) */}
-      <mesh
-        position={[0, 0.85, 0]}
-        onClick={talkable && onTalk ? (e) => { e.stopPropagation(); onTalk(); } : undefined}
-        onPointerOver={talkable ? (e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; } : undefined}
-        onPointerOut={talkable ? () => { document.body.style.cursor = 'auto'; } : undefined}
-      >
-        <capsuleGeometry args={[0.32, 0.8, 4, 12]} />
-        <MatcapMat color={hasGuide ? tone : '#5B6B8A'} />
-      </mesh>
-      <mesh position={[0, 1.62, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <MatcapMat color="#F2D3B3" />
-      </mesh>
+      {/* 사람 — 그림이 있으면 그림이, 없으면 인형이 선다 */}
+      {img ? (
+        <NpcBillboard url={img} x={0} z={0} h={2.0} onClick={talkable ? onTalk : undefined} />
+      ) : (
+        <>
+          <mesh
+            position={[0, 0.85, 0]}
+            onClick={talkable && onTalk ? (e) => { e.stopPropagation(); onTalk(); } : undefined}
+            onPointerOver={talkable ? (e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; } : undefined}
+            onPointerOut={talkable ? () => { document.body.style.cursor = 'auto'; } : undefined}
+          >
+            <capsuleGeometry args={[0.32, 0.8, 4, 12]} />
+            <MatcapMat color={hasGuide ? tone : '#5B6B8A'} />
+          </mesh>
+          <mesh position={[0, 1.62, 0]}>
+            <sphereGeometry args={[0.3, 16, 16]} />
+            <MatcapMat color="#F2D3B3" />
+          </mesh>
+        </>
+      )}
 
       {/*
         느낌표 — **아직 안 들은 사람에게만.**
@@ -715,6 +735,7 @@ export default function CivicPlaceScene({
              */
             done={c.done}
             tone={c.tone}
+            img={CLERK_IMG[place.kind]}
             onTalk={() => talkTo(c.i)}
           />
         ))}

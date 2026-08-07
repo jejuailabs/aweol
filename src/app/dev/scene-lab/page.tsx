@@ -50,8 +50,12 @@ export default function SceneLabPage() {
     return { yaw, dist: n('dist', 12), pitch: n('pitch', 0.45) };
   });
   useEffect(() => {
-    // 씬(자식)의 resetControls 뒤에 실행된다 — 부모 effect 가 나중이라 이긴다
-    if (cam) resetControls(cam.yaw, cam.dist, cam.pitch);
+    // 씬이 dynamic import 라 나중에 마운트하며 제 값으로 리셋한다 —
+    // 첫 3초 동안 반복해서 덮어써 실험실 값이 이기게 한다
+    if (!cam) return;
+    const t = setInterval(() => resetControls(cam.yaw, cam.dist, cam.pitch), 300);
+    const stop = setTimeout(() => clearInterval(t), 3200);
+    return () => { clearInterval(t); clearTimeout(stop); };
   }, [cam]);
 
   return (
@@ -65,8 +69,6 @@ export default function SceneLabPage() {
         onEnterSchool={noop}
         onEnterPlace={noop}
         onEnterSite={noop}
-        localSites={[]}
-        localPlaces={[]}
         spots={spots}
         currentSpot={home}
         onGoSpot={noop}
