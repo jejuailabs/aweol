@@ -238,7 +238,7 @@ function Artwork({
       {dark && <SpotBeam w={w} h={h} warm={warm} />}
 
       {/* 액자 */}
-      <mesh position={[0, 0, 0.02]} castShadow {...grab}>
+      <mesh position={[0, 0, 0.02]} {...grab}>
         <boxGeometry args={[w + 0.16, h + 0.16, 0.07]} />
         <meshStandardMaterial color={frameColor} roughness={0.5} metalness={0.15} />
       </mesh>
@@ -481,7 +481,7 @@ function TrackLights({ dark }: { dark: boolean }) {
           </mesh>
           {([-6, -2, 2, 6] as const).map((z) => (
             <group key={z} position={[x, ROOM_H - 0.42, z]} rotation={[0.42, 0, 0]}>
-              <mesh castShadow>
+              <mesh>
                 <cylinderGeometry args={[0.13, 0.17, 0.42, 10]} />
                 <meshStandardMaterial color="#3A3630" metalness={0.6} roughness={0.4} />
               </mesh>
@@ -568,7 +568,6 @@ export default function ArtShowScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [0, 4.5, 13], fov: 52, near: 0.1, far: 120 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: t.ceiling }}
@@ -589,14 +588,13 @@ export default function ArtShowScene({
           position={[0, 12, 6]}
           intensity={dark ? 0.35 : 0.6}
           color="#FFF8E8"
-          castShadow
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
           shadow-bias={-0.0006}
         />
 
         {/* 바닥 */}
-        <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+        <mesh rotation={[NEG_HALF_PI, 0, 0]}>
           <planeGeometry args={[ROOM_W, ROOM_D]} />
           <meshStandardMaterial color={t.floor} roughness={dark ? 0.5 : 0.62} metalness={0.05} />
         </mesh>
@@ -607,15 +605,15 @@ export default function ArtShowScene({
         </mesh>
 
         {/* 벽 셋 — 앞은 열어 둔다(들어온 쪽) */}
-        <mesh position={[0, ROOM_H / 2, -ROOM_D / 2]} receiveShadow>
+        <mesh position={[0, ROOM_H / 2, -ROOM_D / 2]}>
           <planeGeometry args={[ROOM_W, ROOM_H]} />
           <meshStandardMaterial color={t.wall} roughness={0.95} />
         </mesh>
-        <mesh position={[-ROOM_W / 2, ROOM_H / 2, 0]} rotation={[0, HALF_PI, 0]} receiveShadow>
+        <mesh position={[-ROOM_W / 2, ROOM_H / 2, 0]} rotation={[0, HALF_PI, 0]}>
           <planeGeometry args={[ROOM_D, ROOM_H]} />
           <meshStandardMaterial color={t.wall} roughness={0.95} />
         </mesh>
-        <mesh position={[ROOM_W / 2, ROOM_H / 2, 0]} rotation={[0, NEG_HALF_PI, 0]} receiveShadow>
+        <mesh position={[ROOM_W / 2, ROOM_H / 2, 0]} rotation={[0, NEG_HALF_PI, 0]}>
           <planeGeometry args={[ROOM_D, ROOM_H]} />
           <meshStandardMaterial color={t.wall} roughness={0.95} />
         </mesh>
@@ -625,7 +623,6 @@ export default function ArtShowScene({
             key={s}
             position={[s * (ROOM_W / 4 + 1.5), ROOM_H / 2, ROOM_D / 2]}
             rotation={[0, PI, 0]}
-            receiveShadow
           >
             <planeGeometry args={[ROOM_W / 2 - 3, ROOM_H]} />
             <meshStandardMaterial color={t.wall} roughness={0.95} />
@@ -645,7 +642,7 @@ export default function ArtShowScene({
         ))}
 
         {/* 가운데 가림벽 — 미술관이 늘 쓰는 수법. 동선이 생기고 벽이 두 배가 된다. */}
-        <mesh position={[0, PARTITION_H / 2, PARTITION_Z]} castShadow receiveShadow>
+        <mesh position={[0, PARTITION_H / 2, PARTITION_Z]}>
           <boxGeometry args={[PARTITION_W, PARTITION_H, 0.4]} />
           <meshStandardMaterial color={t.wall} roughness={0.95} />
         </mesh>
@@ -741,12 +738,12 @@ export default function ArtShowScene({
 
         {/* 가운데 긴 의자 — 앉아서 오래 보는 자리 */}
         <group position={[0, 0, -3.5]}>
-          <mesh position={[0, 0.44, 0]} castShadow receiveShadow>
+          <mesh position={[0, 0.44, 0]}>
             <boxGeometry args={[3.6, 0.18, 1.1]} />
             <meshStandardMaterial color={dark ? '#3A3A40' : '#C9C4BB'} roughness={0.7} />
           </mesh>
           {([-1.5, 1.5] as const).map((bx) => (
-            <mesh key={bx} position={[bx, 0.2, 0]} castShadow>
+            <mesh key={bx} position={[bx, 0.2, 0]}>
               <boxGeometry args={[0.24, 0.4, 0.95]} />
               <meshStandardMaterial color={dark ? '#2A2A2E' : '#A9A399' } roughness={0.8} />
             </mesh>

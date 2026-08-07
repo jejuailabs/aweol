@@ -10,6 +10,7 @@ import NoticeWall from './NoticeWall';
 import type { NoticeKind } from '@/lib/firestore-schema';
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
+import { MatcapMat } from './MatcapMat';
 
 // 책상+의자 한 세트를 하나의 장애물로 본다 (Desks의 rows/cols와 같은 값을 써야 한다)
 const DESK_ROWS = [1.2, 3.2];
@@ -65,59 +66,59 @@ function RoomShell() {
   return (
     <group>
       {/* 바닥 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#D8A876" roughness={0.65} />
+        <MatcapMat color="#D8A876" />
       </mesh>
       {Array.from({ length: 7 }).map((_, i) => (
         <mesh key={`fl-${i}`} rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.004, -halfD + i * 1.8 + 0.9]}>
           <planeGeometry args={[W, 0.025]} />
-          <meshStandardMaterial color="#C08E58" />
+          <MatcapMat color="#C08E58" />
         </mesh>
       ))}
 
       {/* 천장 */}
       <mesh rotation={[HALF_PI, 0, 0]} position={[0, H, 0]}>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#FDFBF5" />
+        <MatcapMat color="#FDFBF5" />
       </mesh>
 
       {/* 뒷벽 (칠판 벽) */}
-      <mesh position={[0, halfH, -halfD]} receiveShadow>
+      <mesh position={[0, halfH, -halfD]}>
         <planeGeometry args={[W, H]} />
-        <meshStandardMaterial color="#F6EEDF" />
+        <MatcapMat color="#F6EEDF" />
       </mesh>
 
       {/* 왼쪽 벽 (창문) */}
-      <mesh position={[-halfW, halfH, 0]} rotation={[0, HALF_PI, 0]} receiveShadow>
+      <mesh position={[-halfW, halfH, 0]} rotation={[0, HALF_PI, 0]}>
         <planeGeometry args={[D, H]} />
-        <meshStandardMaterial color="#F2E9D8" />
+        <MatcapMat color="#F2E9D8" />
       </mesh>
 
       {/* 오른쪽 벽 (게시판 벽) */}
-      <mesh position={[halfW, halfH, 0]} rotation={[0, NEG_HALF_PI, 0]} receiveShadow>
+      <mesh position={[halfW, halfH, 0]} rotation={[0, NEG_HALF_PI, 0]}>
         <planeGeometry args={[D, H]} />
-        <meshStandardMaterial color="#F2E9D8" />
+        <MatcapMat color="#F2E9D8" />
       </mesh>
 
       {/* 앞벽 */}
       <mesh position={[0, halfH, halfD]} rotation={[0, PI, 0]}>
         <planeGeometry args={[W, H]} />
-        <meshStandardMaterial color="#F6EEDF" />
+        <MatcapMat color="#F6EEDF" />
       </mesh>
 
       {/* 걸레받이 */}
       <mesh position={[0, 0.07, -halfD + 0.02]}>
         <boxGeometry args={[W, 0.14, 0.04]} />
-        <meshStandardMaterial color="#9C7248" />
+        <MatcapMat color="#9C7248" />
       </mesh>
       <mesh position={[-halfW + 0.02, 0.07, 0]} rotation={[0, HALF_PI, 0]}>
         <boxGeometry args={[D, 0.14, 0.04]} />
-        <meshStandardMaterial color="#9C7248" />
+        <MatcapMat color="#9C7248" />
       </mesh>
       <mesh position={[halfW - 0.02, 0.07, 0]} rotation={[0, NEG_HALF_PI, 0]}>
         <boxGeometry args={[D, 0.14, 0.04]} />
-        <meshStandardMaterial color="#9C7248" />
+        <MatcapMat color="#9C7248" />
       </mesh>
 
       {/* 창문 3개 (왼쪽 벽) */}
@@ -125,19 +126,19 @@ function RoomShell() {
         <group key={`win-${z}`} position={[-halfW + 0.03, 2.3, z]} rotation={[0, HALF_PI, 0]}>
           <mesh>
             <boxGeometry args={[2.2, 1.7, 0.06]} />
-            <meshStandardMaterial color="#FFFFFF" />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
           <mesh position={[0, 0, 0.035]}>
             <planeGeometry args={[1.95, 1.45]} />
-            <meshStandardMaterial color="#AEDCF5" emissive="#AEDCF5" emissiveIntensity={0.55} />
+            <MatcapMat color="#AEDCF5" />
           </mesh>
           <mesh position={[0, 0, 0.045]}>
             <boxGeometry args={[0.05, 1.45, 0.02]} />
-            <meshStandardMaterial color="#FFFFFF" />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
           <mesh position={[0, 0, 0.045]}>
             <boxGeometry args={[1.95, 0.05, 0.02]} />
-            <meshStandardMaterial color="#FFFFFF" />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
         </group>
       ))}
@@ -146,7 +147,7 @@ function RoomShell() {
       <group position={[0, 3.5, halfD - 0.05]} rotation={[0, PI, 0]}>
         <mesh>
           <cylinderGeometry args={[0.32, 0.32, 0.05, 24]} />
-          <meshStandardMaterial color="#FFFFFF" />
+          <MatcapMat color="#FFFFFF" />
         </mesh>
       </group>
     </group>
@@ -174,13 +175,13 @@ function ActivityBoard({
   return (
     <group position={[6.93, 2.1, 0]} rotation={[0, NEG_HALF_PI, 0]}>
       {/* 코르크 보드 */}
-      <mesh castShadow>
+      <mesh>
         <boxGeometry args={[boardW + 0.34, boardH + 0.34, 0.06]} />
-        <meshStandardMaterial color="#A97B4F" />
+        <MatcapMat color="#A97B4F" />
       </mesh>
       <mesh position={[0, 0, 0.035]}>
         <planeGeometry args={[boardW, boardH]} />
-        <meshStandardMaterial color="#D9B98A" roughness={0.95} />
+        <MatcapMat color="#D9B98A" />
       </mesh>
       {/* 보드 제목 — 동숲 팻말 */}
       <Html position={[0, boardH * 0.5 + 0.4, 0.05]} transform scale={0.38} pointerEvents="none" zIndexRange={[5, 0]}>
@@ -288,7 +289,7 @@ function ActivityPoster({
       {/* 압정 */}
       <mesh position={[0, 0.56, 0.05]}>
         <sphereGeometry args={[0.05, 10, 10]} />
-        <meshStandardMaterial color="#E74C3C" metalness={0.3} roughness={0.4} />
+        <MatcapMat color="#E74C3C" />
       </mesh>
       {/* 동숲 명패식 가로 카드 */}
       <Html position={[0, 0, 0.02]} transform scale={0.3} zIndexRange={[10, 0]}>
@@ -356,36 +357,31 @@ function Desks() {
           return (
             <group key={`desk-${x}-${z}`} position={[x, 0, z]}>
               {/* 상판 */}
-              <mesh position={[0, 0.62, 0]} castShadow>
+              <mesh position={[0, 0.62, 0]}>
                 <boxGeometry args={[0.85, 0.05, 0.55]} />
-                <meshStandardMaterial color="#F2D5A0" roughness={0.5} />
+                <MatcapMat color="#F2D5A0" />
               </mesh>
               {/* 다리 */}
               {([[-0.36, -0.22], [0.36, -0.22], [-0.36, 0.22], [0.36, 0.22]] as [number, number][]).map(([lx, lz]) => (
                 <mesh key={`l-${lx}-${lz}`} position={[lx, 0.3, lz]}>
                   <cylinderGeometry args={[0.025, 0.025, 0.6, 8]} />
-                  <meshStandardMaterial color="#8A8A8A" metalness={0.6} roughness={0.3} />
+                  <MatcapMat color="#8A8A8A" />
                 </mesh>
               ))}
               {/* 의자 — 반마다 다른 캔디 컬러. 누르면 아바타가 와서 앉는다 */}
               <mesh
                 position={[0, 0.36, 0.5]}
-                castShadow
                 onClick={(e) => { e.stopPropagation(); sitAt(x, z + 0.5, PI); }}
                 onPointerOver={(e) => { e.stopPropagation(); setHovered(`${x},${z}`); document.body.style.cursor = 'pointer'; }}
                 onPointerOut={() => { setHovered(null); document.body.style.cursor = 'auto'; }}
               >
                 <boxGeometry args={[0.42, 0.05, 0.4]} />
-                <meshStandardMaterial
-                  color={chairColor}
-                  roughness={0.55}
-                  emissive={chairColor}
-                  emissiveIntensity={hovered === `${x},${z}` ? 0.45 : 0}
-                />
+                {/* 눌릴 수 있다는 표시 — emissive 대신 색을 밝힌다 */}
+                <MatcapMat color={hovered === `${x},${z}` ? '#FFE9A8' : chairColor} />
               </mesh>
               <mesh position={[0, 0.62, 0.68]}>
                 <boxGeometry args={[0.42, 0.5, 0.05]} />
-                <meshStandardMaterial color={chairColor} roughness={0.55} />
+                <MatcapMat color={chairColor} />
               </mesh>
               {/* 앉으라는 표시 — 가리키기 전에는 안 띄운다 (8개가 다 떠 있으면 지저분하다) */}
               {hovered === `${x},${z}` && (
@@ -410,11 +406,11 @@ function Desks() {
       {/* 교실 중앙 원형 러그 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.012, -2.2]}>
         <circleGeometry args={[1.7, 24]} />
-        <meshStandardMaterial color="#8FD98A" roughness={0.95} />
+        <MatcapMat color="#8FD98A" />
       </mesh>
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.018, -2.2]}>
         <circleGeometry args={[1.3, 24]} />
-        <meshStandardMaterial color="#B8E8B4" roughness={0.95} />
+        <MatcapMat color="#B8E8B4" />
       </mesh>
 
       {/* 천장 만국기 */}
@@ -431,7 +427,7 @@ function Desks() {
             scale={[1, 1, 0.2]}
           >
             <coneGeometry args={[0.13, 0.3, 3]} />
-            <meshStandardMaterial color={colors[i % 5]} side={THREE.DoubleSide} roughness={0.8} />
+            <MatcapMat color={colors[i % 5]} side={THREE.DoubleSide} />
           </mesh>
         );
       })}
@@ -444,7 +440,7 @@ function ClassroomLighting() {
   return (
     <>
       <ambientLight intensity={0.55} color="#FFF6E6" />
-      <directionalLight position={[-6, 5, 2]} intensity={0.9} color="#FFF2D9" castShadow />
+      <directionalLight position={[-6, 5, 2]} intensity={0.9} color="#FFF2D9" />
       <pointLight position={[0, 3.8, 0]} intensity={0.35} color="#FFF8E7" distance={16} />
       <pointLight position={[6, 3, 0]} intensity={0.3} color="#FFF8E7" distance={10} />
     </>
@@ -501,7 +497,6 @@ export default function ClassroomScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [0, 3.4, 9.5], fov: 62, near: 0.1, far: 60 }}
         gl={{ antialias: true }}
         dpr={[1, 2]}

@@ -62,7 +62,7 @@ function Room() {
   return (
     <group>
       {/* 바닥 — 나무 느낌 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[roomW, roomD]} />
         <meshStandardMaterial color={floorColor} roughness={0.7} />
       </mesh>
@@ -81,7 +81,7 @@ function Room() {
       </mesh>
 
       {/* 뒷벽 */}
-      <mesh position={[0, halfH, -halfD]} receiveShadow>
+      <mesh position={[0, halfH, -halfD]}>
         <planeGeometry args={[roomW, roomH]} />
         <meshStandardMaterial color={wallColor} />
       </mesh>
@@ -92,7 +92,7 @@ function Room() {
       </mesh>
 
       {/* 왼쪽 벽 */}
-      <mesh position={[-halfW, halfH, 0]} rotation={[0, HALF_PI, 0]} receiveShadow>
+      <mesh position={[-halfW, halfH, 0]} rotation={[0, HALF_PI, 0]}>
         <planeGeometry args={[roomD, roomH]} />
         <meshStandardMaterial color={wallColor} />
       </mesh>
@@ -102,7 +102,7 @@ function Room() {
       </mesh>
 
       {/* 오른쪽 벽 */}
-      <mesh position={[halfW, halfH, 0]} rotation={[0, NEG_HALF_PI, 0]} receiveShadow>
+      <mesh position={[halfW, halfH, 0]} rotation={[0, NEG_HALF_PI, 0]}>
         <planeGeometry args={[roomD, roomH]} />
         <meshStandardMaterial color={wallColor} />
       </mesh>
@@ -170,7 +170,7 @@ function Room() {
       {/* 관람 벤치 2개 */}
       {[-2.5, 2.5].map((x) => (
         <group key={`bench-${x}`} position={[x, 0, 2.5]}>
-          <mesh position={[0, 0.42, 0]} castShadow>
+          <mesh position={[0, 0.42, 0]}>
             <boxGeometry args={[1.6, 0.08, 0.5]} />
             <meshStandardMaterial color="#A0714A" roughness={0.5} />
           </mesh>
@@ -186,7 +186,7 @@ function Room() {
       {/* 코너 화분 4개 */}
       {([[-7, -7], [7, -7], [-7, 6.5], [7, 6.5]] as [number, number][]).map(([px, pz]) => (
         <group key={`plant-${px}-${pz}`} position={[px, 0, pz]}>
-          <mesh position={[0, 0.3, 0]} castShadow>
+          <mesh position={[0, 0.3, 0]}>
             <cylinderGeometry args={[0.28, 0.35, 0.6, 12]} />
             <meshStandardMaterial color="#C96A4A" roughness={0.8} />
           </mesh>
@@ -207,7 +207,7 @@ function Room() {
 
       {/* 입구 안내판 */}
       <group position={[0, 0, 7.4]}>
-        <mesh position={[0, 0.75, 0]} rotation={[-0.18, 0, 0]} castShadow>
+        <mesh position={[0, 0.75, 0]} rotation={[-0.18, 0, 0]}>
           <boxGeometry args={[1.1, 1.3, 0.06]} />
           <meshStandardMaterial color="#5B4A3B" />
         </mesh>
@@ -325,7 +325,7 @@ function WallArtwork({
       onPointerOut={() => setHovered(false)}
     >
       {/* 액자 외곽 — 원목 */}
-      <mesh onClick={onClick} castShadow>
+      <mesh onClick={onClick}>
         <boxGeometry args={[frameW + 0.24, frameH + 0.24, 0.09]} />
         <meshStandardMaterial color={hovered ? '#B8894F' : '#9C7040'} roughness={0.4} />
       </mesh>
@@ -402,7 +402,6 @@ function WallArtwork({
         penumbra={0.6}
         intensity={near ? 2.5 : 1.2}
         color="#FFF8E7"
-        castShadow
       />
 
       {/* 근접 시 빛나는 테두리 */}
@@ -443,7 +442,7 @@ function SculptureArtwork({
   return (
     <group position={position}>
       {/* 좌대 */}
-      <mesh position={[0, 0.5, 0]} castShadow>
+      <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[0.9, 1, 0.9]} />
         <meshStandardMaterial color="#F5F5F5" roughness={0.3} />
       </mesh>
@@ -453,7 +452,7 @@ function SculptureArtwork({
       </mesh>
 
       {/* 작품 (회전하는 다면체) */}
-      <mesh ref={meshRef} position={[0, 1.6, 0]} onClick={onClick} castShadow>
+      <mesh ref={meshRef} position={[0, 1.6, 0]} onClick={onClick}>
         <dodecahedronGeometry args={[0.4, 0]} />
         <meshStandardMaterial color="#DDA0DD" metalness={0.15} roughness={0.5} />
       </mesh>
@@ -472,7 +471,7 @@ function SculptureArtwork({
         </Html>
       )}
 
-      <spotLight position={[0, 3.5, 0]} angle={0.35} penumbra={0.4} intensity={near ? 3 : 1.5} color="#FFF8E7" castShadow />
+      <spotLight position={[0, 3.5, 0]} angle={0.35} penumbra={0.4} intensity={near ? 3 : 1.5} color="#FFF8E7" />
     </group>
   );
 }
@@ -536,7 +535,7 @@ function GalleryLighting() {
   return (
     <>
       <ambientLight intensity={0.85} color="#FFF8E7" />
-      <directionalLight position={[5, 8, 5]} intensity={0.5} color="#FFFAF0" castShadow />
+      <directionalLight position={[5, 8, 5]} intensity={0.5} color="#FFFAF0" />
       <pointLight position={[0, 4.5, 0]} intensity={0.7} color="#FFF5E6" distance={24} />
       <pointLight position={[-6, 4, -6]} intensity={0.35} color="#FFF5E6" distance={14} />
       <pointLight position={[6, 4, -6]} intensity={0.35} color="#FFF5E6" distance={14} />
@@ -618,7 +617,6 @@ export default function ExhibitRoom({ artworks, onArtworkClick, avatarId, avatar
       style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}
     >
       <Canvas
-        shadows
         camera={{ position: [0, 3.5, 11], fov: 60, near: 0.1, far: 100 }}
         gl={{ antialias: true }}
         dpr={[1, 2]}

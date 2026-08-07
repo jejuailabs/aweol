@@ -14,6 +14,7 @@ import {
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
 import { startGalleryMusic } from '@/lib/gallery-music';
+import { MatcapMat } from './MatcapMat';
 /**
  * 광장·건물 크기와 **양식별 외관·마당·조형물**은 한 곳에서 온다.
  * 두 군데 적어두면 건물을 옮길 때 반드시 한쪽이 낡는다.
@@ -87,7 +88,7 @@ function ImagePlane({
   return (
     <mesh position={position} rotation={rotation}>
       <planeGeometry args={[w, h]} />
-      <meshStandardMaterial map={tex} roughness={0.85} toneMapped={false} />
+      <MatcapMat map={tex} toneMapped={false} />
     </mesh>
   );
 }
@@ -137,38 +138,37 @@ function Banner({
       {/* 기둥 둘 + 받침 */}
       {([-BW / 2 - 0.28, BW / 2 + 0.28] as const).map((px) => (
         <group key={px}>
-          <mesh position={[px, 5.1, 0]} castShadow {...grab}>
+          <mesh position={[px, 5.1, 0]} {...grab}>
             <cylinderGeometry args={[0.11, 0.13, 10.2, 10]} />
-            <meshStandardMaterial color="#6F6A64" metalness={0.45} roughness={0.4} />
+            <MatcapMat color="#6F6A64" />
           </mesh>
-          <mesh position={[px, 0.14, 0]} castShadow>
+          <mesh position={[px, 0.14, 0]}>
             <cylinderGeometry args={[0.42, 0.5, 0.28, 12]} />
-            <meshStandardMaterial color="#57534E" metalness={0.3} roughness={0.6} />
+            <MatcapMat color="#57534E" />
           </mesh>
         </group>
       ))}
       {/* 위아래 가로대 */}
       {([9.9, 9.9 - BH] as const).map((py) => (
-        <mesh key={py} position={[0, py, 0]} rotation={[0, 0, HALF_PI]} castShadow {...grab}>
+        <mesh key={py} position={[0, py, 0]} rotation={[0, 0, HALF_PI]} {...grab}>
           <cylinderGeometry args={[0.07, 0.07, BW + 0.7, 8]} />
-          <meshStandardMaterial color="#6F6A64" metalness={0.45} roughness={0.4} />
+          <MatcapMat color="#6F6A64" />
         </mesh>
       ))}
 
       <group ref={cloth} position={[0, 9.9 - BH / 2, 0]}>
         {/* 천 — 가리키면 살짝 밝아진다 */}
-        <mesh {...grab} castShadow>
+        <mesh {...grab}>
           <planeGeometry args={[BW, BH]} />
-          <meshStandardMaterial
+          <MatcapMat
             color={hot ? '#FFFFFF' : '#F7F5F1'}
             side={THREE.DoubleSide}
-            roughness={0.92}
           />
         </mesh>
         {/* 위쪽 색 띠 — 전시관 색으로 */}
         <mesh position={[0, BH / 2 - 0.55, 0.012]}>
           <planeGeometry args={[BW, 1.1]} />
-          <meshStandardMaterial color={accent} roughness={0.8} />
+          <MatcapMat color={accent} />
         </mesh>
 
         {/*
@@ -180,7 +180,7 @@ function Banner({
         */}
         <mesh position={[0, -BH / 2 + 1.5, 0.012]}>
           <planeGeometry args={[BW, 0.86]} />
-          <meshStandardMaterial color={PHASE_COLOR[period.phase]} roughness={0.85} />
+          <MatcapMat color={PHASE_COLOR[period.phase]} />
         </mesh>
         <Html
           position={[0, -BH / 2 + 1.5, 0.02]}
@@ -363,7 +363,6 @@ export default function ArtHallScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [0, 12, 34], fov: 52, near: 0.5, far: 400 }}
         dpr={[1, 2]}
         style={{
@@ -378,7 +377,6 @@ export default function ArtHallScene({
           position={[26, 40, 22]}
           intensity={t.ambient < 0.4 ? 0.6 : 1.05}
           color="#FFF6E6"
-          castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-left={-50}

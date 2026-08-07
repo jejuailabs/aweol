@@ -12,6 +12,7 @@ import Peers, { ItRing } from './Peers';
 import { botStart, isCaught, stepBot } from '@/lib/tag-bot';
 import type { Peer, PeerLook } from '@/lib/presence';
 import { TAG_DIST } from '@/lib/tag-game';
+import { MatcapMat } from './MatcapMat';
 
 const PI = Math.PI;
 const NEG_HALF_PI = -PI * 0.5;
@@ -70,26 +71,26 @@ function TagBot({
   return (
     <group ref={g}>
       {/* 몸통 */}
-      <mesh position={[0, 0.55, 0]} castShadow>
+      <mesh position={[0, 0.55, 0]}>
         <boxGeometry args={[0.7, 0.9, 0.5]} />
-        <meshStandardMaterial color="#8A94A6" metalness={0.35} roughness={0.5} />
+        <MatcapMat color="#8A94A6" />
       </mesh>
       {/* 머리 */}
-      <mesh position={[0, 1.25, 0]} castShadow>
+      <mesh position={[0, 1.25, 0]}>
         <boxGeometry args={[0.6, 0.5, 0.5]} />
-        <meshStandardMaterial color="#B9C2D0" metalness={0.35} roughness={0.45} />
+        <MatcapMat color="#B9C2D0" />
       </mesh>
       {/* 눈 — 술래라는 걸 알 수 있게 붉게 */}
       {([-0.15, 0.15]).map((x) => (
         <mesh key={x} position={[x, 1.28, 0.26]}>
           <sphereGeometry args={[0.07, 8, 8]} />
-          <meshStandardMaterial color="#E8493C" emissive="#E8493C" emissiveIntensity={0.6} />
+          <MatcapMat color="#E8493C" />
         </mesh>
       ))}
       {/* 안테나 */}
       <mesh position={[0, 1.62, 0]}>
         <cylinderGeometry args={[0.03, 0.03, 0.26, 6]} />
-        <meshStandardMaterial color="#6B7482" />
+        <MatcapMat color="#6B7482" />
       </mesh>
       <Html position={[0, 2.1, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[8, 0]}>
         <div
@@ -128,15 +129,15 @@ const OBSTACLES: Obstacle[] = PROPS.map((p) => ({
 function Ground() {
   return (
     <group>
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[HALF * 2 + 6, HALF * 2 + 6]} />
-        <meshStandardMaterial color="#8FD98A" roughness={0.95} />
+        <MatcapMat color="#8FD98A" />
       </mesh>
       {/* 잔디 무늬 — 넓은 초록만 있으면 움직이는 느낌이 안 난다 */}
       {Array.from({ length: 14 }).map((_, i) => (
         <mesh key={`s-${i}`} rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.003, -HALF + i * 2]}>
           <planeGeometry args={[HALF * 2, 0.9]} />
-          <meshStandardMaterial color="#84CE7F" roughness={0.95} />
+          <MatcapMat color="#84CE7F" />
         </mesh>
       ))}
 
@@ -147,16 +148,16 @@ function Ground() {
           <group key={`f-${side}`} rotation={[0, rot, 0]} position={[0, 0, -HALF - 0.5]}>
             <mesh position={[0, 0.62, 0]}>
               <boxGeometry args={[HALF * 2 + 1, 0.1, 0.1]} />
-              <meshStandardMaterial color="#C9A87C" />
+              <MatcapMat color="#C9A87C" />
             </mesh>
             <mesh position={[0, 0.34, 0]}>
               <boxGeometry args={[HALF * 2 + 1, 0.1, 0.1]} />
-              <meshStandardMaterial color="#C9A87C" />
+              <MatcapMat color="#C9A87C" />
             </mesh>
             {Array.from({ length: 10 }).map((_, i) => (
               <mesh key={i} position={[-HALF + i * ((HALF * 2) / 9), 0.4, 0]}>
                 <boxGeometry args={[0.12, 0.9, 0.12]} />
-                <meshStandardMaterial color="#B08860" />
+                <MatcapMat color="#B08860" />
               </mesh>
             ))}
           </group>
@@ -167,26 +168,26 @@ function Ground() {
         <group key={`p-${i}`} position={[p.x, 0, p.z]}>
           {p.kind === 'tree' && (
             <>
-              <mesh position={[0, 0.7, 0]} castShadow>
+              <mesh position={[0, 0.7, 0]}>
                 <cylinderGeometry args={[0.18, 0.24, 1.4, 8]} />
-                <meshStandardMaterial color="#8A5A3B" />
+                <MatcapMat color="#8A5A3B" />
               </mesh>
-              <mesh position={[0, 1.9, 0]} castShadow>
+              <mesh position={[0, 1.9, 0]}>
                 <sphereGeometry args={[1, 12, 12]} />
-                <meshStandardMaterial color="#5FA85C" roughness={0.95} />
+                <MatcapMat color="#5FA85C" />
               </mesh>
             </>
           )}
           {p.kind === 'rock' && (
-            <mesh position={[0, 0.4, 0]} castShadow>
+            <mesh position={[0, 0.4, 0]}>
               <dodecahedronGeometry args={[0.66, 0]} />
-              <meshStandardMaterial color="#9AA0A6" roughness={0.9} />
+              <MatcapMat color="#9AA0A6" />
             </mesh>
           )}
           {p.kind === 'hay' && (
-            <mesh position={[0, 0.5, 0]} rotation={[NEG_HALF_PI, 0, 0]} castShadow>
+            <mesh position={[0, 0.5, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
               <cylinderGeometry args={[0.62, 0.62, 1, 12]} />
-              <meshStandardMaterial color="#E0C070" roughness={0.95} />
+              <MatcapMat color="#E0C070" />
             </mesh>
           )}
         </group>
@@ -262,13 +263,12 @@ export default function PlaygroundScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [0, 6, 16], fov: 60, near: 0.1, far: 90 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
       >
         <ambientLight intensity={0.8} />
-        <directionalLight position={[10, 14, 8]} intensity={1} color="#FFF4DC" castShadow />
+        <directionalLight position={[10, 14, 8]} intensity={1} color="#FFF4DC" />
 
         <Ground />
 

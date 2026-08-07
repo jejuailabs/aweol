@@ -31,6 +31,7 @@ import {
   speedOf, warpTargets, vehicleById, VEHICLES, type WarpTarget,
 } from '@/lib/village-travel';
 import { backdropClose } from '@/lib/backdrop';
+import { MatcapMat } from './MatcapMat';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -226,8 +227,8 @@ function Buildings({ list, onEnterPlace, places }: {
   return (
     <group>
       {plainRoofs && (
-        <mesh geometry={plainRoofs} castShadow>
-          <meshStandardMaterial color="#B7A78D" roughness={0.9} />
+        <mesh geometry={plainRoofs}>
+          <MatcapMat color="#B7A78D" />
         </mesh>
       )}
       {geos.map((geo, i) => {
@@ -242,17 +243,16 @@ function Buildings({ list, onEnterPlace, places }: {
         const civicKind = civicKindOf(b, places);
         return (
           <group key={i}>
-            <mesh geometry={geo} castShadow receiveShadow>
-              <meshStandardMaterial
+            <mesh geometry={geo}>
+              <MatcapMat
                 color={named ? '#F7ECD8' : WALL_COLORS[i % WALL_COLORS.length]}
-                roughness={0.9}
               />
             </mesh>
 
             {/* 지붕은 건물 좌표계 그대로다 — 아래 group 안에 넣으면 두 번 옮겨진다 */}
             {named && roofs[i] && (
-              <mesh geometry={roofs[i]!} position={[0, b.h + 0.12, 0]} castShadow>
-                <meshStandardMaterial color={ROOF_COLORS[d?.hue ?? 0]} roughness={0.75} />
+              <mesh geometry={roofs[i]!} position={[0, b.h + 0.12, 0]}>
+                <MatcapMat color={ROOF_COLORS[d?.hue ?? 0]} />
               </mesh>
             )}
 
@@ -286,14 +286,12 @@ function Buildings({ list, onEnterPlace, places }: {
                     <group key={`${fy}-${fx}`} position={[fx * d.w, b.h * fy, d.d / 2 + 0.05]}>
                       <mesh position={[0, 0, -0.01]}>
                         <planeGeometry args={[Math.min(1.3, d.w * 0.3), 1.2]} />
-                        <meshStandardMaterial color="#8C7A60" roughness={0.85} />
+                        <MatcapMat color="#8C7A60" />
                       </mesh>
                       <mesh>
                         <planeGeometry args={[Math.min(1.1, d.w * 0.26), 1]} />
-                        <meshStandardMaterial
+                        <MatcapMat
                           color="#BEE6F7"
-                          emissive="#9FD4EE"
-                          emissiveIntensity={0.35}
                         />
                       </mesh>
                     </group>
@@ -302,26 +300,24 @@ function Buildings({ list, onEnterPlace, places }: {
                 {/* 문틀 */}
                 <mesh position={[0, b.h * 0.16, d.d / 2 + 0.04]} {...enter}>
                   <planeGeometry args={[Math.min(1.45, d.w * 0.33), b.h * 0.36]} />
-                  <meshStandardMaterial color="#6E5335" roughness={0.85} />
+                  <MatcapMat color="#6E5335" />
                 </mesh>
                 <mesh position={[0, b.h * 0.16, d.d / 2 + 0.05]} {...enter}>
                   <planeGeometry args={[Math.min(1.2, d.w * 0.28), b.h * 0.32]} />
-                  <meshStandardMaterial
+                  <MatcapMat
                     color={civicKind ? '#B5793F' : '#8A5A3B'}
-                    emissive={civicKind ? '#E8A33C' : '#000000'}
-                    emissiveIntensity={civicKind ? 0.35 : 0}
                   />
                 </mesh>
                 {/* 현관 계단 — 문 앞에 낮은 단이 있으면 문이 '진짜 입구'처럼 읽힌다 */}
-                <mesh position={[0, 0.09, d.d / 2 + 0.45]} castShadow receiveShadow {...enter}>
+                <mesh position={[0, 0.09, d.d / 2 + 0.45]} {...enter}>
                   <boxGeometry args={[Math.min(1.8, d.w * 0.4), 0.18, 0.8]} />
-                  <meshStandardMaterial color="#C9BCA4" roughness={0.9} />
+                  <MatcapMat color="#C9BCA4" />
                 </mesh>
                 {/* 들어갈 수 있는 곳은 현관 지붕까지 — 눈에 띄어야 눌러본다 */}
                 {civicKind && (
-                  <mesh position={[0, b.h * 0.36, d.d / 2 + 0.55]} castShadow {...enter}>
+                  <mesh position={[0, b.h * 0.36, d.d / 2 + 0.55]} {...enter}>
                     <boxGeometry args={[Math.min(2.2, d.w * 0.45), 0.14, 1.1]} />
-                    <meshStandardMaterial color={ROOF_COLORS[d.hue]} roughness={0.75} />
+                    <MatcapMat color={ROOF_COLORS[d.hue]} />
                   </mesh>
                 )}
                 {/*
@@ -336,11 +332,11 @@ function Buildings({ list, onEnterPlace, places }: {
                     <group position={[0, b.h * 0.62, d.d / 2 + 0.09]} {...enter}>
                       <mesh>
                         <planeGeometry args={[2.4, 1.1]} />
-                        <meshStandardMaterial color={cp.color} roughness={0.7} />
+                        <MatcapMat color={cp.color} />
                       </mesh>
                       <mesh position={[0, 0, -0.005]}>
                         <planeGeometry args={[2.6, 1.3]} />
-                        <meshStandardMaterial color="#FFFFFF" roughness={0.8} />
+                        <MatcapMat color="#FFFFFF" />
                       </mesh>
                       <Html position={[0, 0, 0.02]} transform scale={0.5} pointerEvents="none" zIndexRange={[4, 0]}>
                         <div style={{ fontSize: '40px', userSelect: 'none' }}>{cp.emoji}</div>
@@ -351,15 +347,15 @@ function Buildings({ list, onEnterPlace, places }: {
 
                 {/* ── 건물 타입별 외관 특징 ── */}
                 {bType === 'post_office' && (
-                  <mesh position={[d.w / 2 + 0.8, 0.7, d.d / 2 - 0.5]} castShadow>
+                  <mesh position={[d.w / 2 + 0.8, 0.7, d.d / 2 - 0.5]}>
                     <cylinderGeometry args={[0.3, 0.3, 1.4, 8]} />
-                    <meshStandardMaterial color="#E8604C" roughness={0.6} />
+                    <MatcapMat color="#E8604C" />
                   </mesh>
                 )}
                 {bType === 'police' && (
-                  <mesh position={[0, b.h + 0.7, 0]} castShadow>
+                  <mesh position={[0, b.h + 0.7, 0]}>
                     <cylinderGeometry args={[0.2, 0.2, 0.5, 8]} />
-                    <meshStandardMaterial color="#E8604C" emissive="#FF0000" emissiveIntensity={0.4} />
+                    <MatcapMat color="#E8604C" />
                   </mesh>
                 )}
                 {bType === 'library' && (
@@ -367,7 +363,7 @@ function Buildings({ list, onEnterPlace, places }: {
                     {([-d.d * 0.3, 0, d.d * 0.3] as const).map((bz) => (
                       <mesh key={bz} position={[-d.w / 2 - 0.05, b.h * 0.5, bz]}>
                         <planeGeometry args={[0.1, b.h * 0.6]} />
-                        <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.15} />
+                        <MatcapMat color="#9FD4EE" />
                       </mesh>
                     ))}
                   </>
@@ -376,41 +372,41 @@ function Buildings({ list, onEnterPlace, places }: {
                   <>
                     <mesh position={[0, b.h * 0.75, d.d / 2 + 0.06]}>
                       <planeGeometry args={[0.5, 1.2]} />
-                      <meshStandardMaterial color="#E8604C" />
+                      <MatcapMat color="#E8604C" />
                     </mesh>
                     <mesh position={[0, b.h * 0.75, d.d / 2 + 0.06]}>
                       <planeGeometry args={[1.2, 0.5]} />
-                      <meshStandardMaterial color="#E8604C" />
+                      <MatcapMat color="#E8604C" />
                     </mesh>
                   </>
                 )}
                 {bType === 'nonghyup' && (
                   <>
-                    <mesh position={[d.w / 2 + 0.6, 0.3, 0]} castShadow>
+                    <mesh position={[d.w / 2 + 0.6, 0.3, 0]}>
                       <boxGeometry args={[0.8, 0.6, 0.6]} />
-                      <meshStandardMaterial color="#C9A46B" roughness={0.95} />
+                      <MatcapMat color="#C9A46B" />
                     </mesh>
                     <mesh position={[d.w / 2 + 0.6, 0.75, 0]}>
                       <sphereGeometry args={[0.22, 6, 4]} />
-                      <meshStandardMaterial color="#4CAF50" />
+                      <MatcapMat color="#4CAF50" />
                     </mesh>
                   </>
                 )}
                 {bType === 'fuel' && (
                   <>
-                    <mesh position={[0, b.h + 1.5, d.d / 2 + 3]} castShadow>
+                    <mesh position={[0, b.h + 1.5, d.d / 2 + 3]}>
                       <boxGeometry args={[Math.min(d.w * 0.8, 6), 0.25, 3.5]} />
-                      <meshStandardMaterial color="#EEEEEE" roughness={0.5} />
+                      <MatcapMat color="#EEEEEE" />
                     </mesh>
                     {([-1.5, 1.5] as const).map((px) => (
-                      <mesh key={px} position={[px, (b.h + 1.5) / 2, d.d / 2 + 3]} castShadow>
+                      <mesh key={px} position={[px, (b.h + 1.5) / 2, d.d / 2 + 3]}>
                         <cylinderGeometry args={[0.12, 0.12, b.h + 1.5, 6]} />
-                        <meshStandardMaterial color="#AAAAAA" metalness={0.3} roughness={0.5} />
+                        <MatcapMat color="#AAAAAA" />
                       </mesh>
                     ))}
-                    <mesh position={[0, 0.9, d.d / 2 + 3]} castShadow>
+                    <mesh position={[0, 0.9, d.d / 2 + 3]}>
                       <boxGeometry args={[0.5, 1.6, 0.4]} />
-                      <meshStandardMaterial color="#E8A33C" roughness={0.6} />
+                      <MatcapMat color="#E8A33C" />
                     </mesh>
                   </>
                 )}
@@ -425,29 +421,28 @@ function Buildings({ list, onEnterPlace, places }: {
                       <mesh
                         position={[0, b.h * 0.4, d.d / 2 + 0.55]}
                         rotation={[0.4, 0, 0]}
-                        castShadow
                         {...enter}
                       >
                         <boxGeometry args={[awnW, 0.1, 1.2]} />
-                        <meshStandardMaterial color={awnColor} roughness={0.7} />
+                        <MatcapMat color={awnColor} />
                       </mesh>
                       {/* 차양 앞단 흰 줄 — 줄무늬 천의 인상만 낸다 */}
                       <mesh position={[0, b.h * 0.4 - 0.24, d.d / 2 + 1.1]} rotation={[0.4, 0, 0]}>
                         <boxGeometry args={[awnW, 0.11, 0.25]} />
-                        <meshStandardMaterial color="#FFF6E4" roughness={0.7} />
+                        <MatcapMat color="#FFF6E4" />
                       </mesh>
                     </>
                   );
                 })()}
                 {bType === 'bank' && (
                   <>
-                    <mesh position={[-d.w / 4, b.h + 0.4, 0]} castShadow>
+                    <mesh position={[-d.w / 4, b.h + 0.4, 0]}>
                       <boxGeometry args={[d.w * 0.3, 0.6, Math.min(d.d * 0.5, 2)]} />
-                      <meshStandardMaterial color="#2E5A88" roughness={0.6} />
+                      <MatcapMat color="#2E5A88" />
                     </mesh>
-                    <mesh position={[d.w / 4, b.h + 0.4, 0]} castShadow>
+                    <mesh position={[d.w / 4, b.h + 0.4, 0]}>
                       <boxGeometry args={[d.w * 0.3, 0.6, Math.min(d.d * 0.5, 2)]} />
-                      <meshStandardMaterial color="#2E5A88" roughness={0.6} />
+                      <MatcapMat color="#2E5A88" />
                     </mesh>
                   </>
                 )}
@@ -534,9 +529,9 @@ function Roads({ list }: { list: VillageData['rd'] }) {
   return (
     <group>
       {pieces.map((p, i) => (
-        <mesh key={i} position={p.pos} rotation={[NEG_HALF_PI, 0, p.rot]} receiveShadow>
+        <mesh key={i} position={p.pos} rotation={[NEG_HALF_PI, 0, p.rot]}>
           <planeGeometry args={[p.w, p.len]} />
-          <meshStandardMaterial color="#D6C9AE" roughness={0.95} />
+          <MatcapMat color="#D6C9AE" />
         </mesh>
       ))}
       {/* 큰길에만 중앙선을 긋는다 — 골목까지 그으면 온 동네가 도로가 된다 */}
@@ -547,7 +542,7 @@ function Roads({ list }: { list: VillageData['rd'] }) {
           rotation={[NEG_HALF_PI, 0, p.rot]}
         >
           <planeGeometry args={[0.3, p.len]} />
-          <meshStandardMaterial color="#FFF3D0" roughness={0.9} />
+          <MatcapMat color="#FFF3D0" />
         </mesh>
       ))}
     </group>
@@ -695,214 +690,214 @@ function VillageProps({ radius, buildings, avatarPos }: {
           {it.kind === 'tree' && (
             <>
               {/* 덩어리 하나면 사탕처럼 보인다 — 크기·색이 다른 세 덩어리를 겹친다 */}
-              <mesh position={[0, 0.9, 0]} castShadow>
+              <mesh position={[0, 0.9, 0]}>
                 <cylinderGeometry args={[0.22, 0.4, 1.8, 6]} />
-                <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+                <MatcapMat color="#8B6C47" />
               </mesh>
-              <mesh position={[0, 2.4, 0]} castShadow>
+              <mesh position={[0, 2.4, 0]}>
                 <sphereGeometry args={[1.9, 8, 6]} />
-                <meshStandardMaterial color="#55A24B" roughness={0.95} />
+                <MatcapMat color="#55A24B" />
               </mesh>
-              <mesh position={[0.9, 3.1, 0.3]} castShadow>
+              <mesh position={[0.9, 3.1, 0.3]}>
                 <sphereGeometry args={[1.15, 7, 5]} />
-                <meshStandardMaterial color="#66B458" roughness={0.95} />
+                <MatcapMat color="#66B458" />
               </mesh>
-              <mesh position={[-0.8, 3.3, -0.4]} castShadow>
+              <mesh position={[-0.8, 3.3, -0.4]}>
                 <sphereGeometry args={[0.95, 7, 5]} />
-                <meshStandardMaterial color="#4C9443" roughness={0.95} />
+                <MatcapMat color="#4C9443" />
               </mesh>
             </>
           )}
           {it.kind === 'palm' && (
             <>
-              <mesh position={[0, 1.6, 0]} castShadow>
+              <mesh position={[0, 1.6, 0]}>
                 <cylinderGeometry args={[0.15, 0.3, 3.2, 6]} />
-                <meshStandardMaterial color="#A08060" roughness={0.9} />
+                <MatcapMat color="#A08060" />
               </mesh>
               {/* 잎 다섯 장을 바깥으로 눕혀 방사형으로 편다 */}
               {[0, 1, 2, 3, 4].map((n) => (
                 <group key={n} rotation={[0, (n / 5) * PI * 2, 0]}>
-                  <mesh position={[0.85, 3.2, 0]} rotation={[0, 0, -1.05]} castShadow>
+                  <mesh position={[0.85, 3.2, 0]} rotation={[0, 0, -1.05]}>
                     <coneGeometry args={[0.42, 1.9, 4]} />
-                    <meshStandardMaterial color="#3D8B37" roughness={0.92} />
+                    <MatcapMat color="#3D8B37" />
                   </mesh>
                 </group>
               ))}
               <mesh position={[0, 3.25, 0]}>
                 <sphereGeometry args={[0.3, 6, 5]} />
-                <meshStandardMaterial color="#7A5C40" roughness={0.9} />
+                <MatcapMat color="#7A5C40" />
               </mesh>
             </>
           )}
           {it.kind === 'lamp' && (
             <>
-              <mesh position={[0, 2.2, 0]} castShadow>
+              <mesh position={[0, 2.2, 0]}>
                 <cylinderGeometry args={[0.08, 0.12, 4.4, 6]} />
-                <meshStandardMaterial color="#7A7A7A" metalness={0.4} roughness={0.5} />
+                <MatcapMat color="#7A7A7A" />
               </mesh>
               <mesh position={[0, 4.6, 0]}>
                 <sphereGeometry args={[0.35, 8, 6]} />
-                <meshStandardMaterial color="#FFFDE0" emissive="#FFFDE0" emissiveIntensity={0.3} />
+                <MatcapMat color="#FFFDE0" />
               </mesh>
             </>
           )}
           {it.kind === 'bench' && (
             <>
-              <mesh position={[0, 0.35, 0]} castShadow>
+              <mesh position={[0, 0.35, 0]}>
                 <boxGeometry args={[1.6, 0.12, 0.55]} />
-                <meshStandardMaterial color="#A07E55" roughness={0.85} />
+                <MatcapMat color="#A07E55" />
               </mesh>
               {([-0.6, 0.6] as const).map((bx) => (
-                <mesh key={bx} position={[bx, 0.15, 0]} castShadow>
+                <mesh key={bx} position={[bx, 0.15, 0]}>
                   <boxGeometry args={[0.12, 0.3, 0.45]} />
-                  <meshStandardMaterial color="#6B5B43" roughness={0.9} />
+                  <MatcapMat color="#6B5B43" />
                 </mesh>
               ))}
             </>
           )}
           {it.kind === 'flower' && (
             <>
-              <mesh position={[0, 0.2, 0]} castShadow>
+              <mesh position={[0, 0.2, 0]}>
                 <cylinderGeometry args={[0.5, 0.45, 0.4, 8]} />
-                <meshStandardMaterial color="#C9946B" roughness={0.9} />
+                <MatcapMat color="#C9946B" />
               </mesh>
               {[0, 1.2, 2.4, 3.6, 4.8].map((a) => (
                 <mesh key={a} position={[Math.cos(a) * 0.3, 0.55, Math.sin(a) * 0.3]}>
                   <sphereGeometry args={[0.18, 6, 4]} />
-                  <meshStandardMaterial color={['#E8604C', '#E8A33C', '#D86CB0', '#7B4B94', '#3BAF9F'][Math.floor(a / 1.2)]} />
+                  <MatcapMat color={['#E8604C', '#E8A33C', '#D86CB0', '#7B4B94', '#3BAF9F'][Math.floor(a / 1.2)]} />
                 </mesh>
               ))}
               <mesh position={[0, 0.45, 0]}>
                 <sphereGeometry args={[0.4, 6, 4]} />
-                <meshStandardMaterial color="#4CAF50" roughness={0.9} />
+                <MatcapMat color="#4CAF50" />
               </mesh>
             </>
           )}
           {it.kind === 'hydrant' && (
             <>
-              <mesh position={[0, 0.35, 0]} castShadow>
+              <mesh position={[0, 0.35, 0]}>
                 <cylinderGeometry args={[0.15, 0.18, 0.7, 8]} />
-                <meshStandardMaterial color="#E8604C" roughness={0.6} />
+                <MatcapMat color="#E8604C" />
               </mesh>
               <mesh position={[0, 0.75, 0]}>
                 <sphereGeometry args={[0.18, 8, 6]} />
-                <meshStandardMaterial color="#C0392B" roughness={0.6} />
+                <MatcapMat color="#C0392B" />
               </mesh>
             </>
           )}
           {it.kind === 'rock' && (
-            <mesh position={[0, 0.3, 0]} castShadow>
+            <mesh position={[0, 0.3, 0]}>
               <dodecahedronGeometry args={[0.6, 0]} />
-              <meshStandardMaterial color="#9A9188" roughness={1} />
+              <MatcapMat color="#9A9188" />
             </mesh>
           )}
           {it.kind === 'bush' && (
-            <mesh position={[0, 0.5, 0]} castShadow>
+            <mesh position={[0, 0.5, 0]}>
               <sphereGeometry args={[0.8, 6, 5]} />
-              <meshStandardMaterial color="#4A8F40" roughness={0.95} />
+              <MatcapMat color="#4A8F40" />
             </mesh>
           )}
           {it.kind === 'sign' && (
             <>
-              <mesh position={[0, 0.7, 0]} castShadow>
+              <mesh position={[0, 0.7, 0]}>
                 <cylinderGeometry args={[0.05, 0.05, 1.4, 6]} />
-                <meshStandardMaterial color="#7A7A7A" roughness={0.6} />
+                <MatcapMat color="#7A7A7A" />
               </mesh>
-              <mesh position={[0, 1.5, 0]} castShadow>
+              <mesh position={[0, 1.5, 0]}>
                 <boxGeometry args={[0.6, 0.4, 0.06]} />
-                <meshStandardMaterial color="#3A6EA5" roughness={0.7} />
+                <MatcapMat color="#3A6EA5" />
               </mesh>
             </>
           )}
           {it.kind === 'bin' && (
-            <mesh position={[0, 0.35, 0]} castShadow>
+            <mesh position={[0, 0.35, 0]}>
               <cylinderGeometry args={[0.22, 0.25, 0.7, 8]} />
-              <meshStandardMaterial color="#5A7A5A" roughness={0.7} />
+              <MatcapMat color="#5A7A5A" />
             </mesh>
           )}
           {it.kind === 'fence' && (
             <>
               {([-0.7, 0, 0.7] as const).map((fx) => (
-                <mesh key={fx} position={[fx, 0.35, 0]} castShadow>
+                <mesh key={fx} position={[fx, 0.35, 0]}>
                   <boxGeometry args={[0.08, 0.7, 0.08]} />
-                  <meshStandardMaterial color="#A07E55" roughness={0.85} />
+                  <MatcapMat color="#A07E55" />
                 </mesh>
               ))}
               <mesh position={[0, 0.55, 0]}>
                 <boxGeometry args={[1.6, 0.08, 0.06]} />
-                <meshStandardMaterial color="#C9A46B" roughness={0.85} />
+                <MatcapMat color="#C9A46B" />
               </mesh>
               <mesh position={[0, 0.35, 0]}>
                 <boxGeometry args={[1.6, 0.08, 0.06]} />
-                <meshStandardMaterial color="#C9A46B" roughness={0.85} />
+                <MatcapMat color="#C9A46B" />
               </mesh>
             </>
           )}
           {it.kind === 'wall' && (
-            <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+            <mesh position={[0, 0.5, 0]}>
               <boxGeometry args={[2.5, 1, 0.5]} />
-              <meshStandardMaterial color="#9A9188" roughness={1} />
+              <MatcapMat color="#9A9188" />
             </mesh>
           )}
           {it.kind === 'garden' && (
             <>
-              <mesh position={[0, 0.06, 0]} receiveShadow>
+              <mesh position={[0, 0.06, 0]}>
                 <boxGeometry args={[3.2, 0.12, 2.2]} />
-                <meshStandardMaterial color="#8A6B4A" roughness={1} />
+                <MatcapMat color="#8A6B4A" />
               </mesh>
               {([-0.7, 0, 0.7] as const).map((gz) => (
-                <mesh key={gz} position={[0, 0.2, gz]} castShadow>
+                <mesh key={gz} position={[0, 0.2, gz]}>
                   <boxGeometry args={[2.8, 0.18, 0.35]} />
-                  <meshStandardMaterial color="#4E9845" roughness={0.95} />
+                  <MatcapMat color="#4E9845" />
                 </mesh>
               ))}
             </>
           )}
           {it.kind === 'hay' && (
-            <mesh position={[0, 0.7, 0]} castShadow>
+            <mesh position={[0, 0.7, 0]}>
               <coneGeometry args={[0.9, 1.4, 8]} />
-              <meshStandardMaterial color="#D9B96C" roughness={1} />
+              <MatcapMat color="#D9B96C" />
             </mesh>
           )}
           {it.kind === 'scare' && (
             <>
-              <mesh position={[0, 0.9, 0]} castShadow>
+              <mesh position={[0, 0.9, 0]}>
                 <cylinderGeometry args={[0.05, 0.06, 1.8, 5]} />
-                <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+                <MatcapMat color="#8B6C47" />
               </mesh>
-              <mesh position={[0, 1.35, 0]} castShadow>
+              <mesh position={[0, 1.35, 0]}>
                 <boxGeometry args={[1.6, 0.1, 0.1]} />
-                <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+                <MatcapMat color="#8B6C47" />
               </mesh>
               <mesh position={[0, 1.85, 0]}>
                 <sphereGeometry args={[0.28, 7, 5]} />
-                <meshStandardMaterial color="#F0D9A8" roughness={0.9} />
+                <MatcapMat color="#F0D9A8" />
               </mesh>
-              <mesh position={[0, 2.12, 0]} castShadow>
+              <mesh position={[0, 2.12, 0]}>
                 <coneGeometry args={[0.38, 0.35, 7]} />
-                <meshStandardMaterial color="#C97B4B" roughness={0.9} />
+                <MatcapMat color="#C97B4B" />
               </mesh>
             </>
           )}
           {it.kind === 'dol' && (
             <>
               {/* 돌하르방 — 현무암빛 몸통·머리·벙거지, 눈 두 점 */}
-              <mesh position={[0, 0.45, 0]} castShadow>
+              <mesh position={[0, 0.45, 0]}>
                 <cylinderGeometry args={[0.34, 0.42, 0.9, 8]} />
-                <meshStandardMaterial color="#6E6862" roughness={1} />
+                <MatcapMat color="#6E6862" />
               </mesh>
-              <mesh position={[0, 1.12, 0]} castShadow>
+              <mesh position={[0, 1.12, 0]}>
                 <sphereGeometry args={[0.33, 8, 6]} />
-                <meshStandardMaterial color="#6E6862" roughness={1} />
+                <MatcapMat color="#6E6862" />
               </mesh>
-              <mesh position={[0, 1.47, 0]} castShadow>
+              <mesh position={[0, 1.47, 0]}>
                 <cylinderGeometry args={[0.24, 0.36, 0.3, 8]} />
-                <meshStandardMaterial color="#5E5852" roughness={1} />
+                <MatcapMat color="#5E5852" />
               </mesh>
               {([-0.12, 0.12] as const).map((ex) => (
                 <mesh key={ex} position={[ex, 1.18, 0.28]}>
                   <sphereGeometry args={[0.055, 5, 4]} />
-                  <meshStandardMaterial color="#3A3632" roughness={1} />
+                  <MatcapMat color="#3A3632" />
                 </mesh>
               ))}
             </>
@@ -911,66 +906,66 @@ function VillageProps({ radius, buildings, avatarPos }: {
             const fur = it.s > 1.05 ? '#8A8A8A' : '#E8A33C';
             return (
               <>
-                <mesh position={[0, 0.26, 0]} castShadow>
+                <mesh position={[0, 0.26, 0]}>
                   <sphereGeometry args={[0.3, 7, 5]} />
-                  <meshStandardMaterial color={fur} roughness={0.95} />
+                  <MatcapMat color={fur} />
                 </mesh>
-                <mesh position={[0, 0.55, 0.18]} castShadow>
+                <mesh position={[0, 0.55, 0.18]}>
                   <sphereGeometry args={[0.2, 7, 5]} />
-                  <meshStandardMaterial color={fur} roughness={0.95} />
+                  <MatcapMat color={fur} />
                 </mesh>
                 {([-0.1, 0.1] as const).map((ex) => (
                   <mesh key={ex} position={[ex, 0.73, 0.18]}>
                     <coneGeometry args={[0.07, 0.14, 4]} />
-                    <meshStandardMaterial color={fur} roughness={0.95} />
+                    <MatcapMat color={fur} />
                   </mesh>
                 ))}
                 <mesh position={[0, 0.36, -0.34]} rotation={[0.9, 0, 0]}>
                   <cylinderGeometry args={[0.045, 0.06, 0.5, 5]} />
-                  <meshStandardMaterial color={fur} roughness={0.95} />
+                  <MatcapMat color={fur} />
                 </mesh>
               </>
             );
           })()}
           {it.kind === 'chick' && (
             <>
-              <mesh position={[0, 0.3, 0]} castShadow>
+              <mesh position={[0, 0.3, 0]}>
                 <sphereGeometry args={[0.28, 7, 5]} />
-                <meshStandardMaterial color="#F5F0E4" roughness={0.95} />
+                <MatcapMat color="#F5F0E4" />
               </mesh>
               <mesh position={[0, 0.58, 0.14]}>
                 <sphereGeometry args={[0.16, 7, 5]} />
-                <meshStandardMaterial color="#F5F0E4" roughness={0.95} />
+                <MatcapMat color="#F5F0E4" />
               </mesh>
               <mesh position={[0, 0.74, 0.14]}>
                 <boxGeometry args={[0.06, 0.12, 0.16]} />
-                <meshStandardMaterial color="#E8604C" roughness={0.8} />
+                <MatcapMat color="#E8604C" />
               </mesh>
               <mesh position={[0, 0.56, 0.31]} rotation={[1.4, 0, 0]}>
                 <coneGeometry args={[0.05, 0.14, 4]} />
-                <meshStandardMaterial color="#E8A33C" roughness={0.8} />
+                <MatcapMat color="#E8A33C" />
               </mesh>
             </>
           )}
           {it.kind === 'gazebo' && (
             <>
               {/* 정자 — 육각 마루와 기둥, 뾰족 지붕 */}
-              <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
+              <mesh position={[0, 0.2, 0]}>
                 <cylinderGeometry args={[1.9, 1.9, 0.25, 6]} />
-                <meshStandardMaterial color="#A07E55" roughness={0.9} />
+                <MatcapMat color="#A07E55" />
               </mesh>
               {[0, 1, 2, 3, 4, 5].map((n) => {
                 const a = (n / 6) * PI * 2;
                 return (
-                  <mesh key={n} position={[Math.cos(a) * 1.55, 1.2, Math.sin(a) * 1.55]} castShadow>
+                  <mesh key={n} position={[Math.cos(a) * 1.55, 1.2, Math.sin(a) * 1.55]}>
                     <cylinderGeometry args={[0.08, 0.08, 1.8, 6]} />
-                    <meshStandardMaterial color="#8B5A3B" roughness={0.9} />
+                    <MatcapMat color="#8B5A3B" />
                   </mesh>
                 );
               })}
-              <mesh position={[0, 2.6, 0]} castShadow>
+              <mesh position={[0, 2.6, 0]}>
                 <coneGeometry args={[2.4, 1.1, 6]} />
-                <meshStandardMaterial color="#B0603F" roughness={0.85} />
+                <MatcapMat color="#B0603F" />
               </mesh>
             </>
           )}
@@ -999,10 +994,9 @@ function Areas({ list }: { list: VillageData['a'] }) {
   return (
     <group>
       {geos.map((geo, i) => (
-        <mesh key={i} geometry={geo} position={[0, 0.02, 0]} receiveShadow>
-          <meshStandardMaterial
+        <mesh key={i} geometry={geo} position={[0, 0.02, 0]}>
+          <MatcapMat
             color={list[i].k === 'water' ? '#6FC5E8' : '#9FDD97'}
-            roughness={list[i].k === 'water' ? 0.25 : 0.9}
           />
         </mesh>
       ))}
@@ -1038,11 +1032,11 @@ function Ground({ R }: { R: number }) {
   }, [R]);
   useEffect(() => () => { tex?.dispose(); }, [tex]);
   return (
-    <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+    <mesh rotation={[NEG_HALF_PI, 0, 0]}>
       <planeGeometry args={[R * 2 + 200, R * 2 + 200]} />
       {tex
-        ? <meshStandardMaterial map={tex} roughness={0.95} />
-        : <meshStandardMaterial color="#A8DDA0" roughness={0.95} />}
+        ? <MatcapMat map={tex} />
+        : <MatcapMat color="#A8DDA0" />}
     </mesh>
   );
 }
@@ -1099,13 +1093,13 @@ function Horizon({ R }: { R: number }) {
       {hills.map((h, i) => (
         <mesh key={i} position={[h.x, h.h / 2 - 0.5, h.z]}>
           <coneGeometry args={[h.r, h.h, 7]} />
-          <meshStandardMaterial color="#7FBF77" roughness={1} />
+          <MatcapMat color="#7FBF77" />
         </mesh>
       ))}
       {/* 한라산 — 안개 너머 실루엣으로 */}
       <mesh position={[halla.x, halla.h / 2 - 0.5, halla.z]}>
         <coneGeometry args={[halla.r, halla.h, 9]} />
-        <meshStandardMaterial color="#6FA982" roughness={1} />
+        <MatcapMat color="#6FA982" />
       </mesh>
     </group>
   );
@@ -1145,13 +1139,13 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {/* 운동장 트랙 — 학교 앞 황토 타원과 흰 레인 선 */}
       {trackOk && (
         <group position={[0, 0, 19]}>
-          <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
+          <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.03, 0]}>
             <ringGeometry args={[8.5, 12.5, 48]} />
-            <meshStandardMaterial color="#DBA275" roughness={0.95} />
+            <MatcapMat color="#DBA275" />
           </mesh>
           <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.04, 0]}>
             <ringGeometry args={[10.3, 10.55, 48]} />
-            <meshStandardMaterial color="#FFF6E4" roughness={0.9} />
+            <MatcapMat color="#FFF6E4" />
           </mesh>
         </group>
       )}
@@ -1159,23 +1153,23 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {/* 태극기 게양대 */}
       {!isBlocked(10, 3) && (
         <group position={[10, 0, 3]}>
-          <mesh position={[0, 3, 0]} castShadow>
+          <mesh position={[0, 3, 0]}>
             <cylinderGeometry args={[0.07, 0.1, 6, 6]} />
-            <meshStandardMaterial color="#C8C8C8" metalness={0.4} roughness={0.5} />
+            <MatcapMat color="#C8C8C8" />
           </mesh>
           <group position={[0.78, 5.4, 0]}>
             <mesh>
               <planeGeometry args={[1.5, 1]} />
-              <meshStandardMaterial color="#FFFFFF" side={THREE.DoubleSide} />
+              <MatcapMat color="#FFFFFF" side={THREE.DoubleSide} />
             </mesh>
             {/* 태극 무늬 — 위 빨강 반원, 아래 파랑 반원으로 줄여 그린다 */}
             <mesh position={[0, 0.02, 0.006]}>
               <circleGeometry args={[0.28, 16, 0, PI]} />
-              <meshStandardMaterial color="#CD2E3A" side={THREE.DoubleSide} />
+              <MatcapMat color="#CD2E3A" side={THREE.DoubleSide} />
             </mesh>
             <mesh position={[0, -0.02, 0.006]}>
               <circleGeometry args={[0.28, 16, PI, PI]} />
-              <meshStandardMaterial color="#0047A0" side={THREE.DoubleSide} />
+              <MatcapMat color="#0047A0" side={THREE.DoubleSide} />
             </mesh>
           </group>
         </group>
@@ -1185,22 +1179,22 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {!isBlocked(-12, 9) && (
         <group position={[-12, 0, 9]} rotation={[0, 0.5, 0]}>
           {([[-0.5, -0.9], [0.5, -0.9], [-0.5, 0.1], [0.5, 0.1]] as const).map(([px, pz]) => (
-            <mesh key={`${px}${pz}`} position={[px, 0.85, pz]} castShadow>
+            <mesh key={`${px}${pz}`} position={[px, 0.85, pz]}>
               <cylinderGeometry args={[0.06, 0.06, 1.7, 6]} />
-              <meshStandardMaterial color="#E8A33C" roughness={0.6} />
+              <MatcapMat color="#E8A33C" />
             </mesh>
           ))}
-          <mesh position={[0, 1.72, -0.4]} castShadow>
+          <mesh position={[0, 1.72, -0.4]}>
             <boxGeometry args={[1.1, 0.1, 1.1]} />
-            <meshStandardMaterial color="#3BAF9F" roughness={0.7} />
+            <MatcapMat color="#3BAF9F" />
           </mesh>
-          <mesh position={[0, 1.06, 1.15]} rotation={[-0.55, 0, 0]} castShadow>
+          <mesh position={[0, 1.06, 1.15]} rotation={[-0.55, 0, 0]}>
             <boxGeometry args={[0.85, 0.08, 2.6]} />
-            <meshStandardMaterial color="#E8604C" roughness={0.55} />
+            <MatcapMat color="#E8604C" />
           </mesh>
-          <mesh position={[0, 0.85, -1.25]} rotation={[0.25, 0, 0]} castShadow>
+          <mesh position={[0, 0.85, -1.25]} rotation={[0.25, 0, 0]}>
             <boxGeometry args={[0.7, 1.75, 0.08]} />
-            <meshStandardMaterial color="#FFF6E4" roughness={0.7} />
+            <MatcapMat color="#FFF6E4" />
           </mesh>
         </group>
       )}
@@ -1209,26 +1203,26 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {!isBlocked(-19, 14) && (
         <group position={[-19, 0, 14]} rotation={[0, -0.3, 0]}>
           {([-1.4, 1.4] as const).map((sx) => (
-            <mesh key={sx} position={[sx, 1.1, 0]} castShadow>
+            <mesh key={sx} position={[sx, 1.1, 0]}>
               <cylinderGeometry args={[0.07, 0.07, 2.2, 6]} />
-              <meshStandardMaterial color="#4A90D9" roughness={0.6} />
+              <MatcapMat color="#4A90D9" />
             </mesh>
           ))}
-          <mesh position={[0, 2.2, 0]} rotation={[0, 0, PI / 2]} castShadow>
+          <mesh position={[0, 2.2, 0]} rotation={[0, 0, PI / 2]}>
             <cylinderGeometry args={[0.07, 0.07, 3, 6]} />
-            <meshStandardMaterial color="#4A90D9" roughness={0.6} />
+            <MatcapMat color="#4A90D9" />
           </mesh>
           {([-0.6, 0.6] as const).map((sx) => (
             <group key={sx}>
               {([-0.18, 0.18] as const).map((rx) => (
                 <mesh key={rx} position={[sx + rx, 1.5, 0]}>
                   <cylinderGeometry args={[0.02, 0.02, 1.3, 4]} />
-                  <meshStandardMaterial color="#8A8A8A" />
+                  <MatcapMat color="#8A8A8A" />
                 </mesh>
               ))}
-              <mesh position={[sx, 0.85, 0]} castShadow>
+              <mesh position={[sx, 0.85, 0]}>
                 <boxGeometry args={[0.5, 0.08, 0.3]} />
-                <meshStandardMaterial color="#E8604C" roughness={0.6} />
+                <MatcapMat color="#E8604C" />
               </mesh>
             </group>
           ))}
@@ -1238,13 +1232,13 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {/* 시소 */}
       {!isBlocked(-12, 17) && (
         <group position={[-12, 0, 17]} rotation={[0, 0.9, 0]}>
-          <mesh position={[0, 0.3, 0]} castShadow>
+          <mesh position={[0, 0.3, 0]}>
             <cylinderGeometry args={[0.18, 0.26, 0.6, 8]} />
-            <meshStandardMaterial color="#7B4B94" roughness={0.7} />
+            <MatcapMat color="#7B4B94" />
           </mesh>
-          <mesh position={[0, 0.62, 0]} rotation={[0, 0, 0.16]} castShadow>
+          <mesh position={[0, 0.62, 0]} rotation={[0, 0, 0.16]}>
             <boxGeometry args={[3.4, 0.1, 0.4]} />
-            <meshStandardMaterial color="#E8A33C" roughness={0.6} />
+            <MatcapMat color="#E8A33C" />
           </mesh>
         </group>
       )}
@@ -1252,17 +1246,17 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {/* 모래놀이터 — 모래성 하나까지 */}
       {!isBlocked(-17, 20) && (
         <group position={[-17, 0, 20]}>
-          <mesh position={[0, 0.12, 0]} receiveShadow>
+          <mesh position={[0, 0.12, 0]}>
             <cylinderGeometry args={[1.6, 1.7, 0.24, 8]} />
-            <meshStandardMaterial color="#C9A46B" roughness={0.9} />
+            <MatcapMat color="#C9A46B" />
           </mesh>
           <mesh position={[0, 0.25, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
             <circleGeometry args={[1.35, 8]} />
-            <meshStandardMaterial color="#EFDCA8" roughness={1} />
+            <MatcapMat color="#EFDCA8" />
           </mesh>
-          <mesh position={[0.3, 0.45, 0.2]} castShadow>
+          <mesh position={[0.3, 0.45, 0.2]}>
             <coneGeometry args={[0.3, 0.5, 6]} />
-            <meshStandardMaterial color="#E3CD96" roughness={1} />
+            <MatcapMat color="#E3CD96" />
           </mesh>
         </group>
       )}
@@ -1273,7 +1267,7 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
           {[[0, 0], [0, 1.05], [-0.55, 2.1], [0.55, 2.1], [0, 3.15], [-0.55, 4.2], [0.55, 4.2]].map(([hx, hz], i) => (
             <mesh key={i} position={[hx, 0, hz]} rotation={[NEG_HALF_PI, 0, 0]}>
               <planeGeometry args={[0.95, 0.95]} />
-              <meshStandardMaterial color="#FFF6E4" roughness={0.9} transparent opacity={0.85} />
+              <MatcapMat color="#FFF6E4" transparent opacity={0.85} />
             </mesh>
           ))}
         </group>
@@ -1282,14 +1276,14 @@ function SchoolYard({ buildings }: { buildings: { p: XZ[] }[] }) {
       {/* 화단 — 입구 양옆 */}
       {([-6, 6] as const).map((fx) => !isBlocked(fx, 7) && (
         <group key={fx} position={[fx, 0, 7]}>
-          <mesh position={[0, 0.25, 0]} castShadow>
+          <mesh position={[0, 0.25, 0]}>
             <boxGeometry args={[1.8, 0.5, 0.7]} />
-            <meshStandardMaterial color="#B0603F" roughness={0.85} />
+            <MatcapMat color="#B0603F" />
           </mesh>
           {([-0.55, 0, 0.55] as const).map((px, i) => (
             <mesh key={px} position={[px, 0.62, 0]}>
               <sphereGeometry args={[0.22, 6, 5]} />
-              <meshStandardMaterial color={['#E8604C', '#E8A33C', '#D86CB0'][i]} />
+              <MatcapMat color={['#E8604C', '#E8A33C', '#D86CB0'][i]} />
             </mesh>
           ))}
         </group>
@@ -1331,13 +1325,13 @@ function Butterflies() {
           <group>
             <mesh position={[0.17, 0, 0]}>
               <planeGeometry args={[0.34, 0.24]} />
-              <meshStandardMaterial color={c} side={THREE.DoubleSide} />
+              <MatcapMat color={c} side={THREE.DoubleSide} />
             </mesh>
           </group>
           <group>
             <mesh position={[-0.17, 0, 0]}>
               <planeGeometry args={[0.34, 0.24]} />
-              <meshStandardMaterial color={c} side={THREE.DoubleSide} />
+              <MatcapMat color={c} side={THREE.DoubleSide} />
             </mesh>
           </group>
         </group>
@@ -1493,11 +1487,9 @@ function Sea({ lines, radius }: { lines: XZ[][]; radius: number }) {
   return (
     <group>
       {/* 물 — 바닥보다 살짝 낮게 깔아 모래와 자연스럽게 만난다 */}
-      <mesh geometry={geo} position={[0, 0.05, 0]} receiveShadow>
-        <meshStandardMaterial
+      <mesh geometry={geo} position={[0, 0.05, 0]}>
+        <MatcapMat
           color="#3E9BC4"
-          roughness={0.14}
-          metalness={0.22}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -1538,10 +1530,9 @@ function Sea({ lines, radius }: { lines: XZ[][]; radius: number }) {
               key={`s${li}-${i}`}
               position={[(p[0] + q[0]) / 2, 0.06, (p[1] + q[1]) / 2]}
               rotation={[NEG_HALF_PI, 0, Math.atan2(dx, dz)]}
-              receiveShadow
             >
               <planeGeometry args={[16, len * 1.15]} />
-              <meshStandardMaterial color="#E8DCC0" roughness={0.95} />
+              <MatcapMat color="#E8DCC0" />
             </mesh>
           );
         })
@@ -1582,33 +1573,33 @@ function WarpGate({
   return (
     <group position={[x, 0, z]} rotation={[0, yaw, 0]}>
       {/* 발밑 판 — 여기 서면 넘어간다는 자리 표시 */}
-      <mesh position={[0, 0.06, 1.6]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh position={[0, 0.06, 1.6]} rotation={[NEG_HALF_PI, 0, 0]}>
         <circleGeometry args={[3.2, 28]} />
-        <meshStandardMaterial color="#E8D9B4" roughness={0.9} />
+        <MatcapMat color="#E8D9B4" />
       </mesh>
 
       {/* 기둥 둘 */}
       {([-2.2, 2.2] as const).map((px) => (
-        <mesh key={px} position={[px, 1.9, 0]} castShadow onClick={press} onPointerOver={hover} onPointerOut={out}>
+        <mesh key={px} position={[px, 1.9, 0]} onClick={press} onPointerOver={hover} onPointerOut={out}>
           <cylinderGeometry args={[0.16, 0.2, 3.8, 8]} />
-          <meshStandardMaterial color="#8A6038" roughness={0.85} />
+          <MatcapMat color="#8A6038" />
         </mesh>
       ))}
       {/* 표지판 */}
-      <mesh position={[0, 3.5, 0]} castShadow onClick={press} onPointerOver={hover} onPointerOut={out}>
+      <mesh position={[0, 3.5, 0]} onClick={press} onPointerOver={hover} onPointerOut={out}>
         <boxGeometry args={[5.4, 1.5, 0.22]} />
-        <meshStandardMaterial color="#FFF3D8" roughness={0.8} />
+        <MatcapMat color="#FFF3D8" />
       </mesh>
       <mesh position={[0, 3.5, 0.13]} onClick={press} onPointerOver={hover} onPointerOut={out}>
         <boxGeometry args={[5.0, 1.15, 0.04]} />
-        <meshStandardMaterial color="#3BAF9F" roughness={0.7} />
+        <MatcapMat color="#3BAF9F" />
       </mesh>
 
       {/* 떠 있는 화살표 — 나아갈 쪽을 가리킨다 */}
       <group ref={arrow} position={[0, 4.6, 0]}>
-        <mesh rotation={[HALF_PI, 0, 0]} castShadow onClick={press} onPointerOver={hover} onPointerOut={out}>
+        <mesh rotation={[HALF_PI, 0, 0]} onClick={press} onPointerOver={hover} onPointerOut={out}>
           <coneGeometry args={[0.85, 1.9, 4]} />
-          <meshStandardMaterial color="#E8A33C" emissive="#E8A33C" emissiveIntensity={0.35} />
+          <MatcapMat color="#E8A33C" />
         </mesh>
       </group>
 
@@ -1649,8 +1640,8 @@ function GableRoof({ w, d, y, color }: { w: number; d: number; y: number; color:
   }, [w, d]);
   useEffect(() => () => geo.dispose(), [geo]);
   return (
-    <mesh geometry={geo} position={[0, y, 0]} castShadow>
-      <meshStandardMaterial color={color} roughness={0.8} />
+    <mesh geometry={geo} position={[0, y, 0]}>
+      <MatcapMat color={color} />
     </mesh>
   );
 }
@@ -1676,27 +1667,27 @@ function Car({ show, vehicleId }: { show: boolean; vehicleId: string | null }) {
   return (
     <group position={[0, 0.02, 0]}>
       {/* 몸통 */}
-      <mesh position={[0, 0.32, 0]} castShadow>
+      <mesh position={[0, 0.32, 0]}>
         <boxGeometry args={[1.25, 0.42, 2.1]} />
-        <meshStandardMaterial color={c.body} roughness={0.55} />
+        <MatcapMat color={c.body} />
       </mesh>
       {/* 지붕 */}
-      <mesh position={[0, 0.68, -0.12]} castShadow>
+      <mesh position={[0, 0.68, -0.12]}>
         <boxGeometry args={[1.0, 0.36, 1.0]} />
-        <meshStandardMaterial color={c.roof} roughness={0.5} />
+        <MatcapMat color={c.roof} />
       </mesh>
       {/* 로켓카는 뒤에 불꽃 */}
       {vehicleId === 'vehicle-rocket' && (
         <mesh position={[0, 0.3, 1.2]} rotation={[PI * 0.5, 0, 0]}>
           <coneGeometry args={[0.22, 0.6, 8]} />
-          <meshStandardMaterial color="#FF8A3C" emissive="#FF6B00" emissiveIntensity={0.7} />
+          <MatcapMat color="#FF8A3C" />
         </mesh>
       )}
       {/* 바퀴 — 좌우 앞뒤 네 개 */}
       {([[-0.62, 0.7], [0.62, 0.7], [-0.62, -0.7], [0.62, -0.7]] as const).map(([x, z]) => (
         <mesh key={`${x},${z}`} position={[x, 0.2, z]} rotation={[0, 0, PI * 0.5]}>
           <cylinderGeometry args={[0.2, 0.2, 0.14, 12]} />
-          <meshStandardMaterial color="#3A3226" roughness={0.8} />
+          <MatcapMat color="#3A3226" />
         </mesh>
       ))}
     </group>
@@ -2253,7 +2244,6 @@ export default function VillageMapScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         /**
          * `far` 는 지평선 언덕까지 담아야 한다. 한라산이 `R*3.25` 까지 뻗으므로
          * 1600 으로 두면 **R=800 인 자리에서 산이 잘려 사라진다.**
@@ -2301,7 +2291,6 @@ export default function VillageMapScene({
           position={[120, 200, 100]}
           intensity={1.05}
           color="#FFF4DC"
-          castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-left={-220}
@@ -2382,9 +2371,9 @@ export default function VillageMapScene({
             {s.site.axis === 'life' ? (
               /* 용천수 노천탕 — 돌담으로 두른 물 */
               <>
-                <mesh position={[0, 0.06, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+                <mesh position={[0, 0.06, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
                   <circleGeometry args={[4.2, 24]} />
-                  <meshStandardMaterial color="#7FD4E8" roughness={0.2} />
+                  <MatcapMat color="#7FD4E8" />
                 </mesh>
                 {Array.from({ length: 16 }, (_, i) => {
                   const a = (i / 16) * PI * 2;
@@ -2393,54 +2382,53 @@ export default function VillageMapScene({
                       key={i}
                       position={[Math.cos(a) * 4.5, 0.45, Math.sin(a) * 4.5]}
                       rotation={[0, -a, 0]}
-                      castShadow
                     >
                       <boxGeometry args={[1.9, 0.9, 0.7]} />
-                      <meshStandardMaterial color="#6E6862" roughness={1} />
+                      <MatcapMat color="#6E6862" />
                     </mesh>
                   );
                 })}
                 {/* 솟는 물 */}
                 <mesh position={[0, 0.5, 0]}>
                   <cylinderGeometry args={[0.5, 0.3, 1, 10]} />
-                  <meshStandardMaterial color="#BEEBF7" transparent opacity={0.7} />
+                  <MatcapMat color="#BEEBF7" transparent opacity={0.7} />
                 </mesh>
               </>
             ) : s.site.axis === 'nature' ? (
               /* 현무암 해안 — 검은 바위와 나무 데크 */
               <>
-                <mesh position={[0, 0.05, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+                <mesh position={[0, 0.05, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
                   <planeGeometry args={[14, 3]} />
-                  <meshStandardMaterial color="#A07E55" roughness={0.9} />
+                  <MatcapMat color="#A07E55" />
                 </mesh>
                 {([-5, -2, 1.5, 5] as const).map((bx, i) => (
-                  <mesh key={bx} position={[bx, 0.7, -2.6 - (i % 2) * 0.8]} castShadow>
+                  <mesh key={bx} position={[bx, 0.7, -2.6 - (i % 2) * 0.8]}>
                     <dodecahedronGeometry args={[1.1 + (i % 3) * 0.35, 0]} />
-                    <meshStandardMaterial color="#4A4744" roughness={1} />
+                    <MatcapMat color="#4A4744" />
                   </mesh>
                 ))}
                 {/* 난간 */}
                 {([-6, -2, 2, 6] as const).map((px) => (
-                  <mesh key={`p${px}`} position={[px, 0.6, 1.4]} castShadow>
+                  <mesh key={`p${px}`} position={[px, 0.6, 1.4]}>
                     <cylinderGeometry args={[0.09, 0.09, 1.2, 6]} />
-                    <meshStandardMaterial color="#8B6C47" roughness={0.9} />
+                    <MatcapMat color="#8B6C47" />
                   </mesh>
                 ))}
                 <mesh position={[0, 1.15, 1.4]}>
                   <boxGeometry args={[13, 0.1, 0.1]} />
-                  <meshStandardMaterial color="#A07E55" roughness={0.9} />
+                  <MatcapMat color="#A07E55" />
                 </mesh>
               </>
             ) : (
               /* 옛터 — 남아 있는 성벽·돌담 한 자락 */
               <>
-                <mesh position={[0, 1.6, 0]} castShadow receiveShadow>
+                <mesh position={[0, 1.6, 0]}>
                   <boxGeometry args={[10, 3.2, 1.4]} />
-                  <meshStandardMaterial color="#9A9188" roughness={1} />
+                  <MatcapMat color="#9A9188" />
                 </mesh>
-                <mesh position={[0, 3.3, 0]} castShadow>
+                <mesh position={[0, 3.3, 0]}>
                   <boxGeometry args={[10.4, 0.3, 1.7]} />
-                  <meshStandardMaterial color="#867D74" roughness={1} />
+                  <MatcapMat color="#867D74" />
                 </mesh>
               </>
             )}
@@ -2471,9 +2459,9 @@ export default function VillageMapScene({
           return (
             <group key={k} position={[mp.x, 0, mp.z]}>
               {/* 본관 */}
-              <mesh position={[0, 3, 0]} castShadow receiveShadow>
+              <mesh position={[0, 3, 0]}>
                 <boxGeometry args={[8, 6, 6]} />
-                <meshStandardMaterial color="#F4E8D0" roughness={0.9} />
+                <MatcapMat color="#F4E8D0" />
               </mesh>
               {/* 박공지붕 — 납작한 판보다 '건물'로 읽힌다 */}
               <GableRoof w={8.8} d={6.8} y={6} color={mp.place.color} />
@@ -2482,7 +2470,7 @@ export default function VillageMapScene({
                 ([2.5, 4.2] as const).map((wy) => (
                   <mesh key={`${wx}-${wy}`} position={[wx, wy, 3.05]}>
                     <planeGeometry args={[1.2, 1.0]} />
-                    <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.25} />
+                    <MatcapMat color="#9FD4EE" />
                   </mesh>
                 ))
               )}
@@ -2494,33 +2482,33 @@ export default function VillageMapScene({
                 onPointerOut={onEnterPlace ? () => { document.body.style.cursor = 'auto'; } : undefined}
               >
                 <planeGeometry args={[1.4, 2.4]} />
-                <meshStandardMaterial color="#B5793F" emissive="#E8A33C" emissiveIntensity={0.35} />
+                <MatcapMat color="#B5793F" />
               </mesh>
               {/* 현관 지붕 */}
-              <mesh position={[0, 3.2, 3.6]} castShadow>
+              <mesh position={[0, 3.2, 3.6]}>
                 <boxGeometry args={[2.4, 0.2, 1.4]} />
-                <meshStandardMaterial color="#867D74" roughness={0.8} />
+                <MatcapMat color="#867D74" />
               </mesh>
               {/* 기관별 특징 */}
               {k === 'post_office' && (
                 <>
                   {/* 우체통 */}
-                  <mesh position={[4.8, 0.7, 3.2]} castShadow>
+                  <mesh position={[4.8, 0.7, 3.2]}>
                     <cylinderGeometry args={[0.35, 0.35, 1.4, 8]} />
-                    <meshStandardMaterial color="#E8604C" roughness={0.6} />
+                    <MatcapMat color="#E8604C" />
                   </mesh>
                   <mesh position={[4.8, 1.5, 3.2]}>
                     <sphereGeometry args={[0.38, 8, 6]} />
-                    <meshStandardMaterial color="#C0392B" roughness={0.6} />
+                    <MatcapMat color="#C0392B" />
                   </mesh>
                 </>
               )}
               {k === 'police' && (
                 <>
                   {/* 경광등 */}
-                  <mesh position={[0, 6.8, 0]} castShadow>
+                  <mesh position={[0, 6.8, 0]}>
                     <cylinderGeometry args={[0.2, 0.2, 0.5, 8]} />
-                    <meshStandardMaterial color="#E8604C" emissive="#FF0000" emissiveIntensity={0.4} />
+                    <MatcapMat color="#E8604C" />
                   </mesh>
                 </>
               )}
@@ -2530,7 +2518,7 @@ export default function VillageMapScene({
                   {([-2, 0, 2] as const).map((bz) => (
                     <mesh key={bz} position={[-4.05, 3, bz]}>
                       <planeGeometry args={[0.1, 4]} />
-                      <meshStandardMaterial color="#9FD4EE" emissive="#9FD4EE" emissiveIntensity={0.15} />
+                      <MatcapMat color="#9FD4EE" />
                     </mesh>
                   ))}
                 </>
@@ -2540,24 +2528,24 @@ export default function VillageMapScene({
                   {/* 십자 마크 */}
                   <mesh position={[0, 5, 3.06]}>
                     <planeGeometry args={[0.6, 1.6]} />
-                    <meshStandardMaterial color="#E8604C" />
+                    <MatcapMat color="#E8604C" />
                   </mesh>
                   <mesh position={[0, 5, 3.06]}>
                     <planeGeometry args={[1.6, 0.6]} />
-                    <meshStandardMaterial color="#E8604C" />
+                    <MatcapMat color="#E8604C" />
                   </mesh>
                 </>
               )}
               {k === 'nonghyup' && (
                 <>
                   {/* 수확물 상자 */}
-                  <mesh position={[4.5, 0.3, 1]} castShadow>
+                  <mesh position={[4.5, 0.3, 1]}>
                     <boxGeometry args={[1, 0.6, 0.8]} />
-                    <meshStandardMaterial color="#C9A46B" roughness={0.95} />
+                    <MatcapMat color="#C9A46B" />
                   </mesh>
                   <mesh position={[4.5, 0.8, 1]}>
                     <sphereGeometry args={[0.25, 6, 4]} />
-                    <meshStandardMaterial color="#4CAF50" />
+                    <MatcapMat color="#4CAF50" />
                   </mesh>
                 </>
               )}
@@ -2590,7 +2578,7 @@ export default function VillageMapScene({
         >
           <mesh position={[0, 0.06, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
             <circleGeometry args={[8, 32]} />
-            <meshStandardMaterial color={schoolHot ? '#FFE9A8' : '#FFF4D0'} roughness={0.9} />
+            <MatcapMat color={schoolHot ? '#FFE9A8' : '#FFF4D0'} />
           </mesh>
           {/*
             간판은 **학교 자리 바로 위**에 뜬다. 그래서 탭을 삼키면

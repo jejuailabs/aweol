@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TARGET_R, aimAt, type ShotSetup } from '@/lib/archery';
+import { MatcapMat } from './MatcapMat';
 
 /**
  * 양궁 경기장.
@@ -37,7 +38,7 @@ function Target({ hits }: { hits: { x: number; y: number }[] }) {
       {/* 받침대 */}
       <mesh position={[0, -TARGET_Y, -0.1]}>
         <boxGeometry args={[0.35, TARGET_Y, 0.35]} />
-        <meshStandardMaterial color="#8A5A3B" roughness={0.9} />
+        <MatcapMat color="#8A5A3B" />
       </mesh>
 
       {/*
@@ -55,11 +56,11 @@ function Target({ hits }: { hits: { x: number; y: number }[] }) {
             {/* 얇은 테두리(살짝 큰 검은 원)로 칸을 가른다 */}
             <mesh position={[0, 0, i * 0.006]}>
               <circleGeometry args={[r + 0.015, 48]} />
-              <meshStandardMaterial color="#3A3226" roughness={0.9} />
+              <MatcapMat color="#3A3226" />
             </mesh>
             <mesh position={[0, 0, i * 0.006 + 0.001]}>
               <circleGeometry args={[r, 48]} />
-              <meshStandardMaterial color={fill} roughness={0.85} />
+              <MatcapMat color={fill} />
             </mesh>
           </group>
         );
@@ -67,7 +68,7 @@ function Target({ hits }: { hits: { x: number; y: number }[] }) {
       {/* 정중앙 10점 — 노랑 안의 작은 원. 여기 맞으면 만점이라는 걸 눈으로 안다. */}
       <mesh position={[0, 0, 0.09]}>
         <circleGeometry args={[R3 / 10 * 0.55, 32]} />
-        <meshStandardMaterial color="#E8A33C" roughness={0.8} />
+        <MatcapMat color="#E8A33C" />
       </mesh>
 
       {/* 꽂힌 화살 — 계산이 준 자리 그대로 */}
@@ -75,11 +76,11 @@ function Target({ hits }: { hits: { x: number; y: number }[] }) {
         <group key={i} position={[h.x * K, -h.y * K, 0.1]}>
           <mesh rotation={[PI * 0.5, 0, 0]}>
             <cylinderGeometry args={[0.035, 0.035, 0.9, 8]} />
-            <meshStandardMaterial color="#C8A860" />
+            <MatcapMat color="#C8A860" />
           </mesh>
           <mesh position={[0, 0, 0.5]}>
             <coneGeometry args={[0.11, 0.28, 8]} />
-            <meshStandardMaterial color="#E8604C" />
+            <MatcapMat color="#E8604C" />
           </mesh>
         </group>
       ))}
@@ -155,7 +156,7 @@ function Strut({ a, b, r, color, metalness = 0.1, roughness = 0.6, seg = 10 }: {
   return (
     <mesh position={pos} quaternion={quat}>
       <cylinderGeometry args={[r, r, len, seg]} />
-      <meshStandardMaterial color={color} metalness={metalness} roughness={roughness} />
+      <MatcapMat color={color} />
     </mesh>
   );
 }
@@ -254,61 +255,61 @@ function Bow({ setup, startedAt, shooting }: {
       {[upperLimb, lowerLimb].map((c, i) => (
         <mesh key={i}>
           <tubeGeometry args={[c, 44, 0.044, 12, false]} />
-          <meshStandardMaterial color="#B57A3C" metalness={0.15} roughness={0.5} />
+          <MatcapMat color="#B57A3C" />
         </mesh>
       ))}
       {/* 림 끝동(검정) — 시위가 걸리는 자리 */}
       {[topNock, botNock].map((p, i) => (
         <mesh key={i} position={p}>
           <sphereGeometry args={[0.06, 10, 10]} />
-          <meshStandardMaterial color="#17181B" metalness={0.4} roughness={0.4} />
+          <MatcapMat color="#17181B" />
         </mesh>
       ))}
 
       {/* 리저 — 스웹된 금속 몸통(가늘게) */}
       <mesh>
         <tubeGeometry args={[riser, 24, 0.075, 14, false]} />
-        <meshStandardMaterial color="#2C6BA8" metalness={0.75} roughness={0.3} />
+        <MatcapMat color="#2C6BA8" />
       </mesh>
       {/* 그립 — 손이 쥐는 곳, 가죽/고무 톤 */}
       <mesh position={[0.05, -0.14, 0.1]}>
         <boxGeometry args={[0.11, 0.4, 0.15]} />
-        <meshStandardMaterial color="#3A2C22" roughness={0.85} />
+        <MatcapMat color="#3A2C22" />
       </mesh>
       {/* 화살받이(쉘프) — 화살이 얹히는 작은 턱 */}
       <mesh position={[-0.04, 0.14, 0.03]}>
         <boxGeometry args={[0.14, 0.045, 0.11]} />
-        <meshStandardMaterial color="#20486E" metalness={0.7} roughness={0.35} />
+        <MatcapMat color="#20486E" />
       </mesh>
 
       {/* 시위 V — 위/아래 림 끝에서 당겨진 노크로 모인다 */}
-      <Strut a={topNock} b={nock} r={0.011} color="#EFE9DA" roughness={0.5} seg={6} />
-      <Strut a={botNock} b={nock} r={0.011} color="#EFE9DA" roughness={0.5} seg={6} />
+      <Strut a={topNock} b={nock} r={0.011} color="#EFE9DA" seg={6} />
+      <Strut a={botNock} b={nock} r={0.011} color="#EFE9DA" seg={6} />
 
       {/* 스태빌라이저 — 리저에서 과녁 쪽으로 뻗은 봉. 끝에 댐퍼 무게추. 양궁의 상징. */}
-      <Strut a={[0, -0.28, 0.02]} b={[0, -0.42, -1.5]} r={0.024} color="#15171A" metalness={0.5} roughness={0.5} />
+      <Strut a={[0, -0.28, 0.02]} b={[0, -0.42, -1.5]} r={0.024} color="#15171A" />
       <mesh position={[0, -0.42, -1.5]}>
         <cylinderGeometry args={[0.045, 0.045, 0.14, 12]} />
-        <meshStandardMaterial color="#D14B3C" metalness={0.3} roughness={0.5} />
+        <MatcapMat color="#D14B3C" />
       </mesh>
 
       {/* 메긴 화살 — 노크에서 과녁 쪽으로. 쏘는 중에는 감춘다. */}
       {!shooting && (
         <group>
-          <Strut a={nock} b={[0, 0.14, -2.5]} r={0.02} color="#D9C27A" roughness={0.55} />
+          <Strut a={nock} b={[0, 0.14, -2.5]} r={0.02} color="#D9C27A" />
           {/* 화살촉 */}
           <mesh position={[0, 0.14, -2.5]} rotation={[PI * 0.5, 0, 0]}>
             <coneGeometry args={[0.035, 0.16, 10]} />
-            <meshStandardMaterial color="#C6CDD4" metalness={0.7} roughness={0.3} />
+            <MatcapMat color="#C6CDD4" />
           </mesh>
           {/* 깃(fletching) — 노크 근처에 두 장 */}
           <mesh position={[0.05, 0, 0.52]} rotation={[0, 0, PI * 0.5]}>
             <boxGeometry args={[0.005, 0.16, 0.1]} />
-            <meshStandardMaterial color="#E8604C" roughness={0.7} />
+            <MatcapMat color="#E8604C" />
           </mesh>
           <mesh position={[-0.05, 0, 0.52]} rotation={[0, 0, PI * 0.5]}>
             <boxGeometry args={[0.005, 0.16, 0.1]} />
-            <meshStandardMaterial color="#1F6FEB" roughness={0.7} />
+            <MatcapMat color="#1F6FEB" />
           </mesh>
         </group>
       )}
@@ -362,7 +363,7 @@ function FlyingArrow({ from, to }: {
     <group ref={m}>
       <mesh rotation={[PI * 0.5, 0, 0]}>
         <cylinderGeometry args={[0.03, 0.03, 1, 8]} />
-        <meshStandardMaterial color="#C8A860" />
+        <MatcapMat color="#C8A860" />
       </mesh>
     </group>
   );
@@ -388,45 +389,44 @@ export default function ArcheryScene({
   return (
     <div className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ fov: 46, near: 0.1, far: 300 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: 'linear-gradient(#BFE8F5, #DDF0FB)' }}
       >
         <AimCamera />
         <ambientLight intensity={0.85} />
-        <directionalLight position={[8, 16, 6]} intensity={1.05} color="#FFF4DC" castShadow />
+        <directionalLight position={[8, 16, 6]} intensity={1.05} color="#FFF4DC" />
 
         {/* 잔디 — 지평선까지 넉넉히 */}
-        <mesh rotation={[-PI * 0.5, 0, 0]} position={[0, 0, -RANGE]} receiveShadow>
+        <mesh rotation={[-PI * 0.5, 0, 0]} position={[0, 0, -RANGE]}>
           <planeGeometry args={[120, 200]} />
-          <meshStandardMaterial color="#8FD98A" roughness={0.95} />
+          <MatcapMat color="#8FD98A" />
         </mesh>
 
         {/* 사대(발판) — 내가 선 자리 */}
         <mesh rotation={[-PI * 0.5, 0, 0]} position={[0, 0.02, 4]}>
           <planeGeometry args={[6, 3]} />
-          <meshStandardMaterial color="#D9C9A8" roughness={0.95} />
+          <MatcapMat color="#D9C9A8" />
         </mesh>
 
         {/* 거리 표시 — 멀다는 게 느껴져야 한다 */}
         {[7, 14].map((d) => (
           <mesh key={d} rotation={[-PI * 0.5, 0, 0]} position={[0, 0.01, -d + 3]}>
             <planeGeometry args={[10, 0.14]} />
-            <meshStandardMaterial color="#FBF7EE" />
+            <MatcapMat color="#FBF7EE" />
           </mesh>
         ))}
 
         {/* 멀리 나무 몇 그루 — 허허벌판이면 거리감이 안 산다 */}
         {([[-14, -30], [15, -34], [-22, -12], [21, -16]] as const).map(([x, z]) => (
           <group key={`${x},${z}`} position={[x, 0, z]}>
-            <mesh position={[0, 1.1, 0]} castShadow>
+            <mesh position={[0, 1.1, 0]}>
               <cylinderGeometry args={[0.24, 0.32, 2.2, 8]} />
-              <meshStandardMaterial color="#8A5A3B" />
+              <MatcapMat color="#8A5A3B" />
             </mesh>
-            <mesh position={[0, 3, 0]} castShadow>
+            <mesh position={[0, 3, 0]}>
               <sphereGeometry args={[1.6, 12, 12]} />
-              <meshStandardMaterial color="#5FA85C" roughness={0.95} />
+              <MatcapMat color="#5FA85C" />
             </mesh>
           </group>
         ))}

@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HallThemeSpec } from '@/lib/art-hall';
+import { MatcapMat } from './MatcapMat';
 
 /**
  * 전시관 바깥 — **양식마다 다른 건물·마당·조형물.**
@@ -110,30 +111,29 @@ export function Plaza({ spec }: { spec: HallThemeSpec }) {
   return (
     <group>
       {/* 바깥 땅 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[PLAZA_W + 60, PLAZA_D + 60]} />
-        <meshStandardMaterial color={spec.plazaBase} roughness={0.94} />
+        <MatcapMat color={spec.plazaBase} />
       </mesh>
       {/* 마당 */}
-      <mesh position={[0, 0.02, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh position={[0, 0.02, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[PLAZA_W, PLAZA_D]} />
-        <meshStandardMaterial color={spec.plazaTile} roughness={0.9} />
+        <MatcapMat color={spec.plazaTile} />
       </mesh>
 
       {lines.map((l) => (
         <mesh key={l.key} position={l.pos} rotation={[NEG_HALF_PI, 0, l.rot]}>
           <planeGeometry args={[l.w, l.d]} />
-          <meshStandardMaterial color={spec.plazaLine} roughness={0.95} />
+          <MatcapMat color={spec.plazaLine} />
         </mesh>
       ))}
 
       {stones.map((s) => (
-        <mesh key={s.key} position={[s.x, 0.035, s.z]} rotation={[NEG_HALF_PI, 0, s.r]} receiveShadow>
+        <mesh key={s.key} position={[s.x, 0.035, s.z]} rotation={[NEG_HALF_PI, 0, s.r]}>
           <planeGeometry args={[s.w, s.d]} />
-          <meshStandardMaterial
+          <MatcapMat
             // 돌마다 조금씩 다른 빛깔 — 다 같으면 장판이다
             color={s.c > 0.6 ? spec.plazaBase : s.c > 0.3 ? spec.plazaTile : spec.plazaLine}
-            roughness={0.96}
           />
         </mesh>
       ))}
@@ -141,7 +141,7 @@ export function Plaza({ spec }: { spec: HallThemeSpec }) {
       {rings.map((r) => (
         <mesh key={r} position={[0, 0.035, 2]} rotation={[NEG_HALF_PI, 0, 0]}>
           <ringGeometry args={[r, r + 0.34, 64]} />
-          <meshStandardMaterial color={spec.plazaLine} roughness={0.9} />
+          <MatcapMat color={spec.plazaLine} />
         </mesh>
       ))}
 
@@ -152,7 +152,7 @@ export function Plaza({ spec }: { spec: HallThemeSpec }) {
           rotation={[NEG_HALF_PI, 0, -a]}
         >
           <planeGeometry args={[32, 0.16]} />
-          <meshStandardMaterial color={spec.plazaLine} roughness={0.92} />
+          <MatcapMat color={spec.plazaLine} />
         </mesh>
       ))}
     </group>
@@ -165,52 +165,52 @@ export function Plaza({ spec }: { spec: HallThemeSpec }) {
 function TempleFacade({ spec }: { spec: HallThemeSpec }) {
   return (
     <group>
-      <mesh position={[0, FACADE_H / 2, FACADE_Z - 6]} castShadow receiveShadow>
+      <mesh position={[0, FACADE_H / 2, FACADE_Z - 6]}>
         <boxGeometry args={[FACADE_W, FACADE_H, 14]} />
-        <meshStandardMaterial color={spec.facade} roughness={0.82} />
+        <MatcapMat color={spec.facade} />
       </mesh>
-      <mesh position={[0, FACADE_H + 0.5, FACADE_Z - 6]} castShadow>
+      <mesh position={[0, FACADE_H + 0.5, FACADE_Z - 6]}>
         <boxGeometry args={[FACADE_W + 2.4, 1, 16]} />
-        <meshStandardMaterial color="#8F8A80" roughness={0.8} />
+        <MatcapMat color="#8F8A80" />
       </mesh>
 
       {/* 유리 파사드 */}
       <mesh position={[0, 6.2, FACADE_Z + 0.06]}>
         <planeGeometry args={[19, 11]} />
-        <meshStandardMaterial color="#9EC4D6" roughness={0.08} metalness={0.5} transparent opacity={0.82} />
+        <MatcapMat color="#9EC4D6" transparent opacity={0.82} />
       </mesh>
       {[-7.6, -3.8, 0, 3.8, 7.6].map((gx) => (
         <mesh key={gx} position={[gx, 6.2, FACADE_Z + 0.09]}>
           <boxGeometry args={[0.14, 11, 0.06]} />
-          <meshStandardMaterial color="#6F6A64" metalness={0.5} roughness={0.4} />
+          <MatcapMat color="#6F6A64" />
         </mesh>
       ))}
 
       {/* 열주 */}
       {[-17.5, -12.5, -7.5, 7.5, 12.5, 17.5].map((cx) => (
         <group key={cx} position={[cx, 0, FACADE_Z + 2.6]}>
-          <mesh position={[0, 0.3, 0]} castShadow>
+          <mesh position={[0, 0.3, 0]}>
             <boxGeometry args={[1.9, 0.6, 1.9]} />
-            <meshStandardMaterial color="#A9A399" roughness={0.9} />
+            <MatcapMat color="#A9A399" />
           </mesh>
-          <mesh position={[0, 5.9, 0]} castShadow>
+          <mesh position={[0, 5.9, 0]}>
             <cylinderGeometry args={[0.62, 0.7, 11, 16]} />
-            <meshStandardMaterial color="#E0DCD4" roughness={0.86} />
+            <MatcapMat color="#E0DCD4" />
           </mesh>
-          <mesh position={[0, 11.6, 0]} castShadow>
+          <mesh position={[0, 11.6, 0]}>
             <boxGeometry args={[1.8, 0.5, 1.8]} />
-            <meshStandardMaterial color="#D2CEC6" roughness={0.85} />
+            <MatcapMat color="#D2CEC6" />
           </mesh>
         </group>
       ))}
-      <mesh position={[0, 12.2, FACADE_Z + 2.6]} castShadow>
+      <mesh position={[0, 12.2, FACADE_Z + 2.6]}>
         <boxGeometry args={[FACADE_W - 2, 1.2, 2.4]} />
-        <meshStandardMaterial color="#D8D3CA" roughness={0.85} />
+        <MatcapMat color="#D8D3CA" />
       </mesh>
       {/* 페디먼트 — 삼각 박공. 신전의 얼굴이다. */}
-      <mesh position={[0, 14.6, FACADE_Z + 2.6]} rotation={[0, 0, 0]} castShadow>
+      <mesh position={[0, 14.6, FACADE_Z + 2.6]} rotation={[0, 0, 0]}>
         <cylinderGeometry args={[0.01, 4.2, FACADE_W - 4, 3, 1, false]} />
-        <meshStandardMaterial color="#DCD8D0" roughness={0.86} />
+        <MatcapMat color="#DCD8D0" />
       </mesh>
 
       <Steps color="#CFCAC2" />
@@ -229,44 +229,44 @@ function HiTechFacade({ spec }: { spec: HallThemeSpec }) {
   ];
   return (
     <group>
-      <mesh position={[0, FACADE_H / 2, FACADE_Z - 6]} castShadow receiveShadow>
+      <mesh position={[0, FACADE_H / 2, FACADE_Z - 6]}>
         <boxGeometry args={[FACADE_W, FACADE_H, 14]} />
-        <meshStandardMaterial color={spec.facade} roughness={0.7} metalness={0.25} />
+        <MatcapMat color={spec.facade} />
       </mesh>
 
       {/* 노출 철골 — 가로세로 뼈대가 다 보인다 */}
       {[2.6, 6.4, 10.2, 13.6].map((y) => (
-        <mesh key={y} position={[0, y, FACADE_Z + 1.3]} castShadow>
+        <mesh key={y} position={[0, y, FACADE_Z + 1.3]}>
           <boxGeometry args={[FACADE_W + 1, 0.34, 0.34]} />
-          <meshStandardMaterial color="#B8BCC2" metalness={0.7} roughness={0.35} />
+          <MatcapMat color="#B8BCC2" />
         </mesh>
       ))}
       {[-20, -13, -6, 6, 13, 20].map((x) => (
-        <mesh key={x} position={[x, FACADE_H / 2, FACADE_Z + 1.3]} castShadow>
+        <mesh key={x} position={[x, FACADE_H / 2, FACADE_Z + 1.3]}>
           <boxGeometry args={[0.34, FACADE_H + 1.4, 0.34]} />
-          <meshStandardMaterial color="#B8BCC2" metalness={0.7} roughness={0.35} />
+          <MatcapMat color="#B8BCC2" />
         </mesh>
       ))}
       {/* 사선 브레이스 — 하이테크의 표식 */}
       {[-16.5, 16.5].map((x) => (
-        <mesh key={x} position={[x, 8, FACADE_Z + 1.3]} rotation={[0, 0, 0.62]} castShadow>
+        <mesh key={x} position={[x, 8, FACADE_Z + 1.3]} rotation={[0, 0, 0.62]}>
           <boxGeometry args={[0.26, 16, 0.26]} />
-          <meshStandardMaterial color="#B8BCC2" metalness={0.7} roughness={0.35} />
+          <MatcapMat color="#B8BCC2" />
         </mesh>
       ))}
 
       {/* 색색 배관 — 이 건물의 얼굴이다 */}
       {PIPES.map((p) => (
         <group key={p.x}>
-          <mesh position={[p.x, FACADE_H / 2 + 0.6, FACADE_Z + 2.6]} castShadow>
+          <mesh position={[p.x, FACADE_H / 2 + 0.6, FACADE_Z + 2.6]}>
             <cylinderGeometry args={[0.52, 0.52, FACADE_H + 1.2, 14]} />
-            <meshStandardMaterial color={p.c} roughness={0.42} metalness={0.3} />
+            <MatcapMat color={p.c} />
           </mesh>
           {/* 이음쇠 — 파이프가 그냥 막대로 보이지 않게 */}
           {[3.5, 9.5].map((y) => (
             <mesh key={y} position={[p.x, y, FACADE_Z + 2.6]}>
               <cylinderGeometry args={[0.64, 0.64, 0.5, 14]} />
-              <meshStandardMaterial color="#8E9298" metalness={0.6} roughness={0.4} />
+              <MatcapMat color="#8E9298" />
             </mesh>
           ))}
         </group>
@@ -274,17 +274,16 @@ function HiTechFacade({ spec }: { spec: HallThemeSpec }) {
 
       {/* 바깥 에스컬레이터 튜브 — 비스듬히 올라가는 유리관 */}
       <group position={[0, 7.2, FACADE_Z + 4.4]} rotation={[0, 0, -0.5]}>
-        <mesh castShadow>
+        <mesh>
           <cylinderGeometry args={[1.5, 1.5, 20, 14, 1, true]} />
-          <meshStandardMaterial
-            color="#CFE4F0" transparent opacity={0.5}
-            roughness={0.12} metalness={0.4} side={THREE.DoubleSide}
+          <MatcapMat
+            color="#CFE4F0" transparent opacity={0.5} side={THREE.DoubleSide}
           />
         </mesh>
         {[-8, -4, 0, 4, 8].map((y) => (
           <mesh key={y} position={[0, y, 0]}>
             <torusGeometry args={[1.52, 0.09, 6, 16]} />
-            <meshStandardMaterial color="#E8604C" roughness={0.4} />
+            <MatcapMat color="#E8604C" />
           </mesh>
         ))}
       </group>
@@ -300,32 +299,32 @@ function HanokFacade({ spec }: { spec: HallThemeSpec }) {
   return (
     <group>
       {/* 기단 — 한옥은 늘 돌 위에 올라앉는다 */}
-      <mesh position={[0, 0.55, FACADE_Z - 5]} castShadow receiveShadow>
+      <mesh position={[0, 0.55, FACADE_Z - 5]}>
         <boxGeometry args={[FACADE_W + 5, 1.1, 17]} />
-        <meshStandardMaterial color="#B3AA9B" roughness={0.94} />
+        <MatcapMat color="#B3AA9B" />
       </mesh>
 
-      <mesh position={[0, 5.4, FACADE_Z - 5]} castShadow receiveShadow>
+      <mesh position={[0, 5.4, FACADE_Z - 5]}>
         <boxGeometry args={[FACADE_W, 8.6, 13]} />
-        <meshStandardMaterial color={spec.facade} roughness={0.9} />
+        <MatcapMat color={spec.facade} />
       </mesh>
 
       {/* 나무 기둥 — 붉은 칠 */}
       {[-18, -12, -6, 0, 6, 12, 18].map((x) => (
-        <mesh key={x} position={[x, 5.4, FACADE_Z + 1.6]} castShadow>
+        <mesh key={x} position={[x, 5.4, FACADE_Z + 1.6]}>
           <cylinderGeometry args={[0.44, 0.48, 8.6, 12]} />
-          <meshStandardMaterial color="#8E4A38" roughness={0.85} />
+          <MatcapMat color="#8E4A38" />
         </mesh>
       ))}
       {/* 창방 — 기둥을 잇는 가로재 */}
-      <mesh position={[0, 9.4, FACADE_Z + 1.6]} castShadow>
+      <mesh position={[0, 9.4, FACADE_Z + 1.6]}>
         <boxGeometry args={[FACADE_W + 2, 0.7, 0.7]} />
-        <meshStandardMaterial color="#8E4A38" roughness={0.85} />
+        <MatcapMat color="#8E4A38" />
       </mesh>
       {/* 단청 띠 — 초록. 우리 건물의 색이다. */}
       <mesh position={[0, 10.1, FACADE_Z + 1.7]}>
         <boxGeometry args={[FACADE_W + 2, 0.6, 0.5]} />
-        <meshStandardMaterial color="#2E6B4F" roughness={0.8} />
+        <MatcapMat color="#2E6B4F" />
       </mesh>
 
       {/*
@@ -337,15 +336,15 @@ function HanokFacade({ spec }: { spec: HallThemeSpec }) {
         { y: 12.5, w: FACADE_W + 7, d: 15, h: 1.5 },
         { y: 13.6, w: FACADE_W + 2, d: 10, h: 1.3 },
       ].map((r) => (
-        <mesh key={r.y} position={[0, r.y, FACADE_Z - 5]} castShadow>
+        <mesh key={r.y} position={[0, r.y, FACADE_Z - 5]}>
           <boxGeometry args={[r.w, r.h, r.d]} />
-          <meshStandardMaterial color="#4A5158" roughness={0.86} />
+          <MatcapMat color="#4A5158" />
         </mesh>
       ))}
       {/* 용마루 */}
-      <mesh position={[0, 14.4, FACADE_Z - 5]} castShadow>
+      <mesh position={[0, 14.4, FACADE_Z - 5]}>
         <boxGeometry args={[FACADE_W + 3, 0.7, 1.4]} />
-        <meshStandardMaterial color="#3A4046" roughness={0.85} />
+        <MatcapMat color="#3A4046" />
       </mesh>
       {/* 추녀 — 네 귀퉁이가 살짝 들린다. 이것 하나로 한옥이 된다. */}
       {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz], i) => (
@@ -353,10 +352,9 @@ function HanokFacade({ spec }: { spec: HallThemeSpec }) {
           key={i}
           position={[sx * (FACADE_W / 2 + 5.6), 11.9, FACADE_Z - 5 + sz * 9.4]}
           rotation={[0, 0, sx * -0.34]}
-          castShadow
         >
           <boxGeometry args={[3.4, 0.9, 3]} />
-          <meshStandardMaterial color="#4A5158" roughness={0.86} />
+          <MatcapMat color="#4A5158" />
         </mesh>
       ))}
 
@@ -386,8 +384,6 @@ function TitaniumFacade({ spec }: { spec: HallThemeSpec }) {
           position={[b.x, b.y, FACADE_Z + b.z]}
           rotation={[b.rx, b.ry, b.rz]}
           scale={[b.s[0] / 2, b.s[1] / 2, b.s[2] / 2]}
-          castShadow
-          receiveShadow
         >
           {/*
             **면을 적게 쪼갠 공**을 눕혀서 쓴다. 각진 면이 남아 있어야
@@ -395,10 +391,8 @@ function TitaniumFacade({ spec }: { spec: HallThemeSpec }) {
             매끈한 공이면 그냥 풍선이다.
           */}
           <icosahedronGeometry args={[1, 1]} />
-          <meshStandardMaterial
+          <MatcapMat
             color={i % 2 ? '#D6DCE2' : spec.facade}
-            metalness={0.86}
-            roughness={0.28}
             flatShading
           />
         </mesh>
@@ -407,7 +401,7 @@ function TitaniumFacade({ spec }: { spec: HallThemeSpec }) {
       {/* 유리 로비 — 덩어리 사이를 채운다 */}
       <mesh position={[0, 4.5, FACADE_Z + 3]}>
         <planeGeometry args={[16, 9]} />
-        <meshStandardMaterial color="#AFD0E0" roughness={0.06} metalness={0.6} transparent opacity={0.72} />
+        <MatcapMat color="#AFD0E0" transparent opacity={0.72} />
       </mesh>
 
       <Steps color="#9FB2BE" />
@@ -421,54 +415,52 @@ function PyramidFacade({ spec }: { spec: HallThemeSpec }) {
   return (
     <group>
       {/* 옛 건물 — 낮고 길다. 피라미드를 돋보이게 하는 배경이다. */}
-      <mesh position={[0, 5, FACADE_Z - 7]} castShadow receiveShadow>
+      <mesh position={[0, 5, FACADE_Z - 7]}>
         <boxGeometry args={[FACADE_W + 14, 10, 12]} />
-        <meshStandardMaterial color={spec.facade} roughness={0.88} />
+        <MatcapMat color={spec.facade} />
       </mesh>
       {/* 창을 줄지어 낸다 — 궁전은 창이 많다 */}
       {[-22, -16, -10, 10, 16, 22].map((x) => (
         <group key={x}>
           <mesh position={[x, 3.4, FACADE_Z - 1.05]}>
             <planeGeometry args={[2.4, 4]} />
-            <meshStandardMaterial color="#5E6B74" roughness={0.5} metalness={0.2} />
+            <MatcapMat color="#5E6B74" />
           </mesh>
           <mesh position={[x, 7.6, FACADE_Z - 1.05]}>
             <planeGeometry args={[2.2, 3.2]} />
-            <meshStandardMaterial color="#5E6B74" roughness={0.5} metalness={0.2} />
+            <MatcapMat color="#5E6B74" />
           </mesh>
         </group>
       ))}
       {/* 지붕 — 회색 망사르 */}
-      <mesh position={[0, 11.2, FACADE_Z - 7]} castShadow>
+      <mesh position={[0, 11.2, FACADE_Z - 7]}>
         <boxGeometry args={[FACADE_W + 15, 2.4, 13]} />
-        <meshStandardMaterial color="#6B6F74" roughness={0.84} />
+        <MatcapMat color="#6B6F74" />
       </mesh>
 
       {/*
         유리 피라미드 — **광장 한가운데.**
         건물에 붙이지 않는다. 떨어져 홀로 서야 그 모양이 산다.
       */}
-      <mesh position={[0, 5.2, FACADE_Z + 12]} castShadow>
+      <mesh position={[0, 5.2, FACADE_Z + 12]}>
         <coneGeometry args={[9.5, 10.4, 4]} />
-        <meshStandardMaterial
-          color="#CFE2EE" transparent opacity={0.42}
-          roughness={0.05} metalness={0.35} side={THREE.DoubleSide}
+        <MatcapMat
+          color="#CFE2EE" transparent opacity={0.42} side={THREE.DoubleSide}
         />
       </mesh>
       {/* 격자 살 — 유리 피라미드는 살이 보여야 피라미드다 */}
       {[0.22, 0.45, 0.68, 0.86].map((t) => (
         <mesh key={t} position={[0, 0.2 + 10.4 * t, FACADE_Z + 12]} rotation={[0, PI / 4, 0]}>
           <torusGeometry args={[9.5 * (1 - t) * 1.32, 0.09, 4, 4]} />
-          <meshStandardMaterial color="#8E939A" metalness={0.6} roughness={0.35} />
+          <MatcapMat color="#8E939A" />
         </mesh>
       ))}
       {/* 작은 피라미드 둘 — 큰 것 옆에 나란히 */}
       {[-15, 15].map((x) => (
-        <mesh key={x} position={[x, 1.6, FACADE_Z + 15]} castShadow>
+        <mesh key={x} position={[x, 1.6, FACADE_Z + 15]}>
           <coneGeometry args={[3, 3.2, 4]} />
-          <meshStandardMaterial
-            color="#CFE2EE" transparent opacity={0.42}
-            roughness={0.05} metalness={0.35} side={THREE.DoubleSide}
+          <MatcapMat
+            color="#CFE2EE" transparent opacity={0.42} side={THREE.DoubleSide}
           />
         </mesh>
       ))}
@@ -486,11 +478,9 @@ function Steps({ color }: { color: string }) {
         <mesh
           key={i}
           position={[0, 0.17 + i * 0.34, FACADE_Z + 7.4 - i * 1.15]}
-          receiveShadow
-          castShadow
         >
           <boxGeometry args={[FACADE_W - 4 + i * 1.4, 0.34, 1.2]} />
-          <meshStandardMaterial color={color} roughness={0.9} />
+          <MatcapMat color={color} />
         </mesh>
       ))}
     </>
@@ -502,7 +492,7 @@ function Doorway() {
   return (
     <mesh position={[0, 3.2, FACADE_Z + 0.04]}>
       <planeGeometry args={[8, 6.4]} />
-      <meshStandardMaterial color="#2A2A2E" roughness={0.9} />
+      <MatcapMat color="#2A2A2E" />
     </mesh>
   );
 }
@@ -532,17 +522,17 @@ function Fountain({ accent }: { accent: string }) {
   });
   return (
     <group position={[0, 0, 2]}>
-      <mesh position={[0, 0.3, 0]} receiveShadow castShadow>
+      <mesh position={[0, 0.3, 0]}>
         <cylinderGeometry args={[5.4, 5.8, 0.6, 28]} />
-        <meshStandardMaterial color="#BFB9AF" roughness={0.9} />
+        <MatcapMat color="#BFB9AF" />
       </mesh>
       <mesh position={[0, 0.62, 0]}>
         <cylinderGeometry args={[4.9, 4.9, 0.12, 28]} />
-        <meshStandardMaterial color="#7FC3DE" roughness={0.12} metalness={0.2} transparent opacity={0.86} />
+        <MatcapMat color="#7FC3DE" transparent opacity={0.86} />
       </mesh>
-      <mesh position={[0, 1.1, 0]} castShadow>
+      <mesh position={[0, 1.1, 0]}>
         <cylinderGeometry args={[0.5, 0.9, 1.6, 12]} />
-        <meshStandardMaterial color="#CFCAC2" roughness={0.85} />
+        <MatcapMat color="#CFCAC2" />
       </mesh>
       <group ref={jets}>
         {[0, 1, 2, 3].map((i) => {
@@ -550,7 +540,7 @@ function Fountain({ accent }: { accent: string }) {
           return (
             <mesh key={i} position={[Math.cos(a) * 1.5, 1.9, Math.sin(a) * 1.5]}>
               <cylinderGeometry args={[0.09, 0.14, 2.2, 6]} />
-              <meshStandardMaterial color={accent} transparent opacity={0.5} roughness={0.1} />
+              <MatcapMat color={accent} transparent opacity={0.5} />
             </mesh>
           );
         })}
@@ -563,22 +553,22 @@ function Fountain({ accent }: { accent: string }) {
 function ReflectPool({ accent }: { accent: string }) {
   return (
     <group position={[0, 0, -2]}>
-      <mesh position={[0, 0.06, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh position={[0, 0.06, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[38, 13]} />
-        <meshStandardMaterial color="#5E8FA8" roughness={0.06} metalness={0.72} />
+        <MatcapMat color="#5E8FA8" />
       </mesh>
       {/* 테두리 돌 */}
       {[[0, 6.8], [0, -6.8]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.16, z]} castShadow>
+        <mesh key={i} position={[x, 0.16, z]}>
           <boxGeometry args={[38, 0.32, 0.7]} />
-          <meshStandardMaterial color="#9FAAB2" roughness={0.9} />
+          <MatcapMat color="#9FAAB2" />
         </mesh>
       ))}
       {/* 물 위로 솟은 기둥 몇 — 되비치는 것이 있어야 물로 보인다 */}
       {[-11, 0, 11].map((x) => (
-        <mesh key={x} position={[x, 1.5, 0]} castShadow>
+        <mesh key={x} position={[x, 1.5, 0]}>
           <cylinderGeometry args={[0.34, 0.34, 3, 10]} />
-          <meshStandardMaterial color={accent} metalness={0.7} roughness={0.3} />
+          <MatcapMat color={accent} />
         </mesh>
       ))}
     </group>
@@ -590,9 +580,9 @@ function StyledSculpture({
   x, spec, alt,
 }: { x: number; spec: HallThemeSpec; alt: boolean }) {
   const base = (
-    <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+    <mesh position={[0, 0.42, 0]}>
       <boxGeometry args={[3, 0.84, 3]} />
-      <meshStandardMaterial color="#A9A399" roughness={0.92} />
+      <MatcapMat color="#A9A399" />
     </mesh>
   );
 
@@ -602,14 +592,14 @@ function StyledSculpture({
 
       {spec.arch === 'temple' && (
         alt ? (
-          <mesh position={[0, 2.5, 0]} rotation={[0.3, 0.6, 0]} castShadow>
+          <mesh position={[0, 2.5, 0]} rotation={[0.3, 0.6, 0]}>
             <torusKnotGeometry args={[1.1, 0.36, 80, 12]} />
-            <meshStandardMaterial color="#E6E2DA" roughness={0.35} metalness={0.3} />
+            <MatcapMat color="#E6E2DA" />
           </mesh>
         ) : (
-          <mesh position={[0, 2.4, 0]} castShadow>
+          <mesh position={[0, 2.4, 0]}>
             <coneGeometry args={[1.2, 3, 5]} />
-            <meshStandardMaterial color="#DCD8D0" roughness={0.5} metalness={0.2} />
+            <MatcapMat color="#DCD8D0" />
           </mesh>
         )
       )}
@@ -622,13 +612,10 @@ function StyledSculpture({
               key={i}
               position={[(i - 1) * 0.9, 1.6 + i * 0.4, 0]}
               rotation={[0, 0, (i - 1) * 0.5]}
-              castShadow
             >
               <cylinderGeometry args={[0.34, 0.34, 3.2, 12]} />
-              <meshStandardMaterial
+              <MatcapMat
                 color={['#4A90D9', '#E8A33C', '#3BAF9F'][i]}
-                roughness={0.42}
-                metalness={0.3}
               />
             </mesh>
           ))}
@@ -636,46 +623,46 @@ function StyledSculpture({
       )}
 
       {spec.arch === 'titanium' && (
-        <mesh position={[0, 2.6, 0]} rotation={[0.2, 0.8, 0.3]} castShadow>
+        <mesh position={[0, 2.6, 0]} rotation={[0.2, 0.8, 0.3]}>
           <torusGeometry args={[1.5, 0.5, 10, 26]} />
-          <meshStandardMaterial color="#CDD4DA" metalness={0.9} roughness={0.22} flatShading />
+          <MatcapMat color="#CDD4DA" flatShading />
         </mesh>
       )}
 
       {spec.arch === 'pyramid' && (
-        <mesh position={[0, 2.2, 0]} rotation={[0, PI / 4, 0]} castShadow>
+        <mesh position={[0, 2.2, 0]} rotation={[0, PI / 4, 0]}>
           <coneGeometry args={[1.4, 2.6, 4]} />
-          <meshStandardMaterial color={spec.accent} metalness={0.6} roughness={0.35} />
+          <MatcapMat color={spec.accent} />
         </mesh>
       )}
 
       {spec.arch === 'hanok' && (
         /* 석탑 — 층을 쌓아 올린다. 우리 마당의 조형물이다. */
         <group>
-          <mesh position={[0, 0.34, 0]} castShadow receiveShadow>
+          <mesh position={[0, 0.34, 0]}>
             <boxGeometry args={[3.2, 0.68, 3.2]} />
-            <meshStandardMaterial color="#9E958A" roughness={0.95} />
+            <MatcapMat color="#9E958A" />
           </mesh>
           {[0, 1, 2, 3].map((i) => {
             const w = 2.4 - i * 0.45;
             const y = 1.1 + i * 1.15;
             return (
               <group key={i}>
-                <mesh position={[0, y, 0]} castShadow>
+                <mesh position={[0, y, 0]}>
                   <boxGeometry args={[w, 0.75, w]} />
-                  <meshStandardMaterial color="#B0A79A" roughness={0.94} />
+                  <MatcapMat color="#B0A79A" />
                 </mesh>
                 {/* 옥개석 — 처마처럼 넓게 내민 판 */}
-                <mesh position={[0, y + 0.5, 0]} castShadow>
+                <mesh position={[0, y + 0.5, 0]}>
                   <boxGeometry args={[w + 1.1, 0.24, w + 1.1]} />
-                  <meshStandardMaterial color="#A79E92" roughness={0.94} />
+                  <MatcapMat color="#A79E92" />
                 </mesh>
               </group>
             );
           })}
-          <mesh position={[0, 6, 0]} castShadow>
+          <mesh position={[0, 6, 0]}>
             <coneGeometry args={[0.5, 1, 8]} />
-            <meshStandardMaterial color="#9E958A" roughness={0.9} />
+            <MatcapMat color="#9E958A" />
           </mesh>
         </group>
       )}
@@ -689,18 +676,18 @@ function StyledTree({ x, z, spec }: { x: number; z: number; spec: HallThemeSpec 
     /* 소나무 — 굽은 줄기와 층진 잎. 궁궐 마당의 나무다. */
     return (
       <group position={[x, 0, z]}>
-        <mesh position={[0, 2, 0]} rotation={[0, 0, 0.14]} castShadow>
+        <mesh position={[0, 2, 0]} rotation={[0, 0, 0.14]}>
           <cylinderGeometry args={[0.24, 0.42, 4, 8]} />
-          <meshStandardMaterial color="#7A5230" roughness={0.94} />
+          <MatcapMat color="#7A5230" />
         </mesh>
         {[
           { y: 3.9, r: 2.2, x: 0.5 },
           { y: 5.0, r: 1.7, x: -0.3 },
           { y: 5.9, r: 1.1, x: 0.2 },
         ].map((L) => (
-          <mesh key={L.y} position={[L.x, L.y, 0]} scale={[1, 0.4, 1]} castShadow>
+          <mesh key={L.y} position={[L.x, L.y, 0]} scale={[1, 0.4, 1]}>
             <icosahedronGeometry args={[L.r, 1]} />
-            <meshStandardMaterial color="#3E6B44" roughness={0.95} flatShading />
+            <MatcapMat color="#3E6B44" flatShading />
           </mesh>
         ))}
       </group>
@@ -709,13 +696,13 @@ function StyledTree({ x, z, spec }: { x: number; z: number; spec: HallThemeSpec 
   /* 다듬은 가로수 — 광장에는 네모지게 다듬은 나무가 선다 */
   return (
     <group position={[x, 0, z]}>
-      <mesh position={[0, 1.7, 0]} castShadow>
+      <mesh position={[0, 1.7, 0]}>
         <cylinderGeometry args={[0.26, 0.34, 3.4, 8]} />
-        <meshStandardMaterial color="#8B6C47" roughness={0.92} />
+        <MatcapMat color="#8B6C47" />
       </mesh>
-      <mesh position={[0, 4.6, 0]} castShadow>
+      <mesh position={[0, 4.6, 0]}>
         <boxGeometry args={[3.2, 2.8, 3.2]} />
-        <meshStandardMaterial color="#4E8B4A" roughness={0.96} />
+        <MatcapMat color="#4E8B4A" />
       </mesh>
     </group>
   );
@@ -726,18 +713,16 @@ function StyledBench({ x, spec }: { x: number; spec: HallThemeSpec }) {
   const metal = spec.arch === 'hitech' || spec.arch === 'titanium';
   return (
     <group position={[x, 0, 15]}>
-      <mesh position={[0, 0.46, 0]} castShadow>
+      <mesh position={[0, 0.46, 0]}>
         <boxGeometry args={[3.4, 0.16, 0.9]} />
-        <meshStandardMaterial
+        <MatcapMat
           color={metal ? '#9AA2AA' : spec.arch === 'hanok' ? '#8E6A44' : '#9A8570'}
-          roughness={metal ? 0.35 : 0.9}
-          metalness={metal ? 0.7 : 0}
         />
       </mesh>
       {[-1.4, 1.4].map((lx) => (
-        <mesh key={lx} position={[lx, 0.19, 0]} castShadow>
+        <mesh key={lx} position={[lx, 0.19, 0]}>
           <boxGeometry args={[0.22, 0.38, 0.8]} />
-          <meshStandardMaterial color={metal ? '#6E747A' : '#6E6862'} roughness={0.8} />
+          <MatcapMat color={metal ? '#6E747A' : '#6E6862'} />
         </mesh>
       ))}
     </group>
@@ -748,10 +733,10 @@ function StyledBench({ x, spec }: { x: number; spec: HallThemeSpec }) {
 function StoneLantern({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, 0, z]}>
-      <mesh position={[0, 0.28, 0]} castShadow><boxGeometry args={[1.2, 0.56, 1.2]} /><meshStandardMaterial color="#A79E92" roughness={0.95} /></mesh>
-      <mesh position={[0, 1.2, 0]} castShadow><cylinderGeometry args={[0.24, 0.3, 1.4, 8]} /><meshStandardMaterial color="#B0A79A" roughness={0.94} /></mesh>
-      <mesh position={[0, 2.2, 0]} castShadow><boxGeometry args={[1, 0.9, 1]} /><meshStandardMaterial color="#BDB4A6" roughness={0.92} /></mesh>
-      <mesh position={[0, 2.85, 0]} castShadow><coneGeometry args={[0.95, 0.7, 4]} /><meshStandardMaterial color="#A79E92" roughness={0.93} /></mesh>
+      <mesh position={[0, 0.28, 0]}><boxGeometry args={[1.2, 0.56, 1.2]} /><MatcapMat color="#A79E92" /></mesh>
+      <mesh position={[0, 1.2, 0]}><cylinderGeometry args={[0.24, 0.3, 1.4, 8]} /><MatcapMat color="#B0A79A" /></mesh>
+      <mesh position={[0, 2.2, 0]}><boxGeometry args={[1, 0.9, 1]} /><MatcapMat color="#BDB4A6" /></mesh>
+      <mesh position={[0, 2.85, 0]}><coneGeometry args={[0.95, 0.7, 4]} /><MatcapMat color="#A79E92" /></mesh>
     </group>
   );
 }

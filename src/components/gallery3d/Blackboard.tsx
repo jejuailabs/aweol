@@ -4,6 +4,7 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { TEX_W, TEX_H, BOARD_BG, paintBoard } from '@/lib/blackboard-paint';
+import { MatcapMat } from './MatcapMat';
 
 export interface BoardItem {
   id: string;
@@ -59,9 +60,9 @@ export default function Blackboard({ classLabel, items }: Props) {
   return (
     <group position={[0, 2.15, -5.93]}>
       {/* 나무 프레임 */}
-      <mesh castShadow>
+      <mesh>
         <boxGeometry args={[6.4, 2.15, 0.08]} />
-        <meshStandardMaterial color="#A97B4F" roughness={0.5} />
+        <MatcapMat color="#A97B4F" />
       </mesh>
 
       {/* 칠판면 */}
@@ -69,18 +70,17 @@ export default function Blackboard({ classLabel, items }: Props) {
         <planeGeometry args={[6.05, 1.85]} />
         {/* key 없이 map 만 갈아끼우면 셰이더가 다시 컴파일되지 않아 까맣게 나온다
             (전시실 액자에서 실제로 겪은 문제) */}
-        <meshStandardMaterial
+        <MatcapMat
           key={texture ? 'with-map' : 'plain'}
           map={texture ?? undefined}
           color={texture ? '#FFFFFF' : BOARD_BG}
-          roughness={0.85}
         />
       </mesh>
 
       {/* 분필 받침 */}
       <mesh position={[0, -1.12, 0.12]}>
         <boxGeometry args={[6.4, 0.07, 0.22]} />
-        <meshStandardMaterial color="#8F6238" />
+        <MatcapMat color="#8F6238" />
       </mesh>
 
       {/* 반 이름 팻말 (칠판 위) */}
@@ -100,7 +100,7 @@ export default function Blackboard({ classLabel, items }: Props) {
       {/* 태극기 */}
       <mesh position={[3.6, 0.6, 0]}>
         <boxGeometry args={[0.75, 0.5, 0.03]} />
-        <meshStandardMaterial color="#FFFFFF" />
+        <MatcapMat color="#FFFFFF" />
       </mesh>
     </group>
   );

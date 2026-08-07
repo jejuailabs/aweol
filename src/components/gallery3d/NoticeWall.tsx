@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Html } from '@react-three/drei';
 import { NoticeKind } from '@/lib/firestore-schema';
+import { MatcapMat } from './MatcapMat';
 
 export const NOTICE_TABS: { kind: NoticeKind; label: string; emoji: string; color: string }[] = [
   { kind: 'notice', label: '알림장', emoji: '📌', color: '#E8604C' },
@@ -47,13 +48,13 @@ export default function NoticeWall({
     // 앞벽(z=+6) 안쪽에 붙이고 교실을 향하도록 돌린다
     <group position={[0, 2.1, 5.88]} rotation={[0, Math.PI, 0]}>
       {/* 코르크 보드 */}
-      <mesh castShadow>
+      <mesh>
         <boxGeometry args={[7.2, 2.7, 0.07]} />
-        <meshStandardMaterial color="#A97B4F" />
+        <MatcapMat color="#A97B4F" />
       </mesh>
       <mesh position={[0, 0, 0.04]}>
         <planeGeometry args={[6.9, 2.4]} />
-        <meshStandardMaterial color="#E4C9A0" roughness={0.95} />
+        <MatcapMat color="#E4C9A0" />
       </mesh>
 
       {/* 팻말 */}
@@ -83,7 +84,7 @@ export default function NoticeWall({
             {/* 압정 */}
             <mesh position={[0, 0.86, 0.04]}>
               <sphereGeometry args={[0.05, 10, 10]} />
-              <meshStandardMaterial color={tab.color} metalness={0.3} roughness={0.4} />
+              <MatcapMat color={tab.color} />
             </mesh>
             <Html position={[0, 0, 0.02]} transform occlude="blending" scale={cardScale} zIndexRange={[10, 0]}>
               <button

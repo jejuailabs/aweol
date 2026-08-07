@@ -10,6 +10,7 @@ import {
 } from './walker';
 import Peers from './Peers';
 import type { PeerLook } from '@/lib/presence';
+import { MatcapMat } from './MatcapMat';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -62,7 +63,7 @@ function ClassDoor({
       {/* 문틀 */}
       <mesh position={[0, 1.15, 0.06 * -face]}>
         <boxGeometry args={[1.5, 2.3, 0.12]} />
-        <meshStandardMaterial color={mine ? '#E8A33C' : '#B08860'} roughness={0.7} />
+        <MatcapMat color={mine ? '#E8A33C' : '#B08860'} />
       </mesh>
       {/* 문 */}
       <group
@@ -72,22 +73,19 @@ function ClassDoor({
       >
         <mesh position={[0, 1.05, 0.14 * -face]}>
           <boxGeometry args={[1.24, 2.05, 0.1]} />
-          <meshStandardMaterial
+          <MatcapMat
             color={mine ? '#F0C070' : '#C9A87C'}
-            roughness={0.6}
-            emissive={mine ? '#E8A33C' : '#E8A33C'}
-            emissiveIntensity={hot ? 0.5 : mine ? 0.22 : 0}
           />
         </mesh>
         {/* 문 유리창 */}
         <mesh position={[0, 1.55, 0.2 * -face]}>
           <planeGeometry args={[0.8, 0.6]} />
-          <meshStandardMaterial color="#BFE8F5" transparent opacity={0.7} />
+          <MatcapMat color="#BFE8F5" transparent opacity={0.7} />
         </mesh>
         {/* 손잡이 */}
         <mesh position={[0.42, 1.0, 0.2 * -face]}>
           <sphereGeometry args={[0.06, 8, 8]} />
-          <meshStandardMaterial color="#E8C86A" metalness={0.6} roughness={0.3} />
+          <MatcapMat color="#E8C86A" />
         </mesh>
       </group>
 
@@ -128,19 +126,19 @@ function Corridor({ length }: { length: number }) {
   return (
     <group>
       {/* 바닥 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[length, HALL_W]} />
-        <meshStandardMaterial color="#E4DCCB" roughness={0.4} />
+        <MatcapMat color="#E4DCCB" />
       </mesh>
       {/* 가운데 줄 — 복도가 길어 보이게 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.005, 0]}>
         <planeGeometry args={[length, 0.12]} />
-        <meshStandardMaterial color="#CFC4AE" />
+        <MatcapMat color="#CFC4AE" />
       </mesh>
       {/* 천장 */}
       <mesh rotation={[HALF_PI, 0, 0]} position={[0, WALL_H, 0]}>
         <planeGeometry args={[length, HALL_W]} />
-        <meshStandardMaterial color="#FBF6EA" />
+        <MatcapMat color="#FBF6EA" />
       </mesh>
       {/* 천장 등 */}
       {Array.from({ length: Math.max(2, Math.round(length / 6)) }).map((_, i, arr) => (
@@ -150,19 +148,19 @@ function Corridor({ length }: { length: number }) {
           rotation={[HALF_PI, 0, 0]}
         >
           <planeGeometry args={[1.6, 0.4]} />
-          <meshStandardMaterial color="#FFFDF2" emissive="#FFF6D8" emissiveIntensity={0.8} />
+          <MatcapMat color="#FFFDF2" />
         </mesh>
       ))}
       {/* 양쪽 벽 */}
       {([-1, 1] as const).map((side) => (
         <group key={side} position={[0, WALL_H / 2, side * (HALL_W / 2)]} rotation={[0, side === -1 ? 0 : PI, 0]}>
-          <mesh receiveShadow>
+          <mesh>
             <planeGeometry args={[length, WALL_H]} />
-            <meshStandardMaterial color="#F2EADA" roughness={0.9} side={THREE.DoubleSide} />
+            <MatcapMat color="#F2EADA" side={THREE.DoubleSide} />
           </mesh>
           <mesh position={[0, -WALL_H / 2 + 0.4, 0.02]}>
             <planeGeometry args={[length, 0.8]} />
-            <meshStandardMaterial color="#C4A882" roughness={0.85} />
+            <MatcapMat color="#C4A882" />
           </mesh>
         </group>
       ))}
@@ -171,11 +169,11 @@ function Corridor({ length }: { length: number }) {
         <group key={`end-${end}`} position={[end * half, 0, 0]} rotation={[0, end === 1 ? NEG_HALF_PI : HALF_PI, 0]}>
           <mesh position={[0, WALL_H / 2, 0]}>
             <planeGeometry args={[HALL_W, WALL_H]} />
-            <meshStandardMaterial color="#F2EADA" roughness={0.9} side={THREE.DoubleSide} />
+            <MatcapMat color="#F2EADA" side={THREE.DoubleSide} />
           </mesh>
           <mesh position={[0, 1.9, 0.03]}>
             <planeGeometry args={[2.4, 1.4]} />
-            <meshStandardMaterial color="#BFE8F5" emissive="#BFE8F5" emissiveIntensity={0.25} />
+            <MatcapMat color="#BFE8F5" />
           </mesh>
         </group>
       ))}
@@ -203,13 +201,10 @@ function Stairs({
       onPointerOut={() => { setHot(false); document.body.style.cursor = 'auto'; }}
     >
       {Array.from({ length: 5 }).map((_, i) => (
-        <mesh key={i} position={[0, 0.13 + i * 0.26 * (dir === 'up' ? 1 : 0), -1.4 + i * 0.5]} castShadow>
+        <mesh key={i} position={[0, 0.13 + i * 0.26 * (dir === 'up' ? 1 : 0), -1.4 + i * 0.5]}>
           <boxGeometry args={[3, 0.26, 0.5]} />
-          <meshStandardMaterial
+          <MatcapMat
             color="#D8CDB6"
-            emissive="#E8A33C"
-            emissiveIntensity={hot ? 0.3 : 0}
-            roughness={0.7}
           />
         </mesh>
       ))}
@@ -283,13 +278,12 @@ export default function SchoolFloorScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [-half + 6, 3, 9], fov: 60, near: 0.1, far: 120 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#EFE7D6' }}
       >
         <ambientLight intensity={0.9} />
-        <directionalLight position={[6, 10, 6]} intensity={0.6} color="#FFF4DC" castShadow />
+        <directionalLight position={[6, 10, 6]} intensity={0.6} color="#FFF4DC" />
 
         <Corridor length={length} />
 

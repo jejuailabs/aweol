@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { MatcapMat } from './MatcapMat';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
   type AvatarCustom, type AvatarTint, type Obstacle,
@@ -37,11 +38,10 @@ function Half({ side, active, dim }: { side: 'O' | 'X'; active: boolean; dim: bo
   const base = side === 'O' ? '#3BAF9F' : '#E8604C';
   return (
     <group>
-      <mesh position={[x, 0.02, 0]} rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh position={[x, 0.02, 0]} rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[w, PLAZA_HALF * 2]} />
-        <meshStandardMaterial
+        <MatcapMat
           color={base}
-          roughness={0.95}
           transparent
           opacity={dim ? 0.22 : active ? 0.85 : 0.45}
         />
@@ -83,9 +83,9 @@ function Bleachers() {
   return (
     <group position={[0, 0, PLAZA_HALF + 1.6]}>
       {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[0, 0.35 + i * 0.5, i * 1.1]} castShadow receiveShadow>
+        <mesh key={i} position={[0, 0.35 + i * 0.5, i * 1.1]}>
           <boxGeometry args={[PLAZA_HALF * 2, 0.35, 1.0]} />
-          <meshStandardMaterial color={i % 2 ? '#C9A97E' : '#B8946A'} roughness={0.9} />
+          <MatcapMat color={i % 2 ? '#C9A97E' : '#B8946A'} />
         </mesh>
       ))}
     </group>
@@ -163,14 +163,14 @@ export default function PlazaScene({
 
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      <Canvas shadows camera={{ position: [0, 8, 14], fov: 55, near: 0.1, far: 200 }} style={{ background: '#DCEBF7' }}>
+      <Canvas camera={{ position: [0, 8, 14], fov: 55, near: 0.1, far: 200 }} style={{ background: '#DCEBF7' }}>
         <ambientLight intensity={0.9} />
-        <directionalLight position={[6, 16, 8]} intensity={0.85} castShadow />
+        <directionalLight position={[6, 16, 8]} intensity={0.85} />
 
         {/* 바닥 */}
-        <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+        <mesh rotation={[NEG_HALF_PI, 0, 0]}>
           <planeGeometry args={[PLAZA_HALF * 2 + 8, PLAZA_HALF * 2 + 12]} />
-          <meshStandardMaterial color="#E6E0D2" roughness={0.98} />
+          <MatcapMat color="#E6E0D2" />
         </mesh>
 
         <Half side="O" active={side === 'O'} dim={out} />
@@ -186,10 +186,8 @@ export default function PlazaScene({
         {wallUp && (
           <mesh position={[0, 1.1, 0]}>
             <boxGeometry args={[0.14, 2.2, PLAZA_HALF * 2]} />
-            <meshStandardMaterial
+            <MatcapMat
               color="#E8604C"
-              emissive="#E8604C"
-              emissiveIntensity={0.3}
               transparent
               opacity={0.35}
             />

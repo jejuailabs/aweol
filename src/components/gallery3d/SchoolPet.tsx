@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { PetKind } from '@/lib/firestore-schema';
+import { MatcapMat } from './MatcapMat';
 import {
   BLOCK_SECONDS, BUMP_DIST, NEAR_DIST, encounterLine, type PetEncounter,
 } from '@/lib/school-pet';
@@ -199,62 +200,62 @@ export default function SchoolPet({
       onPointerOut={() => { setHot(false); document.body.style.cursor = 'auto'; }}
     >
       {/* 몸통 */}
-      <mesh position={[0, 0.32, 0]} castShadow>
+      <mesh position={[0, 0.32, 0]}>
         <capsuleGeometry args={[0.21, 0.24, 6, 12]} />
-        <meshStandardMaterial color={skin.body} roughness={0.85} />
+        <MatcapMat color={skin.body} />
       </mesh>
       <mesh position={[0, 0.26, 0.14]}>
         <sphereGeometry args={[0.15, 12, 12]} />
-        <meshStandardMaterial color={skin.belly} roughness={0.9} />
+        <MatcapMat color={skin.belly} />
       </mesh>
 
       {/* 다리 넷 */}
       {([[-0.13, 0.13], [0.13, 0.13], [-0.13, -0.13], [0.13, -0.13]] as [number, number][]).map(([lx, lz]) => (
         <mesh key={`leg-${lx}-${lz}`} position={[lx, 0.09, lz]}>
           <cylinderGeometry args={[0.045, 0.05, 0.18, 8]} />
-          <meshStandardMaterial color={skin.body} roughness={0.85} />
+          <MatcapMat color={skin.body} />
         </mesh>
       ))}
 
       {/* 머리 */}
       <group position={[0, 0.6, 0.16]}>
-        <mesh castShadow>
+        <mesh>
           <sphereGeometry args={[0.2, 16, 16]} />
-          <meshStandardMaterial color={skin.body} roughness={0.85} />
+          <MatcapMat color={skin.body} />
         </mesh>
         {/* 주둥이 */}
         <mesh position={[0, -0.05, 0.16]}>
           <sphereGeometry args={[0.1, 12, 12]} />
-          <meshStandardMaterial color={skin.belly} roughness={0.9} />
+          <MatcapMat color={skin.belly} />
         </mesh>
         <mesh position={[0, -0.03, 0.25]}>
           <sphereGeometry args={[0.035, 8, 8]} />
-          <meshStandardMaterial color="#3A2A2A" roughness={0.4} />
+          <MatcapMat color="#3A2A2A" />
         </mesh>
         {/* 눈 */}
         {([-0.08, 0.08]).map((ex) => (
           <mesh key={`eye-${ex}`} position={[ex, 0.04, 0.17]}>
             <sphereGeometry args={[0.032, 8, 8]} />
-            <meshStandardMaterial color="#2A211A" />
+            <MatcapMat color="#2A211A" />
           </mesh>
         ))}
         {/* 귀 — 종류마다 다르게 */}
         {skin.ear === 'flop' && ([-0.17, 0.17]).map((ex) => (
           <mesh key={`ear-${ex}`} position={[ex, 0.02, 0]} rotation={[0, 0, ex > 0 ? -0.3 : 0.3]}>
             <capsuleGeometry args={[0.055, 0.12, 4, 8]} />
-            <meshStandardMaterial color={earColor} roughness={0.9} />
+            <MatcapMat color={earColor} />
           </mesh>
         ))}
         {skin.ear === 'point' && ([-0.12, 0.12]).map((ex) => (
           <mesh key={`ear-${ex}`} position={[ex, 0.19, 0]} rotation={[0, 0, ex > 0 ? -0.25 : 0.25]}>
             <coneGeometry args={[0.075, 0.17, 4]} />
-            <meshStandardMaterial color={earColor} roughness={0.9} />
+            <MatcapMat color={earColor} />
           </mesh>
         ))}
         {skin.ear === 'long' && ([-0.08, 0.08]).map((ex) => (
           <mesh key={`ear-${ex}`} position={[ex, 0.26, -0.02]} rotation={[0, 0, ex > 0 ? -0.16 : 0.16]}>
             <capsuleGeometry args={[0.05, 0.26, 4, 8]} />
-            <meshStandardMaterial color={earColor} roughness={0.9} />
+            <MatcapMat color={earColor} />
           </mesh>
         ))}
       </group>
@@ -264,7 +265,7 @@ export default function SchoolPet({
         {skin.tail === 'puff'
           ? <sphereGeometry args={[0.09, 10, 10]} />
           : <capsuleGeometry args={[0.04, skin.tail === 'up' ? 0.24 : 0.16, 4, 8]} />}
-        <meshStandardMaterial color={skin.belly} roughness={0.9} />
+        <MatcapMat color={skin.belly} />
       </mesh>
 
       {/* 이름표와 기분 — 가리키거나 뭔가 필요할 때만 띄운다 */}

@@ -13,6 +13,7 @@ import {
   questOfPerson, questState, questTarget, type Quest,
 } from '@/lib/village-rpg';
 import { backdropClose } from '@/lib/backdrop';
+import { MatcapMat } from './MatcapMat';
 
 const PI = Math.PI;
 const NEG_HALF_PI = -PI * 0.5;
@@ -61,17 +62,17 @@ function Fixtures({ list }: { list: Fixture[] }) {
       {list.includes('scale') && (
         // 저울 — 창구 위에 올려둔다. 편지 무게를 재는 그것.
         <group position={[-4.2, 1.22, -4.2]}>
-          <mesh castShadow>
+          <mesh>
             <boxGeometry args={[0.9, 0.16, 0.7]} />
-            <meshStandardMaterial color="#C6CBD2" roughness={0.4} metalness={0.3} />
+            <MatcapMat color="#C6CBD2" />
           </mesh>
           <mesh position={[0, 0.2, -0.2]}>
             <boxGeometry args={[0.55, 0.36, 0.08]} />
-            <meshStandardMaterial color="#3A3F47" />
+            <MatcapMat color="#3A3F47" />
           </mesh>
           <mesh position={[0, 0.14, 0.1]}>
             <boxGeometry args={[0.6, 0.05, 0.45]} />
-            <meshStandardMaterial color="#EDEFF2" roughness={0.6} />
+            <MatcapMat color="#EDEFF2" />
           </mesh>
         </group>
       )}
@@ -83,9 +84,9 @@ function Fixtures({ list }: { list: Fixture[] }) {
             [0, 0.3, 0, 1.1], [1.2, 0.26, 0.2, 0.95], [0.2, 0.85, 0.1, 0.8],
             [-1.1, 0.28, -0.1, 1.0],
           ].map(([x, y, z, s], i) => (
-            <mesh key={i} position={[x, y, z]} rotation={[0, i * 0.4, 0]} castShadow>
+            <mesh key={i} position={[x, y, z]} rotation={[0, i * 0.4, 0]}>
               <boxGeometry args={[s, s * 0.55, s * 0.8]} />
-              <meshStandardMaterial color={i % 2 ? '#C9A46B' : '#D8B77E'} roughness={0.95} />
+              <MatcapMat color={i % 2 ? '#C9A46B' : '#D8B77E'} />
             </mesh>
           ))}
         </group>
@@ -96,11 +97,11 @@ function Fixtures({ list }: { list: Fixture[] }) {
         <group position={[4.6, 0, -4.2]}>
           <mesh position={[0, 1.55, 0]}>
             <boxGeometry args={[3.2, 0.7, 0.06]} />
-            <meshStandardMaterial color="#BEE3F2" transparent opacity={0.45} />
+            <MatcapMat color="#BEE3F2" transparent opacity={0.45} />
           </mesh>
           <mesh position={[0, 1.92, 0]}>
             <boxGeometry args={[3.3, 0.08, 0.14]} />
-            <meshStandardMaterial color="#8A6038" roughness={0.7} />
+            <MatcapMat color="#8A6038" />
           </mesh>
         </group>
       )}
@@ -108,17 +109,17 @@ function Fixtures({ list }: { list: Fixture[] }) {
       {list.includes('mailbox') && (
         // 빨간 우체통 — 들어서면 바로 보이는 자리
         <group position={[-6.2, 0, 1.2]}>
-          <mesh position={[0, 0.6, 0]} castShadow>
+          <mesh position={[0, 0.6, 0]}>
             <cylinderGeometry args={[0.34, 0.34, 1.2, 14]} />
-            <meshStandardMaterial color="#E8604C" roughness={0.6} />
+            <MatcapMat color="#E8604C" />
           </mesh>
-          <mesh position={[0, 1.24, 0]} castShadow>
+          <mesh position={[0, 1.24, 0]}>
             <sphereGeometry args={[0.34, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color="#C94A38" roughness={0.6} />
+            <MatcapMat color="#C94A38" />
           </mesh>
           <mesh position={[0, 0.85, 0.33]}>
             <boxGeometry args={[0.4, 0.08, 0.04]} />
-            <meshStandardMaterial color="#3A3226" />
+            <MatcapMat color="#3A3226" />
           </mesh>
         </group>
       )}
@@ -126,26 +127,26 @@ function Fixtures({ list }: { list: Fixture[] }) {
       {list.includes('noticeboard') && (
         // 알림판 — 읍사무소에는 늘 붙어 있다
         <group position={[-5.4, 0, -6.6]}>
-          <mesh position={[0, 1.7, 0]} castShadow>
+          <mesh position={[0, 1.7, 0]}>
             <boxGeometry args={[3.0, 1.8, 0.1]} />
-            <meshStandardMaterial color="#F2EAD8" roughness={0.95} />
+            <MatcapMat color="#F2EAD8" />
           </mesh>
           <mesh position={[0, 1.7, 0.06]}>
             <boxGeometry args={[3.2, 2.0, 0.06]} />
-            <meshStandardMaterial color="#8A6038" roughness={0.8} />
+            <MatcapMat color="#8A6038" />
           </mesh>
         </group>
       )}
 
       {list.includes('flag') && (
         <group position={[6.2, 0, -6.4]}>
-          <mesh position={[0, 1.6, 0]} castShadow>
+          <mesh position={[0, 1.6, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 3.2, 8]} />
-            <meshStandardMaterial color="#9AA3AE" metalness={0.4} roughness={0.4} />
+            <MatcapMat color="#9AA3AE" />
           </mesh>
           <mesh position={[0.6, 2.7, 0]}>
             <planeGeometry args={[1.2, 0.8]} />
-            <meshStandardMaterial color="#FFFFFF" side={THREE.DoubleSide} />
+            <MatcapMat color="#FFFFFF" side={THREE.DoubleSide} />
           </mesh>
         </group>
       )}
@@ -154,19 +155,18 @@ function Fixtures({ list }: { list: Fixture[] }) {
         // 책꽂이 — 벽을 따라 세운다. 도서관은 이게 없으면 도서관이 아니다.
         ([-8.4, 8.4] as const).map((wx) => (
           <group key={wx} position={[wx, 0, -1.5]}>
-            <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
+            <mesh position={[0, 1.1, 0]}>
               <boxGeometry args={[0.5, 2.2, 4.5]} />
-              <meshStandardMaterial color="#9A6B45" roughness={0.9} />
+              <MatcapMat color="#9A6B45" />
             </mesh>
             {/* 책 등 — 색만 여럿 세워두면 책꽂이로 보인다 */}
             {Array.from({ length: 22 }, (_, i) => (
               <mesh
                 key={i}
                 position={[wx > 0 ? -0.3 : 0.3, 0.55 + (i % 2) * 0.85, -1.9 + (i % 11) * 0.36]}
-                castShadow
               >
                 <boxGeometry args={[0.16, 0.62, 0.24]} />
-                <meshStandardMaterial color={['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'][i % 5]} />
+                <MatcapMat color={['#C4674F', '#7B4B94', '#E8A33C', '#3BAF9F', '#4A90D9'][i % 5]} />
               </mesh>
             ))}
           </group>
@@ -178,14 +178,14 @@ function Fixtures({ list }: { list: Fixture[] }) {
         <group position={[-5.8, 0, -2.2]}>
           {([[0, 0], [1.3, 0.3], [0.6, 1.3]] as const).map(([x, z], i) => (
             <group key={i} position={[x, 0, z]}>
-              <mesh position={[0, 0.22, 0]} castShadow>
+              <mesh position={[0, 0.22, 0]}>
                 <boxGeometry args={[1.1, 0.44, 0.9]} />
-                <meshStandardMaterial color="#B9895A" roughness={0.95} />
+                <MatcapMat color="#B9895A" />
               </mesh>
               {Array.from({ length: 5 }, (_, j) => (
-                <mesh key={j} position={[-0.3 + (j % 3) * 0.3, 0.52, -0.2 + Math.floor(j / 3) * 0.3]} castShadow>
+                <mesh key={j} position={[-0.3 + (j % 3) * 0.3, 0.52, -0.2 + Math.floor(j / 3) * 0.3]}>
                   <sphereGeometry args={[0.16, 10, 10]} />
-                  <meshStandardMaterial color={['#8FBF6A', '#E8A33C', '#C9D97A'][(i + j) % 3]} roughness={0.85} />
+                  <MatcapMat color={['#8FBF6A', '#E8A33C', '#C9D97A'][(i + j) % 3]} />
                 </mesh>
               ))}
             </group>
@@ -196,21 +196,21 @@ function Fixtures({ list }: { list: Fixture[] }) {
       {list.includes('bed') && (
         // 진료 침대 — 보건지소는 이게 있어야 병원처럼 보인다
         <group position={[6.2, 0, -1.6]}>
-          <mesh position={[0, 0.45, 0]} castShadow>
+          <mesh position={[0, 0.45, 0]}>
             <boxGeometry args={[1.0, 0.14, 2.2]} />
-            <meshStandardMaterial color="#EAF2F0" roughness={0.7} />
+            <MatcapMat color="#EAF2F0" />
           </mesh>
           {([-0.85, 0.85] as const).map((z) =>
             ([-0.4, 0.4] as const).map((x) => (
               <mesh key={`${x}-${z}`} position={[x, 0.2, z]}>
                 <cylinderGeometry args={[0.05, 0.05, 0.4, 8]} />
-                <meshStandardMaterial color="#B9C2C0" metalness={0.3} />
+                <MatcapMat color="#B9C2C0" />
               </mesh>
             ))
           )}
-          <mesh position={[0, 0.58, -0.8]} castShadow>
+          <mesh position={[0, 0.58, -0.8]}>
             <boxGeometry args={[0.7, 0.14, 0.4]} />
-            <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
         </group>
       )}
@@ -219,20 +219,18 @@ function Fixtures({ list }: { list: Fixture[] }) {
         // 편의점 매대 — 알록달록한 물건이 줄지어 있어야 가게로 보인다
         ([-5.2, -2.2] as const).map((sx) => (
           <group key={sx} position={[sx, 0, -0.6]}>
-            <mesh position={[0, 0.7, 0]} castShadow receiveShadow>
+            <mesh position={[0, 0.7, 0]}>
               <boxGeometry args={[1.1, 1.4, 4.2]} />
-              <meshStandardMaterial color="#EAEAEA" roughness={0.8} />
+              <MatcapMat color="#EAEAEA" />
             </mesh>
             {Array.from({ length: 12 }, (_, i) => (
               <mesh
                 key={i}
                 position={[0, 0.5 + Math.floor(i / 6) * 0.75, -1.7 + (i % 6) * 0.68]}
-                castShadow
               >
                 <boxGeometry args={[1.0, 0.34, 0.4]} />
-                <meshStandardMaterial
+                <MatcapMat
                   color={['#E8604C', '#E8A33C', '#3BAF9F', '#4A90D9', '#D86CB0', '#8FD98A'][i % 6]}
-                  roughness={0.7}
                 />
               </mesh>
             ))}
@@ -244,18 +242,18 @@ function Fixtures({ list }: { list: Fixture[] }) {
         // 커피 머신과 빵 진열대 — 카페 창구 위
         <group>
           <group position={[-3.6, 1.22, -4.2]}>
-            <mesh castShadow>
+            <mesh>
               <boxGeometry args={[0.9, 0.7, 0.6]} />
-              <meshStandardMaterial color="#4A4440" roughness={0.4} metalness={0.3} />
+              <MatcapMat color="#4A4440" />
             </mesh>
             <mesh position={[0, 0.42, 0]}>
               <boxGeometry args={[0.6, 0.14, 0.5]} />
-              <meshStandardMaterial color="#8A8A8A" metalness={0.5} roughness={0.4} />
+              <MatcapMat color="#8A8A8A" />
             </mesh>
             {([-0.2, 0.2] as const).map((cx) => (
               <mesh key={cx} position={[cx, -0.1, 0.36]}>
                 <cylinderGeometry args={[0.07, 0.05, 0.16, 8]} />
-                <meshStandardMaterial color="#FFF6E4" roughness={0.7} />
+                <MatcapMat color="#FFF6E4" />
               </mesh>
             ))}
           </group>
@@ -263,12 +261,12 @@ function Fixtures({ list }: { list: Fixture[] }) {
           <group position={[3.4, 1.22, -4.2]}>
             <mesh>
               <boxGeometry args={[1.6, 0.08, 0.8]} />
-              <meshStandardMaterial color="#E8D7BC" roughness={0.8} />
+              <MatcapMat color="#E8D7BC" />
             </mesh>
             {([[-0.5, 0], [0, 0.1], [0.5, -0.05]] as const).map(([bx, bz], i) => (
-              <mesh key={i} position={[bx, 0.18, bz]} castShadow>
+              <mesh key={i} position={[bx, 0.18, bz]}>
                 <sphereGeometry args={[0.18, 8, 6]} />
-                <meshStandardMaterial color={['#C9924F', '#B87F42', '#D9A860'][i]} roughness={0.9} />
+                <MatcapMat color={['#C9924F', '#B87F42', '#D9A860'][i]} />
               </mesh>
             ))}
           </group>
@@ -280,11 +278,11 @@ function Fixtures({ list }: { list: Fixture[] }) {
         <group position={[0, 0, -6.4]}>
           <mesh position={[0, 2.6, 0]}>
             <cylinderGeometry args={[0.22, 0.22, 0.34, 12]} />
-            <meshStandardMaterial color="#E8604C" emissive="#E8604C" emissiveIntensity={0.7} />
+            <MatcapMat color="#E8604C" />
           </mesh>
           <mesh position={[0, 1.3, 0]}>
             <cylinderGeometry args={[0.06, 0.06, 2.4, 8]} />
-            <meshStandardMaterial color="#7A8390" metalness={0.4} />
+            <MatcapMat color="#7A8390" />
           </mesh>
         </group>
       )}
@@ -326,17 +324,16 @@ function Clerk({
       {/* 몸 — 이야기해 줄 사람은 옷 색이 다르다(느낌표만으로는 멀리서 안 보인다) */}
       <mesh
         position={[0, 0.85, 0]}
-        castShadow
         onClick={talkable && onTalk ? (e) => { e.stopPropagation(); onTalk(); } : undefined}
         onPointerOver={talkable ? (e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; } : undefined}
         onPointerOut={talkable ? () => { document.body.style.cursor = 'auto'; } : undefined}
       >
         <capsuleGeometry args={[0.32, 0.8, 4, 12]} />
-        <meshStandardMaterial color={hasGuide ? tone : '#5B6B8A'} roughness={0.8} />
+        <MatcapMat color={hasGuide ? tone : '#5B6B8A'} />
       </mesh>
-      <mesh position={[0, 1.62, 0]} castShadow>
+      <mesh position={[0, 1.62, 0]}>
         <sphereGeometry args={[0.3, 16, 16]} />
-        <meshStandardMaterial color="#F2D3B3" roughness={0.9} />
+        <MatcapMat color="#F2D3B3" />
       </mesh>
 
       {/*
@@ -555,41 +552,40 @@ export default function CivicPlaceScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [0, 6, 12], fov: 55, near: 0.1, far: 200 }}
         style={{ background: '#EAF1F8' }}
       >
         <ambientLight intensity={0.85} />
-        <directionalLight position={[8, 14, 6]} intensity={0.8} castShadow />
+        <directionalLight position={[8, 14, 6]} intensity={0.8} />
 
         {/* 바닥 */}
-        <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+        <mesh rotation={[NEG_HALF_PI, 0, 0]}>
           <planeGeometry args={[ROOM_W, ROOM_D]} />
-          <meshStandardMaterial color="#E9E3D6" roughness={0.95} />
+          <MatcapMat color="#E9E3D6" />
         </mesh>
 
         {/* 벽 셋 (앞은 열어둔다 — 막으면 답답하고 나가는 길이 안 보인다) */}
-        <mesh position={[0, WALL_H / 2, -ROOM_D / 2]} receiveShadow>
+        <mesh position={[0, WALL_H / 2, -ROOM_D / 2]}>
           <planeGeometry args={[ROOM_W, WALL_H]} />
-          <meshStandardMaterial color={place.color} roughness={0.9} />
+          <MatcapMat color={place.color} />
         </mesh>
-        <mesh position={[-ROOM_W / 2, WALL_H / 2, 0]} rotation={[0, PI / 2, 0]} receiveShadow>
+        <mesh position={[-ROOM_W / 2, WALL_H / 2, 0]} rotation={[0, PI / 2, 0]}>
           <planeGeometry args={[ROOM_D, WALL_H]} />
-          <meshStandardMaterial color="#F4EFE4" roughness={0.95} />
+          <MatcapMat color="#F4EFE4" />
         </mesh>
-        <mesh position={[ROOM_W / 2, WALL_H / 2, 0]} rotation={[0, -PI / 2, 0]} receiveShadow>
+        <mesh position={[ROOM_W / 2, WALL_H / 2, 0]} rotation={[0, -PI / 2, 0]}>
           <planeGeometry args={[ROOM_D, WALL_H]} />
-          <meshStandardMaterial color="#F4EFE4" roughness={0.95} />
+          <MatcapMat color="#F4EFE4" />
         </mesh>
 
         {/* 창구 카운터 */}
-        <mesh position={[0, 0.55, -4.2]} castShadow receiveShadow>
+        <mesh position={[0, 0.55, -4.2]}>
           <boxGeometry args={[11, 1.1, 1.6]} />
-          <meshStandardMaterial color="#B98D5F" roughness={0.7} />
+          <MatcapMat color="#B98D5F" />
         </mesh>
         <mesh position={[0, 1.16, -4.2]}>
           <boxGeometry args={[11.2, 0.12, 1.8]} />
-          <meshStandardMaterial color="#8A6038" roughness={0.6} />
+          <MatcapMat color="#8A6038" />
         </mesh>
 
         {/* 안내판 — 여기가 어디이고 무엇을 하는 곳인가 */}
@@ -631,7 +627,7 @@ export default function CivicPlaceScene({
           <group key={`poster-${i}`} position={[ROOM_W / 2 - 0.08, 2.65, -4 + i * 3.4]} rotation={[0, -PI / 2, 0]}>
             <mesh position={[0, 0, -0.012]}>
               <planeGeometry args={[2.6, 1.8]} />
-              <meshStandardMaterial color={place.color} roughness={0.85} />
+              <MatcapMat color={place.color} />
             </mesh>
             <mesh
               onClick={(e) => { e.stopPropagation(); setPage(i); }}
@@ -639,7 +635,7 @@ export default function CivicPlaceScene({
               onPointerOut={() => { document.body.style.cursor = 'auto'; }}
             >
               <planeGeometry args={[2.4, 1.6]} />
-              <meshStandardMaterial color="#FFFDF6" roughness={0.9} />
+              <MatcapMat color="#FFFDF6" />
             </mesh>
             <Html position={[0, 0, 0.02]} transform scale={0.24} pointerEvents="none" zIndexRange={[6, 0]}>
               <div
@@ -664,37 +660,37 @@ export default function CivicPlaceScene({
         <group position={[5, 3.3, -ROOM_D / 2 + 0.06]}>
           <mesh>
             <circleGeometry args={[0.45, 20]} />
-            <meshStandardMaterial color="#FFFFFF" />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
           <mesh position={[0, 0.12, 0.01]}>
             <planeGeometry args={[0.06, 0.3]} />
-            <meshStandardMaterial color="#3A3226" />
+            <MatcapMat color="#3A3226" />
           </mesh>
           <mesh position={[0.09, 0, 0.01]} rotation={[0, 0, -PI / 2]}>
             <planeGeometry args={[0.05, 0.22]} />
-            <meshStandardMaterial color="#3A3226" />
+            <MatcapMat color="#3A3226" />
           </mesh>
         </group>
         {([[-7.2, -6.2], [7.2, 5.6]] as const).map(([px, pz]) => (
           <group key={`${px}`} position={[px, 0, pz]}>
-            <mesh position={[0, 0.3, 0]} castShadow>
+            <mesh position={[0, 0.3, 0]}>
               <cylinderGeometry args={[0.32, 0.26, 0.6, 8]} />
-              <meshStandardMaterial color="#B0603F" roughness={0.85} />
+              <MatcapMat color="#B0603F" />
             </mesh>
-            <mesh position={[0, 0.85, 0]} castShadow>
+            <mesh position={[0, 0.85, 0]}>
               <sphereGeometry args={[0.42, 8, 6]} />
-              <meshStandardMaterial color="#4A8F40" roughness={0.95} />
+              <MatcapMat color="#4A8F40" />
             </mesh>
           </group>
         ))}
         <mesh position={[0, 0.015, 5.6]} rotation={[NEG_HALF_PI, 0, 0]}>
           <planeGeometry args={[3.2, 1.6]} />
-          <meshStandardMaterial color="#C9B98E" roughness={0.95} />
+          <MatcapMat color="#C9B98E" />
         </mesh>
         {([-3, 1] as const).map((wz) => (
           <mesh key={wz} position={[-ROOM_W / 2 + 0.06, 2.7, wz]} rotation={[0, PI / 2, 0]}>
             <planeGeometry args={[2.2, 1.3]} />
-            <meshStandardMaterial color="#BEE6F7" emissive="#9FD4EE" emissiveIntensity={0.2} />
+            <MatcapMat color="#BEE6F7" />
           </mesh>
         ))}
 
@@ -726,14 +722,14 @@ export default function CivicPlaceScene({
         {/* 대기 의자 */}
         {[-3.5, 3.5].map((x) => (
           <group key={x} position={[x, 0, 2.4]}>
-            <mesh position={[0, 0.42, 0]} castShadow>
+            <mesh position={[0, 0.42, 0]}>
               <boxGeometry args={[4.5, 0.18, 1.2]} />
-              <meshStandardMaterial color="#C9A97E" roughness={0.8} />
+              <MatcapMat color="#C9A97E" />
             </mesh>
             {[-1.6, 0, 1.6].map((dx) => (
-              <mesh key={dx} position={[dx, 0.2, 0]} castShadow>
+              <mesh key={dx} position={[dx, 0.2, 0]}>
                 <boxGeometry args={[0.2, 0.4, 1.1]} />
-                <meshStandardMaterial color="#A07E55" roughness={0.85} />
+                <MatcapMat color="#A07E55" />
               </mesh>
             ))}
           </group>

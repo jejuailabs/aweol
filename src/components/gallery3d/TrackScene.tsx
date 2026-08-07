@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { MatcapMat } from './MatcapMat';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
   type AvatarCustom, type AvatarTint,
@@ -38,17 +39,17 @@ function TrackSurface() {
   return (
     <group>
       {/* 잔디 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, -0.02, 0]}>
         <planeGeometry args={[80, 60]} />
-        <meshStandardMaterial color="#8FD98A" roughness={0.95} />
+        <MatcapMat color="#8FD98A" />
       </mesh>
 
       {pieces.map((p, i) => (
         <group key={`seg-${i}`} position={p.pos} rotation={[0, p.rot, 0]}>
           {/* 흙길 */}
-          <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+          <mesh rotation={[NEG_HALF_PI, 0, 0]}>
             <planeGeometry args={[LANE_HALF * 2, p.len]} />
-            <meshStandardMaterial color="#D98E5A" roughness={0.95} />
+            <MatcapMat color="#D98E5A" />
           </mesh>
           {/*
             **바깥 두 줄만 판정선이다.** 이 자리가 곧 LANE_HALF 라,
@@ -56,11 +57,11 @@ function TrackSurface() {
           */}
           <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[-LANE_HALF, 0.012, 0]}>
             <planeGeometry args={[0.18, p.len]} />
-            <meshStandardMaterial color="#FFFFFF" />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
           <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[LANE_HALF, 0.012, 0]}>
             <planeGeometry args={[0.18, p.len]} />
-            <meshStandardMaterial color="#FFFFFF" />
+            <MatcapMat color="#FFFFFF" />
           </mesh>
 
           {/*
@@ -74,7 +75,7 @@ function TrackSurface() {
               position={[LANE_HALF * f, 0.011, 0]}
             >
               <planeGeometry args={[0.07, p.len]} />
-              <meshStandardMaterial color="#FFFFFF" transparent opacity={0.4} />
+              <MatcapMat color="#FFFFFF" transparent opacity={0.4} />
             </mesh>
           ))}
         </group>
@@ -94,7 +95,7 @@ function TrackSurface() {
           <group key={`arrow-${i}`} position={[x0, 0.013, z0]} rotation={[0, rot, 0]}>
             <mesh rotation={[NEG_HALF_PI, 0, 0]}>
               <planeGeometry args={[0.5, 1.1]} />
-              <meshStandardMaterial color="#FFF3D0" transparent opacity={0.75} />
+              <MatcapMat color="#FFF3D0" transparent opacity={0.75} />
             </mesh>
             <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0, 0.85]}>
               {/*
@@ -102,7 +103,7 @@ function TrackSurface() {
                 진행 방향은 이 그룹의 +Z 다 — 그대로 두면 화살표가 옆을 가리킨다.
               */}
               <circleGeometry args={[0.42, 3, -HALF_PI]} />
-              <meshStandardMaterial color="#FFF3D0" transparent opacity={0.85} />
+              <MatcapMat color="#FFF3D0" transparent opacity={0.85} />
             </mesh>
           </group>
         );
@@ -111,13 +112,13 @@ function TrackSurface() {
       {/* 출발선 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[-HALF_STRAIGHT, 0.014, RADIUS]}>
         <planeGeometry args={[0.3, LANE_HALF * 2]} />
-        <meshStandardMaterial color="#FFFFFF" />
+        <MatcapMat color="#FFFFFF" />
       </mesh>
 
       {/* 트랙 안쪽 잔디 (질러가면 안 되는 곳) */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.005, 0]}>
         <planeGeometry args={[STRAIGHT_INNER, INNER_D]} />
-        <meshStandardMaterial color="#7CC97A" roughness={0.95} />
+        <MatcapMat color="#7CC97A" />
       </mesh>
     </group>
   );
@@ -205,13 +206,12 @@ export default function TrackScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [-14, 8, 16], fov: 60, near: 0.1, far: 120 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
       >
         <ambientLight intensity={0.75} />
-        <directionalLight position={[12, 16, 8]} intensity={1.05} color="#FFF4DC" castShadow />
+        <directionalLight position={[12, 16, 8]} intensity={1.05} color="#FFF4DC" />
 
         <TrackSurface />
 

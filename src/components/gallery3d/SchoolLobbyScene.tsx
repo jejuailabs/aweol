@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { MatcapMat } from './MatcapMat';
 import {
   WalkerAvatar, FollowCamera, DustPuffs, attachCameraControls, resetControls,
   type Obstacle, type AvatarCustom, type AvatarTint,
@@ -58,40 +59,40 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
   return (
     <group>
       {/* 바닥 — 학교 현관 특유의 반질반질한 타일 */}
-      <mesh rotation={[NEG_HALF_PI, 0, 0]} receiveShadow>
+      <mesh rotation={[NEG_HALF_PI, 0, 0]}>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#E4DCCB" roughness={0.35} metalness={0.05} />
+        <MatcapMat color="#E4DCCB" />
       </mesh>
       {/* 타일 줄눈 */}
       {Array.from({ length: 9 }).map((_, i) => (
         <mesh key={`tz-${i}`} rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.004, -halfD + i * 1.75 + 0.875]}>
           <planeGeometry args={[W, 0.03]} />
-          <meshStandardMaterial color="#CFC4AE" />
+          <MatcapMat color="#CFC4AE" />
         </mesh>
       ))}
       {Array.from({ length: 9 }).map((_, i) => (
         <mesh key={`tx-${i}`} rotation={[NEG_HALF_PI, 0, 0]} position={[-halfW + i * 2 + 1, 0.004, 0]}>
           <planeGeometry args={[0.03, D]} />
-          <meshStandardMaterial color="#CFC4AE" />
+          <MatcapMat color="#CFC4AE" />
         </mesh>
       ))}
 
       {/* 현관 매트 — 들어온 자리 표시 */}
       <mesh rotation={[NEG_HALF_PI, 0, 0]} position={[0, 0.008, halfD - 2]}>
         <planeGeometry args={[4, 2]} />
-        <meshStandardMaterial color="#7A6A52" roughness={0.95} />
+        <MatcapMat color="#7A6A52" />
       </mesh>
 
       {/* 천장 */}
       <mesh rotation={[HALF_PI, 0, 0]} position={[0, H, 0]}>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial color="#FBF6EA" />
+        <MatcapMat color="#FBF6EA" />
       </mesh>
       {/* 천장 등 */}
       {([[-4, -3], [4, -3], [-4, 3], [4, 3]] as [number, number][]).map(([x, z]) => (
         <mesh key={`lamp-${x}-${z}`} position={[x, H - 0.06, z]} rotation={[HALF_PI, 0, 0]}>
           <planeGeometry args={[1.6, 0.5]} />
-          <meshStandardMaterial color="#FFFDF2" emissive="#FFF6D8" emissiveIntensity={0.8} />
+          <MatcapMat color="#FFFDF2" />
         </mesh>
       ))}
 
@@ -102,13 +103,13 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
         { pos: [halfW, H / 2, 0] as [number, number, number], rot: NEG_HALF_PI, w: D },
       ]).map((wall, i) => (
         <group key={`wall-${i}`} position={wall.pos} rotation={[0, wall.rot, 0]}>
-          <mesh receiveShadow>
+          <mesh>
             <planeGeometry args={[wall.w, H]} />
-            <meshStandardMaterial color="#F2EADA" roughness={0.9} />
+            <MatcapMat color="#F2EADA" />
           </mesh>
           <mesh position={[0, -H / 2 + 0.45, 0.02]}>
             <planeGeometry args={[wall.w, 0.9]} />
-            <meshStandardMaterial color="#C4A882" roughness={0.8} />
+            <MatcapMat color="#C4A882" />
           </mesh>
         </group>
       ))}
@@ -117,16 +118,16 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
       <group position={[0, H / 2, halfD]} rotation={[0, PI, 0]}>
         <mesh>
           <planeGeometry args={[W, H]} />
-          <meshStandardMaterial color="#F2EADA" roughness={0.9} />
+          <MatcapMat color="#F2EADA" />
         </mesh>
         <mesh position={[0, -H / 2 + 1.4, 0.03]}>
           <planeGeometry args={[5, 2.8]} />
-          <meshStandardMaterial color="#BFE8F5" transparent opacity={0.75} />
+          <MatcapMat color="#BFE8F5" transparent opacity={0.75} />
         </mesh>
         {([-1.25, 0, 1.25]).map((x) => (
           <mesh key={`mullion-${x}`} position={[x, -H / 2 + 1.4, 0.05]}>
             <boxGeometry args={[0.09, 2.8, 0.04]} />
-            <meshStandardMaterial color="#8A8A8A" metalness={0.5} roughness={0.4} />
+            <MatcapMat color="#8A8A8A" />
           </mesh>
         ))}
       </group>
@@ -134,31 +135,31 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
       {/* 중앙 계단 — 2층으로 올라가는 느낌만 */}
       <group position={[0, 0, -halfD + 1.2]}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <mesh key={`step-${i}`} position={[0, 0.14 + i * 0.28, 0.9 - i * 0.42]} castShadow receiveShadow>
+          <mesh key={`step-${i}`} position={[0, 0.14 + i * 0.28, 0.9 - i * 0.42]}>
             <boxGeometry args={[5.2, 0.28, 0.42]} />
-            <meshStandardMaterial color="#D8CDB6" roughness={0.7} />
+            <MatcapMat color="#D8CDB6" />
           </mesh>
         ))}
         {/* 난간 */}
         {([-2.7, 2.7]).map((x) => (
           <mesh key={`rail-${x}`} position={[x, 1.1, 0]} rotation={[0.6, 0, 0]}>
             <cylinderGeometry args={[0.05, 0.05, 2.6, 8]} />
-            <meshStandardMaterial color="#A9865E" roughness={0.6} />
+            <MatcapMat color="#A9865E" />
           </mesh>
         ))}
       </group>
 
       {/* 신발장 — 학교 현관 하면 이것 */}
       <group position={[-halfW + 0.5, 0, 3.5]}>
-        <mesh position={[0, 1.1, 0]} castShadow>
+        <mesh position={[0, 1.1, 0]}>
           <boxGeometry args={[0.9, 2.2, 4.4]} />
-          <meshStandardMaterial color="#C9A87C" roughness={0.8} />
+          <MatcapMat color="#C9A87C" />
         </mesh>
         {Array.from({ length: 4 }).map((_, row) =>
           Array.from({ length: 7 }).map((_, col) => (
             <mesh key={`sh-${row}-${col}`} position={[0.47, 0.42 + row * 0.5, -1.9 + col * 0.62]}>
               <planeGeometry args={[0.52, 0.4]} />
-              <meshStandardMaterial color="#7A5C3E" side={THREE.DoubleSide} />
+              <MatcapMat color="#7A5C3E" side={THREE.DoubleSide} />
             </mesh>
           ))
         )}
@@ -166,23 +167,23 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
 
       {/* 트로피 진열장 */}
       <group position={[halfW - 0.5, 0, -4.5]}>
-        <mesh position={[0, 1.2, 0]} castShadow>
+        <mesh position={[0, 1.2, 0]}>
           <boxGeometry args={[0.9, 2.4, 3.2]} />
-          <meshStandardMaterial color="#B08860" roughness={0.7} />
+          <MatcapMat color="#B08860" />
         </mesh>
         <mesh position={[-0.47, 1.4, 0]} rotation={[0, NEG_HALF_PI, 0]}>
           <planeGeometry args={[2.9, 1.7]} />
-          <meshStandardMaterial color="#DFF3FA" transparent opacity={0.4} />
+          <MatcapMat color="#DFF3FA" transparent opacity={0.4} />
         </mesh>
         {([-1, 0, 1]).map((z, i) => (
           <group key={`tro-${z}`} position={[-0.25, 0.95 + (i % 2) * 0.62, z]}>
             <mesh>
               <cylinderGeometry args={[0.09, 0.13, 0.22, 10]} />
-              <meshStandardMaterial color="#E8C86A" metalness={0.7} roughness={0.3} />
+              <MatcapMat color="#E8C86A" />
             </mesh>
             <mesh position={[0, -0.16, 0]}>
               <boxGeometry args={[0.2, 0.1, 0.2]} />
-              <meshStandardMaterial color="#6B4226" />
+              <MatcapMat color="#6B4226" />
             </mesh>
           </group>
         ))}
@@ -191,14 +192,14 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
       {/* 화분 */}
       {([[-5.5, -1], [5.5, 1]] as [number, number][]).map(([x, z]) => (
         <group key={`pot-${x}`} position={[x, 0, z]}>
-          <mesh position={[0, 0.28, 0]} castShadow>
+          <mesh position={[0, 0.28, 0]}>
             <cylinderGeometry args={[0.32, 0.24, 0.56, 12]} />
-            <meshStandardMaterial color="#C97F5A" roughness={0.85} />
+            <MatcapMat color="#C97F5A" />
           </mesh>
           {([0, 1, 2]).map((i) => (
-            <mesh key={i} position={[Math.sin(i * 2.1) * 0.18, 0.78 + i * 0.22, Math.cos(i * 2.1) * 0.18]} castShadow>
+            <mesh key={i} position={[Math.sin(i * 2.1) * 0.18, 0.78 + i * 0.22, Math.cos(i * 2.1) * 0.18]}>
               <sphereGeometry args={[0.28 - i * 0.05, 10, 10]} />
-              <meshStandardMaterial color={i === 0 ? '#5FA85C' : '#7CC97A'} roughness={0.9} />
+              <MatcapMat color={i === 0 ? '#5FA85C' : '#7CC97A'} />
             </mesh>
           ))}
         </group>
@@ -208,7 +209,7 @@ function LobbyShell({ emblemUrl }: { emblemUrl?: string }) {
       <group position={[3.2, 2.6, -halfD + 0.1]}>
         <mesh>
           <circleGeometry args={[0.75, 32]} />
-          <meshStandardMaterial color="#FFFFFF" />
+          <MatcapMat color="#FFFFFF" />
         </mesh>
         {emblemUrl && <LobbyEmblem url={emblemUrl} />}
       </group>
@@ -233,7 +234,7 @@ function LobbyEmblem({ url }: { url: string }) {
   return (
     <mesh position={[0, 0, 0.02]}>
       <circleGeometry args={[0.66, 32]} />
-      <meshStandardMaterial map={tex} roughness={0.8} />
+      <MatcapMat map={tex} />
     </mesh>
   );
 }
@@ -253,29 +254,25 @@ function Board({
     <group position={spot.pos} rotation={[0, spot.rot, 0]}>
       {/* 판 */}
       <mesh
-        castShadow
         onClick={(e) => { e.stopPropagation(); onOpen(spot.key); }}
         onPointerOver={(e) => { e.stopPropagation(); setHot(true); document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { setHot(false); document.body.style.cursor = 'auto'; }}
       >
         <boxGeometry args={[2.6, 1.9, 0.12]} />
-        <meshStandardMaterial
+        <MatcapMat
           color="#A97B4F"
-          roughness={0.7}
-          emissive={spot.color}
-          emissiveIntensity={hot ? 0.35 : 0}
         />
       </mesh>
       {/* 속지 */}
       <mesh position={[0, 0, 0.07]}>
         <planeGeometry args={[2.34, 1.64]} />
-        <meshStandardMaterial color="#FFF8E7" roughness={0.95} />
+        <MatcapMat color="#FFF8E7" />
       </mesh>
       {/* 압정 */}
       {([[-1.0, 0.7], [1.0, 0.7]] as [number, number][]).map(([x, y]) => (
         <mesh key={`pin-${x}`} position={[x, y, 0.1]}>
           <sphereGeometry args={[0.055, 10, 10]} />
-          <meshStandardMaterial color={spot.color} metalness={0.3} roughness={0.4} />
+          <MatcapMat color={spot.color} />
         </mesh>
       ))}
 
@@ -324,7 +321,7 @@ function LobbyLighting() {
   return (
     <>
       <ambientLight intensity={0.85} />
-      <directionalLight position={[4, 6, 8]} intensity={0.7} color="#FFF4DC" castShadow />
+      <directionalLight position={[4, 6, 8]} intensity={0.7} color="#FFF4DC" />
       <pointLight position={[0, H - 0.5, 0]} intensity={0.4} color="#FFF8E7" distance={20} />
       <pointLight position={[0, 2, halfD - 2]} intensity={0.3} color="#DFF3FA" distance={10} />
     </>
@@ -360,7 +357,6 @@ export default function SchoolLobbyScene({
   return (
     <div ref={containerRef} className="scene-3d" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <Canvas
-        shadows
         camera={{ position: [0, 3.2, 12], fov: 62, near: 0.1, far: 60 }}
         dpr={[1, 2]}
         style={{ position: 'absolute', inset: 0, background: '#EFE7D6' }}
