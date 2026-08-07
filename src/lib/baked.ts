@@ -89,7 +89,19 @@ export function shadeRGB(rgb: readonly [number, number, number], s: number): RGB
   ];
 }
 
-/** hex(0xRRGGBB) → 0~1 RGB. three 없이도 쓰라고 여기 둔다. */
+/**
+ * hex(sRGB) → **리니어** 0~1 RGB.
+ *
+ * 정점 색 속성은 three 가 리니어로 해석해 화면에 낼 때 sRGB 로 올린다.
+ * 그래서 hex 값을 255 로 나눠 그대로 쓰면 **한 번 더 밝아져 색이 바랜다** —
+ * 마을 땅이 지정한 초록보다 하얗게 나온 원인이 이거였다.
+ * (재질의 color 는 three 가 알아서 변환하지만, 속성은 우리 몫이다)
+ */
+const s2l = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
 export function hexToRGB(hex: number): RGB {
-  return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+  return [
+    s2l(((hex >> 16) & 255) / 255),
+    s2l(((hex >> 8) & 255) / 255),
+    s2l((hex & 255) / 255),
+  ];
 }

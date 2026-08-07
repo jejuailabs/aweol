@@ -35,7 +35,7 @@ import { MatcapMat } from './MatcapMat';
 import NpcBillboard from './NpcBillboard';
 import { APP_IMAGES } from '@/lib/image-urls';
 import type { Occluder } from '@/lib/baked';
-import { bakeGroundGeometry } from './baked-three';
+import { BAKED_MAT, bakeGroundGeometry } from './baked-three';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -710,7 +710,7 @@ function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
           for (let c = 0; c < clumps; c++) {
           const ccx = wx + (hash(cellX, cellZ, 400 + c) - 0.5) * CELL;
           const ccz = wz + (hash(cellX, cellZ, 420 + c) - 0.5) * CELL;
-          const n = 4 + ((hash(cellX, cellZ, 440 + c) * 4) | 0);
+          const n = 7 + ((hash(cellX, cellZ, 440 + c) * 5) | 0);
           for (let k0 = 0; k0 < n && gi < CAP_G; k0++) {
             const k = c * 8 + k0;
             const x = ccx + (hash(cellX, cellZ, 10 + k) - 0.5) * 1.1;
@@ -719,11 +719,11 @@ function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
               hash(cellX, cellZ, 100 + k) * 6.28,
               (hash(cellX, cellZ, 130 + k) - 0.5) * 0.7);
             q.setFromEuler(eu);
-            const s = 0.7 + hash(cellX, cellZ, 160 + k) * 0.7;
+            const s = 0.9 + hash(cellX, cellZ, 160 + k) * 0.9;
             m.compose(v.set(x, -0.02, z), q,
               sc.set(s, s * (0.8 + hash(cellX, cellZ, 190 + k) * 0.6), s));
             gm.setMatrixAt(gi, m);
-            col.setHex(0x9BCB86).offsetHSL(hue, (hash(cellX, cellZ, 220 + k) - 0.5) * 0.12,
+            col.setHex(0x7DB960).offsetHSL(hue, (hash(cellX, cellZ, 220 + k) - 0.5) * 0.12,
               (hash(cellX, cellZ, 250 + k) - 0.5) * 0.07);
             gm.setColorAt(gi, col);
             gi++;
@@ -1222,37 +1222,13 @@ function Areas({ list }: { list: VillageData['a'] }) {
   );
 }
 
-/**
- * 바닥 — 단색 대신 잔디 점이 찍힌 타일 텍스처를 깐다.
- *
- * 단색 초록 한 장은 게임이 아니라 도면처럼 보인다. 캔버스에 점을 찍어
- * 작은 텍스처 하나를 만들고 반복해 깐다 — 파일도, 네트워크도 필요 없다.
- */
 function Ground({ R, buildings }: { R: number; buildings: VillageData['b'] }) {
-  const tex = useMemo(() => {
-    const c = document.createElement('canvas');
-    c.width = 256; c.height = 256;
-    const ctx = c.getContext('2d');
-    if (!ctx) return null;
-    ctx.fillStyle = '#9CD693';
-    ctx.fillRect(0, 0, 256, 256);
-    const tones = ['#92CD89', '#A6DE9D', '#8AC581', '#A0D897'];
-    for (let i = 0; i < 1000; i++) {
-      ctx.fillStyle = tones[i % 4];
-      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2.5, 2.5);
-    }
-    const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    // 타일 한 장 ≈ 12m — 걷는 눈높이에서 점이 보슬보슬 보이는 크기
-    t.repeat.set((R * 2 + 200) / 12, (R * 2 + 200) / 12);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }, [R]);
-
   /**
-   * 건물 그림자를 땅 정점 색에 굽는다 (baked — docs/10-jeju-warp-map.md).
-   * 잔디 점 텍스처 × 구운 그림자가 곱해져, 건물 밑이 실제로 어둡다.
-   * 로드할 때 한 번 — 건물이 수백 채여도 런타임 비용 0.
+   * 땅 — 색·잔디 점무늬·건물 그림자를 전부 **정점 색 하나로** 굽는다.
+   *
+   * 처음엔 점무늬 캔버스 텍스처 × 정점 색 조합이었는데, 소프트웨어 렌더러
+   * (개발 실험실의 헤드리스)에서 그 조합이 안 그려져 원인 추적이 막혔다.
+   * 경로가 하나면 어디서든 같은 그림이고, 텍스처 메모리도 안 쓴다.
    */
   const geo = useMemo(() => {
     const occluders: Occluder[] = buildings.map((b) => {
@@ -1267,19 +1243,10 @@ function Ground({ R, buildings }: { R: number; buildings: VillageData['b'] }) {
         k: 0.42,
       };
     });
-    // 흰 바탕에 굽는다 — 색은 텍스처가 내고, 정점에는 빛·그림자만 싣는다
-    return bakeGroundGeometry({
-      size: R * 2 + 200, segments: 128, colorHex: 0xFFFFFF, occluders,
-    });
+    return bakeGroundGeometry({ size: R * 2 + 200, segments: 128, colorHex: 0x9CD693, occluders });
   }, [R, buildings]);
-
-  const mat = useMemo(
-    () => new THREE.MeshBasicMaterial({ vertexColors: true, map: tex ?? undefined }),
-    [tex]
-  );
-  useEffect(() => () => { tex?.dispose(); geo.dispose(); mat.dispose(); }, [tex, geo, mat]);
-
-  return <mesh geometry={geo} material={mat} />;
+  useEffect(() => () => geo.dispose(), [geo]);
+  return <mesh geometry={geo} material={BAKED_MAT} />;
 }
 
 /**
@@ -2506,6 +2473,8 @@ export default function VillageMapScene({
          * (책상 컴퓨터는 화면이 커도 GPU 가 받쳐주므로 2 까지 둔다)
          */
         dpr={[1, typeof window !== 'undefined' && window.innerWidth < 820 ? 1.5 : 2]}
+        /* 화면을 파일로 뽑을 수 있게 — 없으면 toDataURL 이 검은 판을 준다. 비용은 미미하다. */
+        gl={{ preserveDrawingBuffer: true }}
         style={{ position: 'absolute', inset: 0, background: '#BFE8F5' }}
         /**
          * **화면을 눌러 벤다.**

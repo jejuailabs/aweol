@@ -147,13 +147,18 @@ export function bakeGroundGeometry({
   const pos = g.attributes.position;
   const col = new Float32Array(pos.count * 3);
   const base = hexToRGB(colorHex);
-  // 땅은 위를 보므로 조명은 한 번만 계산하면 된다
-  const li = lightRGB(0, 1, 0);
-  const lit: [number, number, number] = [base[0] * li[0], base[1] * li[1], base[2] * li[2]];
+  /**
+   * 땅에는 조명 곱을 **안 한다.** lightRGB(위쪽)≈1.14 를 곱했더니
+   * 초록이 하얗게 바래서 지정한 색이 화면에 안 나왔다.
+   * 땅 색은 아트가 고른 그 색 그대로 나가고, 그림자만 얹는다.
+   */
+  const lit: [number, number, number] = [base[0], base[1], base[2]];
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
     const c = shadeRGB(lit, shadowFactor(occluders, x, z));
-    col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+    // 잔디의 보슬보슬한 점무늬도 정점에 굽는다 — 텍스처 없이 한 경로로 간다
+    const w = (Math.sin(x * 1.7) * Math.cos(z * 1.9) + Math.sin((x - z) * 2.3)) * 0.016;
+    col[i * 3] = c[0] + w; col[i * 3 + 1] = c[1] + w; col[i * 3 + 2] = c[2] + w;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return g;
