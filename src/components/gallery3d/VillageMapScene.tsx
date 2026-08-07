@@ -139,7 +139,7 @@ const WALL_COLORS = ['#EFE5D3', '#E6DAC5', '#F2E0DA', '#DFE8DC', '#DDE4EE', '#F0
 function Buildings({ list, onEnterPlace, places }: {
   list: VillageData['b'];
   /** 관공서 문을 눌렀을 때 (우체국·읍사무소 …). 없으면 문이 안 눌린다. */
-  onEnterPlace?: (kind: string) => void;
+  onEnterPlace?: (kind: string, back?: { x: number; z: number; yaw: number }) => void;
   /** 이 학교의 기관들 — 학교가 새로 만든 곳도 문이 열려야 한다 */
   places?: CivicPlace[];
 }) {
@@ -199,15 +199,35 @@ function Buildings({ list, onEnterPlace, places }: {
    * 임의의 다각형을 바깥으로 넓히는 건 이 화면이 감당할 계산이 아니고,
    * **허공에 뜬 판보다 처마 없는 지붕이 낫다.**
    */
+  /**
+   * 이름 있는 건물 지붕 — **처마 나온 박공지붕.**
+   *
+   * 발자국 다각형을 얇게 뽑아 얹었더니 위에서 보면 색종이를 오려 붙인
+   * 설계도였다. 마을이 마을처럼 보이는 건 팔할이 지붕이다: 감싸는 네모
+   * 기준으로 삼각 단면을 긴 축으로 뽑고, 사방 0.8m 처마를 내민다.
+   * ㄱ자 건물은 모서리가 살짝 덮이지만, 떠 있는 판보다 백배 낫다.
+   */
   const roofs = useMemo(
     () =>
       list.map((b) => {
         if (!b.n) return null;
-        const shape = new THREE.Shape();
-        [...b.p].reverse().forEach(([x, z], i) => (i === 0 ? shape.moveTo(x, -z) : shape.lineTo(x, -z)));
-        shape.closePath();
-        const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false });
-        geo.rotateX(-PI / 2);
+        const xs = b.p.map((p) => p[0]);
+        const zs = b.p.map((p) => p[1]);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+        const w = maxX - minX, d = maxZ - minZ;
+        const across = Math.min(w, d) + 1.6;          // 처마 0.8m씩
+        const along = Math.max(w, d) + 1.6;
+        const rise = Math.min(3.4, across * 0.36);    // 큰 건물이 산이 되지 않게
+        const s = new THREE.Shape();
+        s.moveTo(-across / 2, 0);
+        s.lineTo(across / 2, 0);
+        s.lineTo(0, rise);
+        s.closePath();
+        const geo = new THREE.ExtrudeGeometry(s, { depth: along, bevelEnabled: false });
+        geo.translate(0, 0, -along / 2);
+        if (w >= d) geo.rotateY(PI / 2);              // 능선을 긴 축에 맞춘다
+        geo.translate((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
         return geo;
       }),
     [list]
@@ -271,7 +291,7 @@ function Buildings({ list, onEnterPlace, places }: {
 
             {/* 지붕은 건물 좌표계 그대로다 — 아래 group 안에 넣으면 두 번 옮겨진다 */}
             {named && roofs[i] && (
-              <mesh geometry={roofs[i]!} position={[0, b.h + 0.12, 0]}>
+              <mesh geometry={roofs[i]!} position={[0, b.h - 0.05, 0]}>
                 <MatcapMat color={ROOF_COLORS[d?.hue ?? 0]} />
               </mesh>
             )}
@@ -344,7 +364,7 @@ function Buildings({ list, onEnterPlace, places }: {
                     x={Math.min(d.w * 0.32, 2.6)}
                     z={d.d / 2 + 1.7}
                     h={2.05}
-                    onClick={onEnterPlace ? () => onEnterPlace(civicKind) : undefined}
+                    onClick={onEnterPlace ? () => onEnterPlace(civicKind) : undefined /* Buildings 프롭이 이미 enterPlace 라 좌표가 실린다 */}
                   />
                 )}
                 {/* 들어갈 수 있는 곳은 현관 지붕까지 — 눈에 띄어야 눌러본다 */}
@@ -785,6 +805,16 @@ function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
  *
  * 서 있는 자리에서 380m 밖은 전체 넓이의 7할이 넘는다 — **그만큼이 빠진다.**
  */
+/** 가을 나무 팔레트 — [큰 덩이, 밝은 덩이, 어두운 덩이] 여섯 벌 */
+const TREE_HUES: [string, string, string][] = [
+  ['#D9873C', '#E8A54F', '#C4742F'],
+  ['#C85A32', '#DA7345', '#B24A28'],
+  ['#E0A93F', '#EFC05C', '#C9922F'],
+  ['#8FA24A', '#A5B85E', '#7A8C3C'],
+  ['#B8452C', '#CC5A3E', '#9E3A24'],
+  ['#55A24B', '#66B458', '#4C9443'],
+];
+
 const PROP_RANGE = 380;
 
 function VillageProps({ radius, buildings, avatarPos }: {
@@ -812,7 +842,7 @@ function VillageProps({ radius, buildings, avatarPos }: {
       return (h >>> 0) / 4294967296;
     };
 
-    const out: { kind: string; x: number; z: number; r: number; s: number }[] = [];
+    const out: { kind: string; x: number; z: number; r: number; s: number; hue?: number }[] = [];
     const R = radius * 0.9;
 
     /**
@@ -838,7 +868,7 @@ function VillageProps({ radius, buildings, avatarPos }: {
       if (blocked(x, z)) continue;
       const roll = seeded(i * 3 + 2);
       const r = seeded(i * 7) * PI * 2;
-      if (roll < 0.30) out.push({ kind: 'tree', x, z, r, s: 0.7 + seeded(i * 5) * 0.6 });
+      if (roll < 0.30) out.push({ kind: 'tree', x, z, r, s: 0.7 + seeded(i * 5) * 0.6, hue: (seeded(i * 13) * 6) | 0 });
       else if (roll < 0.40) out.push({ kind: 'palm', x, z, r, s: 0.8 + seeded(i * 5) * 0.5 });
       else if (roll < 0.46) out.push({ kind: 'lamp', x, z, r, s: 1 });
       else if (roll < 0.51) out.push({ kind: 'bench', x, z, r, s: 1 });
@@ -907,22 +937,22 @@ function VillageProps({ radius, buildings, avatarPos }: {
         <group key={idx} position={[it.x, 0, it.z]} rotation={[0, it.r, 0]} scale={it.s}>
           {it.kind === 'tree' && (
             <>
-              {/* 덩어리 하나면 사탕처럼 보인다 — 크기·색이 다른 세 덩어리를 겹친다 */}
+              {/* 가을 마을 — 나무마다 씨앗으로 고른 단풍색. 초록 방울로는 그림이 안 된다 */}
               <mesh position={[0, 0.9, 0]}>
                 <cylinderGeometry args={[0.22, 0.4, 1.8, 6]} />
                 <MatcapMat color="#8B6C47" />
               </mesh>
               <mesh position={[0, 2.4, 0]}>
                 <sphereGeometry args={[1.9, 8, 6]} />
-                <MatcapMat color="#55A24B" />
+                <MatcapMat color={TREE_HUES[it.hue ?? 0][0]} />
               </mesh>
               <mesh position={[0.9, 3.1, 0.3]}>
                 <sphereGeometry args={[1.15, 7, 5]} />
-                <MatcapMat color="#66B458" />
+                <MatcapMat color={TREE_HUES[it.hue ?? 0][1]} />
               </mesh>
               <mesh position={[-0.8, 3.3, -0.4]}>
                 <sphereGeometry args={[0.95, 7, 5]} />
-                <MatcapMat color="#4C9443" />
+                <MatcapMat color={TREE_HUES[it.hue ?? 0][2]} />
               </mesh>
             </>
           )}
@@ -1930,7 +1960,7 @@ function CarRig({
 */
 
 export default function VillageMapScene({
-  data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace, onEnterSite,
+  data, schoolId, schoolName, me, avatarId, avatarCustom, avatarTint, onEnterSchool, onEnterPlace, onEnterSite, spawnAt,
   localSites, localPlaces,
   ownedVehicles = [], vehicleId = null, onPickVehicle,
   spots, currentSpot, onGoSpot, isHome = true, picked, onPickUp,
@@ -1945,9 +1975,11 @@ export default function VillageMapScene({
   avatarTint?: AvatarTint | null;
   onEnterSchool: () => void;
   /** 관공서 문을 눌렀을 때 (우체국·읍사무소 …) */
-  onEnterPlace?: (kind: string) => void;
+  onEnterPlace?: (kind: string, back?: { x: number; z: number; yaw: number }) => void;
   /** 우리 고장 유적을 눌렀을 때 (애월진성 …) */
-  onEnterSite?: (siteId: string) => void;
+  onEnterSite?: (siteId: string, back?: { x: number; z: number; yaw: number }) => void;
+  /** 주소(?bx=&bz=&byaw=)로 온 복귀 자리 — 세션 표보다 먼저 본다 */
+  spawnAt?: { x: number; z: number; yaw: number } | null;
   /** 이 학교의 유적·명소 (학교가 고쳤을 수 있다) */
   localSites?: LocalSite[];
   /** 이 학교의 기관들 */
@@ -1997,7 +2029,7 @@ export default function VillageMapScene({
   const [spawn] = useState<[number, number, number, number]>(() => {
     // 그리는 중에는 **읽기만** 한다 — React 가 첫 그리기를 버리고 다시 그릴 수
     // 있어서, 여기서 지우면 두 번째 그리기가 빈손이 된다(village-return 참고).
-    const back = peekReturn(currentSpot?.id ?? '');
+    const back = spawnAt ?? peekReturn(currentSpot?.id ?? '');
     return back ? [back.x, 0, back.z, back.yaw] : [0, 0, 30, 0];
   });
   useEffect(() => {
@@ -2026,10 +2058,15 @@ export default function VillageMapScene({
   /** 서 있는 동안 자리를 계속 맞춰 둔다 — 문을 안 거치고 나가도 제자리로 돌아온다 */
   useEffect(() => { saveSpot(currentSpot?.id ?? ''); }, [currentSpot]);
 
-  const enterPlace = useCallback((kind: string) => { remember(); onEnterPlace?.(kind); },
-    [remember, onEnterPlace]);
-  const enterSite = useCallback((siteId: string) => { remember(); onEnterSite?.(siteId); },
-    [remember, onEnterSite]);
+  const backNow = useCallback(() => ({
+    x: Math.round(avatarPos.current.x * 10) / 10,
+    z: Math.round(avatarPos.current.z * 10) / 10,
+    yaw: Math.round((avatarYaw.current ?? 0) * 100) / 100,
+  }), []);
+  const enterPlace = useCallback((kind: string) => { remember(); onEnterPlace?.(kind, backNow()); },
+    [remember, onEnterPlace, backNow]);
+  const enterSite = useCallback((siteId: string) => { remember(); onEnterSite?.(siteId, backNow()); },
+    [remember, onEnterSite, backNow]);
   const enterSchool = useCallback(() => { remember(); onEnterSchool(); },
     [remember, onEnterSchool]);
   /** 워프할 자리. WalkerAvatar 가 다음 프레임에 집어간다. */

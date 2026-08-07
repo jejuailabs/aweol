@@ -194,6 +194,17 @@ function VillageBody() {
   };
   const [tried, setTried] = useState(false);
 
+  /** 기관에서 돌아올 때 주소에 실려 온 자리 (?bx=&bz=&byaw=) */
+  const [spawnAt] = useState<{ x: number; z: number; yaw: number } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const q = new URLSearchParams(window.location.search);
+    const x = parseFloat(q.get('bx') ?? '');
+    const z = parseFloat(q.get('bz') ?? '');
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+    const yaw = parseFloat(q.get('byaw') ?? '');
+    return { x, z, yaw: Number.isFinite(yaw) ? yaw : 0 };
+  });
+
   useEffect(() => {
     if (!db) { setTried(true); return; }
     let alive = true;
@@ -302,13 +313,20 @@ function VillageBody() {
            * **주소가 기관 종류다** — 우체국은 어느 동네에 있든 하는 일이 같아서
            * 학교마다 방을 따로 만들지 않는다.
            */
-          onEnterPlace={(kind) => {
+          onEnterPlace={(kind, back) => {
             setEntering(rpg.places.find((p) => p.kind === kind)?.label ?? '');
-            router.push(`/school/${schoolId}/place/${kind}`);
+            // 돌아올 자리를 주소에 실어 보낸다 — 저장소가 어긋나도 문 앞으로 돌아온다
+            const q = back
+              ? `?spot=${currentSpot?.id ?? ''}&bx=${back.x}&bz=${back.z}&byaw=${back.yaw}`
+              : '';
+            router.push(`/school/${schoolId}/place/${kind}${q}`);
           }}
-          onEnterSite={(siteId) => {
+          onEnterSite={(siteId, back) => {
             setEntering(rpg.sites.find((s) => s.id === siteId)?.name ?? '');
-            router.push(`/school/${schoolId}/site/${siteId}`);
+            const q = back
+              ? `?spot=${currentSpot?.id ?? ''}&bx=${back.x}&bz=${back.z}&byaw=${back.yaw}`
+              : '';
+            router.push(`/school/${schoolId}/site/${siteId}${q}`);
           }}
           localSites={rpg.sites}
           localPlaces={rpg.places}
@@ -319,6 +337,7 @@ function VillageBody() {
           currentSpot={currentSpot}
           onGoSpot={goSpot}
           isHome={isHome}
+          spawnAt={spawnAt}
           picked={collect.picked}
           onPickUp={(it) => collect.pick(it.id)}
           cleared={purify.cleared}

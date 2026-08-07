@@ -122,3 +122,23 @@ export function clearReturn(spotId: string) {
     sessionStorage.setItem(KEY, JSON.stringify(bag));
   } catch {}
 }
+
+/**
+ * 기관·유적 화면에서 마을로 돌아가는 주소.
+ *
+ * 들어올 때 주소에 실려 온 자리(?bx=&bz=&byaw=)가 있으면 그대로 되돌려준다 —
+ * **주소는 세션 저장소와 달리 잃어버릴 수가 없다.** 없으면 세션 표(villageHref).
+ */
+export function villageBackHref(): string {
+  if (typeof window === 'undefined') return '/village';
+  const q = new URLSearchParams(window.location.search);
+  const bx = q.get('bx');
+  const bz = q.get('bz');
+  if (bx !== null && bz !== null) {
+    const spot = q.get('spot') ?? '';
+    const byaw = q.get('byaw') ?? '0';
+    const sp = spot ? `spot=${encodeURIComponent(spot)}&` : '';
+    return `/village?${sp}bx=${bx}&bz=${bz}&byaw=${byaw}`;
+  }
+  return villageHref();
+}

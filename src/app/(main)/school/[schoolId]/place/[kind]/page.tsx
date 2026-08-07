@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRpgContent } from '@/lib/use-rpg-content';
 import { useProgress } from '@/lib/use-progress';
 import { placeKey, questKey, type Quest } from '@/lib/village-rpg';
-import { villageHref } from '@/lib/village-return';
+import { villageBackHref } from '@/lib/village-return';
 
 const CivicPlaceScene = dynamic(() => import('@/components/gallery3d/CivicPlaceScene'), { ssr: false });
 /**
@@ -49,7 +49,7 @@ export default function CivicPlacePage() {
           아직 들어가 볼 수 없는 곳이에요
         </p>
         <button
-          onClick={() => router.push(villageHref())}
+          onClick={() => router.push(villageBackHref())}
           className="rounded-full px-6 py-2.5 text-sm font-bold text-white"
           style={{ background: 'var(--color-primary)' }}
         >
@@ -78,7 +78,7 @@ export default function CivicPlacePage() {
         avatarId={userDoc?.avatarId}
         avatarCustom={userDoc?.avatarCustom}
         avatarTint={userDoc?.avatarTint}
-        onExit={() => router.push(villageHref())}
+        onExit={() => router.push(villageBackHref())}
         guideDone={done.has(placeKey(kind))}
         onGuideDone={() => mark(placeKey(kind), { kind })}
         progress={done}

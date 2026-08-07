@@ -6,7 +6,7 @@ import { useProgress } from '@/lib/use-progress';
 import { playSound } from '@/lib/sound';
 import { howFar } from '@/lib/local-sites';
 import { questState, questTarget, siteKey, type Quest } from '@/lib/village-rpg';
-import { villageHref } from '@/lib/village-return';
+import { villageBackHref } from '@/lib/village-return';
 import { useRpgContent } from '@/lib/use-rpg-content';
 
 /**
@@ -104,7 +104,7 @@ export default function LocalSitePage() {
           아직 볼 수 없는 곳이에요
         </p>
         <button
-          onClick={() => router.push(villageHref())}
+          onClick={() => router.push(villageBackHref())}
           className="rounded-full px-6 py-2.5 text-sm font-bold text-white"
           style={{ background: 'var(--color-primary)' }}
         >
@@ -141,7 +141,7 @@ export default function LocalSitePage() {
   return (
     <div className="px-4 pt-6 pb-24 mx-auto max-w-[560px]">
       <div className="flex items-center gap-2 mb-2">
-        <button onClick={() => router.push(villageHref())} className="ac-btn px-3.5 py-2 text-sm">
+        <button onClick={() => router.push(villageBackHref())} className="ac-btn px-3.5 py-2 text-sm">
           ← 마을로
         </button>
         <h1 className="text-lg font-black" style={{ color: 'var(--color-text-main)' }}>
