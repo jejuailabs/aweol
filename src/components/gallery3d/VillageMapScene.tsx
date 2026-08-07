@@ -552,37 +552,51 @@ function Roads({ list }: { list: VillageData['rd'] }) {
 }
 
 /**
- * 바닥층 — 뾰족 잔디 다발과 꽃잎·낙엽 흩뿌림. (브루노식, 스타일 샘플에서 가져옴)
+ * 바닥층 — **아바타를 따라다니는 잔디 카펫.** (브루노식)
  *
- * 소품(VillageProps)은 380개를 하나씩 세우지만, 잔디는 **수천 개를 한 번에**
- * 그려야 풀밭이 된다 — InstancedMesh 라 전부 합쳐 드로우콜 2개다.
- * 밑동 어둡고 끝 밝은 명암은 지오메트리 정점 색에 굽고, 포기마다의
- * 색 변화는 인스턴스 색으로 곱한다. 조명·그림자 계산 없음.
+ * 처음엔 마을 전체에 12,000포기를 흩었다가 **20m에 한 포기**가 됐다 —
+ * 반경 1,200m 마을은 470만 ㎡ 라, 샘플(풀 한 포기당 0.7㎡) 밀도로 깔려면
+ * 700만 개가 필요하다. 전체를 덮는 건 답이 아니다.
+ *
+ * 그래서 **내 주변 60m 만** 촘촘히 깐다. 세상을 4m 칸으로 나눠 두고,
+ * 아바타가 칸을 옮길 때마다 사정거리 안 칸들의 잔디를 다시 앉힌다.
+ * 칸마다 세계 좌표를 씨앗 삼으므로 **같은 자리에는 늘 같은 잔디**가 나고,
+ * 친구 화면과도 똑같다. 비용은 마을 크기와 무관하게 일정하다(드로우콜 2개).
  */
-function GroundFlora({ radius, buildings, roads, coast }: {
+function GroundFlora({ radius, buildings, roads, coast, avatarPos }: {
   radius: number;
   buildings: { p: XZ[]; h: number }[];
   roads: VillageData['rd'];
   coast?: XZ[][];
+  avatarPos: React.RefObject<THREE.Vector3>;
 }) {
-  const built = useMemo(() => {
+  const CELL = 4;          // 칸 한 변(m)
+  const RANGE = 16;        // 몇 칸 반경까지 깔까 (= 64m)
+  const CAP_G = 11000;     // 잔디 인스턴스 상한
+  const CAP_P = 1800;      // 꽃잎 상한
+
+  const ctx = useMemo(() => {
     const seaM = coast && coast.length > 0 ? seaMask(coast, radius, 16) : null;
     const bboxes = buildings.map((b) => {
       const xs = b.p.map((p) => p[0]);
       const zs = b.p.map((p) => p[1]);
       return {
-        minX: Math.min(...xs) - 1.5, maxX: Math.max(...xs) + 1.5,
-        minZ: Math.min(...zs) - 1.5, maxZ: Math.max(...zs) + 1.5,
+        minX: Math.min(...xs) - 1.2, maxX: Math.max(...xs) + 1.2,
+        minZ: Math.min(...zs) - 1.2, maxZ: Math.max(...zs) + 1.2,
       };
     });
-    // 길 조각을 펴 둔다 — 잔디가 길을 뚫고 나오면 안 된다
     const segs: [number, number, number, number, number][] = [];
     for (const r of roads) {
       for (let i = 0; i < r.p.length - 1; i++) {
         segs.push([r.p[i][0], r.p[i][1], r.p[i + 1][0], r.p[i + 1][1], r.w / 2 + 0.4]);
       }
     }
-    const onRoad = (x: number, z: number) => {
+    const blocked = (x: number, z: number) => {
+      if (seaM && isSea(seaM, x, z)) return true;
+      if (Math.abs(x) < 26 && Math.abs(z) < 34) return true;   // 학교 앞마당
+      for (const b of bboxes) {
+        if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) return true;
+      }
       for (const [ax, az, bx, bz, hw] of segs) {
         const dx = bx - ax, dz = bz - az;
         const len2 = dx * dx + dz * dz;
@@ -593,112 +607,123 @@ function GroundFlora({ radius, buildings, roads, coast }: {
       }
       return false;
     };
-    const blocked = (x: number, z: number) =>
-      (seaM ? isSea(seaM, x, z) : false)
-      || bboxes.some((b) => x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ)
-      || (Math.abs(x) < 26 && Math.abs(z) < 34)   // 학교 앞마당은 SchoolYard 몫
-      || onRoad(x, z);
 
-    const seeded = (i: number) => {
-      let h = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
-      h ^= h >>> 13; h = Math.imul(h ^ 0x6b79, 0xc2b2ae35); h ^= h >>> 16;
-      return (h >>> 0) / 4294967296;
-    };
-
-    // 잔디 — 원뿔 하나. 밑동은 어둡고 끝은 밝게 정점 색에 굽는다.
-    const spikeBase = new THREE.ConeGeometry(0.09, 0.62, 4, 1).translate(0, 0.31, 0);
+    // 잔디 — 밑동 어둡고 끝 밝은 명암을 정점 색에 굽는다
+    const spikeBase = new THREE.ConeGeometry(0.1, 0.72, 4, 1).translate(0, 0.36, 0);
     const spike = spikeBase.toNonIndexed();
     spikeBase.dispose();
     {
       const p = spike.attributes.position;
       const col = new Float32Array(p.count * 3);
       for (let i = 0; i < p.count; i++) {
-        const t = Math.min(1, p.getY(i) / 0.62);
-        const v = 0.5 + t * 0.78;
-        col[i * 3] = v * 0.92; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.72;
+        const t = Math.min(1, p.getY(i) / 0.72);
+        const v = 0.48 + t * 0.8;
+        col[i * 3] = v * 0.9; col[i * 3 + 1] = v; col[i * 3 + 2] = v * 0.68;
       }
       spike.setAttribute('color', new THREE.BufferAttribute(col, 3));
     }
-
-    const R = radius * 0.9;
-    const COUNT = Math.min(12000, Math.round(7000 * (radius / 800) ** 2));
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const eu = new THREE.Euler();
-    const v = new THREE.Vector3();
-    const sc = new THREE.Vector3();
-    const gMat: THREE.Matrix4[] = [];
-    const gCol: THREE.Color[] = [];
-    let i = 0, guard = 0;
-    while (gMat.length < COUNT && guard++ < COUNT * 3) {
-      i++;
-      const cx = (seeded(i * 11) - 0.5) * R * 2;
-      const cz = (seeded(i * 11 + 5) - 0.5) * R * 2;
-      if (blocked(cx, cz)) continue;
-      const clump = 4 + ((seeded(i * 11 + 7) * 4) | 0);
-      const base = new THREE.Color(0x8FBF6E).offsetHSL(
-        (seeded(i * 13) - 0.5) * 0.05, (seeded(i * 17) - 0.5) * 0.2, (seeded(i * 19) - 0.5) * 0.1);
-      for (let j = 0; j < clump && gMat.length < COUNT; j++) {
-        const x = cx + (seeded(i * 23 + j) - 0.5) * 1.4;
-        const z = cz + (seeded(i * 29 + j) - 0.5) * 1.4;
-        eu.set((seeded(i * 31 + j) - 0.5) * 0.5, seeded(i * 37 + j) * 6.28, (seeded(i * 41 + j) - 0.5) * 0.5);
-        q.setFromEuler(eu);
-        const s = 0.7 + seeded(i * 43 + j) * 1.0;
-        gMat.push(m.clone().compose(v.set(x, -0.03, z), q, sc.set(s, s * (0.7 + seeded(i * 47 + j) * 0.8), s)));
-        gCol.push(base.clone().offsetHSL(0, 0, (seeded(i * 53 + j) - 0.5) * 0.08));
-      }
-    }
-
-    // 꽃잎·낙엽 — 바닥에 깔린 작은 색점. 초록 위에 이게 있어야 그림이 된다.
-    const petal = new THREE.CircleGeometry(0.15, 5);
-    const PETALS = Math.min(3000, Math.round(1800 * (radius / 800) ** 2));
-    const PALETTE = [0xE8A33C, 0xD9873C, 0xE05A6E, 0xF2E3C6, 0xFFFFFF, 0xF2B33D];
-    const pMat: THREE.Matrix4[] = [];
-    const pCol: THREE.Color[] = [];
-    guard = 0;
-    while (pMat.length < PETALS && guard++ < PETALS * 3) {
-      i++;
-      const x = (seeded(i * 61) - 0.5) * R * 2;
-      const z = (seeded(i * 61 + 3) - 0.5) * R * 2;
-      if (blocked(x, z)) continue;
-      eu.set(-HALF_PI + (seeded(i * 67) - 0.5) * 0.4, 0, seeded(i * 71) * 6.28);
-      q.setFromEuler(eu);
-      const s = 0.6 + seeded(i * 73) * 0.8;
-      pMat.push(m.clone().compose(v.set(x, 0.06, z), q, sc.set(s, s, s)));
-      pCol.push(new THREE.Color(PALETTE[(seeded(i * 79) * PALETTE.length) | 0])
-        .offsetHSL(0, 0, (seeded(i * 83) - 0.5) * 0.1));
-    }
-
-    return { spike, petal, gMat, gCol, pMat, pCol };
+    const petal = new THREE.CircleGeometry(0.16, 5);
+    return { blocked, spike, petal };
   }, [radius, buildings, roads, coast]);
 
-  useEffect(() => () => { built.spike.dispose(); built.petal.dispose(); }, [built]);
-
-  const fill = (mesh: THREE.InstancedMesh | null, mats: THREE.Matrix4[], cols: THREE.Color[]) => {
-    if (!mesh) return;
-    mats.forEach((mm, idx) => mesh.setMatrixAt(idx, mm));
-    cols.forEach((cc, idx) => mesh.setColorAt(idx, cc));
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  };
+  useEffect(() => () => { ctx.spike.dispose(); ctx.petal.dispose(); }, [ctx]);
 
   const grassMat = useMemo(() => new THREE.MeshBasicMaterial({ vertexColors: true }), []);
   const petalMat = useMemo(() => new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), []);
   useEffect(() => () => { grassMat.dispose(); petalMat.dispose(); }, [grassMat, petalMat]);
 
+  const spikesRef = useRef<THREE.InstancedMesh>(null);
+  const petalsRef = useRef<THREE.InstancedMesh>(null);
+
+  /** 아바타 칸이 바뀔 때마다 사정거리 안 칸들을 다시 앉힌다 */
+  useEffect(() => {
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const eu = new THREE.Euler();
+    const v = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    const col = new THREE.Color();
+    const PALETTE = [0xE8A33C, 0xD9873C, 0xE05A6E, 0xF2E3C6, 0xFFFFFF, 0xF2B33D];
+    // 칸 세계 좌표 → 0~1 난수. 세계가 씨앗이라 언제 와도 같은 잔디다.
+    const hash = (cx: number, cz: number, k: number) => {
+      let h = Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ Math.imul(k + 1, 83492791);
+      h = Math.imul(h ^ (h >>> 13), 0x85ebca6b);
+      h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+
+    let lastCX = Infinity, lastCZ = Infinity;
+    const rebuild = () => {
+      const p = avatarPos.current;
+      const gm = spikesRef.current;
+      const pm = petalsRef.current;
+      if (!p || !gm || !pm) return;
+      const cX = Math.round(p.x / CELL);
+      const cZ = Math.round(p.z / CELL);
+      if (cX === lastCX && cZ === lastCZ) return;
+      lastCX = cX; lastCZ = cZ;
+
+      let gi = 0, pi = 0;
+      for (let dx = -RANGE; dx <= RANGE; dx++) {
+        for (let dz = -RANGE; dz <= RANGE; dz++) {
+          if (dx * dx + dz * dz > RANGE * RANGE) continue;
+          const cellX = cX + dx, cellZ = cZ + dz;
+          const wx = cellX * CELL, wz = cellZ * CELL;
+          if (ctx.blocked(wx, wz)) continue;
+
+          // 잔디 다발 — 칸당 6~10포기
+          const n = 6 + ((hash(cellX, cellZ, 0) * 5) | 0);
+          const hue = (hash(cellX, cellZ, 1) - 0.5) * 0.06;
+          for (let k = 0; k < n && gi < CAP_G; k++) {
+            const x = wx + (hash(cellX, cellZ, 10 + k) - 0.5) * CELL;
+            const z = wz + (hash(cellX, cellZ, 40 + k) - 0.5) * CELL;
+            eu.set((hash(cellX, cellZ, 70 + k) - 0.5) * 0.5,
+              hash(cellX, cellZ, 100 + k) * 6.28,
+              (hash(cellX, cellZ, 130 + k) - 0.5) * 0.5);
+            q.setFromEuler(eu);
+            const s = 0.7 + hash(cellX, cellZ, 160 + k) * 1.0;
+            m.compose(v.set(x, -0.02, z), q,
+              sc.set(s, s * (0.7 + hash(cellX, cellZ, 190 + k) * 0.8), s));
+            gm.setMatrixAt(gi, m);
+            col.setHex(0x79B354).offsetHSL(hue, (hash(cellX, cellZ, 220 + k) - 0.5) * 0.2,
+              (hash(cellX, cellZ, 250 + k) - 0.5) * 0.1);
+            gm.setColorAt(gi, col);
+            gi++;
+          }
+
+          // 꽃잎·낙엽 — 세 칸에 하나꼴
+          if (hash(cellX, cellZ, 2) < 0.34 && pi < CAP_P) {
+            const x = wx + (hash(cellX, cellZ, 300) - 0.5) * CELL;
+            const z = wz + (hash(cellX, cellZ, 301) - 0.5) * CELL;
+            eu.set(-HALF_PI + (hash(cellX, cellZ, 302) - 0.5) * 0.4, 0, hash(cellX, cellZ, 303) * 6.28);
+            q.setFromEuler(eu);
+            const s = 0.6 + hash(cellX, cellZ, 304) * 0.8;
+            m.compose(v.set(x, 0.07, z), q, sc.set(s, s, s));
+            pm.setMatrixAt(pi, m);
+            col.setHex(PALETTE[(hash(cellX, cellZ, 305) * PALETTE.length) | 0]);
+            pm.setColorAt(pi, col);
+            pi++;
+          }
+        }
+      }
+      gm.count = gi;
+      pm.count = pi;
+      gm.instanceMatrix.needsUpdate = true;
+      if (gm.instanceColor) gm.instanceColor.needsUpdate = true;
+      pm.instanceMatrix.needsUpdate = true;
+      if (pm.instanceColor) pm.instanceColor.needsUpdate = true;
+    };
+
+    rebuild();
+    const t = setInterval(rebuild, 250);
+    return () => clearInterval(t);
+  }, [ctx, avatarPos]);
+
   return (
     <group>
       {/* 인스턴스 경계구가 원점 기준이라 멋대로 잘려 나간다 — 컬링을 끈다 */}
-      <instancedMesh
-        ref={(el) => fill(el, built.gMat, built.gCol)}
-        args={[built.spike, grassMat, built.gMat.length]}
-        frustumCulled={false}
-      />
-      <instancedMesh
-        ref={(el) => fill(el, built.pMat, built.pCol)}
-        args={[built.petal, petalMat, built.pMat.length]}
-        frustumCulled={false}
-      />
+      <instancedMesh ref={spikesRef} args={[ctx.spike, grassMat, CAP_G]} frustumCulled={false} />
+      <instancedMesh ref={petalsRef} args={[ctx.petal, petalMat, CAP_P]} frustumCulled={false} />
     </group>
   );
 }
@@ -2483,7 +2508,7 @@ export default function VillageMapScene({
         <fog attach="fog" args={['#BFE8F5', R * 0.5, R * 3.6]} />
 
         <Ground R={R} buildings={data.b} />
-        <GroundFlora radius={R} buildings={data.b} roads={data.rd} coast={data.cl} />
+        <GroundFlora radius={R} buildings={data.b} roads={data.rd} coast={data.cl} avatarPos={avatarPos} />
         <Horizon R={R} />
         {/* 바다 — 해안선이 구워져 있는 자리에만 (뭍 마을에는 안 뜬다) */}
         {(data.cl?.length ?? 0) > 0 && <Sea lines={data.cl!} radius={R} />}
