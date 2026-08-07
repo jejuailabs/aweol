@@ -22,21 +22,29 @@ export function getMatcap(): THREE.Texture {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 256;
   const g = cv.getContext('2d')!;
-  // 좌상단 따뜻한 하이라이트 → 우하단 차가운 그늘
-  const lin = g.createLinearGradient(30, 20, 240, 250);
-  lin.addColorStop(0, '#FFF7E6');
-  lin.addColorStop(0.45, '#D8CFC2');
-  lin.addColorStop(1, '#8A8AA6');
+  /**
+   * 좌상단 따뜻한 하이라이트 → 우하단 차가운 그늘.
+   *
+   * 처음엔 회백색으로 순하게 그렸다가 **화면이 하나도 안 바뀌어 보였다** —
+   * 밝은 파스텔 벽에 순한 matcap 을 곱하면 이전 조명과 구분이 안 된다.
+   * 명암 낙차를 크게 잡아야 형태가 산다. 톤이 과하면 여기 숫자만 만지면
+   * 전 화면이 한 번에 바뀐다.
+   */
+  const lin = g.createLinearGradient(24, 12, 236, 252);
+  lin.addColorStop(0, '#FFFDF2');
+  lin.addColorStop(0.38, '#E9DCC6');
+  lin.addColorStop(0.72, '#B0A7B4');
+  lin.addColorStop(1, '#6E6C92');
   g.fillStyle = lin;
   g.fillRect(0, 0, 256, 256);
-  const hi = g.createRadialGradient(96, 84, 4, 96, 84, 88);
-  hi.addColorStop(0, 'rgba(255,255,255,0.95)');
+  const hi = g.createRadialGradient(88, 76, 4, 88, 76, 78);
+  hi.addColorStop(0, 'rgba(255,255,255,1)');
   hi.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = hi;
   g.beginPath(); g.arc(128, 128, 128, 0, Math.PI * 2); g.fill();
-  const rim = g.createRadialGradient(190, 200, 20, 190, 200, 120);
-  rim.addColorStop(0, 'rgba(70,74,120,0.5)');
-  rim.addColorStop(1, 'rgba(70,74,120,0)');
+  const rim = g.createRadialGradient(196, 206, 16, 196, 206, 130);
+  rim.addColorStop(0, 'rgba(58,62,110,0.72)');
+  rim.addColorStop(1, 'rgba(58,62,110,0)');
   g.fillStyle = rim;
   g.beginPath(); g.arc(128, 128, 128, 0, Math.PI * 2); g.fill();
   matcapTex = new THREE.CanvasTexture(cv);

@@ -32,6 +32,8 @@ import {
 } from '@/lib/village-travel';
 import { backdropClose } from '@/lib/backdrop';
 import { MatcapMat } from './MatcapMat';
+import type { Occluder } from '@/lib/baked';
+import { bakeGroundGeometry } from './baked-three';
 
 const PI = Math.PI;
 const HALF_PI = PI * 0.5;
@@ -1010,7 +1012,7 @@ function Areas({ list }: { list: VillageData['a'] }) {
  * 단색 초록 한 장은 게임이 아니라 도면처럼 보인다. 캔버스에 점을 찍어
  * 작은 텍스처 하나를 만들고 반복해 깐다 — 파일도, 네트워크도 필요 없다.
  */
-function Ground({ R }: { R: number }) {
+function Ground({ R, buildings }: { R: number; buildings: VillageData['b'] }) {
   const tex = useMemo(() => {
     const c = document.createElement('canvas');
     c.width = 256; c.height = 256;
@@ -1030,15 +1032,38 @@ function Ground({ R }: { R: number }) {
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }, [R]);
-  useEffect(() => () => { tex?.dispose(); }, [tex]);
-  return (
-    <mesh rotation={[NEG_HALF_PI, 0, 0]}>
-      <planeGeometry args={[R * 2 + 200, R * 2 + 200]} />
-      {tex
-        ? <MatcapMat map={tex} />
-        : <MatcapMat color="#A8DDA0" />}
-    </mesh>
+
+  /**
+   * 건물 그림자를 땅 정점 색에 굽는다 (baked — docs/10-jeju-warp-map.md).
+   * 잔디 점 텍스처 × 구운 그림자가 곱해져, 건물 밑이 실제로 어둡다.
+   * 로드할 때 한 번 — 건물이 수백 채여도 런타임 비용 0.
+   */
+  const geo = useMemo(() => {
+    const occluders: Occluder[] = buildings.map((b) => {
+      const xs = b.p.map((p) => p[0]);
+      const zs = b.p.map((p) => p[1]);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+      return {
+        x: (minX + maxX) / 2,
+        z: (minZ + maxZ) / 2,
+        r: Math.max(maxX - minX, maxZ - minZ) * 0.62,
+        k: 0.42,
+      };
+    });
+    // 흰 바탕에 굽는다 — 색은 텍스처가 내고, 정점에는 빛·그림자만 싣는다
+    return bakeGroundGeometry({
+      size: R * 2 + 200, segments: 128, colorHex: 0xFFFFFF, occluders,
+    });
+  }, [R, buildings]);
+
+  const mat = useMemo(
+    () => new THREE.MeshBasicMaterial({ vertexColors: true, map: tex ?? undefined }),
+    [tex]
   );
+  useEffect(() => () => { tex?.dispose(); geo.dispose(); mat.dispose(); }, [tex, geo, mat]);
+
+  return <mesh geometry={geo} material={mat} />;
 }
 
 /**
@@ -2305,7 +2330,7 @@ export default function VillageMapScene({
         {/* 언덕을 멀리 밀어냈으므로 안개도 그만큼 멀리 걷어야 산이 보인다 */}
         <fog attach="fog" args={['#BFE8F5', R * 0.5, R * 3.6]} />
 
-        <Ground R={R} />
+        <Ground R={R} buildings={data.b} />
         <Horizon R={R} />
         {/* 바다 — 해안선이 구워져 있는 자리에만 (뭍 마을에는 안 뜬다) */}
         {(data.cl?.length ?? 0) > 0 && <Sea lines={data.cl!} radius={R} />}
