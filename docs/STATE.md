@@ -1671,6 +1671,70 @@ PDF 를 골랐을 때만 받아온다(동적 import). 첫 로드에는 안 들�
 
 - 검증: `verify-rpg-content.mjs` (40건), `verify-rpg-api.mjs` (28건)
 
+### 마을을 baked 로 — 조명을 켜지 않고 굽는다 (2026-08-07)
+
+스타일 방향이 확정됐다(브루노 시몽 방식, 설계는 `docs/10-jeju-warp-map.md`).
+**앞으로 모든 마을·무대는 이 기반 위에서 만든다.**
+
+실시간 조명·그림자맵 대신, 로드할 때 한 번:
+- 정점마다 태양 램버트+반구광+바닥 반사광을 **정점 색에 굽고** (`lib/baked.ts` — 순수 산수)
+- 건물·나무가 드리우는 그림자를 **땅 정점 색에 굽는다** (해 반대쪽으로 밀린 타원)
+- 런타임 재질은 unlit(`BAKED_MAT`) 하나 — 그리는 비용이 오히려 줄었다
+
+바꾼 곳: `VillageScene`(손배치 마을) + `VillageMapScene`(OSM 동네) 전부.
+`Canvas` 에서 `shadows` 를 뺐고, 남은 조명 둘(ambient+directional)은
+**표준 재질인 아바타·친구·차만** 비춘다 — walker(표준 재질 62곳)는 아직 안 건드렸다.
+
+- 도구: `bakeGeometry`·`bakeGroundGeometry` (`gallery3d/baked-three.ts`)
+- 검증: `node --experimental-strip-types scripts/verify-baked.mjs` (20건)
+- **함정:** bake 는 지오메트리를 펼쳐서(toNonIndexed) 새로 만든다 — 원본은
+  dispose 하고, 구운 것도 컴포넌트가 사라질 때 dispose. emissive 는 unlit 에
+  없다 — 밝게 보이려면 색 자체를 밝게 쓴다(문·창).
+- 다음: walker 를 matcap 으로, 오름 무대(heightAt 지형), 제주 전도 워프 허브.
+  캐릭터 정책·순서는 `docs/10-jeju-warp-map.md`.
+
+### 아바타 matcap + 오름 무대 (2026-08-07)
+
+**아바타·친구가 matcap 이 됐다.** walker(56곳)·Peers(6곳)의 표준 재질을
+`MatcapMat`(캔버스로 그린 matcap 구 한 장, `getMatcap`)으로 바꿨다.
+조명 없는 baked 무대에서도, 조명 있는 실내에서도 똑같이 보인다.
+emissive·roughness 는 matcap 이 대신하므로 그냥 지웠다.
+
+**지형 위를 걷는다.** `walker`·`FollowCamera`·`Peers` 에 `heightAt?` 프롭 —
+없으면 지금까지처럼 평지(기존 화면 무변화), 넘기면 발·카메라·친구가 땅을 따라간다.
+`avatarPos.y` 에 땅 높이가 실린다(튀는 만큼은 뺀 값).
+
+**오름 무대 1호** — `/village/oreum`.
+- 땅: `lib/terrain.ts` (순수 산수 — 마당은 평평, 봉우리 22m, 지그재그 흙길).
+  검증 `verify-terrain.mjs` (10건). **함정: 능선 각도항은 1/d 라 봉우리 옆이
+  절벽이 된다** — 중심 근처에서 죽여야 한다(smooth(3,14,d)).
+- 무대: `OreumScene` — bakeTerrainGeometry(명암·바위그림자 굽기), 억새 2800
+  (높이 8m 위만)·잔디 9000(원뿔 다발)·바위 인스턴싱. 씨앗 고정 난수라
+  모두가 같은 오름을 본다. **씬에 조명 0개.**
+- 입구: 손배치 마을의 ⛰️ 건물 + `/village` 의 ⛰️ 버튼(구운 동네에서도 가게).
+- 방은 `oreum` 하나 — 학교 불문 같이 오른다.
+
+### 제주 전도 워프 허브 (2026-08-07)
+
+`/jeju` — 실좌표를 투영한 제주도 위에서 무대를 고른다 (docs/10-jeju-warp-map.md 의 ①층).
+
+- 산수는 `lib/jeju-map.ts`: 해안선 21점(실제 윤곽 단순화), 위경도→km 투영,
+  점-다각형 판정, 해안 거리, 한라산 높이(시각 과장). 실거리 검산 포함 —
+  애월↔제주시 19.0km. 검증 `verify-jeju-map.mjs` (34건).
+- 씬은 `JejuMapScene`: bakeTerrainGeometry 로 바다(옥빛→짙은 파랑)·모래해안·
+  들·숲·한라산을 정점 색에 굽는다. **조명 0개.** 구름이 천천히 흐른다.
+- **열린 곳 넷**: 애월(→마을) · 한담·곽지(→**스팟** `?spot=handam|gwakji`) ·
+  오름(→무대). 나머지 10곳(제주시·성산·서귀포…)은 잿빛 '예정' — 누르면
+  "아직 준비 중".
+- 처음엔 `?warp=이름` 으로 마을 안 워프를 만들었는데, 다른 PC 작업이
+  **스팟 시스템**(자리별 별도 굽기, `village-spots.ts`)을 이미 만들어 둔 것을
+  rebase 에서 발견 — 그쪽이 맞아서(실제로 그 자리를 굽는다) warp 는 지웠다.
+  전도의 좌표도 스팟 표의 실좌표에 맞췄다.
+- 마을 상단 버튼 ⛰️ → 🗾 제주 로 교체(무대 입구는 전도로 모은다).
+- **남은 일:** VillageMapScene 이 원격에서 크게 진화(몹·수집·바다·앰비언스)해서
+  rebase 때 원격 버전을 통째로 받았다 — **OSM 마을의 baked 전환은 다시 해야
+  한다**(그 구조 위에서). 손배치 마을·오름·전도·아바타 matcap 은 baked 그대로다.
+
 ## 남은 일 (우선순위)
 
 > **2026-07-25 에 한 번 갈아엎었다.** 예전 목록에는 이미 다 만든 것들이

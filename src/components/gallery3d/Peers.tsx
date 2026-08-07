@@ -5,6 +5,13 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { getAvatarLook } from './walker';
+import { getMatcap } from './baked-three';
+import type { ThreeElements } from '@react-three/fiber';
+
+/** 아바타와 같은 matcap 재질 — 조명 없는 baked 무대에서도 똑같이 보인다 */
+function MatcapMat(props: ThreeElements['meshMatcapMaterial']) {
+  return <meshMatcapMaterial matcap={getMatcap()} {...props} />;
+}
 import { joinRoom, type Peer, type PeerLook } from '@/lib/presence';
 
 const PI = Math.PI;
@@ -16,7 +23,7 @@ const PI = Math.PI;
  * 뚝뚝 끊겨 보인다. 마지막으로 받은 자리를 향해 부드럽게 따라가게 해서
  * 그 사이를 메운다(보간). 이게 5Hz 를 눈에 안 띄게 만드는 핵심이다.
  */
-function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
+function PeerAvatar({ peer, isIt, heightAt }: { peer: Peer; isIt?: boolean; heightAt?: (x: number, z: number) => number }) {
   const group = useRef<THREE.Group>(null);
   const look = getAvatarLook(peer.avatarId, null, { shirt: peer.shirt, hair: peer.hair });
   const bob = useRef(0);
@@ -31,7 +38,7 @@ function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
 
     // 너무 멀면(방금 들어왔거나 순간이동) 그냥 붙인다. 먼 거리를 걸어가면 이상하다.
     if (dist > 6) {
-      g.position.set(peer.x, 0, peer.z);
+      g.position.set(peer.x, heightAt?.(peer.x, peer.z) ?? 0, peer.z);
       g.rotation.y = peer.ry;
       return;
     }
@@ -48,7 +55,8 @@ function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
     // 움직이는 중이면 통통 튄다
     const moving = dist > 0.06;
     if (moving) bob.current += delta * 9;
-    g.position.y = moving ? Math.abs(Math.sin(bob.current)) * 0.06 : 0;
+    const groundY = heightAt?.(g.position.x, g.position.z) ?? 0;
+    g.position.y = groundY + (moving ? Math.abs(Math.sin(bob.current)) * 0.06 : 0);
   });
 
   return (
@@ -56,27 +64,27 @@ function PeerAvatar({ peer, isIt }: { peer: Peer; isIt?: boolean }) {
       {/* 몸 — 아바타와 같은 파츠를 쓰되 간단하게 (여러 명이 동시에 뜬다) */}
       <mesh position={[0, 0.16, 0]} castShadow>
         <capsuleGeometry args={[0.11, 0.16, 6, 10]} />
-        <meshStandardMaterial color={look.pants} />
+        <MatcapMat color={look.pants} />
       </mesh>
       <mesh position={[0, 0.46, 0]} castShadow>
         <cylinderGeometry args={[0.13, 0.22, 0.42, 14]} />
-        <meshStandardMaterial color={look.shirt} roughness={0.65} />
+        <MatcapMat color={look.shirt} />
       </mesh>
       <mesh position={[0, 0.82, 0]} castShadow>
         <sphereGeometry args={[0.21, 16, 16]} />
-        <meshStandardMaterial color={look.skin} />
+        <MatcapMat color={look.skin} />
       </mesh>
       {look.hairStyle !== 'none' && (
         <mesh position={[0, 0.92, 0]}>
           <sphereGeometry args={[0.215, 16, 16, 0, PI * 2, 0, PI * 0.55]} />
-          <meshStandardMaterial color={look.hair} />
+          <MatcapMat color={look.hair} />
         </mesh>
       )}
       {/* 눈 */}
       {([-0.08, 0.08]).map((ex) => (
         <mesh key={ex} position={[ex, 0.85, 0.185]}>
           <sphereGeometry args={[0.028, 8, 8]} />
-          <meshStandardMaterial color="#2A211A" />
+          <MatcapMat color="#2A211A" />
         </mesh>
       ))}
 
@@ -117,13 +125,13 @@ export function ItRing() {
   return (
     <mesh ref={ring} position={[0, 1.15, 0]} rotation={[PI * 0.5, 0, 0]}>
       <torusGeometry args={[0.26, 0.055, 8, 20]} />
-      <meshStandardMaterial color="#E8493C" emissive="#E8493C" emissiveIntensity={0.55} />
+      <MatcapMat color="#E8493C" />
     </mesh>
   );
 }
 
 export default function Peers({
-  schoolId, roomKey, uid, look, avatarPos, avatarYaw, itUid, onPeersChange,
+  schoolId, roomKey, uid, look, avatarPos, avatarYaw, itUid, onPeersChange, heightAt,
 }: {
   schoolId: string;
   /** 공간 하나를 가리키는 값 — 'school' / 'class-3-1' / 'lobby' */
@@ -141,6 +149,8 @@ export default function Peers({
    * 술래잡기처럼 남의 위치가 필요한 놀이가 쓴다 — 위치를 또 받아오지 않게.
    */
   onPeersChange?: (peers: Peer[]) => void;
+  /** 지형 높이 — 오름 같은 굴곡 무대에서 친구들이 땅에 서게 */
+  heightAt?: (x: number, z: number) => number;
 }) {
   const [peers, setPeers] = useState<Peer[]>([]);
   const handle = useRef<ReturnType<typeof joinRoom> | null>(null);
@@ -168,7 +178,7 @@ export default function Peers({
   return (
     <group>
       {peers.map((p) => (
-        <PeerAvatar key={p.uid} peer={p} isIt={itUid === p.uid} />
+        <PeerAvatar key={p.uid} peer={p} isIt={itUid === p.uid} heightAt={heightAt} />
       ))}
     </group>
   );

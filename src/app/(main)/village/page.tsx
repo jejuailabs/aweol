@@ -262,6 +262,8 @@ function VillageBody() {
       router.push('/gallery');
     } else if (spot === 'shop') {
       router.push('/shop');
+    } else if (spot === 'oreum') {
+      router.push('/village/oreum');
     } else {
       router.push('/');
     }
@@ -371,6 +373,18 @@ function VillageBody() {
         마을에 들어와서 '뭘 하지?' 하고 멈추면 거기서 끝난다.
         빨간 숫자 하나가 아이를 움직인다.
       */}
+      {/*
+        제주 전도(워프 허브)로 나가는 문 — 오름·한담·곽지 등 무대는 전부
+        전도에서 고른다. 손배치 마을에서는 ⛰️ 건물 문으로도 오름에 간다.
+      */}
+      <button
+        onClick={() => router.push('/jeju')}
+        className="pos-top-safe absolute right-28 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
+        style={{ background: '#FFF8E7', color: '#6B5B43', border: '3px solid #EFE3CB', boxShadow: '0 4px 0 #E3D5B8' }}
+      >
+        🗾 제주
+      </button>
+
       <button
         onClick={() => router.push(`/school/${schoolId}/notebook`)}
         className="pos-top-safe absolute right-4 z-30 rounded-full px-4 py-2.5 text-sm font-bold"
